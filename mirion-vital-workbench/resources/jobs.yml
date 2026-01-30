@@ -1,0 +1,231 @@
+resources:
+  jobs:
+    # DATA Stage Jobs
+    ocr_extraction:
+      name: "[VITAL] OCR Extraction"
+      description: "Extract text from images and documents using OCR"
+      job_clusters:
+        - job_cluster_key: databits_cluster
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "m5d.large"
+            num_workers: 0
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: "local[*]"
+            custom_tags:
+              ResourceClass: SingleNode
+      tasks:
+        - task_key: ocr_extraction
+          notebook_task:
+            notebook_path: ../notebooks/data/ocr_extraction.py
+          job_cluster_key: databits_cluster
+
+    audio_transcription:
+      name: "[VITAL] Audio Transcription"
+      description: "Transcribe audio files to text"
+      job_clusters:
+        - job_cluster_key: databits_cluster
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "m5d.large"
+            num_workers: 0
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: "local[*]"
+            custom_tags:
+              ResourceClass: SingleNode
+      tasks:
+        - task_key: audio_transcription
+          notebook_task:
+            notebook_path: ../notebooks/data/audio_transcription.py
+          job_cluster_key: databits_cluster
+
+    embedding_generation:
+      name: "[VITAL] Embedding Generation"
+      description: "Generate vector embeddings for text and images"
+      job_clusters:
+        - job_cluster_key: databits_cluster
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "m5d.large"
+            num_workers: 0
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: "local[*]"
+            custom_tags:
+              ResourceClass: SingleNode
+      tasks:
+        - task_key: embedding_generation
+          notebook_task:
+            notebook_path: ../notebooks/data/embedding_generation.py
+          job_cluster_key: databits_cluster
+
+    ai_functions:
+      name: "[VITAL] AI Functions"
+      description: "Run AI functions (classify, extract, summarize, etc.)"
+      job_clusters:
+        - job_cluster_key: databits_cluster
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "m5d.large"
+            num_workers: 0
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: "local[*]"
+            custom_tags:
+              ResourceClass: SingleNode
+      tasks:
+        - task_key: ai_functions
+          notebook_task:
+            notebook_path: ../notebooks/data/ai_functions.py
+          job_cluster_key: databits_cluster
+
+    # CURATE Stage Jobs
+    labeling_agent:
+      name: "[VITAL] Labeling Agent"
+      description: "AI-assisted pre-labeling of curation items"
+      job_clusters:
+        - job_cluster_key: databits_cluster
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "m5d.large"
+            num_workers: 0
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: "local[*]"
+            custom_tags:
+              ResourceClass: SingleNode
+      tasks:
+        - task_key: labeling_agent
+          notebook_task:
+            notebook_path: ../notebooks/curate/labeling_agent.py
+          job_cluster_key: databits_cluster
+
+    quality_scoring:
+      name: "[VITAL] Quality Scoring"
+      description: "Score item quality and detect duplicates"
+      job_clusters:
+        - job_cluster_key: databits_cluster
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "m5d.large"
+            num_workers: 0
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: "local[*]"
+            custom_tags:
+              ResourceClass: SingleNode
+      tasks:
+        - task_key: quality_scoring
+          notebook_task:
+            notebook_path: ../notebooks/curate/quality_scoring.py
+          job_cluster_key: databits_cluster
+
+    # TRAIN Stage Jobs
+    data_assembly:
+      name: "[VITAL] Data Assembly"
+      description: "Assemble approved items into training dataset"
+      job_clusters:
+        - job_cluster_key: databits_cluster
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "m5d.large"
+            num_workers: 0
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: "local[*]"
+            custom_tags:
+              ResourceClass: SingleNode
+      tasks:
+        - task_key: data_assembly
+          notebook_task:
+            notebook_path: ../notebooks/train/data_assembly.py
+          job_cluster_key: databits_cluster
+
+    finetune_fmapi:
+      name: "[VITAL] Fine-tune (FMAPI)"
+      description: "Fine-tune model using Foundation Model APIs"
+      job_clusters:
+        - job_cluster_key: databits_cluster
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "m5d.large"
+            num_workers: 0
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: "local[*]"
+            custom_tags:
+              ResourceClass: SingleNode
+      tasks:
+        - task_key: finetune_fmapi
+          notebook_task:
+            notebook_path: ../notebooks/train/finetune_fmapi.py
+          job_cluster_key: databits_cluster
+
+    model_evaluation:
+      name: "[VITAL] Model Evaluation"
+      description: "Evaluate model performance on test set"
+      job_clusters:
+        - job_cluster_key: databits_cluster
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "m5d.large"
+            num_workers: 0
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: "local[*]"
+            custom_tags:
+              ResourceClass: SingleNode
+      tasks:
+        - task_key: model_evaluation
+          notebook_task:
+            notebook_path: ../notebooks/train/model_evaluation.py
+          job_cluster_key: databits_cluster
+
+    # MONITOR Stage Jobs
+    drift_detection:
+      name: "[VITAL] Drift Detection"
+      description: "Detect input/output distribution drift"
+      schedule:
+        quartz_cron_expression: "0 0 * * * ?"
+        timezone_id: "UTC"
+      job_clusters:
+        - job_cluster_key: databits_cluster
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "m5d.large"
+            num_workers: 0
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: "local[*]"
+            custom_tags:
+              ResourceClass: SingleNode
+      tasks:
+        - task_key: drift_detection
+          notebook_task:
+            notebook_path: ../notebooks/monitor/drift_detection.py
+          job_cluster_key: databits_cluster
+
+    feedback_analysis:
+      name: "[VITAL] Feedback Analysis"
+      description: "Analyze user feedback and identify patterns"
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: "UTC"
+      job_clusters:
+        - job_cluster_key: databits_cluster
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "m5d.large"
+            num_workers: 0
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: "local[*]"
+            custom_tags:
+              ResourceClass: SingleNode
+      tasks:
+        - task_key: feedback_analysis
+          notebook_task:
+            notebook_path: ../notebooks/improve/feedback_analysis.py
+          job_cluster_key: databits_cluster

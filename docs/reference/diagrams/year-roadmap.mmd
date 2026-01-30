@@ -1,0 +1,44 @@
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#FF3621','primaryTextColor':'#fff','primaryBorderColor':'#1B3A57','lineColor':'#5f6368','secondaryColor':'#1B3A57','tertiaryColor':'#E8E8E8'}}}%%
+flowchart LR
+    subgraph Y1["Year 1: Foundation - $400K"]
+        Y1A[5-10 Pilot Sites]
+        Y1B[Edge Architecture]
+        Y1C[Monte Carlo Validation]
+        Y1A --> Y1B --> Y1C
+    end
+
+    subgraph Y2["Year 2: Scale - $800K"]
+        Y2A[20-40 Production Sites]
+        Y2B[Cloud Architecture]
+        Y2C[MC at Scale]
+        Y2A --> Y2B --> Y2C
+    end
+
+    subgraph Y3["Year 3: Optimize - $1.5M"]
+        Y3A[50-86 Enterprise Sites]
+        Y3B[Airgap GovCloud]
+        Y3C[ML-Driven Analytics]
+        Y3A --> Y3B --> Y3C
+    end
+
+    subgraph Y4["Year 4: Expand - $2.8M"]
+        Y4A[86+ Full Deployment]
+        Y4B[Clean Rooms GA]
+        Y4C[SaaS Revenue Model]
+        Y4A --> Y4B --> Y4C
+    end
+
+    subgraph Y5["Year 5: Dominate - $5M"]
+        Y5A[150+ Sites All Sectors]
+        Y5B[Industrial Expansion]
+        Y5C[Platform Ecosystem]
+        Y5A --> Y5B --> Y5C
+    end
+
+    Y1 ==> Y2 ==> Y3 ==> Y4 ==> Y5
+
+    style Y1 fill:#1B3A57,stroke:#FF3621,stroke-width:3px,color:#fff
+    style Y2 fill:#1B3A57,stroke:#FF3621,stroke-width:3px,color:#fff
+    style Y3 fill:#FF3621,stroke:#1B3A57,stroke-width:3px,color:#fff
+    style Y4 fill:#FF3621,stroke:#1B3A57,stroke-width:3px,color:#fff
+    style Y5 fill:#FF3621,stroke:#1B3A57,stroke-width:3px,color:#fff

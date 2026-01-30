@@ -1,0 +1,34 @@
+bundle:
+  name: vital-workbench
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for VITAL Platform metadata
+    default: main
+  schema:
+    description: Schema within the catalog for workbench tables
+    default: vital_workbench
+  warehouse_id:
+    description: SQL Warehouse ID for query execution
+    default: ""
+
+include:
+  - resources/*.yml
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      profile: e2-demo-west
+    variables:
+      catalog: main
+      schema: vital_workbench_dev
+
+  logfood:
+    mode: development
+    workspace:
+      profile: logfood
+    variables:
+      catalog: home_stuart_gano
+      schema: vital_workbench

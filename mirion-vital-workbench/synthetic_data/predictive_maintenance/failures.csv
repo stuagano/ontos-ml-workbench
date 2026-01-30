@@ -1,0 +1,11 @@
+failure_id,equipment_id,failure_date,failure_type,root_cause,downtime_hours,repair_cost_usd,preventable,leading_indicators,facility
+FAIL-2023-001,DET-NPP-COOK-001,2023-06-15,cooling_system,compressor_wear,24,4500,true,"temperature_rise,noise_increase",Cook Nuclear Plant
+FAIL-2023-002,DET-NPP-PALO-001,2023-08-20,crystal_damage,thermal_shock,72,12000,true,"count_rate_drop,noise_spike",Palo Verde Nuclear Generating Station
+FAIL-2023-003,DET-NPP-WATTS-003,2023-04-10,seal_failure,humidity_exposure,8,800,true,"humidity_trend,voltage_drop",Watts Bar Nuclear Plant
+FAIL-2023-004,DET-NPP-DIABLO-002,2023-09-05,connector_failure,corrosion,16,1200,true,"signal_intermittent,current_fluctuation",Diablo Canyon Power Plant
+FAIL-2023-005,PM-NPP-SURRY-001,2023-11-12,display_failure,component_age,4,2500,false,"none_detected",Surry Nuclear Power Plant
+FAIL-2024-001,DET-NPP-PALO-001,2024-01-18,crystal_crack,manufacturing_defect,168,15000,false,"count_rate_anomaly,efficiency_drop",Palo Verde Nuclear Generating Station
+FAIL-2022-001,DET-NPP-DIABLO-002,2022-03-22,cable_failure,rodent_damage,12,600,false,"signal_loss_intermittent",Diablo Canyon Power Plant
+FAIL-2022-002,PM-NPP-SURRY-001,2022-07-08,pmt_failure,voltage_surge,48,8000,true,"current_spike,noise_increase",Surry Nuclear Power Plant
+FAIL-2021-001,DET-NPP-COOK-001,2021-12-01,hv_supply,capacitor_failure,36,3200,true,"voltage_instability,ripple_increase",Cook Nuclear Plant
+FAIL-2021-002,DET-NPP-WATTS-003,2021-05-15,tube_failure,end_of_life,6,450,true,"count_rate_decline,plateau_shift",Watts Bar Nuclear Plant

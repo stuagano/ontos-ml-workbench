@@ -1,0 +1,21 @@
+simulation_id,equipment_id,source_type,source_activity_bq,geometry,distance_cm,shielding_mm_pb,simulated_counts,statistical_uncertainty_pct,calibration_factor,simulation_time_sec,facility
+MC-2024-001-001,DET-NPP-COOK-001,Cs-137,370000,point,100,0,125000,0.28,2.96,45.2,Cook Nuclear Plant
+MC-2024-001-002,DET-NPP-COOK-001,Cs-137,370000,point,100,0,124800,0.28,2.96,44.8,Cook Nuclear Plant
+MC-2024-001-003,DET-NPP-COOK-001,Cs-137,370000,point,100,0,125200,0.28,2.95,45.5,Cook Nuclear Plant
+MC-2024-001-004,DET-NPP-COOK-001,Cs-137,370000,point,100,5,98500,0.32,3.76,48.2,Cook Nuclear Plant
+MC-2024-001-005,DET-NPP-COOK-001,Cs-137,370000,point,100,10,77200,0.36,4.79,52.1,Cook Nuclear Plant
+MC-2024-002-001,DET-NPP-COOK-001,Co-60,185000,point,100,0,145000,0.26,1.28,42.8,Cook Nuclear Plant
+MC-2024-002-002,DET-NPP-COOK-001,Co-60,185000,point,100,5,128000,0.28,1.45,46.5,Cook Nuclear Plant
+MC-2024-002-003,DET-NPP-COOK-001,Co-60,185000,point,100,10,112000,0.30,1.65,50.2,Cook Nuclear Plant
+MC-2024-003-001,DET-NPP-PALO-001,Cs-137,370000,point,100,0,118000,0.29,3.14,44.1,Palo Verde Nuclear Generating Station
+MC-2024-003-002,DET-NPP-PALO-001,Cs-137,370000,point,100,0,115500,0.29,3.20,43.8,Palo Verde Nuclear Generating Station
+MC-2024-003-003,DET-NPP-PALO-001,Cs-137,370000,point,100,0,112000,0.30,3.30,44.5,Palo Verde Nuclear Generating Station
+MC-2024-004-001,DET-NPP-WATTS-003,Cs-137,370000,cylindrical,50,0,285000,0.19,1.30,38.5,Watts Bar Nuclear Plant
+MC-2024-004-002,DET-NPP-WATTS-003,Cs-137,370000,cylindrical,50,0,284200,0.19,1.30,38.2,Watts Bar Nuclear Plant
+MC-2024-004-003,DET-NPP-WATTS-003,Cs-137,370000,cylindrical,75,0,142000,0.27,2.61,42.1,Watts Bar Nuclear Plant
+MC-2024-005-001,DET-NPP-DIABLO-002,Am-241,37000,point,25,0,8500,0.58,4.35,62.3,Diablo Canyon Power Plant
+MC-2024-005-002,DET-NPP-DIABLO-002,Am-241,37000,point,25,0,8450,0.58,4.38,61.8,Diablo Canyon Power Plant
+MC-2024-005-003,DET-NPP-DIABLO-002,Am-241,37000,point,50,0,2150,1.08,17.21,85.2,Diablo Canyon Power Plant
+MC-2024-006-001,PM-NPP-SURRY-001,Cs-137,370000,distributed,200,0,45000,0.47,8.22,55.5,Surry Nuclear Power Plant
+MC-2024-006-002,PM-NPP-SURRY-001,Cs-137,370000,distributed,200,0,44500,0.47,8.31,54.8,Surry Nuclear Power Plant
+MC-2024-006-003,PM-NPP-SURRY-001,Co-60,185000,distributed,200,0,52000,0.44,3.56,52.2,Surry Nuclear Power Plant

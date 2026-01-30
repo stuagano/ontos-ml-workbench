@@ -1,0 +1,41 @@
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#FF3621','primaryTextColor':'#fff','primaryBorderColor':'#1B3A57','lineColor':'#5f6368','secondaryColor':'#1B3A57','tertiaryColor':'#E8E8E8'}}}%%
+flowchart TB
+    subgraph Hub["Central VITAL Hub"]
+        UC[Unity Catalog]
+        DL[Delta Lake]
+        GOV[Data Governance]
+        UC --- DL --- GOV
+    end
+
+    subgraph Internal["Internal Business Units"]
+        TECH[Technologies BU]
+        MED[Medical BU]
+        IND[Industrial BU]
+    end
+
+    subgraph External["External Partners - Delta Sharing"]
+        UTIL[Utilities]
+        WEST[Westinghouse]
+        REG[Regulators NRC/EPA]
+        OEM[OEM Partners]
+    end
+
+    Hub <-->|Direct Access<br/>No Copy| TECH
+    Hub <-->|Direct Access<br/>No Copy| MED
+    Hub <-->|Direct Access<br/>No Copy| IND
+
+    Hub -.->|Delta Share<br/>Read-Only| UTIL
+    Hub -.->|Delta Share<br/>Read-Only| WEST
+    Hub -.->|Delta Share<br/>Audit Trail| REG
+    Hub -.->|Delta Share<br/>Selective Access| OEM
+
+    style Hub fill:#FF3621,stroke:#1B3A57,stroke-width:4px,color:#fff
+    style Internal fill:#1B3A57,stroke:#FF3621,stroke-width:2px,color:#fff
+    style External fill:#E8E8E8,stroke:#1B3A57,stroke-width:2px,color:#000
+    style TECH fill:#1B3A57,stroke:#FF3621,stroke-width:2px,color:#fff
+    style MED fill:#1B3A57,stroke:#FF3621,stroke-width:2px,color:#fff
+    style IND fill:#1B3A57,stroke:#FF3621,stroke-width:2px,color:#fff
+    style UTIL fill:#E8E8E8,stroke:#5f6368,stroke-width:2px,color:#000
+    style WEST fill:#E8E8E8,stroke:#5f6368,stroke-width:2px,color:#000
+    style REG fill:#E8E8E8,stroke:#5f6368,stroke-width:2px,color:#000
+    style OEM fill:#E8E8E8,stroke:#5f6368,stroke-width:2px,color:#000

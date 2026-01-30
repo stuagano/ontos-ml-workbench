@@ -1,0 +1,123 @@
+{
+  "description": "Synthetic defect detection labels for radiation detector inspection images",
+  "schema_version": "1.0",
+  "defect_categories": [
+    {"id": "NONE", "description": "No defect detected", "severity": 0},
+    {"id": "MINOR_SCRATCH", "description": "Surface scratch not affecting performance", "severity": 1},
+    {"id": "CONTAMINATION", "description": "Foreign material on detector surface", "severity": 2},
+    {"id": "CRYSTAL_CRACK", "description": "Crack in scintillation crystal", "severity": 3},
+    {"id": "SEAL_DEGRADATION", "description": "Hermetic seal showing wear", "severity": 2},
+    {"id": "CONNECTOR_DAMAGE", "description": "Electrical connector damage", "severity": 3},
+    {"id": "HOUSING_DENT", "description": "Physical damage to detector housing", "severity": 2},
+    {"id": "WINDOW_CLOUDING", "description": "Optical window degradation", "severity": 2},
+    {"id": "CORROSION", "description": "Corrosion on metal components", "severity": 3}
+  ],
+  "samples": [
+    {
+      "id": "INSP-2024-001",
+      "image_uri": "gs://mirion-vital/inspections/2024/detector_001_front.jpg",
+      "equipment_id": "DET-NPP-COOK-001",
+      "facility": "Cook Nuclear Plant",
+      "inspection_date": "2024-01-15",
+      "defect_class": "NONE",
+      "confidence": 0.95,
+      "inspector_verified": true,
+      "sensor_context": {
+        "temperature_c": 22.5,
+        "humidity_pct": 45,
+        "last_calibration": "2023-11-01",
+        "operating_hours": 8760
+      }
+    },
+    {
+      "id": "INSP-2024-002",
+      "image_uri": "gs://mirion-vital/inspections/2024/detector_002_side.jpg",
+      "equipment_id": "DET-NPP-COOK-002",
+      "facility": "Cook Nuclear Plant",
+      "inspection_date": "2024-01-15",
+      "defect_class": "MINOR_SCRATCH",
+      "confidence": 0.87,
+      "inspector_verified": true,
+      "bounding_box": {"x": 120, "y": 85, "width": 45, "height": 12},
+      "sensor_context": {
+        "temperature_c": 23.1,
+        "humidity_pct": 44,
+        "last_calibration": "2023-10-15",
+        "operating_hours": 12450
+      }
+    },
+    {
+      "id": "INSP-2024-003",
+      "image_uri": "gs://mirion-vital/inspections/2024/detector_003_crystal.jpg",
+      "equipment_id": "DET-NPP-PALO-001",
+      "facility": "Palo Verde Nuclear Generating Station",
+      "inspection_date": "2024-01-18",
+      "defect_class": "CRYSTAL_CRACK",
+      "confidence": 0.92,
+      "inspector_verified": true,
+      "bounding_box": {"x": 200, "y": 150, "width": 80, "height": 25},
+      "severity_notes": "Crack extends 3mm into crystal - recommend immediate replacement",
+      "sensor_context": {
+        "temperature_c": 28.5,
+        "humidity_pct": 35,
+        "last_calibration": "2023-09-01",
+        "operating_hours": 26500,
+        "count_rate_anomaly": true
+      }
+    },
+    {
+      "id": "INSP-2024-004",
+      "image_uri": "gs://mirion-vital/inspections/2024/detector_004_seal.jpg",
+      "equipment_id": "DET-NPP-WATTS-003",
+      "facility": "Watts Bar Nuclear Plant",
+      "inspection_date": "2024-01-20",
+      "defect_class": "SEAL_DEGRADATION",
+      "confidence": 0.78,
+      "inspector_verified": false,
+      "review_required": true,
+      "sensor_context": {
+        "temperature_c": 21.0,
+        "humidity_pct": 52,
+        "last_calibration": "2023-12-01",
+        "operating_hours": 5200
+      }
+    },
+    {
+      "id": "INSP-2024-005",
+      "image_uri": "gs://mirion-vital/inspections/2024/detector_005_connector.jpg",
+      "equipment_id": "DET-NPP-DIABLO-002",
+      "facility": "Diablo Canyon Power Plant",
+      "inspection_date": "2024-01-22",
+      "defect_class": "CONNECTOR_DAMAGE",
+      "confidence": 0.91,
+      "inspector_verified": true,
+      "bounding_box": {"x": 50, "y": 180, "width": 30, "height": 40},
+      "severity_notes": "Pin 3 bent - intermittent signal loss observed",
+      "sensor_context": {
+        "temperature_c": 24.0,
+        "humidity_pct": 40,
+        "last_calibration": "2023-08-15",
+        "operating_hours": 18200,
+        "signal_quality": "degraded"
+      }
+    },
+    {
+      "id": "INSP-2024-006",
+      "image_uri": "gs://mirion-vital/inspections/2024/detector_006_housing.jpg",
+      "equipment_id": "DET-NPP-SURRY-001",
+      "facility": "Surry Nuclear Power Plant",
+      "inspection_date": "2024-01-25",
+      "defect_class": "CORROSION",
+      "confidence": 0.85,
+      "inspector_verified": true,
+      "bounding_box": {"x": 75, "y": 220, "width": 60, "height": 35},
+      "sensor_context": {
+        "temperature_c": 19.5,
+        "humidity_pct": 68,
+        "last_calibration": "2023-07-01",
+        "operating_hours": 32100,
+        "environment": "high_humidity_area"
+      }
+    }
+  ]
+}

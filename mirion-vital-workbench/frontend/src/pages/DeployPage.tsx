@@ -1,0 +1,945 @@
+/**
+ * DeployPage - DEPLOY stage for model deployment and serving management
+ *
+ * Features:
+ * - One-click model deployment wizard
+ * - Live endpoint status monitoring
+ * - In-app playground to test deployed models
+ * - Tools, Agents, and Endpoints registries
+ */
+
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  ExternalLink,
+  Loader2,
+  Server,
+  Rocket,
+  Play,
+  Send,
+  CheckCircle,
+  XCircle,
+  Clock,
+  RefreshCw,
+  ChevronRight,
+  ChevronLeft,
+  X,
+  AlertCircle,
+  Zap,
+  Database,
+  FileCode,
+} from "lucide-react";
+import { useWorkflow } from "../context/WorkflowContext";
+import { clsx } from "clsx";
+import {
+  listModels,
+  listModelVersions,
+  listServingEndpoints,
+  deployModel,
+  queryServingEndpoint,
+  type UCModel,
+  type UCModelVersion,
+  type ServingEndpoint,
+} from "../services/api";
+import { openDatabricks } from "../services/databricksLinks";
+import { useToast } from "../components/Toast";
+
+// ============================================================================
+// Status Config
+// ============================================================================
+
+const STATUS_CONFIG: Record<
+  string,
+  { icon: typeof CheckCircle; color: string; bgColor: string; label: string }
+> = {
+  READY: {
+    icon: CheckCircle,
+    color: "text-green-600",
+    bgColor: "bg-green-50",
+    label: "Ready",
+  },
+  NOT_READY: {
+    icon: Clock,
+    color: "text-amber-600",
+    bgColor: "bg-amber-50",
+    label: "Starting",
+  },
+  PENDING: {
+    icon: Loader2,
+    color: "text-blue-600",
+    bgColor: "bg-blue-50",
+    label: "Pending",
+  },
+  FAILED: {
+    icon: XCircle,
+    color: "text-red-600",
+    bgColor: "bg-red-50",
+    label: "Failed",
+  },
+  unknown: {
+    icon: Clock,
+    color: "text-gray-600",
+    bgColor: "bg-gray-50",
+    label: "Unknown",
+  },
+};
+
+// ============================================================================
+// WorkflowBanner Component
+// ============================================================================
+
+function WorkflowBanner() {
+  const { state, goToPreviousStage, goToNextStage } = useWorkflow();
+
+  return (
+    <div className="bg-gradient-to-r from-cyan-50 to-blue-50 border border-cyan-200 rounded-lg p-4 mb-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          {/* Data source */}
+          {state.selectedSource && (
+            <div className="flex items-center gap-2">
+              <Database className="w-4 h-4 text-cyan-600" />
+              <div>
+                <div className="text-xs text-cyan-600 font-medium">
+                  Data Source
+                </div>
+                <div className="text-sm text-cyan-800">
+                  {state.selectedSource.name}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Template */}
+          {state.selectedTemplate && (
+            <>
+              <ChevronRight className="w-4 h-4 text-cyan-400" />
+              <div className="flex items-center gap-2">
+                <FileCode className="w-4 h-4 text-cyan-600" />
+                <div>
+                  <div className="text-xs text-cyan-600 font-medium">
+                    Template
+                  </div>
+                  <div className="text-sm text-cyan-800">
+                    {state.selectedTemplate.name}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={goToPreviousStage}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm text-cyan-700 hover:bg-cyan-100 rounded-lg transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Back to Train
+          </button>
+          <button
+            onClick={goToNextStage}
+            className="flex items-center gap-1 px-4 py-1.5 text-sm bg-cyan-600 text-white hover:bg-cyan-700 rounded-lg transition-colors"
+          >
+            Continue to Monitor
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Deployment Wizard Component
+// ============================================================================
+
+interface DeploymentWizardProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function DeploymentWizard({
+  isOpen,
+  onClose,
+  onSuccess,
+}: DeploymentWizardProps) {
+  const [step, setStep] = useState(1);
+  const [selectedModel, setSelectedModel] = useState<UCModel | null>(null);
+  const [selectedVersion, setSelectedVersion] = useState<UCModelVersion | null>(
+    null,
+  );
+  const [endpointName, setEndpointName] = useState("");
+  const [workloadSize, setWorkloadSize] = useState("Small");
+  const [scaleToZero, setScaleToZero] = useState(true);
+  const toast = useToast();
+
+  const { data: models, isLoading: modelsLoading } = useQuery({
+    queryKey: ["deployment-models"],
+    queryFn: () => listModels(),
+    enabled: isOpen,
+  });
+
+  const { data: versions, isLoading: versionsLoading } = useQuery({
+    queryKey: ["deployment-versions", selectedModel?.full_name],
+    queryFn: () => listModelVersions(selectedModel!.full_name),
+    enabled: !!selectedModel,
+  });
+
+  const deployMutation = useMutation({
+    mutationFn: deployModel,
+    onSuccess: (result) => {
+      toast.success("Deployment Started", result.message);
+      onSuccess();
+      onClose();
+      resetWizard();
+    },
+    onError: (error: Error) => {
+      toast.error("Deployment Failed", error.message);
+    },
+  });
+
+  const resetWizard = () => {
+    setStep(1);
+    setSelectedModel(null);
+    setSelectedVersion(null);
+    setEndpointName("");
+    setWorkloadSize("Small");
+    setScaleToZero(true);
+  };
+
+  const handleDeploy = () => {
+    if (!selectedModel || !selectedVersion) return;
+
+    deployMutation.mutate({
+      model_name: selectedModel.full_name,
+      model_version: String(selectedVersion.version),
+      endpoint_name: endpointName || undefined,
+      workload_size: workloadSize,
+      scale_to_zero: scaleToZero,
+    });
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-db-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-cyan-50 rounded-lg">
+              <Rocket className="w-5 h-5 text-cyan-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Deploy Model</h2>
+              <p className="text-sm text-db-gray-500">Step {step} of 3</p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              onClose();
+              resetWizard();
+            }}
+            className="text-db-gray-400 hover:text-db-gray-600"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Progress */}
+        <div className="px-6 py-3 bg-db-gray-50 border-b border-db-gray-200">
+          <div className="flex items-center gap-2">
+            {[1, 2, 3].map((s) => (
+              <div key={s} className="flex items-center gap-2 flex-1">
+                <div
+                  className={clsx(
+                    "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
+                    s < step
+                      ? "bg-cyan-600 text-white"
+                      : s === step
+                        ? "bg-cyan-100 text-cyan-700 border-2 border-cyan-600"
+                        : "bg-db-gray-200 text-db-gray-500",
+                  )}
+                >
+                  {s < step ? <CheckCircle className="w-4 h-4" /> : s}
+                </div>
+                {s < 3 && (
+                  <div
+                    className={clsx(
+                      "flex-1 h-1 rounded",
+                      s < step ? "bg-cyan-600" : "bg-db-gray-200",
+                    )}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between mt-2 text-xs text-db-gray-500">
+            <span>Select Model</span>
+            <span>Choose Version</span>
+            <span>Configure</span>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {/* Step 1: Select Model */}
+          {step === 1 && (
+            <div className="space-y-4">
+              <h3 className="font-medium text-db-gray-800">
+                Select a model from Unity Catalog
+              </h3>
+              {modelsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-db-gray-400" />
+                </div>
+              ) : models && models.length > 0 ? (
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {models.map((model) => (
+                    <button
+                      key={model.full_name}
+                      onClick={() => setSelectedModel(model)}
+                      className={clsx(
+                        "w-full p-4 rounded-lg border-2 text-left transition-all",
+                        selectedModel?.full_name === model.full_name
+                          ? "border-cyan-500 bg-cyan-50"
+                          : "border-db-gray-200 hover:border-cyan-300",
+                      )}
+                    >
+                      <div className="font-medium text-db-gray-800">
+                        {model.name}
+                      </div>
+                      <div className="text-sm text-db-gray-500 font-mono">
+                        {model.full_name}
+                      </div>
+                      {model.description && (
+                        <div className="text-sm text-db-gray-500 mt-1">
+                          {model.description}
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Server className="w-12 h-12 text-db-gray-300 mx-auto mb-4" />
+                  <p className="text-db-gray-500">No models found</p>
+                  <p className="text-sm text-db-gray-400 mt-1">
+                    Train a model first to deploy it
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 2: Select Version */}
+          {step === 2 && (
+            <div className="space-y-4">
+              <h3 className="font-medium text-db-gray-800">
+                Select model version to deploy
+              </h3>
+              <div className="p-3 bg-db-gray-50 rounded-lg text-sm">
+                <span className="text-db-gray-500">Model:</span>{" "}
+                <span className="font-mono">{selectedModel?.full_name}</span>
+              </div>
+              {versionsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-db-gray-400" />
+                </div>
+              ) : versions && versions.length > 0 ? (
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {versions.map((version) => (
+                    <button
+                      key={version.version}
+                      onClick={() => setSelectedVersion(version)}
+                      className={clsx(
+                        "w-full p-4 rounded-lg border-2 text-left transition-all",
+                        selectedVersion?.version === version.version
+                          ? "border-cyan-500 bg-cyan-50"
+                          : "border-db-gray-200 hover:border-cyan-300",
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">
+                          Version {version.version}
+                        </span>
+                        <span
+                          className={clsx(
+                            "text-xs px-2 py-1 rounded-full",
+                            version.status === "READY"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-amber-100 text-amber-700",
+                          )}
+                        >
+                          {version.status}
+                        </span>
+                      </div>
+                      {version.description && (
+                        <div className="text-sm text-db-gray-500 mt-1">
+                          {version.description}
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-db-gray-500">No versions found</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 3: Configure */}
+          {step === 3 && (
+            <div className="space-y-6">
+              <h3 className="font-medium text-db-gray-800">
+                Configure deployment
+              </h3>
+
+              <div className="p-3 bg-db-gray-50 rounded-lg text-sm space-y-1">
+                <div>
+                  <span className="text-db-gray-500">Model:</span>{" "}
+                  <span className="font-mono">{selectedModel?.full_name}</span>
+                </div>
+                <div>
+                  <span className="text-db-gray-500">Version:</span>{" "}
+                  <span className="font-medium">
+                    {selectedVersion?.version}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-db-gray-700 mb-2">
+                  Endpoint Name (optional)
+                </label>
+                <input
+                  type="text"
+                  value={endpointName}
+                  onChange={(e) => setEndpointName(e.target.value)}
+                  placeholder={`${selectedModel?.name?.toLowerCase().replace(/_/g, "-")}-v${selectedVersion?.version}`}
+                  className="w-full px-3 py-2 border border-db-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+                <p className="text-xs text-db-gray-500 mt-1">
+                  Leave blank to auto-generate
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-db-gray-700 mb-2">
+                  Workload Size
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {["Small", "Medium", "Large"].map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setWorkloadSize(size)}
+                      className={clsx(
+                        "px-4 py-3 rounded-lg border-2 text-sm font-medium transition-colors",
+                        workloadSize === size
+                          ? "border-cyan-500 bg-cyan-50 text-cyan-700"
+                          : "border-db-gray-200 hover:border-db-gray-300",
+                      )}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-db-gray-50 rounded-lg">
+                <div>
+                  <div className="font-medium text-db-gray-800">
+                    Scale to Zero
+                  </div>
+                  <div className="text-sm text-db-gray-500">
+                    Save costs by scaling down when idle
+                  </div>
+                </div>
+                <button
+                  onClick={() => setScaleToZero(!scaleToZero)}
+                  className={clsx(
+                    "w-12 h-6 rounded-full transition-colors relative",
+                    scaleToZero ? "bg-cyan-600" : "bg-db-gray-300",
+                  )}
+                >
+                  <div
+                    className={clsx(
+                      "w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform",
+                      scaleToZero ? "translate-x-6" : "translate-x-0.5",
+                    )}
+                  />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-db-gray-200">
+          <button
+            onClick={() => (step > 1 ? setStep(step - 1) : onClose())}
+            className="px-4 py-2 text-db-gray-700 hover:bg-db-gray-100 rounded-lg"
+          >
+            {step > 1 ? "Back" : "Cancel"}
+          </button>
+          <button
+            onClick={() => {
+              if (step < 3) {
+                setStep(step + 1);
+              } else {
+                handleDeploy();
+              }
+            }}
+            disabled={
+              (step === 1 && !selectedModel) ||
+              (step === 2 && !selectedVersion) ||
+              deployMutation.isPending
+            }
+            className={clsx(
+              "flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-colors",
+              (step === 1 && !selectedModel) ||
+                (step === 2 && !selectedVersion) ||
+                deployMutation.isPending
+                ? "bg-db-gray-100 text-db-gray-400 cursor-not-allowed"
+                : "bg-cyan-600 text-white hover:bg-cyan-700",
+            )}
+          >
+            {deployMutation.isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Deploying...
+              </>
+            ) : step < 3 ? (
+              <>
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </>
+            ) : (
+              <>
+                <Rocket className="w-4 h-4" />
+                Deploy
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Endpoint Card Component
+// ============================================================================
+
+interface EndpointCardProps {
+  endpoint: ServingEndpoint;
+  onPlayground: () => void;
+  onRefresh: () => void;
+}
+
+function EndpointCard({
+  endpoint,
+  onPlayground,
+  onRefresh,
+}: EndpointCardProps) {
+  const config = STATUS_CONFIG[endpoint.state] || STATUS_CONFIG.unknown;
+  const Icon = config.icon;
+  const isReady = endpoint.state === "READY";
+
+  return (
+    <div className="bg-white rounded-lg border border-db-gray-200 p-4 hover:border-cyan-300 transition-all">
+      <div className="flex items-start justify-between">
+        <div className="flex items-start gap-3">
+          <div className={clsx("p-2 rounded-lg", config.bgColor)}>
+            <Icon
+              className={clsx(
+                "w-5 h-5",
+                config.color,
+                endpoint.state === "NOT_READY" && "animate-spin",
+              )}
+            />
+          </div>
+          <div>
+            <h3 className="font-medium text-db-gray-800">{endpoint.name}</h3>
+            <div className="flex items-center gap-2 mt-1">
+              <span
+                className={clsx(
+                  "text-xs px-2 py-0.5 rounded-full",
+                  config.bgColor,
+                  config.color,
+                )}
+              >
+                {config.label}
+              </span>
+              {endpoint.config_update && (
+                <span className="text-xs text-amber-600">
+                  Update: {endpoint.config_update}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onRefresh}
+            className="p-1.5 text-db-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded"
+            title="Refresh status"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          {isReady && (
+            <button
+              onClick={onPlayground}
+              className="p-1.5 text-db-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded"
+              title="Open playground"
+            >
+              <Play className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            onClick={() => openDatabricks.servingEndpoint(endpoint.name)}
+            className="p-1.5 text-db-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded"
+            title="View in Databricks"
+          >
+            <ExternalLink className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Playground Component
+// ============================================================================
+
+interface PlaygroundProps {
+  endpoint: ServingEndpoint | null;
+  onClose: () => void;
+}
+
+function Playground({ endpoint, onClose }: PlaygroundProps) {
+  const [input, setInput] = useState(
+    '{\n  "prompt": "Hello, how can I help you?"\n}',
+  );
+  const [output, setOutput] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
+
+  const queryMutation = useMutation({
+    mutationFn: (inputs: Record<string, unknown>) =>
+      queryServingEndpoint(endpoint!.name, inputs),
+    onSuccess: (result) => {
+      setOutput(JSON.stringify(result.predictions, null, 2));
+      setError(null);
+    },
+    onError: (err: Error) => {
+      setError(err.message);
+      setOutput(null);
+    },
+  });
+
+  const handleSubmit = () => {
+    try {
+      const parsed = JSON.parse(input);
+      queryMutation.mutate(parsed);
+    } catch (e) {
+      toast.error("Invalid JSON", "Please check your input format");
+    }
+  };
+
+  if (!endpoint) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-db-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-cyan-50 rounded-lg">
+              <Zap className="w-5 h-5 text-cyan-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Playground</h2>
+              <p className="text-sm text-db-gray-500">{endpoint.name}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-db-gray-400 hover:text-db-gray-600"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-hidden grid grid-cols-2 gap-4 p-6">
+          {/* Input */}
+          <div className="flex flex-col">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-db-gray-700">
+                Input (JSON)
+              </label>
+              <button
+                onClick={handleSubmit}
+                disabled={queryMutation.isPending}
+                className={clsx(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                  queryMutation.isPending
+                    ? "bg-db-gray-100 text-db-gray-400"
+                    : "bg-cyan-600 text-white hover:bg-cyan-700",
+                )}
+              >
+                {queryMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                Send
+              </button>
+            </div>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              className="flex-1 px-3 py-2 border border-db-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-none"
+              placeholder='{"prompt": "..."}'
+            />
+          </div>
+
+          {/* Output */}
+          <div className="flex flex-col">
+            <label className="text-sm font-medium text-db-gray-700 mb-2">
+              Output
+            </label>
+            <div className="flex-1 p-3 bg-db-gray-50 border border-db-gray-200 rounded-lg overflow-auto">
+              {queryMutation.isPending ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="w-6 h-6 animate-spin text-db-gray-400" />
+                </div>
+              ) : error ? (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  <div className="flex items-center gap-2 font-medium mb-1">
+                    <AlertCircle className="w-4 h-4" />
+                    Error
+                  </div>
+                  {error}
+                </div>
+              ) : output ? (
+                <pre className="text-sm font-mono text-db-gray-800 whitespace-pre-wrap">
+                  {output}
+                </pre>
+              ) : (
+                <div className="flex items-center justify-center h-full text-db-gray-400 text-sm">
+                  Send a request to see the response
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Main DeployPage Component
+// ============================================================================
+
+export function DeployPage() {
+  const queryClient = useQueryClient();
+  const [showWizard, setShowWizard] = useState(false);
+  const [playgroundEndpoint, setPlaygroundEndpoint] =
+    useState<ServingEndpoint | null>(null);
+
+  const {
+    data: endpoints,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["serving-endpoints"],
+    queryFn: listServingEndpoints,
+    refetchInterval: 15000, // Poll every 15s
+  });
+
+  const activeEndpoints = endpoints?.filter(
+    (e) => e.state === "READY" || e.state === "NOT_READY",
+  );
+  const failedEndpoints = endpoints?.filter((e) => e.state === "FAILED");
+
+  return (
+    <div className="flex-1 p-6">
+      <div className="max-w-4xl mx-auto">
+        {/* Workflow Banner */}
+        <WorkflowBanner />
+
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-db-gray-900">Deploy</h1>
+            <p className="text-db-gray-600 mt-1">
+              Deploy models to Databricks Model Serving
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => openDatabricks.servingEndpoints()}
+              className="flex items-center gap-2 text-sm text-cyan-600 hover:text-cyan-700"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Model Serving
+            </button>
+            <button
+              onClick={() => setShowWizard(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+            >
+              <Rocket className="w-4 h-4" />
+              Deploy Model
+            </button>
+          </div>
+        </div>
+
+        {/* Quick Deploy Card */}
+        <div className="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl border border-cyan-200 p-6 mb-6">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-white rounded-lg shadow-sm">
+              <Rocket className="w-8 h-8 text-cyan-600" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold text-db-gray-800">
+                One-Click Deployment
+              </h2>
+              <p className="text-db-gray-600 mt-1">
+                Deploy trained models to a serving endpoint in three easy steps.
+                Select your model, choose a version, and configure the endpoint.
+              </p>
+              <button
+                onClick={() => setShowWizard(true)}
+                className="mt-4 flex items-center gap-2 text-cyan-600 hover:text-cyan-700 font-medium"
+              >
+                Start Deployment
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Active Endpoints */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-db-gray-800">
+              Serving Endpoints
+            </h2>
+            <button
+              onClick={() => refetch()}
+              className="flex items-center gap-1 text-sm text-db-gray-500 hover:text-db-gray-700"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </button>
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-db-gray-400" />
+            </div>
+          ) : endpoints && endpoints.length > 0 ? (
+            <div className="space-y-3">
+              {endpoints.map((endpoint) => (
+                <EndpointCard
+                  key={endpoint.name}
+                  endpoint={endpoint}
+                  onPlayground={() => setPlaygroundEndpoint(endpoint)}
+                  onRefresh={() => refetch()}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-db-gray-50 rounded-xl border-2 border-dashed border-db-gray-200">
+              <Server className="w-12 h-12 text-db-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-db-gray-600">
+                No endpoints yet
+              </h3>
+              <p className="text-db-gray-400 mt-1">
+                Deploy your first model to create a serving endpoint
+              </p>
+              <button
+                onClick={() => setShowWizard(true)}
+                className="mt-4 flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 mx-auto"
+              >
+                <Rocket className="w-4 h-4" />
+                Deploy Model
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Stats Summary */}
+        {endpoints && endpoints.length > 0 && (
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-white rounded-lg border border-db-gray-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-50 rounded-lg">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-db-gray-800">
+                    {activeEndpoints?.filter((e) => e.state === "READY")
+                      .length || 0}
+                  </div>
+                  <div className="text-sm text-db-gray-500">Ready</div>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg border border-db-gray-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-50 rounded-lg">
+                  <Clock className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-db-gray-800">
+                    {activeEndpoints?.filter((e) => e.state === "NOT_READY")
+                      .length || 0}
+                  </div>
+                  <div className="text-sm text-db-gray-500">Starting</div>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg border border-db-gray-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-50 rounded-lg">
+                  <XCircle className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-db-gray-800">
+                    {failedEndpoints?.length || 0}
+                  </div>
+                  <div className="text-sm text-db-gray-500">Failed</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Deployment Wizard Modal */}
+      <DeploymentWizard
+        isOpen={showWizard}
+        onClose={() => setShowWizard(false)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["serving-endpoints"] });
+        }}
+      />
+
+      {/* Playground Modal */}
+      <Playground
+        endpoint={playgroundEndpoint}
+        onClose={() => setPlaygroundEndpoint(null)}
+      />
+    </div>
+  );
+}

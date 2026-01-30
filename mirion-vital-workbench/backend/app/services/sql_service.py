@@ -1,0 +1,163 @@
+"""SQL execution service using Databricks SQL Warehouse."""
+
+import json
+import time
+from typing import Any
+
+from databricks.sdk.service.sql import StatementState
+
+from app.core.config import get_settings
+from app.core.databricks import get_workspace_client
+
+
+class SQLService:
+    """Execute SQL statements against Databricks SQL Warehouse."""
+
+    def __init__(self):
+        self.settings = get_settings()
+        self.client = get_workspace_client()
+        self.warehouse_id = self.settings.databricks_warehouse_id
+        self.catalog = self.settings.databricks_catalog
+        self.schema = self.settings.databricks_schema
+
+    def _full_table_name(self, table: str) -> str:
+        """Get fully qualified table name."""
+        return f"{self.catalog}.{self.schema}.{table}"
+
+    def execute(
+        self,
+        sql: str,
+        parameters: dict[str, Any] | None = None,
+        timeout_seconds: int = 60,
+    ) -> list[dict[str, Any]]:
+        """
+        Execute SQL and return results as list of dicts.
+
+        Args:
+            sql: SQL statement to execute
+            parameters: Named parameters for the query
+            timeout_seconds: Maximum time to wait for results
+
+        Returns:
+            List of row dictionaries
+        """
+        # Execute statement
+        response = self.client.statement_execution.execute_statement(
+            warehouse_id=self.warehouse_id,
+            statement=sql,
+            catalog=self.catalog,
+            schema=self.schema,
+            wait_timeout="0s",  # Don't wait, we'll poll
+        )
+
+        statement_id = response.statement_id
+
+        # Poll for completion
+        start_time = time.time()
+        while True:
+            status = self.client.statement_execution.get_statement(statement_id)
+            state = status.status.state
+
+            if state == StatementState.SUCCEEDED:
+                break
+            elif state in (
+                StatementState.FAILED,
+                StatementState.CANCELED,
+                StatementState.CLOSED,
+            ):
+                error_msg = (
+                    status.status.error.message
+                    if status.status.error
+                    else "Unknown error"
+                )
+                raise Exception(f"SQL execution failed: {error_msg}")
+
+            if time.time() - start_time > timeout_seconds:
+                self.client.statement_execution.cancel_execution(statement_id)
+                raise TimeoutError(f"SQL execution timed out after {timeout_seconds}s")
+
+            time.sleep(0.5)
+
+        # Get results
+        result = self.client.statement_execution.get_statement(statement_id)
+
+        if not result.manifest or not result.result:
+            return []
+
+        # Convert to list of dicts
+        columns = [col.name for col in result.manifest.schema.columns]
+        rows = []
+
+        if result.result.data_array:
+            for row_data in result.result.data_array:
+                row_dict = {}
+                for i, col_name in enumerate(columns):
+                    row_dict[col_name] = row_data[i] if i < len(row_data) else None
+                rows.append(row_dict)
+
+        return rows
+
+    def execute_update(self, sql: str, parameters: dict[str, Any] | None = None) -> int:
+        """Execute an INSERT/UPDATE/DELETE and return affected row count."""
+        response = self.client.statement_execution.execute_statement(
+            warehouse_id=self.warehouse_id,
+            statement=sql,
+            catalog=self.catalog,
+            schema=self.schema,
+        )
+
+        # Wait for completion
+        statement_id = response.statement_id
+        start_time = time.time()
+
+        while True:
+            status = self.client.statement_execution.get_statement(statement_id)
+            state = status.status.state
+
+            if state == StatementState.SUCCEEDED:
+                return status.manifest.total_row_count if status.manifest else 0
+            elif state in (
+                StatementState.FAILED,
+                StatementState.CANCELED,
+                StatementState.CLOSED,
+            ):
+                error_msg = (
+                    status.status.error.message
+                    if status.status.error
+                    else "Unknown error"
+                )
+                raise Exception(f"SQL execution failed: {error_msg}")
+
+            if time.time() - start_time > 60:
+                raise TimeoutError("SQL execution timed out")
+
+            time.sleep(0.5)
+
+
+# Singleton instance
+_sql_service: SQLService | None = None
+
+
+def get_sql_service() -> SQLService:
+    """Get or create SQL service singleton."""
+    global _sql_service
+    if _sql_service is None:
+        _sql_service = SQLService()
+    return _sql_service
+
+
+async def execute_sql(
+    sql: str, parameters: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
+    """
+    Async wrapper for SQL execution.
+
+    Args:
+        sql: SQL statement to execute
+        parameters: Named parameters for the query
+
+    Returns:
+        List of row dictionaries
+    """
+    service = get_sql_service()
+    return service.execute(sql, parameters)

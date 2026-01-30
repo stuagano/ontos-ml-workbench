@@ -1,0 +1,110 @@
+{
+  "template_id": "mirion-anomaly-detection-v1",
+  "name": "Radiation Detector Anomaly Detection & Explanation",
+  "description": "Detects anomalies in real-time sensor streams and provides human-readable explanations with recommended actions. Designed for operational alerting.",
+  "version": "1.0.0",
+  "status": "published",
+  "created_by": "stuart.gano@databricks.com",
+  "created_at": "2024-01-25T10:00:00Z",
+  "use_case": "anomaly_detection",
+  "model_config": {
+    "model": "gemini-2.0-flash",
+    "temperature": 0.1,
+    "max_tokens": 800
+  },
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "equipment_id": {"type": "string"},
+      "equipment_type": {"type": "string"},
+      "facility": {"type": "string"},
+      "metric_name": {
+        "type": "string",
+        "description": "Name of the metric showing anomaly"
+      },
+      "current_value": {"type": "number"},
+      "expected_value": {"type": "number"},
+      "historical_values": {
+        "type": "array",
+        "items": {"type": "number"},
+        "description": "Recent historical values for context"
+      },
+      "threshold_low": {"type": "number"},
+      "threshold_high": {"type": "number"},
+      "related_metrics": {
+        "type": "object",
+        "description": "Other metrics at time of anomaly"
+      }
+    },
+    "required": ["equipment_id", "metric_name", "current_value", "expected_value"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "anomaly_type": {
+        "type": "string",
+        "enum": ["SENSOR_DRIFT", "SPIKE", "DROPOUT", "NOISE_INCREASE", "PLATEAU_SHIFT", "TEMPERATURE_EXCURSION", "HUMIDITY_ALERT", "CALIBRATION_DRIFT"]
+      },
+      "severity": {
+        "type": "string",
+        "enum": ["low", "medium", "high", "critical"]
+      },
+      "confidence": {"type": "number"},
+      "explanation": {
+        "type": "string",
+        "description": "Plain English explanation for operators"
+      },
+      "likely_causes": {
+        "type": "array",
+        "items": {"type": "string"}
+      },
+      "recommended_action": {"type": "string"},
+      "escalation_required": {"type": "boolean"},
+      "auto_resolve_possible": {"type": "boolean"}
+    },
+    "required": ["anomaly_type", "severity", "explanation", "recommended_action"]
+  },
+  "system_instruction": "You are an intelligent alerting system for nuclear facility radiation detectors. When an anomaly is detected, your job is to:\n\n1. Classify the anomaly type accurately\n2. Assess severity based on safety impact\n3. Explain what's happening in plain English that facility operators can understand\n4. Identify likely root causes based on the pattern\n5. Recommend immediate actions\n6. Determine if human escalation is needed\n\nSeverity Guidelines:\n- LOW: Minor deviation, no immediate action needed, continue monitoring\n- MEDIUM: Significant deviation, investigate within shift, may need calibration\n- HIGH: Major deviation, immediate investigation required, equipment may be unreliable\n- CRITICAL: Safety-critical deviation, take equipment offline, escalate immediately\n\nAlways prioritize safety. Nuclear facilities require conservative action thresholds.",
+  "user_prompt_template": "ANOMALY DETECTED\n\nEquipment: {equipment_id} ({equipment_type})\nFacility: {facility}\n\nMetric: {metric_name}\nCurrent Value: {current_value}\nExpected Value: {expected_value}\nThresholds: [{threshold_low}, {threshold_high}]\n\nRecent History: {historical_values}\n\nRelated Metrics at Time of Anomaly:\n{related_metrics}\n\nAnalyze this anomaly and provide an operator-friendly explanation with recommended actions.",
+  "few_shot_examples": [
+    {
+      "input": {
+        "equipment_id": "PM-NPP-SURRY-001",
+        "equipment_type": "Portal_Monitor",
+        "facility": "Surry Nuclear Power Plant",
+        "metric_name": "humidity_pct",
+        "current_value": 72,
+        "expected_value": 50,
+        "historical_values": [52, 55, 58, 62, 68, 72],
+        "threshold_low": 30,
+        "threshold_high": 60,
+        "related_metrics": {
+          "temperature_c": 20.0,
+          "voltage_v": 4.88,
+          "count_rate_cps": 838
+        }
+      },
+      "output": {
+        "anomaly_type": "HUMIDITY_ALERT",
+        "severity": "medium",
+        "confidence": 0.92,
+        "explanation": "The humidity around the portal monitor has been steadily rising over the past 6 hours and is now 44% above the normal operating range. High humidity accelerates corrosion on electronic components and can degrade detector seals. The trend shows this is not a temporary spike but a sustained environmental change.",
+        "likely_causes": [
+          "HVAC system malfunction in monitoring area",
+          "Weather-related humidity increase without adequate climate control",
+          "Door seal failure allowing outside air infiltration",
+          "Nearby water leak or condensation source"
+        ],
+        "recommended_action": "Check HVAC system operation in the portal monitor area. If HVAC is functioning normally, investigate for water intrusion or inadequate ventilation. Consider temporary dehumidifier while root cause is addressed. Monitor equipment more frequently until humidity returns to normal range.",
+        "escalation_required": false,
+        "auto_resolve_possible": false
+      }
+    }
+  ],
+  "tags": ["anomaly-detection", "alerting", "real-time", "radiation-safety", "nuclear", "mirion"],
+  "metrics": {
+    "total_inferences": 0,
+    "avg_confidence": 0,
+    "accuracy_validated": 0
+  }
+}

@@ -1,0 +1,178 @@
+{
+  "template_id": "mirion-predictive-maintenance-v1",
+  "name": "Radiation Detector Predictive Maintenance",
+  "description": "Analyzes equipment telemetry and maintenance history to predict failures and recommend preventive actions. Uses time series patterns and domain knowledge for accurate predictions.",
+  "version": "1.0.0",
+  "status": "published",
+  "created_by": "stuart.gano@databricks.com",
+  "created_at": "2024-01-25T10:00:00Z",
+  "use_case": "predictive_maintenance",
+  "model_config": {
+    "model": "gemini-2.0-flash",
+    "temperature": 0.3,
+    "max_tokens": 1500
+  },
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "equipment_id": {
+        "type": "string",
+        "description": "Unique identifier for the equipment"
+      },
+      "equipment_type": {
+        "type": "string",
+        "enum": ["HPGe", "NaI", "GM", "Ion_Chamber", "Portal_Monitor"]
+      },
+      "facility": {
+        "type": "string"
+      },
+      "operating_hours": {
+        "type": "integer",
+        "description": "Total operating hours"
+      },
+      "install_date": {
+        "type": "string",
+        "format": "date"
+      },
+      "telemetry_24h": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "timestamp": {"type": "string"},
+            "temperature_c": {"type": "number"},
+            "humidity_pct": {"type": "number"},
+            "voltage_v": {"type": "number"},
+            "current_ma": {"type": "number"},
+            "count_rate_cps": {"type": "number"},
+            "noise_level_mv": {"type": "number"}
+          }
+        },
+        "description": "Last 24 hours of telemetry data"
+      },
+      "maintenance_history": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "date": {"type": "string"},
+            "type": {"type": "string"},
+            "description": {"type": "string"}
+          }
+        }
+      },
+      "current_alerts": {
+        "type": "array",
+        "items": {"type": "string"}
+      }
+    },
+    "required": ["equipment_id", "equipment_type", "telemetry_24h"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "health_score": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1,
+        "description": "Overall equipment health (1.0 = perfect)"
+      },
+      "failure_probability_30d": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1,
+        "description": "Probability of failure in next 30 days"
+      },
+      "failure_probability_90d": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1,
+        "description": "Probability of failure in next 90 days"
+      },
+      "predicted_failure_mode": {
+        "type": "string",
+        "description": "Most likely failure mode if failure occurs"
+      },
+      "remaining_useful_life_days": {
+        "type": "integer",
+        "description": "Estimated days until maintenance required"
+      },
+      "risk_factors": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "factor": {"type": "string"},
+            "severity": {"type": "string", "enum": ["low", "medium", "high"]},
+            "trend": {"type": "string", "enum": ["stable", "improving", "degrading"]}
+          }
+        }
+      },
+      "recommended_actions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "action": {"type": "string"},
+            "priority": {"type": "string", "enum": ["immediate", "soon", "scheduled"]},
+            "timeframe": {"type": "string"}
+          }
+        }
+      },
+      "explanation": {
+        "type": "string",
+        "description": "Detailed analysis explanation"
+      }
+    },
+    "required": ["health_score", "failure_probability_30d", "risk_factors", "recommended_actions", "explanation"]
+  },
+  "system_instruction": "You are a predictive maintenance expert specializing in radiation detection equipment at nuclear facilities. You analyze telemetry data, maintenance history, and operational patterns to predict failures before they occur.\n\nYour expertise includes:\n- HPGe (High-Purity Germanium) detectors: Cooling system failures, vacuum loss, preamplifier issues\n- NaI (Sodium Iodide) scintillators: Crystal degradation, PMT failures, optical coupling issues\n- GM (Geiger-Mueller) tubes: End-of-life plateau shifts, seal failures, high voltage issues\n- Ionization Chambers: Cable degradation, contamination, electrometer drift\n- Portal Monitors: Display failures, mechanical wear, environmental damage\n\nKey Indicators to Monitor:\n1. Temperature trends: Rising temps indicate cooling issues or internal resistance\n2. Voltage stability: Drops suggest power supply degradation or load issues\n3. Current draw: Increases often precede component failures\n4. Count rate: Drifts indicate detector degradation or calibration issues\n5. Noise levels: Rising noise is an early warning of multiple failure modes\n6. Humidity exposure: Accelerates corrosion and seal degradation\n\nTypical Failure Patterns:\n- Gradual drift → Calibration issues, aging components\n- Sudden changes → Component failure, environmental event\n- Cyclical patterns → Thermal cycling stress, intermittent connections\n- Correlated changes → Multiple metrics moving together indicate systemic issues\n\nConsider equipment age, operating hours, maintenance history, and environmental conditions when making predictions. Nuclear facilities require high reliability - err on the side of caution.",
+  "user_prompt_template": "Analyze this radiation detector for predictive maintenance:\n\nEquipment: {equipment_id} ({equipment_type})\nFacility: {facility}\nInstalled: {install_date}\nOperating Hours: {operating_hours}\n\nCurrent Alerts: {current_alerts}\n\nMaintenance History:\n{maintenance_history}\n\nLast 24 Hours Telemetry:\n{telemetry_24h}\n\nProvide a comprehensive predictive maintenance assessment in the required JSON format.",
+  "few_shot_examples": [
+    {
+      "input": {
+        "equipment_id": "DET-NPP-DIABLO-002",
+        "equipment_type": "Ion_Chamber",
+        "facility": "Diablo Canyon Power Plant",
+        "operating_hours": 58440,
+        "install_date": "2017-04-05",
+        "telemetry_24h": [
+          {"timestamp": "2024-01-01T00:00:00", "temperature_c": 24.0, "voltage_v": 4.88, "current_ma": 10.5, "noise_level_mv": 2.8},
+          {"timestamp": "2024-01-01T04:00:00", "temperature_c": 24.1, "voltage_v": 4.75, "current_ma": 12.5, "noise_level_mv": 5.2}
+        ],
+        "maintenance_history": [
+          {"date": "2019-10-12", "type": "unscheduled", "description": "Signal cable replacement"},
+          {"date": "2023-08-15", "type": "scheduled", "description": "Annual calibration"}
+        ],
+        "current_alerts": ["Connector damage - intermittent signal loss"]
+      },
+      "output": {
+        "health_score": 0.72,
+        "failure_probability_30d": 0.45,
+        "failure_probability_90d": 0.78,
+        "predicted_failure_mode": "connector_failure",
+        "remaining_useful_life_days": 21,
+        "risk_factors": [
+          {"factor": "Voltage drop (2.7% in 4 hours)", "severity": "high", "trend": "degrading"},
+          {"factor": "Current increase (19% above baseline)", "severity": "high", "trend": "degrading"},
+          {"factor": "Noise level elevated (86% above normal)", "severity": "medium", "trend": "degrading"},
+          {"factor": "High operating hours (58,440)", "severity": "medium", "trend": "stable"},
+          {"factor": "Previous cable issues", "severity": "medium", "trend": "stable"}
+        ],
+        "recommended_actions": [
+          {"action": "Inspect and replace connector assembly", "priority": "immediate", "timeframe": "Within 7 days"},
+          {"action": "Check all cable connections for corrosion", "priority": "immediate", "timeframe": "During connector inspection"},
+          {"action": "Verify signal integrity after repair", "priority": "soon", "timeframe": "Within 14 days"},
+          {"action": "Schedule full recalibration", "priority": "scheduled", "timeframe": "Within 30 days"}
+        ],
+        "explanation": "This ionization chamber shows clear signs of impending connector failure. The telemetry reveals a concerning pattern: voltage dropped 2.7% while current increased 19% over just 4 hours. This combination indicates increasing resistance in the signal path, consistent with connector degradation. The noise level spike (86% increase) confirms signal integrity issues. Given the previous cable replacement history (2019) and current connector alert, the connection system is the likely failure point. At nearly 7 years old with 58,440 operating hours, this equipment is approaching end of typical connector lifespan. Without intervention, expect complete signal loss within 3 weeks."
+      }
+    }
+  ],
+  "tags": ["predictive-maintenance", "telemetry", "radiation-safety", "nuclear", "mirion", "rul"],
+  "metrics": {
+    "total_inferences": 0,
+    "avg_confidence": 0,
+    "accuracy_validated": 0
+  }
+}

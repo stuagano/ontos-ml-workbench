@@ -1,0 +1,26 @@
+timestamp,equipment_id,temperature_c,humidity_pct,voltage_v,current_ma,count_rate_cps,noise_level_mv,operating_status,facility
+2024-01-01 00:00:00,DET-NPP-COOK-001,22.5,45,4.98,12.3,1250,2.1,normal,Cook Nuclear Plant
+2024-01-01 01:00:00,DET-NPP-COOK-001,22.6,44,4.97,12.4,1248,2.2,normal,Cook Nuclear Plant
+2024-01-01 02:00:00,DET-NPP-COOK-001,22.4,45,4.99,12.3,1252,2.0,normal,Cook Nuclear Plant
+2024-01-01 03:00:00,DET-NPP-COOK-001,22.5,46,4.98,12.3,1249,2.1,normal,Cook Nuclear Plant
+2024-01-01 04:00:00,DET-NPP-COOK-001,22.7,45,4.97,12.5,1251,2.3,normal,Cook Nuclear Plant
+2024-01-01 00:00:00,DET-NPP-PALO-001,28.2,35,5.01,15.8,980,3.5,degraded,Palo Verde Nuclear Generating Station
+2024-01-01 01:00:00,DET-NPP-PALO-001,28.5,34,5.02,15.9,975,3.8,degraded,Palo Verde Nuclear Generating Station
+2024-01-01 02:00:00,DET-NPP-PALO-001,28.8,33,5.00,16.1,968,4.2,degraded,Palo Verde Nuclear Generating Station
+2024-01-01 03:00:00,DET-NPP-PALO-001,29.1,33,4.98,16.4,955,4.8,warning,Palo Verde Nuclear Generating Station
+2024-01-01 04:00:00,DET-NPP-PALO-001,29.3,32,4.95,16.8,942,5.5,warning,Palo Verde Nuclear Generating Station
+2024-01-01 00:00:00,DET-NPP-WATTS-003,21.0,52,4.95,8.2,2100,1.8,normal,Watts Bar Nuclear Plant
+2024-01-01 01:00:00,DET-NPP-WATTS-003,21.1,53,4.94,8.3,2098,1.9,normal,Watts Bar Nuclear Plant
+2024-01-01 02:00:00,DET-NPP-WATTS-003,21.0,54,4.93,8.2,2102,1.8,normal,Watts Bar Nuclear Plant
+2024-01-01 03:00:00,DET-NPP-WATTS-003,20.9,55,4.92,8.4,2095,2.0,normal,Watts Bar Nuclear Plant
+2024-01-01 04:00:00,DET-NPP-WATTS-003,20.8,56,4.91,8.5,2090,2.1,normal,Watts Bar Nuclear Plant
+2024-01-01 00:00:00,DET-NPP-DIABLO-002,24.0,40,4.88,10.5,1800,2.8,degraded,Diablo Canyon Power Plant
+2024-01-01 01:00:00,DET-NPP-DIABLO-002,24.1,41,4.85,10.8,1795,3.2,degraded,Diablo Canyon Power Plant
+2024-01-01 02:00:00,DET-NPP-DIABLO-002,24.0,40,4.82,11.2,1788,3.8,warning,Diablo Canyon Power Plant
+2024-01-01 03:00:00,DET-NPP-DIABLO-002,24.2,40,4.78,11.8,1775,4.5,warning,Diablo Canyon Power Plant
+2024-01-01 04:00:00,DET-NPP-DIABLO-002,24.1,41,4.75,12.5,1760,5.2,critical,Diablo Canyon Power Plant
+2024-01-01 00:00:00,PM-NPP-SURRY-001,19.5,68,4.92,18.2,850,4.2,degraded,Surry Nuclear Power Plant
+2024-01-01 01:00:00,PM-NPP-SURRY-001,19.8,70,4.90,18.5,845,4.5,degraded,Surry Nuclear Power Plant
+2024-01-01 02:00:00,PM-NPP-SURRY-001,20.0,72,4.88,18.9,838,4.9,warning,Surry Nuclear Power Plant
+2024-01-01 03:00:00,PM-NPP-SURRY-001,20.2,73,4.85,19.4,828,5.4,warning,Surry Nuclear Power Plant
+2024-01-01 04:00:00,PM-NPP-SURRY-001,20.5,75,4.82,20.1,815,6.0,critical,Surry Nuclear Power Plant
