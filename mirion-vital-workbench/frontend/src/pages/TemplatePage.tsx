@@ -20,6 +20,7 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
+  Zap,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -31,6 +32,7 @@ import {
 import { useToast } from "../components/Toast";
 import { SkeletonCard } from "../components/Skeleton";
 import { useWorkflow } from "../context/WorkflowContext";
+import { DSPyOptimizationPage } from "./DSPyOptimizationPage";
 import type { Template, TemplateStatus } from "../types";
 
 const statusConfig: Record<
@@ -109,6 +111,7 @@ interface TemplateCardProps {
   onDelete: (id: string) => void;
   onPublish: (id: string) => void;
   onArchive: (id: string) => void;
+  onDSPy: (template: Template) => void;
 }
 
 function TemplateCard({
@@ -119,6 +122,7 @@ function TemplateCard({
   onDelete,
   onPublish,
   onArchive,
+  onDSPy,
 }: TemplateCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const status = statusConfig[template.status];
@@ -200,6 +204,16 @@ function TemplateCard({
                 >
                   <Edit className="w-4 h-4" /> Edit
                 </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDSPy(template);
+                    setShowMenu(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-db-gray-50 flex items-center gap-2 text-purple-600"
+                >
+                  <Zap className="w-4 h-4" /> DSPy Integration
+                </button>
                 {template.status === "draft" && (
                   <button
                     onClick={(e) => {
@@ -265,6 +279,7 @@ interface TemplatePageProps {
 export function TemplatePage({ onEditTemplate }: TemplatePageProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<TemplateStatus | "">("");
+  const [dspyTemplate, setDspyTemplate] = useState<Template | null>(null);
   const queryClient = useQueryClient();
   const toast = useToast();
   const { state, setSelectedTemplate, goToNextStage, goToPreviousStage } =
@@ -437,6 +452,7 @@ export function TemplatePage({ onEditTemplate }: TemplatePageProps) {
                 onDelete={(id) => deleteMutation.mutate(id)}
                 onPublish={(id) => publishMutation.mutate(id)}
                 onArchive={(id) => archiveMutation.mutate(id)}
+                onDSPy={setDspyTemplate}
               />
             ))}
           </div>
@@ -470,6 +486,14 @@ export function TemplatePage({ onEditTemplate }: TemplatePageProps) {
           </div>
         )}
       </div>
+
+      {/* DSPy Optimization Modal */}
+      {dspyTemplate && (
+        <DSPyOptimizationPage
+          template={dspyTemplate}
+          onClose={() => setDspyTemplate(null)}
+        />
+      )}
     </div>
   );
 }

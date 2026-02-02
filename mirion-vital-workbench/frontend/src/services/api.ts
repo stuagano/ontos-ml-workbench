@@ -58,6 +58,17 @@ import type {
   WorkspaceUserUpdateRequest,
   WorkspaceUserListResponse,
   UserStats,
+  // Example Store types
+  ExampleRecord,
+  ExampleCreateRequest,
+  ExampleUpdateRequest,
+  ExampleSearchQuery,
+  ExampleSearchResponse,
+  ExampleEffectivenessStats,
+  ExampleBatchCreateRequest,
+  ExampleBatchCreateResponse,
+  ExampleListResponse,
+  EffectivenessDashboardStats,
 } from "../types";
 
 const API_BASE = "/api/v1";
@@ -1478,4 +1489,334 @@ export async function getWorkspaceUserTasks(
   return fetchJson(
     `${API_BASE}/labeling/users/${userId}/tasks${query ? `?${query}` : ""}`,
   );
+}
+
+// ============================================================================
+// Example Store - Few-shot Learning Examples
+// ============================================================================
+
+/**
+ * List examples with optional filtering
+ */
+export async function listExamples(params?: {
+  databit_id?: string;
+  domain?: string;
+  function_name?: string;
+  min_quality_score?: number;
+  page?: number;
+  page_size?: number;
+}): Promise<ExampleListResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.databit_id) searchParams.set("databit_id", params.databit_id);
+  if (params?.domain) searchParams.set("domain", params.domain);
+  if (params?.function_name)
+    searchParams.set("function_name", params.function_name);
+  if (params?.min_quality_score !== undefined)
+    searchParams.set("min_quality_score", String(params.min_quality_score));
+  if (params?.page) searchParams.set("page", String(params.page));
+  if (params?.page_size) searchParams.set("page_size", String(params.page_size));
+
+  const query = searchParams.toString();
+  return fetchJson(`${API_BASE}/examples${query ? `?${query}` : ""}`);
+}
+
+/**
+ * Get an example by ID
+ */
+export async function getExample(exampleId: string): Promise<ExampleRecord> {
+  return fetchJson(`${API_BASE}/examples/${exampleId}`);
+}
+
+/**
+ * Create a new example
+ */
+export async function createExample(
+  data: ExampleCreateRequest,
+  generateEmbedding: boolean = true,
+): Promise<ExampleRecord> {
+  const params = generateEmbedding ? "" : "?generate_embedding=false";
+  return fetchJson(`${API_BASE}/examples${params}`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Update an existing example
+ */
+export async function updateExample(
+  exampleId: string,
+  data: ExampleUpdateRequest,
+): Promise<ExampleRecord> {
+  return fetchJson(`${API_BASE}/examples/${exampleId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Delete an example
+ */
+export async function deleteExample(exampleId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/examples/${exampleId}`, { method: "DELETE" });
+}
+
+/**
+ * Get top examples by effectiveness score
+ */
+export async function getTopExamples(params?: {
+  databit_id?: string;
+  limit?: number;
+}): Promise<ExampleRecord[]> {
+  const searchParams = new URLSearchParams();
+  if (params?.databit_id) searchParams.set("databit_id", params.databit_id);
+  if (params?.limit) searchParams.set("limit", String(params.limit));
+
+  const query = searchParams.toString();
+  return fetchJson(`${API_BASE}/examples/top${query ? `?${query}` : ""}`);
+}
+
+/**
+ * Search examples by text, embedding, or metadata
+ */
+export async function searchExamples(
+  query: ExampleSearchQuery,
+): Promise<ExampleSearchResponse> {
+  return fetchJson(`${API_BASE}/examples/search`, {
+    method: "POST",
+    body: JSON.stringify(query),
+  });
+}
+
+/**
+ * Create multiple examples in batch
+ */
+export async function batchCreateExamples(
+  data: ExampleBatchCreateRequest,
+): Promise<ExampleBatchCreateResponse> {
+  return fetchJson(`${API_BASE}/examples/batch`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Track usage of an example
+ */
+export async function trackExampleUsage(
+  exampleId: string,
+  params?: {
+    context?: string;
+    training_run_id?: string;
+    model_id?: string;
+    outcome?: string;
+  },
+): Promise<void> {
+  const searchParams = new URLSearchParams();
+  if (params?.context) searchParams.set("context", params.context);
+  if (params?.training_run_id)
+    searchParams.set("training_run_id", params.training_run_id);
+  if (params?.model_id) searchParams.set("model_id", params.model_id);
+  if (params?.outcome) searchParams.set("outcome", params.outcome);
+
+  const query = searchParams.toString();
+  return fetchJson(
+    `${API_BASE}/examples/${exampleId}/track${query ? `?${query}` : ""}`,
+    { method: "POST" },
+  );
+}
+
+/**
+ * Get effectiveness statistics for an example
+ */
+export async function getExampleEffectiveness(
+  exampleId: string,
+): Promise<ExampleEffectivenessStats> {
+  return fetchJson(`${API_BASE}/examples/${exampleId}/effectiveness`);
+}
+
+/**
+ * Regenerate embeddings for examples
+ */
+export async function regenerateExampleEmbeddings(
+  exampleIds?: string[],
+  force: boolean = false,
+): Promise<{ processed: number; skipped: number; errors: number }> {
+  const params = new URLSearchParams();
+  if (force) params.set("force", "true");
+
+  return fetchJson(
+    `${API_BASE}/examples/regenerate-embeddings${params.toString() ? `?${params}` : ""}`,
+    {
+      method: "POST",
+      body: exampleIds ? JSON.stringify(exampleIds) : undefined,
+    },
+  );
+}
+
+/**
+ * Get aggregated effectiveness dashboard statistics
+ */
+export async function getEffectivenessDashboard(params?: {
+  domain?: string;
+  function_name?: string;
+  period?: "7d" | "30d" | "90d";
+}): Promise<EffectivenessDashboardStats> {
+  const searchParams = new URLSearchParams();
+  if (params?.domain) searchParams.set("domain", params.domain);
+  if (params?.function_name) searchParams.set("function_name", params.function_name);
+  if (params?.period) searchParams.set("period", params.period);
+
+  const query = searchParams.toString();
+  return fetchJson(`${API_BASE}/examples/dashboard${query ? `?${query}` : ""}`);
+}
+
+// ============================================================================
+// DSPy Integration API
+// ============================================================================
+
+import type {
+  DSPySignature,
+  DSPyProgram,
+  DSPyExportRequest,
+  DSPyExportResult,
+  OptimizationRunCreate,
+  OptimizationRunResponse,
+  DSPyExample,
+} from "../types";
+
+/**
+ * Get DSPy signature for a template
+ */
+export async function getDSPySignature(templateId: string): Promise<DSPySignature> {
+  return fetchJson(`${API_BASE}/dspy/templates/${templateId}/signature`);
+}
+
+/**
+ * Get DSPy program with examples for a template
+ */
+export async function getDSPyProgram(
+  templateId: string,
+  params?: {
+    max_examples?: number;
+    min_effectiveness?: number;
+  },
+): Promise<DSPyProgram> {
+  const searchParams = new URLSearchParams();
+  if (params?.max_examples)
+    searchParams.set("max_examples", String(params.max_examples));
+  if (params?.min_effectiveness)
+    searchParams.set("min_effectiveness", String(params.min_effectiveness));
+
+  const query = searchParams.toString();
+  return fetchJson(
+    `${API_BASE}/dspy/templates/${templateId}/program${query ? `?${query}` : ""}`,
+  );
+}
+
+/**
+ * Export template as DSPy code
+ */
+export async function exportToDSPy(
+  templateId: string,
+  request?: Partial<DSPyExportRequest>,
+): Promise<DSPyExportResult> {
+  return fetchJson(`${API_BASE}/dspy/templates/${templateId}/export`, {
+    method: "POST",
+    body: request ? JSON.stringify(request) : undefined,
+  });
+}
+
+/**
+ * Get raw DSPy signature code
+ */
+export async function getDSPySignatureCode(templateId: string): Promise<string> {
+  return fetchJson(`${API_BASE}/dspy/templates/${templateId}/signature-code`);
+}
+
+/**
+ * Get examples formatted for DSPy optimization
+ */
+export async function getExamplesForOptimization(
+  templateId: string,
+  params?: {
+    max_examples?: number;
+    strategy?: "top" | "diverse" | "balanced";
+  },
+): Promise<{
+  template_id: string;
+  strategy: string;
+  count: number;
+  examples: DSPyExample[];
+}> {
+  const searchParams = new URLSearchParams();
+  if (params?.max_examples)
+    searchParams.set("max_examples", String(params.max_examples));
+  if (params?.strategy) searchParams.set("strategy", params.strategy);
+
+  const query = searchParams.toString();
+  return fetchJson(
+    `${API_BASE}/dspy/templates/${templateId}/examples${query ? `?${query}` : ""}`,
+  );
+}
+
+/**
+ * Create a new optimization run
+ */
+export async function createOptimizationRun(
+  request: OptimizationRunCreate,
+): Promise<OptimizationRunResponse> {
+  return fetchJson(`${API_BASE}/dspy/runs`, {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
+
+/**
+ * Get optimization run status
+ */
+export async function getOptimizationRun(
+  runId: string,
+): Promise<OptimizationRunResponse> {
+  return fetchJson(`${API_BASE}/dspy/runs/${runId}`);
+}
+
+/**
+ * Cancel an optimization run
+ */
+export async function cancelOptimizationRun(runId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/dspy/runs/${runId}/cancel`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Get optimization run results
+ */
+export async function getOptimizationResults(runId: string): Promise<{
+  run_id: string;
+  trials: Array<{
+    trial_id: number;
+    score: number;
+    metrics: Record<string, number>;
+    examples_used: string[];
+    timestamp: string;
+  }>;
+}> {
+  return fetchJson(`${API_BASE}/dspy/runs/${runId}/results`);
+}
+
+/**
+ * Sync optimization results to Example Store
+ */
+export async function syncOptimizationResults(runId: string): Promise<{
+  synced: boolean;
+  run_id: string;
+  examples_updated: number;
+  best_score: number;
+  top_examples: string[];
+}> {
+  return fetchJson(`${API_BASE}/dspy/runs/${runId}/sync`, {
+    method: "POST",
+  });
 }

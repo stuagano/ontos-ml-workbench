@@ -1,0 +1,203 @@
+{
+  "description": "Few-shot examples for radiation detector defect detection",
+  "domain": "defect_detection",
+  "version": "1.0",
+  "examples": [
+    {
+      "input": {
+        "image_description": "Front view of gamma detector DET-NPP-COOK-001 showing clean crystal housing with no visible damage",
+        "sensor_context": {
+          "temperature_c": 22.5,
+          "humidity_pct": 45,
+          "operating_hours": 8760,
+          "last_calibration": "2023-11-01"
+        },
+        "inspection_type": "routine"
+      },
+      "expected_output": {
+        "defect_class": "NONE",
+        "confidence": 0.95,
+        "severity": 0,
+        "action_required": "none",
+        "reasoning": "Crystal housing intact with no visible scratches, contamination, or structural damage. Sensor readings within normal parameters."
+      },
+      "explanation": "Clean detector with normal operating parameters - no defects detected",
+      "difficulty": "easy",
+      "capability_tags": ["no_defect", "routine_inspection"],
+      "search_keys": ["clean", "no defect", "normal", "routine"]
+    },
+    {
+      "input": {
+        "image_description": "Side view of detector DET-NPP-COOK-002 showing 4cm surface scratch on housing exterior",
+        "sensor_context": {
+          "temperature_c": 23.1,
+          "humidity_pct": 44,
+          "operating_hours": 12450,
+          "last_calibration": "2023-10-15"
+        },
+        "bounding_box": {"x": 120, "y": 85, "width": 45, "height": 12},
+        "inspection_type": "routine"
+      },
+      "expected_output": {
+        "defect_class": "MINOR_SCRATCH",
+        "confidence": 0.87,
+        "severity": 1,
+        "action_required": "monitor",
+        "reasoning": "Surface scratch on housing exterior does not penetrate to internal components. No impact on detector performance expected. Document and monitor during next inspection."
+      },
+      "explanation": "Minor cosmetic damage that doesn't affect performance - typical example of severity 1 defect",
+      "difficulty": "easy",
+      "capability_tags": ["minor_defect", "cosmetic_damage", "monitoring"],
+      "search_keys": ["scratch", "minor", "surface", "cosmetic"]
+    },
+    {
+      "input": {
+        "image_description": "Crystal chamber view of detector DET-NPP-PALO-001 showing 3mm crack extending into scintillation crystal",
+        "sensor_context": {
+          "temperature_c": 28.5,
+          "humidity_pct": 35,
+          "operating_hours": 26500,
+          "last_calibration": "2023-09-01",
+          "count_rate_anomaly": true,
+          "efficiency_drop_pct": 15
+        },
+        "bounding_box": {"x": 200, "y": 150, "width": 80, "height": 25},
+        "inspection_type": "anomaly_investigation"
+      },
+      "expected_output": {
+        "defect_class": "CRYSTAL_CRACK",
+        "confidence": 0.92,
+        "severity": 3,
+        "action_required": "immediate_replacement",
+        "reasoning": "Critical defect: crack in scintillation crystal correlates with 15% efficiency drop and count rate anomalies. Crystal integrity compromised - detector must be removed from service and crystal replaced immediately to prevent further degradation and ensure accurate radiation measurements."
+      },
+      "explanation": "Critical severity defect requiring immediate action - demonstrates correlation between visual defect and sensor anomalies",
+      "difficulty": "medium",
+      "capability_tags": ["critical_defect", "crystal_damage", "immediate_action", "sensor_correlation"],
+      "search_keys": ["crack", "crystal", "critical", "replacement", "anomaly"]
+    },
+    {
+      "input": {
+        "image_description": "Seal inspection of detector DET-NPP-WATTS-003 showing slight discoloration around hermetic seal area",
+        "sensor_context": {
+          "temperature_c": 21.0,
+          "humidity_pct": 52,
+          "operating_hours": 5200,
+          "last_calibration": "2023-12-01"
+        },
+        "inspection_type": "routine"
+      },
+      "expected_output": {
+        "defect_class": "SEAL_DEGRADATION",
+        "confidence": 0.78,
+        "severity": 2,
+        "action_required": "schedule_maintenance",
+        "reasoning": "Early signs of seal degradation detected. Discoloration may indicate moisture ingress pathway forming. While not yet critical, schedule seal inspection and potential resealing within 30 days to prevent moisture damage to internal components."
+      },
+      "explanation": "Medium confidence detection requiring human verification - seal issues are often subtle and need expert review",
+      "difficulty": "hard",
+      "capability_tags": ["seal_inspection", "early_warning", "preventive_maintenance"],
+      "search_keys": ["seal", "degradation", "moisture", "maintenance"]
+    },
+    {
+      "input": {
+        "image_description": "Connector view of detector DET-NPP-DIABLO-002 showing bent pin on main signal connector",
+        "sensor_context": {
+          "temperature_c": 24.0,
+          "humidity_pct": 40,
+          "operating_hours": 18200,
+          "last_calibration": "2023-08-15",
+          "signal_quality": "degraded",
+          "intermittent_readings": true
+        },
+        "bounding_box": {"x": 50, "y": 180, "width": 30, "height": 40},
+        "inspection_type": "troubleshooting"
+      },
+      "expected_output": {
+        "defect_class": "CONNECTOR_DAMAGE",
+        "confidence": 0.91,
+        "severity": 3,
+        "action_required": "immediate_repair",
+        "reasoning": "Bent connector pin (pin 3) causing intermittent signal loss. This explains the degraded signal quality reports. Critical defect as unreliable readings from radiation detectors pose safety risk. Connector repair or replacement required before returning to service."
+      },
+      "explanation": "Defect detection that explains reported operational issues - shows value of correlating visual inspection with sensor data",
+      "difficulty": "medium",
+      "capability_tags": ["connector_damage", "signal_issues", "troubleshooting"],
+      "search_keys": ["connector", "bent pin", "signal", "intermittent"]
+    },
+    {
+      "input": {
+        "image_description": "Housing exterior of detector DET-NPP-SURRY-001 showing rust spots and oxidation on metal frame",
+        "sensor_context": {
+          "temperature_c": 19.5,
+          "humidity_pct": 68,
+          "operating_hours": 32100,
+          "last_calibration": "2023-07-01",
+          "environment": "high_humidity_area"
+        },
+        "bounding_box": {"x": 75, "y": 220, "width": 60, "height": 35},
+        "inspection_type": "environment_assessment"
+      },
+      "expected_output": {
+        "defect_class": "CORROSION",
+        "confidence": 0.85,
+        "severity": 3,
+        "action_required": "relocate_and_treat",
+        "reasoning": "Active corrosion on housing metal components due to high humidity environment (68%). If left untreated, corrosion will progress to structural weakness and potential seal compromise. Recommend: 1) Remove detector from high-humidity location 2) Perform anti-corrosion treatment 3) Consider environmental controls if detector must remain in current location."
+      },
+      "explanation": "Environmental factor analysis - defect type influenced by operating conditions",
+      "difficulty": "medium",
+      "capability_tags": ["corrosion", "environmental", "preventive_action"],
+      "search_keys": ["corrosion", "rust", "humidity", "environment"]
+    },
+    {
+      "input": {
+        "image_description": "Optical window view of detector DET-MED-CLINIC-005 showing slight hazing on detector window surface",
+        "sensor_context": {
+          "temperature_c": 22.0,
+          "humidity_pct": 50,
+          "operating_hours": 4500,
+          "last_calibration": "2024-01-05",
+          "application": "medical_imaging"
+        },
+        "inspection_type": "routine"
+      },
+      "expected_output": {
+        "defect_class": "WINDOW_CLOUDING",
+        "confidence": 0.72,
+        "severity": 2,
+        "action_required": "clean_and_reassess",
+        "reasoning": "Possible window clouding detected, but confidence is moderate. This could be surface contamination rather than permanent degradation. Recommend cleaning optical window with approved solvent and re-inspecting. If hazing persists after cleaning, window replacement should be scheduled."
+      },
+      "explanation": "Lower confidence detection with actionable next steps - model appropriately hedges when uncertain",
+      "difficulty": "hard",
+      "capability_tags": ["window_inspection", "ambiguous_case", "cleaning_protocol"],
+      "search_keys": ["window", "clouding", "hazing", "optical", "cleaning"]
+    },
+    {
+      "input": {
+        "image_description": "Full detector assembly DET-NPP-BYRON-001 showing foreign particle lodged between housing and mounting bracket",
+        "sensor_context": {
+          "temperature_c": 25.0,
+          "humidity_pct": 42,
+          "operating_hours": 15000,
+          "last_calibration": "2023-11-20",
+          "vibration_detected": true
+        },
+        "bounding_box": {"x": 180, "y": 95, "width": 15, "height": 15},
+        "inspection_type": "vibration_investigation"
+      },
+      "expected_output": {
+        "defect_class": "CONTAMINATION",
+        "confidence": 0.88,
+        "severity": 2,
+        "action_required": "remove_debris",
+        "reasoning": "Foreign debris (appears to be metal shaving) lodged in mounting area is likely source of reported vibration. While not directly affecting detector function, continued vibration could lead to connector fatigue or mounting looseness. Remove debris and inspect mounting hardware for wear."
+      },
+      "explanation": "Contamination case where particle location matters - demonstrates spatial reasoning",
+      "difficulty": "medium",
+      "capability_tags": ["contamination", "debris", "vibration", "mounting"],
+      "search_keys": ["debris", "contamination", "foreign material", "vibration"]
+    }
+  ]
+}

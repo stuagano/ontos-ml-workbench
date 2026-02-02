@@ -17,6 +17,10 @@ httpx>=0.26.0
 # Data processing
 numpy>=1.24.0
 
+# Embeddings (optional - for local development without FMAPI)
+sentence-transformers>=2.2.0
+
 # Testing
 pytest>=7.4.0
 pytest-asyncio>=0.23.0
+pytest-mock>=3.12.0

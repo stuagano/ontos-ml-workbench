@@ -1160,3 +1160,457 @@ export interface WorkspaceUserListResponse {
   page: number;
   page_size: number;
 }
+
+// ============================================================================
+// Example Store Types (Few-shot Learning)
+// ============================================================================
+
+/**
+ * Domain categories for examples
+ */
+export type ExampleDomain =
+  | "defect_detection"
+  | "predictive_maintenance"
+  | "anomaly_detection"
+  | "calibration"
+  | "document_extraction"
+  | "general";
+
+/**
+ * Difficulty level of examples
+ */
+export type ExampleDifficulty = "easy" | "medium" | "hard";
+
+/**
+ * Source of example data
+ */
+export type ExampleSource =
+  | "human_authored"
+  | "synthetic"
+  | "production_captured"
+  | "feedback_derived";
+
+/**
+ * A few-shot example for training or inference
+ */
+export interface ExampleRecord {
+  example_id: string;
+  version: number;
+  input: Record<string, unknown>;
+  expected_output: Record<string, unknown>;
+  explanation?: string;
+  databit_id?: string;
+  databit_name?: string;
+  domain: ExampleDomain | string;
+  function_name?: string;
+  difficulty: ExampleDifficulty;
+  capability_tags?: string[];
+  search_keys?: string[];
+  has_embedding: boolean;
+  quality_score?: number;
+  usage_count: number;
+  effectiveness_score?: number;
+  source: ExampleSource;
+  attribution_notes?: string;
+  created_by?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * Request to create a new example
+ */
+export interface ExampleCreateRequest {
+  input: Record<string, unknown>;
+  expected_output: Record<string, unknown>;
+  explanation?: string;
+  databit_id?: string;
+  domain?: ExampleDomain | string;
+  function_name?: string;
+  difficulty?: ExampleDifficulty;
+  capability_tags?: string[];
+  search_keys?: string[];
+  source?: ExampleSource;
+  attribution_notes?: string;
+}
+
+/**
+ * Request to update an example
+ */
+export interface ExampleUpdateRequest {
+  input?: Record<string, unknown>;
+  expected_output?: Record<string, unknown>;
+  explanation?: string;
+  databit_id?: string;
+  domain?: ExampleDomain | string;
+  function_name?: string;
+  difficulty?: ExampleDifficulty;
+  capability_tags?: string[];
+  search_keys?: string[];
+  source?: ExampleSource;
+  attribution_notes?: string;
+  quality_score?: number;
+}
+
+/**
+ * Search query for examples
+ */
+export interface ExampleSearchQuery {
+  query_text?: string;
+  query_embedding?: number[];
+  databit_id?: string;
+  domain?: ExampleDomain | string;
+  function_name?: string;
+  difficulty?: ExampleDifficulty;
+  capability_tags?: string[];
+  min_quality_score?: number;
+  min_effectiveness_score?: number;
+  k?: number;
+  sort_by?: string;
+  sort_desc?: boolean;
+}
+
+/**
+ * Search result with similarity score
+ */
+export interface ExampleSearchResult {
+  example: ExampleRecord;
+  similarity_score?: number;
+  match_type: "embedding" | "text" | "metadata";
+}
+
+/**
+ * Response from example search
+ */
+export interface ExampleSearchResponse {
+  results: ExampleSearchResult[];
+  total_matches: number;
+  query_embedding_generated: boolean;
+  search_type: string;
+}
+
+/**
+ * Effectiveness statistics for an example
+ */
+export interface ExampleEffectivenessStats {
+  example_id: string;
+  total_uses: number;
+  success_count: number;
+  failure_count: number;
+  success_rate?: number;
+  effectiveness_score?: number;
+  effectiveness_trend?: string;
+  last_used_at?: string;
+}
+
+// -----------------------------------------------------------------------------
+// Dashboard Aggregation Types
+// -----------------------------------------------------------------------------
+
+/**
+ * Daily usage data point for time series charts
+ */
+export interface DailyUsagePoint {
+  date: string;
+  uses: number;
+  successes: number;
+  failures: number;
+}
+
+/**
+ * Domain breakdown for dashboard
+ */
+export interface DomainEffectiveness {
+  domain: string;
+  example_count: number;
+  total_uses: number;
+  success_rate?: number;
+  avg_effectiveness?: number;
+}
+
+/**
+ * Function breakdown for dashboard
+ */
+export interface FunctionEffectiveness {
+  function_name: string;
+  example_count: number;
+  total_uses: number;
+  success_rate?: number;
+  avg_effectiveness?: number;
+}
+
+/**
+ * Example with ranking info for top/bottom lists
+ */
+export interface ExampleRankingItem {
+  example_id: string;
+  domain: string;
+  function_name?: string;
+  explanation?: string;
+  effectiveness_score?: number;
+  usage_count: number;
+  success_rate?: number;
+}
+
+/**
+ * Aggregated dashboard statistics
+ */
+export interface EffectivenessDashboardStats {
+  total_examples: number;
+  examples_with_usage: number;
+  total_uses: number;
+  total_successes: number;
+  total_failures: number;
+  overall_success_rate?: number;
+  avg_effectiveness_score?: number;
+  period_days: number;
+  domain_breakdown: DomainEffectiveness[];
+  function_breakdown: FunctionEffectiveness[];
+  daily_usage: DailyUsagePoint[];
+  top_examples: ExampleRankingItem[];
+  bottom_examples: ExampleRankingItem[];
+  stale_examples_count: number;
+}
+
+/**
+ * Request to create examples in batch
+ */
+export interface ExampleBatchCreateRequest {
+  examples: ExampleCreateRequest[];
+  generate_embeddings?: boolean;
+}
+
+/**
+ * Response from batch create
+ */
+export interface ExampleBatchCreateResponse {
+  created_count: number;
+  failed_count: number;
+  created_ids: string[];
+  errors?: Array<{ index: string; error: string }>;
+}
+
+/**
+ * List response with pagination
+ */
+export interface ExampleListResponse {
+  examples: ExampleRecord[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+/**
+ * Domain options for UI
+ */
+export const EXAMPLE_DOMAINS: { id: ExampleDomain; label: string }[] = [
+  { id: "defect_detection", label: "Defect Detection" },
+  { id: "predictive_maintenance", label: "Predictive Maintenance" },
+  { id: "anomaly_detection", label: "Anomaly Detection" },
+  { id: "calibration", label: "Calibration" },
+  { id: "document_extraction", label: "Document Extraction" },
+  { id: "general", label: "General" },
+];
+
+/**
+ * Difficulty options for UI
+ */
+export const EXAMPLE_DIFFICULTIES: { id: ExampleDifficulty; label: string; color: string }[] = [
+  { id: "easy", label: "Easy", color: "green" },
+  { id: "medium", label: "Medium", color: "amber" },
+  { id: "hard", label: "Hard", color: "red" },
+];
+
+// ============================================================================
+// DSPy Integration Types
+// ============================================================================
+
+/**
+ * DSPy optimizer types
+ */
+export type DSPyOptimizerType =
+  | "BootstrapFewShot"
+  | "BootstrapFewShotWithRandomSearch"
+  | "MIPRO"
+  | "COPRO"
+  | "KNNFewShot";
+
+/**
+ * Optimization run status
+ */
+export type OptimizationRunStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+/**
+ * Export format options
+ */
+export type DSPyExportFormat = "python_module" | "json_config" | "notebook";
+
+/**
+ * DSPy field specification
+ */
+export interface DSPyFieldSpec {
+  name: string;
+  description: string;
+  field_type: string;
+  prefix?: string;
+  required: boolean;
+}
+
+/**
+ * DSPy Signature definition
+ */
+export interface DSPySignature {
+  signature_name: string;
+  docstring: string;
+  input_fields: DSPyFieldSpec[];
+  output_fields: DSPyFieldSpec[];
+  databit_id?: string;
+  databit_version?: string;
+}
+
+/**
+ * DSPy example for training
+ */
+export interface DSPyExample {
+  inputs: Record<string, unknown>;
+  outputs: Record<string, unknown>;
+  example_id?: string;
+  effectiveness_score?: number;
+}
+
+/**
+ * DSPy module configuration
+ */
+export interface DSPyModuleConfig {
+  module_type: string;
+  signature_name: string;
+  num_examples: number;
+  temperature: number;
+  max_tokens: number;
+}
+
+/**
+ * Complete DSPy program
+ */
+export interface DSPyProgram {
+  program_name: string;
+  description: string;
+  signature: DSPySignature;
+  module_config: DSPyModuleConfig;
+  training_examples: DSPyExample[];
+  model_name: string;
+  databit_id?: string;
+  example_ids: string[];
+}
+
+/**
+ * Optimization configuration
+ */
+export interface OptimizationConfig {
+  optimizer_type: DSPyOptimizerType;
+  max_bootstrapped_demos: number;
+  max_labeled_demos: number;
+  num_candidate_programs: number;
+  num_trials: number;
+  metric_name: string;
+  max_runtime_minutes: number;
+}
+
+/**
+ * Request to create optimization run
+ */
+export interface OptimizationRunCreate {
+  databit_id: string;
+  config: OptimizationConfig;
+  example_ids?: string[];
+  eval_dataset_id?: string;
+}
+
+/**
+ * Optimization trial result
+ */
+export interface OptimizationTrialResult {
+  trial_id: number;
+  score: number;
+  metrics: Record<string, number>;
+  examples_used: string[];
+  prompt_version?: string;
+  timestamp: string;
+}
+
+/**
+ * Optimization run response
+ */
+export interface OptimizationRunResponse {
+  run_id: string;
+  mlflow_run_id?: string;
+  status: OptimizationRunStatus;
+  databit_id: string;
+  program_name: string;
+  trials_completed: number;
+  trials_total: number;
+  current_best_score?: number;
+  started_at?: string;
+  estimated_completion?: string;
+  best_score?: number;
+  top_example_ids: string[];
+}
+
+/**
+ * DSPy export request
+ */
+export interface DSPyExportRequest {
+  databit_id: string;
+  format: DSPyExportFormat;
+  include_examples: boolean;
+  max_examples: number;
+  min_effectiveness: number;
+  include_metrics: boolean;
+  include_optimizer_setup: boolean;
+}
+
+/**
+ * DSPy export result
+ */
+export interface DSPyExportResult {
+  databit_id: string;
+  databit_name: string;
+  format: DSPyExportFormat;
+  signature_code: string;
+  program_code: string;
+  examples_json?: string;
+  num_examples_included: number;
+  example_ids: string[];
+  generated_at: string;
+  is_valid: boolean;
+  validation_errors: string[];
+}
+
+/**
+ * Default optimization config
+ */
+export const DEFAULT_OPTIMIZATION_CONFIG: OptimizationConfig = {
+  optimizer_type: "BootstrapFewShot",
+  max_bootstrapped_demos: 4,
+  max_labeled_demos: 16,
+  num_candidate_programs: 10,
+  num_trials: 100,
+  metric_name: "accuracy",
+  max_runtime_minutes: 60,
+};
+
+/**
+ * Optimizer options for UI
+ */
+export const DSPY_OPTIMIZERS: { id: DSPyOptimizerType; label: string; description: string }[] = [
+  { id: "BootstrapFewShot", label: "Bootstrap Few-Shot", description: "Basic few-shot optimization" },
+  { id: "BootstrapFewShotWithRandomSearch", label: "Bootstrap + Random Search", description: "Few-shot with hyperparameter search" },
+  { id: "MIPRO", label: "MIPRO", description: "Multi-stage instruction optimization" },
+  { id: "COPRO", label: "COPRO", description: "Collaborative prompt optimization" },
+  { id: "KNNFewShot", label: "KNN Few-Shot", description: "K-nearest neighbor example selection" },
+];

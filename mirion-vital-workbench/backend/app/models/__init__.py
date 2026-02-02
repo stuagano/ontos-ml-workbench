@@ -1,5 +1,34 @@
 # Pydantic models
 
+from app.models.agent_models import (
+    AgentExampleRequest,
+    AgentExampleResponse,
+    AgentExampleResult,
+    AgentOutcomeRequest,
+    AgentOutcomeResponse,
+)
+from app.models.example_store import (
+    EmbeddingRequest,
+    EmbeddingResponse,
+    ExampleBatchCreate,
+    ExampleBatchResponse,
+    ExampleCreate,
+    ExampleDifficulty,
+    ExampleDomain,
+    ExampleEffectivenessStats,
+    ExampleEffectivenessUpdate,
+    ExampleImportRequest,
+    ExampleListResponse,
+    ExampleResponse,
+    ExampleSearchQuery,
+    ExampleSearchResponse,
+    ExampleSearchResult,
+    ExampleSource,
+    ExampleUpdate,
+    ExampleUsageEvent,
+    VectorSearchIndexConfig,
+    VectorSearchSyncStatus,
+)
 from app.models.attribution import (
     AttributionComparisonRequest,
     AttributionComparisonResponse,
@@ -59,6 +88,33 @@ from app.models.template import (
 )
 
 __all__ = [
+    # Agent Framework
+    "AgentExampleRequest",
+    "AgentExampleResponse",
+    "AgentExampleResult",
+    "AgentOutcomeRequest",
+    "AgentOutcomeResponse",
+    # Example Store
+    "ExampleDomain",
+    "ExampleDifficulty",
+    "ExampleSource",
+    "ExampleCreate",
+    "ExampleUpdate",
+    "ExampleResponse",
+    "ExampleListResponse",
+    "ExampleSearchQuery",
+    "ExampleSearchResult",
+    "ExampleSearchResponse",
+    "ExampleUsageEvent",
+    "ExampleEffectivenessUpdate",
+    "ExampleEffectivenessStats",
+    "ExampleBatchCreate",
+    "ExampleBatchResponse",
+    "ExampleImportRequest",
+    "EmbeddingRequest",
+    "EmbeddingResponse",
+    "VectorSearchIndexConfig",
+    "VectorSearchSyncStatus",
     # Attribution
     "AttributionMethod",
     "AttributionRequest",

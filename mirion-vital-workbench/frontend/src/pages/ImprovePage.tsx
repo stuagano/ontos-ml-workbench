@@ -17,7 +17,9 @@ import {
   Database,
   FileCode,
   RotateCcw,
+  BarChart3,
 } from "lucide-react";
+import { ExampleEffectivenessDashboard } from "./ExampleEffectivenessDashboard";
 import { useWorkflow } from "../context/WorkflowContext";
 import { clsx } from "clsx";
 import {
@@ -265,7 +267,10 @@ function StatsCard({
 // ImprovePage Component
 // ============================================================================
 
+type ImproveView = "feedback" | "effectiveness";
+
 export function ImprovePage() {
+  const [view, setView] = useState<ImproveView>("feedback");
   const [selectedEndpointId, setSelectedEndpointId] = useState<string | null>(
     null,
   );
@@ -369,23 +374,55 @@ export function ImprovePage() {
               Collect feedback, identify gaps, and continuously improve
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <select
-              value={selectedEndpointId || ""}
-              onChange={(e) => setSelectedEndpointId(e.target.value || null)}
-              className="px-3 py-2 border border-db-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-            >
-              <option value="">All Endpoints</option>
-              {readyEndpoints.map((ep) => (
-                <option key={ep.id} value={ep.id}>
-                  {ep.name}
-                </option>
-              ))}
-            </select>
+          <div className="flex items-center gap-4">
+            {/* View toggle */}
+            <div className="flex items-center gap-1 bg-db-gray-100 p-1 rounded-lg">
+              <button
+                onClick={() => setView("feedback")}
+                className={clsx(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors",
+                  view === "feedback"
+                    ? "bg-white text-db-gray-800 shadow-sm"
+                    : "text-db-gray-500 hover:text-db-gray-700"
+                )}
+              >
+                <MessageSquare className="w-4 h-4" />
+                Feedback
+              </button>
+              <button
+                onClick={() => setView("effectiveness")}
+                className={clsx(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors",
+                  view === "effectiveness"
+                    ? "bg-white text-db-gray-800 shadow-sm"
+                    : "text-db-gray-500 hover:text-db-gray-700"
+                )}
+              >
+                <BarChart3 className="w-4 h-4" />
+                Effectiveness
+              </button>
+            </div>
+            {view === "feedback" && (
+              <select
+                value={selectedEndpointId || ""}
+                onChange={(e) => setSelectedEndpointId(e.target.value || null)}
+                className="px-3 py-2 border border-db-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              >
+                <option value="">All Endpoints</option>
+                {readyEndpoints.map((ep) => (
+                  <option key={ep.id} value={ep.id}>
+                    {ep.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
 
-        {isLoading ? (
+        {/* View content */}
+        {view === "effectiveness" ? (
+          <ExampleEffectivenessDashboard />
+        ) : isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-db-gray-400" />
           </div>

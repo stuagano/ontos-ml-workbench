@@ -63,6 +63,89 @@ TBLPROPERTIES (
 -- ZORDER BY (sheet_id, row_index);
 
 
+-- ============================================================================
+-- ASSEMBLIES (Materialized Prompt/Response Pairs for Curate Stage)
+-- ============================================================================
+
+-- Assemblies - result of applying a template to a sheet
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.assemblies (
+  id STRING NOT NULL,
+  sheet_id STRING NOT NULL,
+  sheet_name STRING,
+
+  -- Frozen template config (JSON snapshot at assembly time)
+  template_config STRING NOT NULL,
+
+  -- Status
+  status STRING NOT NULL DEFAULT 'ready',  -- assembling, ready, failed, archived
+
+  -- Row counts
+  total_rows INT DEFAULT 0,
+  ai_generated_count INT DEFAULT 0,
+  human_labeled_count INT DEFAULT 0,
+  human_verified_count INT DEFAULT 0,
+  flagged_count INT DEFAULT 0,
+
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT current_timestamp(),
+  created_by STRING,
+  updated_at TIMESTAMP DEFAULT current_timestamp(),
+  completed_at TIMESTAMP,
+
+  -- Error info (if status == failed)
+  error_message STRING,
+
+  CONSTRAINT assemblies_pk PRIMARY KEY (id),
+  CONSTRAINT assemblies_sheet_fk FOREIGN KEY (sheet_id) REFERENCES ${catalog}.${schema}.sheets(id)
+) USING DELTA
+TBLPROPERTIES (
+  'delta.enableChangeDataFeed' = 'true'
+);
+
+-- Assembly Rows - individual prompt/response pairs
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.assembly_rows (
+  id STRING NOT NULL,
+  assembly_id STRING NOT NULL,
+  row_index INT NOT NULL,
+
+  -- The rendered prompt
+  prompt STRING NOT NULL,
+
+  -- Source data snapshot (JSON)
+  source_data STRING,
+
+  -- Response
+  response STRING,
+  response_source STRING NOT NULL DEFAULT 'empty',  -- empty, imported, ai_generated, human_labeled, human_verified
+
+  -- Generation metadata
+  generated_at TIMESTAMP,
+  confidence_score DOUBLE,
+
+  -- Labeling metadata
+  labeled_at TIMESTAMP,
+  labeled_by STRING,
+  verified_at TIMESTAMP,
+  verified_by STRING,
+
+  -- Quality flags
+  is_flagged BOOLEAN DEFAULT FALSE,
+  flag_reason STRING,
+
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT current_timestamp(),
+
+  CONSTRAINT assembly_rows_pk PRIMARY KEY (id),
+  CONSTRAINT assembly_rows_assembly_fk FOREIGN KEY (assembly_id) REFERENCES ${catalog}.${schema}.assemblies(id)
+) USING DELTA
+TBLPROPERTIES (
+  'delta.enableChangeDataFeed' = 'true'
+);
+
+-- Index for fast row lookups
+-- ZORDER BY (assembly_id, row_index);
+
+
 -- Databits (Prompt Templates) - Legacy, being replaced by AI Sheets
 CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.templates (
   id STRING NOT NULL,
@@ -783,3 +866,187 @@ CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.workspace_users (
 TBLPROPERTIES (
   'delta.enableChangeDataFeed' = 'true'
 );
+
+
+-- ============================================================================
+-- EXAMPLE STORE TABLES (PRD v2)
+-- ============================================================================
+
+-- Example Store - Managed few-shot examples with vector search
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.example_store (
+  example_id STRING NOT NULL,
+  version INT NOT NULL DEFAULT 1,
+
+  -- Core content
+  input STRING NOT NULL,          -- JSON: the input that demonstrates the scenario
+  expected_output STRING NOT NULL, -- JSON: the expected model response
+  explanation STRING,             -- Why this is the correct output
+
+  -- Associations
+  databit_id STRING,              -- Link to template/databit this example belongs to
+
+  -- Categorization
+  domain STRING DEFAULT 'general',  -- defect_detection, predictive_maintenance, etc.
+  function_name STRING,           -- Tool/function this example demonstrates (for function calling)
+  difficulty STRING DEFAULT 'medium',  -- easy, medium, hard
+  capability_tags ARRAY<STRING>,  -- Tags describing capabilities demonstrated
+
+  -- Search (for Vector Search integration)
+  search_keys ARRAY<STRING>,      -- Semantic keys for similarity matching
+  embedding ARRAY<DOUBLE>,        -- Vector embedding of input (768-1024 dim)
+  embedding_model STRING,         -- Model used to generate embedding
+  embedding_computed_at TIMESTAMP,
+
+  -- Quality & Effectiveness
+  quality_score DOUBLE,           -- Human or automated quality rating (0-1)
+  usage_count INT DEFAULT 0,      -- Times this example has been retrieved
+  effectiveness_score DOUBLE,     -- Measured impact on model performance when used
+
+  -- Source & Attribution
+  source STRING DEFAULT 'human_authored',  -- human_authored, extracted_from_data, synthetic, dspy_optimized
+  attribution_notes STRING,       -- Notes about why this example is valuable
+
+  -- Metadata
+  created_by STRING,
+  created_at TIMESTAMP DEFAULT current_timestamp(),
+  updated_at TIMESTAMP DEFAULT current_timestamp(),
+
+  CONSTRAINT example_store_pk PRIMARY KEY (example_id)
+) USING DELTA
+TBLPROPERTIES (
+  'delta.enableChangeDataFeed' = 'true',
+  'delta.columnMapping.mode' = 'name'
+);
+
+-- Example Effectiveness Log - Track how examples perform when used
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.example_effectiveness_log (
+  id STRING NOT NULL,
+  example_id STRING NOT NULL,
+
+  -- Usage context
+  used_at TIMESTAMP DEFAULT current_timestamp(),
+  context STRING,                 -- Where example was used: dspy_optimization, agent_prompt, training
+  training_run_id STRING,
+  model_id STRING,
+
+  -- Outcome
+  outcome STRING,                 -- success, failure, unknown
+  metric_name STRING,             -- Which metric was affected
+  metric_before DOUBLE,
+  metric_after DOUBLE,
+  metric_delta DOUBLE,
+
+  -- Notes
+  notes STRING,
+
+  CONSTRAINT example_effectiveness_log_pk PRIMARY KEY (id),
+  CONSTRAINT example_effectiveness_log_example_fk FOREIGN KEY (example_id)
+    REFERENCES ${catalog}.${schema}.example_store(example_id)
+) USING DELTA
+TBLPROPERTIES (
+  'delta.enableChangeDataFeed' = 'true'
+);
+
+-- Example Version History - Track changes to examples over time
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.example_versions (
+  id STRING NOT NULL,
+  example_id STRING NOT NULL,
+  version INT NOT NULL,
+
+  -- Snapshot of example at this version
+  input STRING NOT NULL,
+  expected_output STRING NOT NULL,
+  explanation STRING,
+
+  -- What changed
+  change_type STRING NOT NULL,    -- created, updated, quality_updated
+  change_summary STRING,
+  changed_fields ARRAY<STRING>,
+
+  -- Who and when
+  changed_by STRING,
+  changed_at TIMESTAMP DEFAULT current_timestamp(),
+
+  CONSTRAINT example_versions_pk PRIMARY KEY (id)
+) USING DELTA;
+
+
+-- ============================================================================
+-- DSPY INTEGRATION TABLES (PRD v2)
+-- ============================================================================
+
+-- DSPy Optimization Runs
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.dspy_runs (
+  run_id STRING NOT NULL,
+
+  -- What's being optimized
+  databit_id STRING,              -- Template/DataBit being optimized
+  dataset_id STRING,              -- Training dataset used
+
+  -- Optimizer configuration
+  optimizer_type STRING NOT NULL, -- BootstrapFewShot, MIPROv2, etc.
+  metric_function STRING,         -- Name of metric function
+  optimizer_config STRING,        -- JSON: optimizer parameters
+
+  -- Training data
+  training_data_size INT,
+  eval_data_size INT,
+
+  -- Status
+  status STRING NOT NULL DEFAULT 'pending',  -- pending, running, completed, failed, cancelled
+  progress DOUBLE DEFAULT 0.0,
+  current_trial INT DEFAULT 0,
+  total_trials INT,
+
+  -- Results
+  best_metric_value DOUBLE,
+  best_trial_num INT,
+  results STRING,                 -- JSON: full optimization results
+  optimized_examples STRING,      -- JSON: examples discovered during optimization
+
+  -- MLflow integration
+  mlflow_experiment_id STRING,
+  mlflow_run_id STRING,
+
+  -- Error handling
+  error_message STRING,
+  error_traceback STRING,
+
+  -- Timestamps
+  started_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT current_timestamp(),
+  created_by STRING,
+
+  CONSTRAINT dspy_runs_pk PRIMARY KEY (run_id)
+) USING DELTA
+TBLPROPERTIES (
+  'delta.enableChangeDataFeed' = 'true'
+);
+
+-- DSPy Trial Results - Individual trials within an optimization run
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.dspy_trial_results (
+  id STRING NOT NULL,
+  run_id STRING NOT NULL,
+  trial_num INT NOT NULL,
+
+  -- Configuration for this trial
+  trial_config STRING,            -- JSON: hyperparameters for this trial
+
+  -- Examples used in this trial
+  example_ids ARRAY<STRING>,
+  num_examples INT,
+
+  -- Metrics
+  metric_value DOUBLE,
+  all_metrics STRING,             -- JSON: all metrics computed
+
+  -- Timing
+  started_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  duration_seconds DOUBLE,
+
+  CONSTRAINT dspy_trial_results_pk PRIMARY KEY (id),
+  CONSTRAINT dspy_trial_results_run_fk FOREIGN KEY (run_id)
+    REFERENCES ${catalog}.${schema}.dspy_runs(run_id)
+) USING DELTA;

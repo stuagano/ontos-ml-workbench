@@ -1,0 +1,320 @@
+{
+  "description": "Few-shot examples for radiation detector predictive maintenance",
+  "domain": "predictive_maintenance",
+  "version": "1.0",
+  "examples": [
+    {
+      "input": {
+        "equipment_id": "DET-NPP-COOK-001",
+        "equipment_type": "gamma_detector",
+        "telemetry": {
+          "operating_hours": 8760,
+          "temperature_avg_c": 22.5,
+          "temperature_variance": 1.2,
+          "humidity_avg_pct": 45,
+          "count_rate_stability": 0.98,
+          "high_voltage_stability": 0.99,
+          "calibration_drift_pct": 0.5
+        },
+        "maintenance_history": {
+          "last_calibration": "2023-11-01",
+          "last_inspection": "2024-01-15",
+          "total_maintenance_events": 3
+        },
+        "current_date": "2024-01-30"
+      },
+      "expected_output": {
+        "failure_probability_30d": 0.02,
+        "failure_probability_90d": 0.05,
+        "remaining_useful_life_days": 450,
+        "risk_level": "low",
+        "recommended_actions": [
+          {"action": "routine_calibration", "due_date": "2024-05-01", "priority": "normal"}
+        ],
+        "reasoning": "Equipment showing excellent stability across all metrics. Low operating hours, minimal calibration drift, and stable environmental conditions indicate healthy detector with extended useful life remaining."
+      },
+      "explanation": "Healthy equipment with low failure risk - baseline example of normal operation",
+      "difficulty": "easy",
+      "capability_tags": ["healthy_equipment", "low_risk", "routine_maintenance"],
+      "search_keys": ["healthy", "low risk", "stable", "normal operation"]
+    },
+    {
+      "input": {
+        "equipment_id": "DET-NPP-PALO-003",
+        "equipment_type": "gamma_detector",
+        "telemetry": {
+          "operating_hours": 35000,
+          "temperature_avg_c": 29.5,
+          "temperature_variance": 4.8,
+          "humidity_avg_pct": 55,
+          "count_rate_stability": 0.89,
+          "high_voltage_stability": 0.94,
+          "calibration_drift_pct": 3.2,
+          "efficiency_trend": "declining",
+          "efficiency_drop_30d_pct": 2.1
+        },
+        "maintenance_history": {
+          "last_calibration": "2023-06-15",
+          "last_inspection": "2023-12-01",
+          "total_maintenance_events": 12,
+          "recent_repairs": ["crystal_alignment", "connector_replacement"]
+        },
+        "current_date": "2024-01-30"
+      },
+      "expected_output": {
+        "failure_probability_30d": 0.18,
+        "failure_probability_90d": 0.42,
+        "remaining_useful_life_days": 120,
+        "risk_level": "high",
+        "recommended_actions": [
+          {"action": "immediate_calibration", "due_date": "2024-02-05", "priority": "high"},
+          {"action": "crystal_inspection", "due_date": "2024-02-15", "priority": "high"},
+          {"action": "hv_supply_test", "due_date": "2024-02-15", "priority": "medium"}
+        ],
+        "reasoning": "Multiple warning indicators: high operating hours (35k), declining efficiency trend (2.1% drop in 30 days), elevated calibration drift (3.2%), and degraded HV stability (0.94). Temperature variance suggests environmental stress. History of crystal and connector issues indicates aging equipment approaching end of reliable service life. Recommend accelerated inspection schedule and planning for replacement."
+      },
+      "explanation": "High-risk equipment with multiple degradation indicators - demonstrates multi-factor risk assessment",
+      "difficulty": "medium",
+      "capability_tags": ["high_risk", "aging_equipment", "multiple_indicators", "replacement_planning"],
+      "search_keys": ["high risk", "aging", "declining", "replacement", "degradation"]
+    },
+    {
+      "input": {
+        "equipment_id": "DET-NPP-WATTS-007",
+        "equipment_type": "neutron_detector",
+        "telemetry": {
+          "operating_hours": 18500,
+          "temperature_avg_c": 24.0,
+          "temperature_variance": 1.5,
+          "humidity_avg_pct": 48,
+          "count_rate_stability": 0.95,
+          "high_voltage_stability": 0.88,
+          "calibration_drift_pct": 1.8,
+          "pulse_shape_anomaly_count": 15
+        },
+        "maintenance_history": {
+          "last_calibration": "2023-09-01",
+          "last_inspection": "2024-01-10",
+          "total_maintenance_events": 6,
+          "recent_repairs": []
+        },
+        "current_date": "2024-01-30"
+      },
+      "expected_output": {
+        "failure_probability_30d": 0.12,
+        "failure_probability_90d": 0.28,
+        "remaining_useful_life_days": 180,
+        "risk_level": "medium",
+        "recommended_actions": [
+          {"action": "hv_supply_diagnostics", "due_date": "2024-02-10", "priority": "high"},
+          {"action": "pulse_shape_analysis", "due_date": "2024-02-10", "priority": "high"},
+          {"action": "calibration", "due_date": "2024-03-01", "priority": "medium"}
+        ],
+        "reasoning": "HV supply showing early signs of instability (0.88) combined with pulse shape anomalies (15 events) suggests developing power supply issue. While count rate remains acceptable, these are leading indicators of potential failure. Neutron detector HV supplies are critical - recommend immediate diagnostics to determine if capacitor degradation or other PSU component issue."
+      },
+      "explanation": "Specific subsystem degradation pattern (HV supply) - shows targeted diagnosis capability",
+      "difficulty": "medium",
+      "capability_tags": ["hv_supply", "pulse_anomaly", "subsystem_failure", "early_warning"],
+      "search_keys": ["high voltage", "HV", "power supply", "pulse", "anomaly"]
+    },
+    {
+      "input": {
+        "equipment_id": "DET-MED-HOSPITAL-012",
+        "equipment_type": "scintillation_detector",
+        "telemetry": {
+          "operating_hours": 5200,
+          "temperature_avg_c": 21.0,
+          "temperature_variance": 0.8,
+          "humidity_avg_pct": 42,
+          "count_rate_stability": 0.97,
+          "high_voltage_stability": 0.98,
+          "calibration_drift_pct": 0.8,
+          "energy_resolution_kev": 7.8,
+          "energy_resolution_trend": "stable"
+        },
+        "maintenance_history": {
+          "last_calibration": "2023-12-15",
+          "last_inspection": "2024-01-20",
+          "total_maintenance_events": 2,
+          "recent_repairs": []
+        },
+        "current_date": "2024-01-30"
+      },
+      "expected_output": {
+        "failure_probability_30d": 0.01,
+        "failure_probability_90d": 0.03,
+        "remaining_useful_life_days": 800,
+        "risk_level": "low",
+        "recommended_actions": [
+          {"action": "routine_calibration", "due_date": "2024-06-15", "priority": "normal"},
+          {"action": "annual_inspection", "due_date": "2025-01-20", "priority": "normal"}
+        ],
+        "reasoning": "Medical imaging detector in excellent condition. Low operating hours, controlled environment (climate-controlled hospital setting), excellent energy resolution (7.8 keV), and all stability metrics near optimal. No maintenance concerns - follow standard annual inspection schedule."
+      },
+      "explanation": "Medical application with strict quality requirements - shows domain-aware assessment",
+      "difficulty": "easy",
+      "capability_tags": ["medical_application", "healthy", "quality_critical"],
+      "search_keys": ["medical", "hospital", "excellent condition", "quality"]
+    },
+    {
+      "input": {
+        "equipment_id": "DET-NPP-DIABLO-005",
+        "equipment_type": "area_monitor",
+        "telemetry": {
+          "operating_hours": 52000,
+          "temperature_avg_c": 26.0,
+          "temperature_variance": 3.2,
+          "humidity_avg_pct": 58,
+          "count_rate_stability": 0.92,
+          "high_voltage_stability": 0.96,
+          "calibration_drift_pct": 2.5,
+          "background_rate_increase_pct": 8
+        },
+        "maintenance_history": {
+          "last_calibration": "2023-08-01",
+          "last_inspection": "2023-11-15",
+          "total_maintenance_events": 18,
+          "recent_repairs": ["tube_replacement", "power_supply_cap", "connector_reseat"],
+          "planned_decommission": "2025-06-01"
+        },
+        "current_date": "2024-01-30"
+      },
+      "expected_output": {
+        "failure_probability_30d": 0.08,
+        "failure_probability_90d": 0.22,
+        "remaining_useful_life_days": 250,
+        "risk_level": "medium",
+        "recommended_actions": [
+          {"action": "calibration", "due_date": "2024-02-15", "priority": "high"},
+          {"action": "background_investigation", "due_date": "2024-02-10", "priority": "medium"},
+          {"action": "replacement_planning", "due_date": "2024-04-01", "priority": "medium"}
+        ],
+        "reasoning": "Aging area monitor (52k hours) approaching planned decommission. Elevated background rate increase (8%) warrants investigation - could be detector degradation or environmental change. Given planned 2025 replacement, focus on maintaining acceptable performance through remaining service life rather than major overhaul. Frequent calibration and monitoring recommended."
+      },
+      "explanation": "End-of-life equipment management - balancing maintenance investment against replacement timeline",
+      "difficulty": "hard",
+      "capability_tags": ["end_of_life", "decommission_planning", "cost_benefit"],
+      "search_keys": ["end of life", "aging", "decommission", "replacement"]
+    },
+    {
+      "input": {
+        "equipment_id": "DET-NPP-BYRON-009",
+        "equipment_type": "gamma_detector",
+        "telemetry": {
+          "operating_hours": 12000,
+          "temperature_avg_c": 31.5,
+          "temperature_variance": 6.2,
+          "humidity_avg_pct": 72,
+          "count_rate_stability": 0.91,
+          "high_voltage_stability": 0.93,
+          "calibration_drift_pct": 2.1
+        },
+        "maintenance_history": {
+          "last_calibration": "2023-10-01",
+          "last_inspection": "2024-01-05",
+          "total_maintenance_events": 5,
+          "recent_repairs": [],
+          "environment_notes": "Located in turbine building auxiliary area"
+        },
+        "current_date": "2024-01-30"
+      },
+      "expected_output": {
+        "failure_probability_30d": 0.15,
+        "failure_probability_90d": 0.35,
+        "remaining_useful_life_days": 200,
+        "risk_level": "high",
+        "recommended_actions": [
+          {"action": "environmental_assessment", "due_date": "2024-02-05", "priority": "high"},
+          {"action": "relocate_or_protect", "due_date": "2024-02-28", "priority": "high"},
+          {"action": "corrosion_inspection", "due_date": "2024-02-15", "priority": "medium"}
+        ],
+        "reasoning": "Environmental stress is primary concern: high temperature (31.5°C avg), high variance (6.2°C), and excessive humidity (72%) are accelerating equipment degradation despite relatively low operating hours. Turbine building location explains conditions. Without environmental mitigation, expect accelerated failure. Recommend either relocation to controlled environment or installation of local cooling/dehumidification."
+      },
+      "explanation": "Environmental factors dominating failure risk - shows importance of operating context",
+      "difficulty": "medium",
+      "capability_tags": ["environmental_stress", "humidity", "temperature", "relocation"],
+      "search_keys": ["environment", "humidity", "temperature", "harsh conditions"]
+    },
+    {
+      "input": {
+        "equipment_id": "DET-NPP-SURRY-002",
+        "equipment_type": "gamma_detector",
+        "telemetry": {
+          "operating_hours": 22000,
+          "temperature_avg_c": 23.0,
+          "temperature_variance": 1.1,
+          "humidity_avg_pct": 44,
+          "count_rate_stability": 0.85,
+          "high_voltage_stability": 0.97,
+          "calibration_drift_pct": 4.5,
+          "last_24h_readings": [142, 138, 145, 89, 141, 140, 143, 85, 139, 142],
+          "anomaly_flag": "intermittent_dropouts"
+        },
+        "maintenance_history": {
+          "last_calibration": "2023-07-15",
+          "last_inspection": "2023-12-20",
+          "total_maintenance_events": 8,
+          "recent_repairs": []
+        },
+        "current_date": "2024-01-30"
+      },
+      "expected_output": {
+        "failure_probability_30d": 0.25,
+        "failure_probability_90d": 0.55,
+        "remaining_useful_life_days": 90,
+        "risk_level": "critical",
+        "recommended_actions": [
+          {"action": "immediate_inspection", "due_date": "2024-02-01", "priority": "critical"},
+          {"action": "signal_chain_test", "due_date": "2024-02-01", "priority": "critical"},
+          {"action": "prepare_replacement", "due_date": "2024-02-05", "priority": "high"}
+        ],
+        "reasoning": "CRITICAL: Intermittent dropout pattern visible in telemetry (readings of 89, 85 among normal ~140 range) indicates imminent failure mode. Combined with poor count rate stability (0.85) and high calibration drift (4.5%), this suggests signal chain degradation - possibly cable, connector, or preamplifier issue. Intermittent failures in radiation monitors are unacceptable for safety. Recommend immediate removal from service for diagnosis and likely replacement."
+      },
+      "explanation": "Critical pattern recognition from telemetry - intermittent dropouts require immediate action",
+      "difficulty": "hard",
+      "capability_tags": ["critical_failure", "intermittent", "signal_chain", "immediate_action"],
+      "search_keys": ["intermittent", "dropout", "critical", "signal", "immediate"]
+    },
+    {
+      "input": {
+        "equipment_id": "DET-NPP-COOK-015",
+        "equipment_type": "neutron_detector",
+        "telemetry": {
+          "operating_hours": 28000,
+          "temperature_avg_c": 24.5,
+          "temperature_variance": 1.8,
+          "humidity_avg_pct": 46,
+          "count_rate_stability": 0.94,
+          "high_voltage_stability": 0.96,
+          "calibration_drift_pct": 1.5,
+          "he3_pressure_psi": 3.8,
+          "he3_pressure_spec_psi": 4.0
+        },
+        "maintenance_history": {
+          "last_calibration": "2023-09-15",
+          "last_inspection": "2024-01-10",
+          "total_maintenance_events": 7,
+          "recent_repairs": [],
+          "he3_pressure_history": [4.0, 3.95, 3.9, 3.85, 3.8]
+        },
+        "current_date": "2024-01-30"
+      },
+      "expected_output": {
+        "failure_probability_30d": 0.10,
+        "failure_probability_90d": 0.30,
+        "remaining_useful_life_days": 365,
+        "risk_level": "medium",
+        "recommended_actions": [
+          {"action": "he3_leak_test", "due_date": "2024-02-15", "priority": "high"},
+          {"action": "seal_inspection", "due_date": "2024-02-15", "priority": "high"},
+          {"action": "sensitivity_trending", "due_date": "2024-02-01", "priority": "medium"}
+        ],
+        "reasoning": "He-3 pressure declining (4.0 → 3.8 psi over time, now 5% below spec). Slow leak in neutron detector tube. While detector still functional, continued leakage will eventually degrade sensitivity below acceptable limits. He-3 replacement is expensive and supply-constrained - early intervention (seal repair) preferred over tube replacement. Start sensitivity trending to establish baseline."
+      },
+      "explanation": "Specialized detector type (He-3) with unique failure mode - shows equipment-specific knowledge",
+      "difficulty": "hard",
+      "capability_tags": ["neutron_detector", "he3", "slow_leak", "specialized"],
+      "search_keys": ["neutron", "He-3", "helium", "pressure", "leak"]
+    }
+  ]
+}

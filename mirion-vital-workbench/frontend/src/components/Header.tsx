@@ -2,16 +2,25 @@
  * Header component with app title, user info, and theme toggle
  */
 
-import { Database, ExternalLink, User, Sun, Moon, Monitor } from 'lucide-react';
+import { Database, ExternalLink, User, Sun, Moon, Monitor, BookOpen } from 'lucide-react';
+import { clsx } from 'clsx';
 import { useTheme } from '../hooks/useTheme';
 
 interface HeaderProps {
   appName: string;
   currentUser: string;
   workspaceUrl: string;
+  showExamples?: boolean;
+  onToggleExamples?: () => void;
 }
 
-export function Header({ appName, currentUser, workspaceUrl }: HeaderProps) {
+export function Header({
+  appName,
+  currentUser,
+  workspaceUrl,
+  showExamples,
+  onToggleExamples,
+}: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
 
   const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
@@ -24,6 +33,22 @@ export function Header({ appName, currentUser, workspaceUrl }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Example Store Button */}
+        {onToggleExamples && (
+          <button
+            onClick={onToggleExamples}
+            className={clsx(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors",
+              showExamples
+                ? "bg-purple-600 text-white"
+                : "text-db-gray-300 hover:text-white hover:bg-white/10"
+            )}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Examples</span>
+          </button>
+        )}
+
         {workspaceUrl && (
           <button
             onClick={() => window.open(workspaceUrl, '_blank')}

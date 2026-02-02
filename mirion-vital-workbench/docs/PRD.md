@@ -1,58 +1,190 @@
-# Databits Workbench - Product Requirements Document
+# Training Dataset Workbench - Product Requirements Document
+
+**Version:** 2.0
+**Date:** January 30, 2026
+**Status:** Draft
+
+---
 
 ## Executive Summary
 
-Databits Workbench is a Databricks App that provides a complete lifecycle for building governed AI - from raw data to deployed agents with full observability. It treats prompt templates ("Databits"), models, tools, and agents as first-class Unity Catalog assets, enabling non-technical teams to participate while maintaining enterprise governance.
+The Training Dataset Workbench is a no-code, multimodal data curation platform built natively on the Databricks Lakehouse. It enables enterprise AI teams to create, version, and optimize training datasets through composable data units called **DataBits**, with first-class integration into DSPy optimization pipelines, MLflow experiment tracking, and a managed **Example Store** for dynamic few-shot learning.
 
-**One-liner:** "The Databricks App for the complete AI lifecycle - data, templates, curation, training, deployment, and monitoring - all governed by Unity Catalog."
+The platform addresses a critical gap in enterprise AI workflows: the absence of systematic tooling for training data management that connects data preparation to model optimization. While labeling tools produce static exports and prompt engineering remains artisanal, the Workbench creates a continuous feedback loop between data curation and model performance.
+
+**One-liner:** "The Databricks platform for the complete AI data lifecycle - from raw data to optimized prompts with full governance."
 
 ---
 
 ## Problem Statement
 
-### The Platform Gap
+Enterprise AI teams face compounding inefficiencies in training data management:
 
-Databricks provides powerful primitives:
-- Unity Catalog for governance
-- MLflow for experiment tracking
-- Model Serving for deployment
-- AI Functions for intelligence
-- Agent Framework for orchestration
+| Problem | Impact |
+|---------|--------|
+| **Fragmented tooling** | Data annotation, versioning, and model training exist in disconnected silos requiring manual handoffs and format translations |
+| **No lineage or attribution** | When a model fails on specific inputs, tracing back to the training data that caused the behavior is nearly impossible |
+| **Manual prompt optimization** | Teams iterate on prompts through trial and error rather than systematic optimization against curated ground truth |
+| **Static few-shot examples** | Examples are hardcoded in prompts rather than dynamically retrieved based on query similarity, leading to bloated context and suboptimal performance |
+| **Multimodal complexity** | Existing tools assume text-only workflows; vision, audio, and document data require separate pipelines |
 
-But there's no unified workflow that:
-1. Connects these pieces end-to-end
-2. Includes non-technical users (labelers, domain experts, compliance)
-3. Treats the full AI stack as governed assets
-4. Provides Day 2 operations (monitoring, feedback loops)
+### Target Users
 
-### The Current Reality
-
-| Persona | Pain Point |
-|---------|------------|
-| **Domain Expert** | "I need to label data but can't write SQL" |
-| **ML Engineer** | "I manage models but can't trace to training data" |
-| **Agent Developer** | "I wire up tools manually with no governance" |
-| **Ops Team** | "I can't see why the agent quality dropped" |
-| **Compliance** | "I can't audit the full chain from data to production" |
-
-### The Workaround
-
-Teams build fragmented solutions:
-- Streamlit apps for labeling
-- Notebooks for training
-- Manual tool registration
-- Custom monitoring dashboards
-- Spreadsheets for tracking
-
-**Result:** No lineage, no governance, no unified view.
+| Persona | Role | Primary Need |
+|---------|------|--------------|
+| **ML Engineer** | Builds and deploys models | Versioned datasets that integrate with training pipelines |
+| **Data Scientist** | Experiments with model architectures | Rapid iteration on data composition |
+| **Domain Expert** | Provides labeling and validation | Intuitive annotation without code |
+| **AI Platform Lead** | Governs AI initiatives | Audit trails and compliance visibility |
+| **Agent Developer** | Builds LLM-powered agents | Dynamic few-shot examples for agent improvement |
 
 ---
 
-## Solution
+## Core Concepts
 
-### The Databits Workbench
+### DataBits
 
-A single Databricks App that manages the complete AI lifecycle:
+A **DataBit** is the atomic unit of training data in the Workbench. Each DataBit is immutable, versioned, and carries full provenance metadata. DataBits can contain any modality (text, image, audio, video, document) and are composable into larger dataset structures.
+
+**DataBit Schema:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `databit_id` | UUID | Immutable unique identifier |
+| `version` | INTEGER | Monotonically increasing version number |
+| `content` | VARIANT | Multimodal payload (text, image ref, embedding, etc.) |
+| `modality` | STRING | `text` \| `image` \| `audio` \| `video` \| `document` \| `structured` |
+| `source_uri` | STRING | Original data source location |
+| `attribution` | STRUCT | Creator, license, derived_from references |
+| `labels` | MAP<STRING, VARIANT> | Flexible annotation schema |
+| `quality_scores` | MAP<STRING, FLOAT> | Automated and human quality metrics |
+| `search_keys` | ARRAY<STRING> | Semantic search keys for Example Store retrieval |
+| `embedding` | ARRAY<FLOAT> | Vector embedding for similarity search |
+| `created_at` | TIMESTAMP | Creation timestamp |
+| `created_by` | STRING | User or system identity |
+
+### DataSets
+
+A **DataSet** is a named, versioned collection of DataBit references with associated metadata. DataSets are defined declaratively and can be composed through set operations (union, intersection, difference) or filtering predicates.
+
+### Attribution Model
+
+Every DataBit maintains a directed acyclic graph (DAG) of attribution relationships. When a DataBit is derived from another (augmentation, synthesis, transformation), the lineage is preserved. This enables model behavior to be traced back to specific training inputs and their origins.
+
+---
+
+## Example Store
+
+The **Example Store** is a managed service for storing and dynamically retrieving few-shot examples. Rather than hardcoding examples in prompts, agents and LLM applications retrieve relevant examples at runtime based on semantic similarity to the incoming query.
+
+### What Are Few-Shot Examples?
+
+A few-shot example is a labeled input-output pair demonstrating expected model behavior for a specific use case. Examples enable in-context learning without fine-tuning: they show the model the expected pattern rather than explaining it. By dynamically selecting only relevant examples, you cover more possible outcomes with fewer tokens while maintaining or improving performance.
+
+### Example Store Architecture
+
+The Example Store is built on Databricks Vector Search with the following components:
+
+- **Example Registry:** Delta Lake table storing examples as specialized DataBits with input, expected_output, and search_keys fields
+- **Vector Index:** Databricks Vector Search index on example embeddings for cosine similarity retrieval
+- **Retrieval API:** REST and Python SDK for querying examples with optional filtering by function name, domain, or quality threshold
+- **Agent Integration:** Native hooks for Mosaic AI Agent Framework to automatically retrieve and inject examples into prompts
+
+### Example Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `example_id` | UUID | Unique identifier (extends DataBit) |
+| `input` | VARIANT | User query or model input demonstrating the scenario |
+| `expected_output` | VARIANT | Expected model response or behavior |
+| `search_keys` | ARRAY<STRING> | Semantic keys for similarity matching |
+| `embedding` | ARRAY<FLOAT> | Vector embedding of input for retrieval |
+| `function_name` | STRING | Optional: tool/function this example demonstrates |
+| `domain` | STRING | Optional: domain or use case category |
+| `quality_score` | FLOAT | Human or automated quality rating (0-1) |
+| `usage_count` | INTEGER | Times this example has been retrieved |
+| `effectiveness_score` | FLOAT | Measured impact on model performance when used |
+
+### Example Store Workflow
+
+| Step | Action | Outcome |
+|------|--------|---------|
+| 1 | Observe unexpected model behavior | Identify gap in model reasoning or output |
+| 2 | Author corrective example with input/output pair | Example demonstrates expected behavior |
+| 3 | Upload example to Example Store via UI or API | Example indexed and immediately available |
+| 4 | Agent receives similar query at runtime | Example Store retrieves relevant examples |
+| 5 | Examples injected into prompt automatically | Model follows demonstrated pattern |
+| 6 | Track example effectiveness over time | Prune low-impact examples, amplify high-impact ones |
+
+### Guidelines for Authoring Examples
+
+- **Relevance:** Examples must be closely related to the specific task or domain. Relevant examples improve performance with fewer tokens.
+- **Low Complexity:** Use simple, clear examples that demonstrate expected reasoning without unnecessary complexity.
+- **Representative Coverage:** Examples should cover the range of possible model outcomes and user query patterns.
+- **Consistent Formatting:** Format examples consistently with the model's training data and differentiated from conversation history.
+
+### Use Case: Function Calling Correction
+
+When an agent fails to invoke the correct tool or passes incorrect arguments, create an example demonstrating the expected function call. The example includes the user query, the expected tool invocation, and the correct arguments. Subsequent similar queries will retrieve this example and guide the model toward correct behavior without code changes or redeployment.
+
+---
+
+## DSPy Integration
+
+The Workbench is designed as a **DSPy-native platform**, meaning curated datasets and Example Store contents directly integrate with DSPy optimization pipelines without intermediate transformation steps.
+
+### Integration Architecture
+
+| Component | Integration |
+|-----------|-------------|
+| **Example Selection** | DataBits tagged as high-quality examples can be automatically surfaced as few-shot candidates for DSPy optimizers. The Example Store serves as the canonical source. |
+| **Evaluation Sets** | DataSets can be designated as evaluation ground truth, enabling DSPy metrics to score against curated benchmarks. |
+| **Optimization Feedback Loop** | DSPy optimization runs generate performance metrics that flow back into DataBit quality scores and Example Store effectiveness ratings. |
+| **Signature Alignment** | DataSet schemas can be validated against DSPy signature definitions to ensure compatibility before optimization runs. |
+
+### DSPy + Example Store Synergy
+
+The Example Store and DSPy serve complementary purposes:
+- **Example Store** enables immediate, zero-deployment corrections through dynamic few-shot retrieval
+- **DSPy** enables systematic prompt optimization when you have sufficient evaluation data
+
+**Workflow:** Use Example Store for rapid iteration and edge case handling, then periodically run DSPy optimization to bake the best examples into optimized prompts.
+
+### DSPy Workflow
+
+| Step | Workbench Action | DSPy Integration |
+|------|------------------|------------------|
+| 1 | Curate DataBits with task-specific labels | Labels map to DSPy signature fields |
+| 2 | Assemble DataSet with train/eval splits | Export as DSPy-compatible dataset object |
+| 3 | Define quality thresholds for example selection | Optimizer draws few-shot examples from Example Store |
+| 4 | Run DSPy optimization (logged to MLflow) | Optimizer evaluates against curated ground truth |
+| 5 | Ingest optimization metrics back to DataBits | Per-example performance scores update quality_scores |
+
+### Consumption Impact
+
+Both Example Store retrieval and DSPy optimization generate compute consumption:
+- Example retrieval uses Vector Search DBUs
+- DSPy optimization runs evaluate hundreds of prompt configurations against evaluation sets, each requiring LLM inference calls
+
+The tighter the Workbench integration, the more naturally customers enter this optimization-consumption flywheel.
+
+---
+
+## MLflow Integration
+
+All Workbench operations are tracked as MLflow experiments, providing complete auditability and reproducibility.
+
+| Capability | Description |
+|------------|-------------|
+| **Dataset Versions as Artifacts** | Each DataSet version is logged as an MLflow artifact with associated metadata |
+| **Example Store Snapshots** | Example Store state can be snapshotted and linked to model versions for reproducibility |
+| **Experiment Tracking** | DSPy optimization runs create MLflow runs with hyperparameters (optimizer config, example count) and metrics (evaluation scores) |
+| **Model Registry Linkage** | Optimized DSPy modules can be registered with explicit links to the DataSet versions and Example Store snapshots used |
+| **Lineage Queries** | Given a deployed model, trace back to exact DataBits and examples that influenced its behavior |
+
+---
+
+## The Complete Lifecycle
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -60,8 +192,8 @@ A single Databricks App that manages the complete AI lifecycle:
 │  DATA ──▶ TEMPLATE ──▶ CURATE ──▶ TRAIN ──▶ DEPLOY ──▶ MONITOR ──▶ IMPROVE │
 │    │          │           │          │         │          │           │     │
 │    ▼          ▼           ▼          ▼         ▼          ▼           │     │
-│  Tables   Databits    Labeled     Models   Endpoints   Evals    ◀────┘     │
-│  Volumes  (templates) Examples   (UC)     Agents      Traces   (feedback)  │
+│  Tables   DataBits    Labeled     Models   Endpoints   Evals    ◀────┘     │
+│  Volumes  Examples    Examples   (UC)     Agents      Traces   (feedback)  │
 │                                           Tools       Metrics              │
 │                                           Guardrails  Alerts               │
 │                                                                             │
@@ -70,69 +202,6 @@ A single Databricks App that manages the complete AI lifecycle:
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
-
-### First-Class Unity Catalog Assets
-
-| Registry | Asset Type | What It Tracks |
-|----------|------------|----------------|
-| **Tables/Volumes** | Data | Raw and curated data |
-| **Tables** | Databits | Prompt templates + schema + examples |
-| **Model Registry** | Models | Trained models with lineage |
-| **Function Registry** | Tools | UC Functions callable by agents |
-| **Tables** | Agents | Agent definitions + tool bindings |
-| **Serving** | Endpoints | Deployed models/agents |
-| **Tables** | Evaluations | Quality metrics, traces |
-
-### The Databit (Core Artifact)
-
-A prompt template as a governed, versioned asset:
-
-```yaml
-name: contract_classifier
-version: 2.1.0
-status: published
-
-# What data this template expects
-schema:
-  input:
-    - name: document_text
-      type: string
-      source: "main.contracts.parsed_documents"
-    - name: document_type
-      type: string
-      source: "main.contracts.metadata"
-  output:
-    - name: classification
-      type: enum[amendment, termination, renewal, new]
-    - name: confidence
-      type: float
-    - name: key_clauses
-      type: array<string>
-
-# The prompt
-template: |
-  You are a legal document classifier specializing in {document_type} contracts.
-  
-  Analyze this document and classify it:
-  {document_text}
-  
-  Return classification, confidence, and key clauses.
-
-# Few-shot examples (curated and approved)
-examples:
-  - input: { document_text: "...", document_type: "services" }
-    output: { classification: "amendment", confidence: 0.95, key_clauses: ["..."] }
-
-# Lineage
-base_model: "databricks-meta-llama-3-1-70b-instruct"
-training_dataset: "main.training.contract_classifier_v2"
-created_by: "legal_team@company.com"
-approved_by: "compliance@company.com"
-```
-
----
-
-## The Complete Lifecycle
 
 ### Stage 1: DATA
 
@@ -147,9 +216,7 @@ approved_by: "compliance@company.com"
 | Transcribe Audio | Speech to text | ai_query |
 | Extract Video Frames | Video to images | Custom UDF |
 
-**UI:** Data source browser → deep link to UC Explorer for details.
-
-### Stage 2: TEMPLATE (Databits)
+### Stage 2: TEMPLATE (DataBits)
 
 **Purpose:** Define what you're building - schema, prompt, examples.
 
@@ -160,8 +227,6 @@ approved_by: "compliance@company.com"
 | Generate Examples | Create synthetic few-shot examples |
 | Version | Create immutable version |
 | Publish | Make available for curation/training |
-
-**UI:** Full Databit editor with schema builder, prompt editor, example manager.
 
 ### Stage 3: CURATE
 
@@ -179,8 +244,6 @@ approved_by: "compliance@company.com"
 | Filter Toxicity | Safety filtering | ai_query |
 | Human Review | Approve/reject/correct | App UI |
 
-**UI:** Curation queue with AI pre-labels, confidence scores, bulk actions, keyboard shortcuts.
-
 ### Stage 4: TRAIN
 
 **Purpose:** Fine-tune models on curated data.
@@ -192,8 +255,6 @@ approved_by: "compliance@company.com"
 | Register Model | To UC Model Registry | MLflow |
 | Evaluate | Run eval suite | MLflow Evaluate |
 | Compare Versions | A/B metrics | MLflow |
-
-**UI:** Training launcher, progress tracking, model comparison, link to MLflow.
 
 ### Stage 5: DEPLOY
 
@@ -208,8 +269,6 @@ approved_by: "compliance@company.com"
 | Create Endpoint | Deploy to serving | Model Serving |
 | Test | Playground testing | App UI |
 
-**UI:** Agent builder, tool registry, guardrail config, one-click deploy, playground.
-
 ### Stage 6: MONITOR (Day 2)
 
 **Purpose:** Observe production behavior, catch issues.
@@ -223,8 +282,6 @@ approved_by: "compliance@company.com"
 | Alert | Threshold breaches | Workflows + alerts |
 | A/B Analysis | Compare versions | Custom analysis |
 
-**UI:** Metrics dashboard, trace viewer, alert config, drift visualization.
-
 ### Stage 7: IMPROVE (Feedback Loop)
 
 **Purpose:** Close the loop - production feedback → retraining.
@@ -236,174 +293,109 @@ approved_by: "compliance@company.com"
 | Gap Analysis | What's the model missing? |
 | Trigger Retraining | When threshold hit |
 
-**UI:** Feedback panel, automatic routing to curation queue, retraining recommendations.
-
 ---
 
-## The Registries
+## Feature Requirements
 
-### Databits Registry
+### P0: Core Platform
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Databits                                              [+ New]  │
-├─────────────────────────────────────────────────────────────────┤
-│  contract_classifier      v2.1.0   published   1,247 examples   │
-│  support_response         v1.4.0   published     892 examples   │
-│  product_qa               v3.0.0   published   2,104 examples   │
-│  invoice_extractor        v1.0.0   draft         156 examples   │
-└─────────────────────────────────────────────────────────────────┘
-```
+| Feature | Description |
+|---------|-------------|
+| DataBit CRUD | Create, read, update (via new version), delete DataBits through UI and API |
+| DataSet Management | Declarative DataSet definitions with version history |
+| Unity Catalog Integration | DataBits and DataSets registered as UC assets with governance policies |
+| Text Annotation UI | No-code labeling interface for text classification, NER, and span annotation |
+| Import/Export | Ingest from common formats (JSONL, Parquet, CSV); export to DSPy-compatible structures |
 
-### Tools Registry (UC Functions)
+### P1: Example Store + DSPy Native
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Tools                                                 [+ New]  │
-├─────────────────────────────────────────────────────────────────┤
-│  main.tools.search_contracts                                    │
-│  ├─ Used by: contract_agent, legal_assistant                    │
-│  ├─ Calls (24h): 1,247                                          │
-│  └─ Avg latency: 234ms                                          │
-│                                                                 │
-│  main.tools.get_customer_info                                   │
-│  ├─ Used by: support_agent                                      │
-│  ├─ Calls (24h): 3,891                                          │
-│  └─ Avg latency: 89ms                                           │
-└─────────────────────────────────────────────────────────────────┘
-```
+| Feature | Description |
+|---------|-------------|
+| Example Store Instance | Create and manage Example Store instances scoped to workspace or Unity Catalog |
+| Example Upload UI | No-code interface to author and upload input/output example pairs |
+| Semantic Retrieval API | REST and Python SDK for similarity-based example retrieval with filtering |
+| Agent Framework Hook | Native integration with Mosaic AI Agent Framework for automatic example injection |
+| DSPy Dataset Export | One-click export to DSPy dataset format with signature validation |
+| Optimization Run Launcher | Trigger DSPy optimization from Workbench UI with MLflow logging |
+| Metric Feedback Ingestion | Automatically update DataBit quality scores and example effectiveness from results |
 
-### Agents Registry
+### P2: Multimodal & Advanced
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Agents                                                [+ New]  │
-├─────────────────────────────────────────────────────────────────┤
-│  support_agent        v2.3.0   ● deployed   4 tools   1.2k/hr   │
-│  contract_agent       v1.1.0   ● deployed   2 tools   523/hr    │
-│  product_qa_agent     v3.0.0   ● deployed   3 tools   89/hr     │
-│  escalation_bot       v1.0.0   ○ staging    2 tools   —         │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Agent Detail View
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Agent: support_agent v2.3.0                           [Edit]   │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Base Model: databricks-meta-llama-3-1-70b-instruct            │
-│  Databit: support_response_template v1.4                        │
-│  Status: ● Deployed                                             │
-│                                                                 │
-│  Tools (4 bound)                                                │
-│  ├─ ☑ search_knowledge_base                                     │
-│  ├─ ☑ get_customer_info                                         │
-│  ├─ ☑ create_jira_ticket                                        │
-│  └─ ☑ escalate_to_human                                         │
-│                                                                 │
-│  Guardrails                                                     │
-│  ├─ ☑ PII filter (output)                                       │
-│  ├─ ☑ Toxicity filter (output)                                  │
-│  └─ ☑ Topic filter: no competitor mentions                      │
-│                                                                 │
-│  Lineage                                                        │
-│  ├─ Training Data: support_responses_v2 (1,247 examples)        │
-│  ├─ Fine-tuned: 2024-01-15                                      │
-│  └─ Deployed: 2024-01-16                                        │
-│                                                                 │
-│         [Playground]    [Metrics]    [Traces]                   │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Features by Priority
-
-### P0 - Must Have (MVP)
-
-| Feature | Stage |
-|---------|-------|
-| Pipeline Navigator | All |
-| Databit CRUD | Template |
-| Databit Editor (schema, prompt, examples) | Template |
-| Curation Queue | Curate |
-| AI-Assisted Labeling | Curate |
-| Human Review (approve/reject/correct) | Curate |
-| Training Job Launcher | Train |
-| Model Registration | Train |
-| Endpoint Deployment | Deploy |
-| Deep Links to Databricks | All |
-
-### P1 - Should Have
-
-| Feature | Stage |
-|---------|-------|
-| Tools Registry | Deploy |
-| Agents Registry | Deploy |
-| Agent Builder (tool binding, guardrails) | Deploy |
-| Playground | Deploy |
-| Basic Metrics Dashboard | Monitor |
-| Trace Viewer | Monitor |
-| Version History / Diff | Template |
-| Bulk Actions + Keyboard Shortcuts | Curate |
-
-### P2 - Nice to Have
-
-| Feature | Stage |
-|---------|-------|
-| Schema Inference | Template |
-| Synthetic Example Generation | Template |
-| All AI Functions (translate, summarize, etc.) | Curate |
-| Drift Detection | Monitor |
-| Alerting | Monitor |
-| Feedback Capture | Improve |
-| Automatic Routing to Curation | Improve |
-| Retraining Recommendations | Improve |
+| Feature | Description |
+|---------|-------------|
+| Image Annotation | Bounding box, polygon, and classification labeling for images |
+| Document Processing | PDF/document ingestion with layout-aware chunking |
+| Synthetic Data Generation | LLM-powered augmentation with attribution tracking |
+| Active Learning | Model-in-the-loop sampling to prioritize annotation efforts |
+| Collaborative Annotation | Multi-user workflows with consensus resolution |
+| Example Effectiveness Analytics | Dashboard showing which examples drive the most improvement |
 
 ---
 
 ## Technical Architecture
 
-### Deployment Model
+### Storage Layer
 
-- **Databricks App** - React frontend, FastAPI backend
-- **Databricks Asset Bundle (DAB)** - Single deploy for app + jobs + schemas
-- **Unity Catalog** - All state in governed Delta tables + registries
+- DataBits stored in Delta Lake tables with liquid clustering on `(databit_id, version)`
+- Example Store backed by Delta Lake with Databricks Vector Search index for retrieval
+- Binary content (images, audio) stored in Unity Catalog Volumes with references in DataBit records
+- DataSet definitions stored as versioned configuration (similar to DLT pipeline definitions)
+
+### Compute Layer
+
+- Annotation UI served via Databricks Apps
+- Example Store retrieval via Databricks Vector Search endpoints (serverless)
+- Batch processing (import, augmentation) via serverless jobs
+- DSPy optimization runs on GPU clusters with Foundation Model APIs
+
+### API Layer
+
+- REST API for programmatic access (create DataBits, query DataSets, retrieve examples)
+- Python SDK wrapping API with DSPy-native objects and Example Store client
+- SQL functions for DataSet queries within notebooks
 
 ### Data Model (Delta Tables)
 
 ```sql
--- Databits (prompt templates)
-databits.templates (
-  id, name, version, status,
-  schema_spec, prompt_template, examples,
-  base_model, training_dataset,
+-- DataBits (versioned data units)
+databits.databits (
+  id, databit_id, version, status,
+  content, modality, source_uri,
+  attribution, labels, quality_scores,
+  search_keys, embedding, embedding_model,
   created_by, created_at, updated_at
+)
+
+-- Example Store
+databits.example_store (
+  example_id, databit_id,
+  input, expected_output, explanation,
+  search_keys, embedding, embedding_model,
+  function_name, domain, quality_score,
+  usage_count, effectiveness_score,
+  created_by, created_at
+)
+
+-- DSPy Optimization Runs
+databits.dspy_runs (
+  run_id, databit_id, dataset_id,
+  optimizer_type, metric_function,
+  status, best_metric_value, results,
+  mlflow_run_id,
+  started_at, completed_at
 )
 
 -- Curation items
 databits.curation_items (
-  id, template_id, item_ref, item_data,
+  id, databit_id, item_ref, item_data,
   agent_label, agent_confidence,
   human_label, status,
   reviewed_by, reviewed_at, created_at
 )
 
--- Agents
-databits.agents (
-  id, name, version, status,
-  base_model, databit_id,
-  tools, guardrails,
-  endpoint_name,
-  created_by, created_at, updated_at
-)
-
 -- Job runs
 databits.job_runs (
-  id, job_type, template_id, agent_id,
+  id, job_type, databit_id,
   status, progress, result,
   started_at, completed_at
 )
@@ -415,177 +407,96 @@ databits.feedback (
   feedback_type, feedback_value, correction,
   created_by, created_at
 )
-
--- Metrics (aggregated)
-databits.metrics (
-  agent_id, endpoint_name,
-  timestamp, period,
-  request_count, error_count,
-  avg_latency, p99_latency,
-  quality_score
-)
-```
-
-### DAB Structure
-
-```
-databits-workbench/
-├── databricks.yml                    # Bundle config
-├── app/
-│   ├── app.yaml                      # Databricks App config
-│   ├── frontend/                     # React build
-│   └── backend/                      # FastAPI
-├── jobs/
-│   ├── ingest/
-│   │   ├── autoloader.py
-│   │   ├── ocr_extract.py
-│   │   ├── parse_documents.py
-│   │   └── generate_embeddings.py
-│   ├── curate/
-│   │   ├── ai_label.py
-│   │   ├── ai_extract.py
-│   │   ├── detect_pii.py
-│   │   └── score_quality.py
-│   ├── train/
-│   │   ├── assemble_data.py
-│   │   ├── fine_tune.py
-│   │   └── evaluate.py
-│   ├── deploy/
-│   │   ├── register_agent.py
-│   │   └── create_endpoint.py
-│   └── monitor/
-│       ├── collect_metrics.py
-│       ├── detect_drift.py
-│       └── process_feedback.py
-└── schemas/
-    └── init.sql                      # All table DDL
 ```
 
 ---
 
 ## Success Metrics
 
-| Metric | Target |
-|--------|--------|
-| Time to first deployed agent | < 1 day from data |
-| Curation velocity | 200+ items/hour (AI-assisted) |
-| Non-technical participation | Domain experts self-serve |
-| Governance coverage | 100% of assets in UC |
-| Mean time to detect issue | < 1 hour (with monitoring) |
-| Feedback loop closure | < 1 week from feedback to retrain |
+| Metric | Target (6mo) | Target (12mo) |
+|--------|--------------|---------------|
+| Active Workbench Projects | 100 | 500 |
+| DataBits Created (monthly) | 1M | 10M |
+| Example Store Instances | 200 | 1,000 |
+| Example Retrievals (monthly) | 10M | 100M |
+| DSPy Optimization Runs (monthly) | 1,000 | 10,000 |
+| DBU Consumption (attributed) | $500K ARR equivalent | $5M ARR equivalent |
 
 ---
 
-## Non-Goals
+## Competitive Positioning
 
-- **Not replacing Unity Catalog** - We register assets there
-- **Not replacing MLflow** - We use it for tracking
-- **Not replacing Model Serving** - We deploy to it
-- **Not building ETL** - Use Lakeflow/DLT for data prep
-- **Not building a vector DB** - Use Databricks Vector Search
-
----
-
-## Rollout Plan
-
-### Phase 1: Foundation (Week 1-2)
-- DAB structure
-- Delta schemas
-- Databit CRUD
-- Basic UI shell
-
-### Phase 2: Curation (Week 3-4)
-- Curation queue
-- AI labeling jobs
-- Human review workflow
-
-### Phase 3: Training & Deploy (Week 5-6)
-- Training pipeline
-- Agent/tool registration
-- Endpoint deployment
-- Playground
-
-### Phase 4: Monitor & Improve (Week 7-8)
-- Metrics collection
-- Trace viewer
-- Feedback capture
-- Alerting
-
-### Phase 5: Polish (Week 9-10)
-- Full job library
-- UX polish
-- Demo prep
-- Documentation
+| Capability | Workbench | Vertex Example Store | Label Studio | Scale AI |
+|------------|-----------|---------------------|--------------|----------|
+| Lakehouse Native | ✓ | ✗ | ✗ | ✗ |
+| Dynamic Few-Shot | ✓ | ✓ | ✗ | ✗ |
+| DSPy Integration | ✓ | ✗ | ✗ | ✗ |
+| MLflow Tracking | ✓ | ✗ | Limited | ✗ |
+| Composable Units | ✓ | ✓ | ✗ | ✗ |
+| Full Attribution | ✓ | ✗ | ✗ | Partial |
+| UC Governance | ✓ | ✗ | ✗ | ✗ |
 
 ---
 
-## Open Questions
+## Implementation Phases
 
-1. **Multi-agent orchestration** - Support agent-to-agent workflows?
-2. **Evaluation framework** - Custom evals or MLflow Evaluate only?
-3. **Guardrail extensibility** - Custom guardrails or predefined only?
-4. **Tool marketplace** - Share tools across teams?
+| Phase | Timeline | Focus |
+|-------|----------|-------|
+| **Phase 1** | Q1 | Core DataBit/DataSet infrastructure, text annotation UI, basic import/export |
+| **Phase 2** | Q2 | Example Store with Vector Search, retrieval API, agent framework integration |
+| **Phase 3** | Q3 | DSPy export, MLflow integration, optimization run launcher, feedback loop |
+| **Phase 4** | Q4 | Multimodal annotation, synthetic data, active learning, example effectiveness analytics |
 
 ---
 
-## Appendix: The Complete Job Library
+## Risks and Mitigations
 
-### Data Stage
-| Job | Input | Output | Trigger |
-|-----|-------|--------|---------|
-| ingest_files | Cloud storage | Delta table | On new files |
-| ocr_extract | Images/PDFs | Text column | On ingest |
-| parse_documents | Raw docs | Structured JSON | On ingest |
-| generate_embeddings | Text | Vector column | On ingest |
-| transcribe_audio | Audio files | Text | On ingest |
-| extract_frames | Video files | Image table | On ingest |
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| DSPy API instability | Integration breaks on updates | Maintain abstraction layer; coordinate with DSPy team |
+| Vector Search latency | Example retrieval adds latency to agent responses | Caching layer; async prefetch; latency budgets |
+| User adoption friction | Low engagement despite capability | Templates for common use cases; in-product guidance |
+| Multimodal complexity | Scope creep delays core launch | Strict P0/P1/P2 prioritization; text-first MVP |
+| Competitive response (GCP) | Vertex Example Store gains traction | DSPy + Lakehouse integration as differentiator |
 
-### Template Stage
-| Job | Input | Output | Trigger |
-|-----|-------|--------|---------|
-| infer_schema | Sample data | Schema suggestion | On demand |
-| generate_examples | Template + data | Synthetic examples | On demand |
-| test_prompt | Template + sample | Test results | On demand |
+---
 
-### Curate Stage
-| Job | Input | Output | Trigger |
-|-----|-------|--------|---------|
-| ai_label | Items + template | Labels + confidence | On demand |
-| ai_extract | Items + schema | Extracted entities | On demand |
-| ai_summarize | Long text | Summaries | On demand |
-| ai_translate | Text + target lang | Translations | On demand |
-| ai_score_quality | Items | Quality scores | On demand |
-| detect_duplicates | Items | Similarity clusters | On demand |
-| detect_pii | Items | PII flags | On demand |
-| filter_toxicity | Items | Safety flags | On demand |
+## Appendix A: DSPy Primer
 
-### Train Stage
-| Job | Input | Output | Trigger |
-|-----|-------|--------|---------|
-| assemble_data | Approved items | Training format | Before train |
-| fine_tune | Training data | Model | On demand |
-| evaluate | Model + eval set | Metrics | After train |
-| compare_models | Model versions | Comparison report | On demand |
+DSPy (Declarative Self-improving Python) is a framework for programmatically optimizing LLM pipelines. Rather than manually crafting prompts, developers define modular programs with typed signatures, and DSPy automatically optimizes prompts, few-shot examples, and fine-tuning through a compiler-like process.
 
-### Deploy Stage
-| Job | Input | Output | Trigger |
-|-----|-------|--------|---------|
-| register_tool | Function code | UC Function | On demand |
-| register_agent | Agent config | Agent record | On demand |
-| create_endpoint | Agent | Serving endpoint | On demand |
-| configure_guardrails | Rules | Guardrail config | On demand |
+**Key concepts:**
+- **Signatures:** Typed input/output specifications for LLM calls
+- **Modules:** Composable units that implement signatures (Predict, ChainOfThought, ReAct)
+- **Optimizers:** Algorithms that tune prompts and examples (BootstrapFewShot, MIPRO)
+- **Metrics:** Evaluation functions that score model outputs against ground truth
 
-### Monitor Stage
-| Job | Input | Output | Trigger |
-|-----|-------|--------|---------|
-| collect_metrics | Endpoint logs | Metrics table | Scheduled |
-| log_traces | Requests | Trace table | Continuous |
-| detect_drift | Metrics history | Drift alerts | Scheduled |
-| score_outputs | Responses | Quality scores | Sampled |
+Databricks acquired the company behind DSPy in early 2024, making it a strategic asset for the AI platform. The Training Dataset Workbench extends this investment by providing the high-quality curated data that DSPy optimizers require to deliver meaningful improvements.
 
-### Improve Stage
-| Job | Input | Output | Trigger |
-|-----|-------|--------|---------|
-| process_feedback | User feedback | Curation items | On feedback |
-| analyze_gaps | Low-quality outputs | Gap report | Scheduled |
-| recommend_retrain | Metrics + drift | Recommendation | Scheduled |
+---
+
+## Appendix B: Example Store vs Static Few-Shot
+
+| Dimension | Static Few-Shot | Example Store |
+|-----------|-----------------|---------------|
+| Example Selection | Fixed set in prompt template | Dynamic based on query similarity |
+| Update Process | Code change + redeploy | Upload via UI/API, immediate effect |
+| Token Efficiency | All examples always included | Only relevant examples retrieved |
+| Coverage | Limited by prompt length | Unlimited corpus, bounded retrieval |
+| Iteration Speed | Slow (dev cycle) | Fast (operational) |
+| Who Can Update | Engineers only | Domain experts, support teams |
+
+---
+
+## Appendix C: Mirion VITAL Platform Context
+
+This Workbench instance is configured for Mirion's VITAL (AI-powered radiation safety) platform. Key use cases include:
+
+- **Defect Detection:** Image + sensor context → defect classification
+- **Predictive Maintenance:** Telemetry → failure probability
+- **Anomaly Detection:** Sensor stream → alert + explanation
+- **Calibration Insights:** Monte Carlo results → recommendations
+- **Document Extraction:** Compliance docs → structured data
+- **Remaining Useful Life:** Equipment history → RUL estimate
+
+The platform leverages Mirion's 60+ years of radiation safety expertise encoded as reusable DataBits and examples.

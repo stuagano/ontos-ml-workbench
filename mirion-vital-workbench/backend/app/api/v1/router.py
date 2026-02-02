@@ -3,10 +3,13 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    agents,
     assemblies,
     attribution,
     curation,
     deployment,
+    dspy,
+    examples,
     feedback,
     gaps,
     jobs,
@@ -38,3 +41,12 @@ router.include_router(deployment.router)
 
 # Labeling Workflow System
 router.include_router(labeling.router)
+
+# Example Store - Few-shot learning examples
+router.include_router(examples.router)
+
+# DSPy Integration - Export, optimization, and feedback loop
+router.include_router(dspy.router)
+
+# Agent Framework - Example retrieval for agent prompt injection
+router.include_router(agents.router)

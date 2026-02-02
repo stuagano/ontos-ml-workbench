@@ -1,16 +1,15 @@
 /**
- * Databits Workbench - Main Application
+ * Databits Workbench - APX Sidebar Layout Version
  *
- * Complete AI lifecycle platform for Databricks:
- * DATA → TEMPLATE → CURATE → TRAIN → DEPLOY → MONITOR → IMPROVE
+ * Uses collapsible sidebar navigation instead of horizontal breadcrumb.
+ * Toggle USE_SIDEBAR_LAYOUT in App.tsx to switch between layouts.
  */
 
 import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
-import { Header } from "./components/Header";
-import { PipelineBreadcrumb } from "./components/PipelineBreadcrumb";
+import { AppLayout } from "./components/apx";
 import { TemplateEditor } from "./components/TemplateEditor";
 import { SheetBuilder } from "./pages/SheetBuilder";
 import { TemplateBuilderPage } from "./pages/TemplateBuilderPage";
@@ -21,7 +20,6 @@ import { DeployPage } from "./pages/DeployPage";
 import { MonitorPage } from "./pages/MonitorPage";
 import { ImprovePage } from "./pages/ImprovePage";
 import { ExampleStorePage } from "./pages/ExampleStorePage";
-
 import { getConfig } from "./services/api";
 import { setWorkspaceUrl } from "./services/databricksLinks";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -46,11 +44,16 @@ function AppContent() {
   const keyboardHelp = useKeyboardShortcutsHelp();
   const workflow = useWorkflow();
 
-  // Map workflow stage to pipeline stage for breadcrumb
+  // Map workflow stage to pipeline stage
   const currentStage = workflow.state.currentStage as PipelineStage;
   const setCurrentStage = (stage: PipelineStage) => {
     workflow.setCurrentStage(stage as WorkflowStage);
   };
+
+  // Determine completed stages based on workflow state
+  const completedStages: PipelineStage[] = [];
+  if (workflow.state.selectedSource) completedStages.push("data");
+  if (workflow.state.selectedTemplate) completedStages.push("template");
 
   // Fetch app config
   const {
@@ -79,10 +82,9 @@ function AppContent() {
   }, [toast]);
 
   const handleEscape = useCallback(() => {
-    if (showEditor) {
-      setShowEditor(false);
-    }
-  }, [showEditor]);
+    if (showEditor) setShowEditor(false);
+    if (showExampleStore) setShowExampleStore(false);
+  }, [showEditor, showExampleStore]);
 
   // Register keyboard shortcuts
   useKeyboardShortcuts([
@@ -91,6 +93,12 @@ function AppContent() {
       modifiers: ["alt"],
       handler: handleNewTemplate,
       description: "New template",
+    },
+    {
+      key: "e",
+      modifiers: ["alt"],
+      handler: () => setShowExampleStore(!showExampleStore),
+      description: "Toggle Example Store",
     },
     {
       key: "Escape",
@@ -103,10 +111,12 @@ function AppContent() {
   // Loading state
   if (configLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-db-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-db-gray-50 dark:bg-gray-950">
         <div className="text-center">
           <Loader2 className="w-10 h-10 animate-spin text-db-orange mx-auto mb-4" />
-          <p className="text-db-gray-600">Loading Databits Workbench...</p>
+          <p className="text-db-gray-600 dark:text-gray-400">
+            Loading Databits Workbench...
+          </p>
         </div>
       </div>
     );
@@ -115,13 +125,13 @@ function AppContent() {
   // Error state
   if (configError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-db-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-db-gray-50 dark:bg-gray-950">
         <div className="text-center max-w-md">
           <div className="text-red-500 text-5xl mb-4">!</div>
-          <h2 className="text-xl font-semibold text-db-gray-800 mb-2">
+          <h2 className="text-xl font-semibold text-db-gray-800 dark:text-white mb-2">
             Connection Error
           </h2>
-          <p className="text-db-gray-600 mb-4">
+          <p className="text-db-gray-600 dark:text-gray-400 mb-4">
             Could not connect to the backend. Make sure the API server is
             running.
           </p>
@@ -137,75 +147,46 @@ function AppContent() {
   }
 
   const renderStage = () => {
-    console.log("[App] renderStage called with currentStage:", currentStage);
-    console.log("[App] workflow.state:", workflow.state);
-
-    let component;
     switch (currentStage) {
       case "data":
-        // AI Sheets - select base table and import columns
-        component = <SheetBuilder />;
-        console.log("[App] Rendering SheetBuilder for 'data' stage");
-        break;
+        return <SheetBuilder />;
       case "template":
-        // Build prompt templates from selected data columns
-        component = <TemplateBuilderPage />;
-        console.log("[App] Rendering TemplateBuilderPage for 'template' stage");
-        break;
+        return <TemplateBuilderPage />;
       case "curate":
-        component = <CuratePage />;
-        break;
+        return <CuratePage />;
       case "label":
-        // Roboflow-inspired labeling workflow
-        component = <LabelingWorkflow />;
-        break;
+        return <LabelingWorkflow />;
       case "train":
-        component = <TrainPage />;
-        break;
+        return <TrainPage />;
       case "deploy":
-        component = <DeployPage />;
-        break;
+        return <DeployPage />;
       case "monitor":
-        component = <MonitorPage />;
-        break;
+        return <MonitorPage />;
       case "improve":
-        component = <ImprovePage />;
-        break;
+        return <ImprovePage />;
       default:
-        console.log(
-          "[App] Default case - rendering SheetBuilder for stage:",
-          currentStage,
-        );
-        component = <SheetBuilder />;
+        return <SheetBuilder />;
     }
-    return component;
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-db-gray-50">
-      <Header
-        appName={config?.app_name || "Databits Workbench"}
-        currentUser={config?.current_user || "Unknown"}
-        workspaceUrl={config?.workspace_url || ""}
-        showExamples={showExampleStore}
-        onToggleExamples={() => setShowExampleStore(!showExampleStore)}
-      />
-
-      <PipelineBreadcrumb
-        currentStage={currentStage}
-        onStageClick={setCurrentStage}
-      />
-
-      <main className="flex-1 flex flex-col">
-        <ErrorBoundary>{renderStage()}</ErrorBoundary>
-      </main>
+    <AppLayout
+      currentStage={currentStage}
+      onStageClick={setCurrentStage}
+      completedStages={completedStages}
+      currentUser={config?.current_user || "Unknown"}
+      workspaceUrl={config?.workspace_url}
+      showExamples={showExampleStore}
+      onToggleExamples={() => setShowExampleStore(!showExampleStore)}
+    >
+      <ErrorBoundary>{renderStage()}</ErrorBoundary>
 
       {/* Template Editor Modal */}
       {showEditor && (
         <TemplateEditor
           template={editingTemplate}
           onClose={() => setShowEditor(false)}
-          onSaved={(saved) => {
+          onSaved={() => {
             setShowEditor(false);
             setEditingTemplate(null);
           }}
@@ -220,16 +201,15 @@ function AppContent() {
 
       {/* Example Store Overlay */}
       {showExampleStore && (
-        <div className="fixed inset-0 z-40 bg-db-gray-50">
+        <div className="fixed inset-0 z-50 bg-db-gray-50 dark:bg-gray-950">
           <ExampleStorePage onClose={() => setShowExampleStore(false)} />
         </div>
       )}
-    </div>
+    </AppLayout>
   );
 }
 
-// Wrap the app with WorkflowProvider
-function App() {
+function AppWithSidebar() {
   return (
     <WorkflowProvider>
       <AppContent />
@@ -237,4 +217,4 @@ function App() {
   );
 }
 
-export default App;
+export default AppWithSidebar;
