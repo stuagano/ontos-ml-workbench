@@ -1,13 +1,14 @@
 /**
- * TrainingJobList - Display list of training jobs with status
+ * TrainingJobList - Display all training jobs with status and filtering
  *
  * Pure visualization component:
  * - Fetches jobs from backend
- * - Displays job data
- * - No calculations or business logic
+ * - Displays in table with status badges
+ * - Auto-refreshes when active jobs exist
  * - All state comes from backend
  */
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Play,
@@ -15,245 +16,303 @@ import {
   XCircle,
   Clock,
   Loader2,
-  AlertCircle,
-  ExternalLink,
-  ChevronRight,
+  Eye,
+  StopCircle,
 } from "lucide-react";
 import { listTrainingJobs } from "../services/api";
-import { formatDistanceToNow } from "date-fns";
-import type { TrainingJob, TrainingJobStatus } from "../types";
+import type { TrainingJob } from "../types";
 
 interface TrainingJobListProps {
-  trainingSheetId?: string;
-  onSelectJob?: (jobId: string) => void;
+  onSelectJob: (jobId: string) => void;
+  trainingSheetId?: string; // Optional: filter by training sheet
 }
 
-const STATUS_CONFIG: Record<TrainingJobStatus, {
-  icon: React.ElementType;
-  color: string;
-  bgColor: string;
-  label: string;
-}> = {
-  pending: {
-    icon: Clock,
-    color: "text-gray-600",
-    bgColor: "bg-gray-100",
-    label: "Pending",
-  },
-  queued: {
-    icon: Clock,
-    color: "text-blue-600",
-    bgColor: "bg-blue-100",
-    label: "Queued",
-  },
-  running: {
-    icon: Loader2,
-    color: "text-blue-600",
-    bgColor: "bg-blue-100",
-    label: "Running",
-  },
-  succeeded: {
-    icon: CheckCircle,
-    color: "text-green-600",
-    bgColor: "bg-green-100",
-    label: "Succeeded",
-  },
-  failed: {
-    icon: XCircle,
-    color: "text-red-600",
-    bgColor: "bg-red-100",
-    label: "Failed",
-  },
-  cancelled: {
-    icon: AlertCircle,
-    color: "text-yellow-600",
-    bgColor: "bg-yellow-100",
-    label: "Cancelled",
-  },
-  timeout: {
-    icon: AlertCircle,
-    color: "text-orange-600",
-    bgColor: "bg-orange-100",
-    label: "Timeout",
-  },
-};
+export function TrainingJobList({
+  onSelectJob,
+  trainingSheetId,
+}: TrainingJobListProps) {
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
-function StatusBadge({ status }: { status: TrainingJobStatus }) {
-  const config = STATUS_CONFIG[status];
-  const Icon = config.icon;
-
-  return (
-    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md ${config.bgColor}`}>
-      <Icon className={`w-4 h-4 ${config.color} ${status === 'running' ? 'animate-spin' : ''}`} />
-      <span className={`text-sm font-medium ${config.color}`}>
-        {config.label}
-      </span>
-    </div>
-  );
-}
-
-function ProgressBar({ percent }: { percent: number }) {
-  return (
-    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-      <div
-        className="bg-blue-600 h-full transition-all duration-300"
-        style={{ width: `${percent}%` }}
-      />
-    </div>
-  );
-}
-
-export function TrainingJobList({ trainingSheetId, onSelectJob }: TrainingJobListProps) {
-  // Fetch jobs from backend (backend is source of truth)
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["training-jobs", trainingSheetId],
-    queryFn: () => listTrainingJobs({
-      training_sheet_id: trainingSheetId,
-      page: 1,
-      page_size: 50,
-    }),
+  // Fetch jobs from backend
+  const {
+    data: jobs,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["training-jobs", trainingSheetId, statusFilter],
+    queryFn: async () => {
+      const response = await listTrainingJobs({
+        training_sheet_id: trainingSheetId,
+        status: statusFilter === "all" ? undefined : statusFilter,
+        limit: 100,
+      });
+      return response.jobs;
+    },
     refetchInterval: (query) => {
-      // Auto-refresh if there are running jobs
-      const jobs = query.state.data?.jobs || [];
-      const hasActiveJobs = jobs.some(j =>
-        j.status === 'running' || j.status === 'queued' || j.status === 'pending'
+      // Auto-refresh every 5 seconds if any jobs are running
+      const jobs = query.state.data || [];
+      const hasActiveJobs = jobs.some(
+        (job: TrainingJob) =>
+          job.status === "running" || job.status === "pending",
       );
-      return hasActiveJobs ? 5000 : false; // Poll every 5s if active jobs
+      return hasActiveJobs ? 5000 : false;
     },
   });
+
+  // Get status badge
+  const getStatusBadge = (status: string) => {
+    const badges = {
+      pending: (
+        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded">
+          <Clock className="w-3 h-3" />
+          Pending
+        </span>
+      ),
+      running: (
+        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Running
+        </span>
+      ),
+      succeeded: (
+        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded">
+          <CheckCircle className="w-3 h-3" />
+          Succeeded
+        </span>
+      ),
+      failed: (
+        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded">
+          <XCircle className="w-3 h-3" />
+          Failed
+        </span>
+      ),
+      cancelled: (
+        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
+          <StopCircle className="w-3 h-3" />
+          Cancelled
+        </span>
+      ),
+    };
+    return (
+      badges[status as keyof typeof badges] || (
+        <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
+          {status}
+        </span>
+      )
+    );
+  };
+
+  // Format duration
+  const formatDuration = (seconds: number | null) => {
+    if (!seconds) return "-";
+    if (seconds < 60) return `${Math.round(seconds)}s`;
+    if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+    return `${Math.round(seconds / 3600)}h`;
+  };
+
+  // Format timestamp
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
+    return date.toLocaleDateString();
+  };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+        <Loader2 className="w-8 h-8 text-green-600 animate-spin" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center py-12 text-red-600">
-        <AlertCircle className="w-5 h-5 mr-2" />
-        <span>Failed to load training jobs</span>
-      </div>
-    );
-  }
-
-  const jobs = data?.jobs || [];
-
-  if (jobs.length === 0) {
-    return (
-      <div className="text-center py-12 text-gray-500">
-        <Play className="w-12 h-12 mx-auto mb-3 opacity-50" />
-        <p className="font-medium">No training jobs yet</p>
-        <p className="text-sm mt-1">Create your first training job to get started</p>
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="flex items-start gap-3">
+          <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-medium text-red-800">Failed to Load Jobs</h3>
+            <p className="text-sm text-red-600 mt-1">
+              {error instanceof Error ? error.message : "Unknown error"}
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {jobs.map((job) => (
-        <div
-          key={job.id}
-          className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors cursor-pointer"
-          onClick={() => onSelectJob?.(job.id)}
-        >
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-medium text-gray-900 truncate">
-                  {job.model_name}
-                </h3>
-                <StatusBadge status={job.status} />
-              </div>
-              <p className="text-sm text-gray-500 truncate">
-                {job.training_sheet_name || `Training Sheet ${job.training_sheet_id.slice(0, 8)}`}
-              </p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0 ml-3" />
-          </div>
+    <div className="space-y-4">
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2 border-b border-db-gray-200">
+        {[
+          { id: "all", label: "All Jobs" },
+          { id: "running", label: "Running" },
+          { id: "succeeded", label: "Succeeded" },
+          { id: "failed", label: "Failed" },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setStatusFilter(tab.id)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              statusFilter === tab.id
+                ? "border-green-600 text-green-600"
+                : "border-transparent text-db-gray-600 hover:text-db-gray-900"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-          {/* Progress Bar (only for running jobs) */}
-          {(job.status === 'running' || job.status === 'queued') && (
-            <div className="mb-3">
-              <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                <span>
-                  {job.current_epoch !== undefined && job.total_epochs
-                    ? `Epoch ${job.current_epoch}/${job.total_epochs}`
-                    : 'Training...'}
-                </span>
-                <span>{job.progress_percent}%</span>
-              </div>
-              <ProgressBar percent={job.progress_percent} />
-            </div>
-          )}
-
-          {/* Job Details */}
-          <div className="grid grid-cols-3 gap-4 text-sm">
-            <div>
-              <div className="text-gray-500">Base Model</div>
-              <div className="font-medium text-gray-900 truncate" title={job.base_model}>
-                {job.base_model.split('-').pop() || job.base_model}
-              </div>
-            </div>
-            <div>
-              <div className="text-gray-500">Training Data</div>
-              <div className="font-medium text-gray-900">
-                {job.train_pairs} / {job.val_pairs} split
-              </div>
-            </div>
-            <div>
-              <div className="text-gray-500">
-                {job.status === 'succeeded' ? 'Completed' :
-                 job.status === 'failed' ? 'Failed' :
-                 job.status === 'cancelled' ? 'Cancelled' :
-                 'Started'}
-              </div>
-              <div className="font-medium text-gray-900">
-                {job.completed_at
-                  ? formatDistanceToNow(new Date(job.completed_at), { addSuffix: true })
-                  : job.started_at
-                  ? formatDistanceToNow(new Date(job.started_at), { addSuffix: true })
-                  : job.created_at
-                  ? formatDistanceToNow(new Date(job.created_at), { addSuffix: true })
-                  : '-'}
-              </div>
-            </div>
-          </div>
-
-          {/* Error Message (if failed) */}
-          {job.status === 'failed' && job.error_message && (
-            <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <span className="break-words">{job.error_message}</span>
-              </div>
-            </div>
-          )}
-
-          {/* MLflow Link (if available) */}
-          {job.mlflow_run_id && (
-            <div className="mt-3 pt-3 border-t border-gray-100">
-              <a
-                href={`/mlflow/#/experiments/${job.mlflow_experiment_id}/runs/${job.mlflow_run_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <ExternalLink className="w-4 h-4" />
-                View in MLflow
-              </a>
-            </div>
-          )}
+      {/* Jobs Table */}
+      {!jobs || jobs.length === 0 ? (
+        <div className="text-center py-12">
+          <Play className="w-12 h-12 text-db-gray-400 mx-auto mb-3" />
+          <h3 className="text-lg font-medium text-db-gray-900 mb-1">
+            No Training Jobs
+          </h3>
+          <p className="text-sm text-db-gray-600">
+            {statusFilter === "all"
+              ? "Create your first training job to get started"
+              : `No ${statusFilter} jobs found`}
+          </p>
         </div>
-      ))}
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-db-gray-50 border-b border-db-gray-200">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-db-gray-500 uppercase tracking-wider">
+                  Model Name
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-db-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-db-gray-500 uppercase tracking-wider">
+                  Progress
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-db-gray-500 uppercase tracking-wider">
+                  Base Model
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-db-gray-500 uppercase tracking-wider">
+                  Train / Val
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-db-gray-500 uppercase tracking-wider">
+                  Duration
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-db-gray-500 uppercase tracking-wider">
+                  Created
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-db-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-db-gray-200">
+              {jobs.map((job) => (
+                <tr
+                  key={job.id}
+                  className="hover:bg-db-gray-50 cursor-pointer transition-colors"
+                  onClick={() => onSelectJob(job.id)}
+                >
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium text-db-gray-900">
+                        {job.model_name}
+                      </div>
+                      {job.model_version && (
+                        <span className="text-xs text-db-gray-500">
+                          v{job.model_version}
+                        </span>
+                      )}
+                    </div>
+                  </td>
 
-      {/* Pagination Info */}
-      {data && data.total > data.jobs.length && (
-        <div className="text-center pt-4 text-sm text-gray-500">
-          Showing {data.jobs.length} of {data.total} jobs
+                  <td className="px-4 py-3">{getStatusBadge(job.status)}</td>
+
+                  <td className="px-4 py-3">
+                    {job.status === "running" || job.status === "pending" ? (
+                      <div className="w-32">
+                        <div className="flex items-center justify-between text-xs text-db-gray-600 mb-1">
+                          <span>{job.progress_percent}%</span>
+                        </div>
+                        <div className="h-2 bg-db-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-green-600 transition-all duration-300"
+                            style={{ width: `${job.progress_percent}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-db-gray-500">-</span>
+                    )}
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-db-gray-600">
+                      {job.base_model
+                        .replace("databricks-", "")
+                        .replace("-instruct", "")}
+                    </span>
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-db-gray-600">
+                      {job.train_pairs} / {job.val_pairs}
+                    </span>
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-db-gray-600">
+                      {formatDuration(job.duration_seconds)}
+                    </span>
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-db-gray-600">
+                      {formatTime(job.created_at)}
+                    </span>
+                  </td>
+
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectJob(job.id);
+                      }}
+                      className="inline-flex items-center gap-1 px-3 py-1 text-sm text-green-600 hover:bg-green-50 rounded transition-colors"
+                    >
+                      <Eye className="w-4 h-4" />
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Summary */}
+      {jobs && jobs.length > 0 && (
+        <div className="flex items-center justify-between text-sm text-db-gray-600 pt-2 border-t">
+          <div>
+            Showing {jobs.length} job{jobs.length !== 1 ? "s" : ""}
+          </div>
+          <button
+            onClick={() => refetch()}
+            className="text-green-600 hover:text-green-700 font-medium"
+          >
+            Refresh
+          </button>
         </div>
       )}
     </div>
