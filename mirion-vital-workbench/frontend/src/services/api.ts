@@ -1977,3 +1977,151 @@ export async function getActiveTrainingJobs(): Promise<TrainingJob[]> {
   );
   return response.jobs;
 }
+
+// ============================================================================
+// Canonical Labels API
+// ============================================================================
+
+/**
+ * Create a new canonical label
+ */
+export async function createCanonicalLabel(
+  data: CanonicalLabelCreateRequest,
+): Promise<CanonicalLabel> {
+  return fetchJson(`${API_BASE}/canonical-labels/`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Get a canonical label by ID
+ */
+export async function getCanonicalLabel(id: string): Promise<CanonicalLabel> {
+  return fetchJson(`${API_BASE}/canonical-labels/${id}`);
+}
+
+/**
+ * Update a canonical label
+ */
+export async function updateCanonicalLabel(
+  id: string,
+  data: CanonicalLabelUpdateRequest,
+): Promise<CanonicalLabel> {
+  return fetchJson(`${API_BASE}/canonical-labels/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Delete a canonical label
+ */
+export async function deleteCanonicalLabel(id: string): Promise<void> {
+  return fetchJson(`${API_BASE}/canonical-labels/${id}`, {
+    method: "DELETE",
+  });
+}
+
+/**
+ * Lookup a canonical label by composite key (sheet_id, item_ref, label_type)
+ */
+export async function lookupCanonicalLabel(
+  lookup: CanonicalLabelLookup,
+): Promise<CanonicalLabel | null> {
+  return fetchJson(`${API_BASE}/canonical-labels/lookup`, {
+    method: "POST",
+    body: JSON.stringify(lookup),
+  });
+}
+
+/**
+ * Bulk lookup canonical labels
+ */
+export async function bulkLookupCanonicalLabels(
+  lookup: CanonicalLabelBulkLookup,
+): Promise<CanonicalLabelBulkLookupResponse> {
+  return fetchJson(`${API_BASE}/canonical-labels/lookup/bulk`, {
+    method: "POST",
+    body: JSON.stringify(lookup),
+  });
+}
+
+/**
+ * List canonical labels with optional filters
+ */
+export async function listCanonicalLabels(params?: {
+  sheet_id?: string;
+  label_type?: string;
+  confidence?: LabelConfidence;
+  data_classification?: DataClassification;
+  labeled_by?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<CanonicalLabelListResponse> {
+  const query = new URLSearchParams();
+  if (params?.sheet_id) query.set("sheet_id", params.sheet_id);
+  if (params?.label_type) query.set("label_type", params.label_type);
+  if (params?.confidence) query.set("confidence", params.confidence);
+  if (params?.data_classification)
+    query.set("data_classification", params.data_classification);
+  if (params?.labeled_by) query.set("labeled_by", params.labeled_by);
+  if (params?.limit) query.set("limit", params.limit.toString());
+  if (params?.offset) query.set("offset", params.offset.toString());
+
+  const queryString = query.toString();
+  return fetchJson(
+    `${API_BASE}/canonical-labels/${queryString ? `?${queryString}` : ""}`,
+  );
+}
+
+/**
+ * Get canonical label statistics for a sheet
+ */
+export async function getCanonicalLabelStats(
+  sheetId: string,
+): Promise<CanonicalLabelStats> {
+  return fetchJson(`${API_BASE}/canonical-labels/sheets/${sheetId}/stats`);
+}
+
+/**
+ * Get all labelsets for a specific item
+ */
+export async function getItemLabelsets(
+  sheetId: string,
+  itemRef: string,
+): Promise<ItemLabelsets> {
+  return fetchJson(`${API_BASE}/canonical-labels/items/${sheetId}/${itemRef}`);
+}
+
+/**
+ * Check usage constraints for a canonical label
+ */
+export async function checkUsageConstraints(
+  check: UsageConstraintCheck,
+): Promise<UsageConstraintCheckResponse> {
+  return fetchJson(`${API_BASE}/canonical-labels/usage/check`, {
+    method: "POST",
+    body: JSON.stringify(check),
+  });
+}
+
+/**
+ * Get canonical label version history
+ */
+export async function getCanonicalLabelVersions(
+  labelId: string,
+): Promise<CanonicalLabelVersion[]> {
+  return fetchJson(`${API_BASE}/canonical-labels/${labelId}/versions`);
+}
+
+/**
+ * Increment reuse count for a canonical label
+ */
+export async function incrementCanonicalLabelReuse(
+  labelId: string,
+): Promise<void> {
+  return fetchJson(`${API_BASE}/canonical-labels/${labelId}/increment-reuse`, {
+    method: "POST",
+  });
+}
