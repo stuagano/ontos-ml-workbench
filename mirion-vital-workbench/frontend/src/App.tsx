@@ -15,16 +15,47 @@ import { StageSubNav, type StageMode } from "./components/StageSubNav";
 import { TemplateEditor } from "./components/TemplateEditor";
 
 // Lazy load pages - only load when needed
-const SheetBuilder = lazy(() => import("./pages/SheetBuilder").then(m => ({ default: m.SheetBuilder })));
-const TemplateBuilderPage = lazy(() => import("./pages/TemplateBuilderPage").then(m => ({ default: m.TemplateBuilderPage })));
-const TemplatePage = lazy(() => import("./pages/TemplatePage").then(m => ({ default: m.TemplatePage })));
-const CuratePage = lazy(() => import("./pages/CuratePage").then(m => ({ default: m.CuratePage })));
-const LabelingWorkflow = lazy(() => import("./components/labeling").then(m => ({ default: m.LabelingWorkflow })));
-const TrainPage = lazy(() => import("./pages/TrainPage").then(m => ({ default: m.TrainPage })));
-const DeployPage = lazy(() => import("./pages/DeployPage").then(m => ({ default: m.DeployPage })));
-const MonitorPage = lazy(() => import("./pages/MonitorPage").then(m => ({ default: m.MonitorPage })));
-const ImprovePage = lazy(() => import("./pages/ImprovePage").then(m => ({ default: m.ImprovePage })));
-const ExampleStorePage = lazy(() => import("./pages/ExampleStorePage").then(m => ({ default: m.ExampleStorePage })));
+const SheetBuilder = lazy(() =>
+  import("./pages/SheetBuilder").then((m) => ({ default: m.SheetBuilder })),
+);
+const TemplateBuilderPage = lazy(() =>
+  import("./pages/TemplateBuilderPage").then((m) => ({
+    default: m.TemplateBuilderPage,
+  })),
+);
+const TemplatePage = lazy(() =>
+  import("./pages/TemplatePage").then((m) => ({ default: m.TemplatePage })),
+);
+const CuratePage = lazy(() =>
+  import("./pages/CuratePage").then((m) => ({ default: m.CuratePage })),
+);
+const LabelingWorkflow = lazy(() =>
+  import("./components/labeling").then((m) => ({
+    default: m.LabelingWorkflow,
+  })),
+);
+const TrainPage = lazy(() =>
+  import("./pages/TrainPage").then((m) => ({ default: m.TrainPage })),
+);
+const DeployPage = lazy(() =>
+  import("./pages/DeployPage").then((m) => ({ default: m.DeployPage })),
+);
+const MonitorPage = lazy(() =>
+  import("./pages/MonitorPage").then((m) => ({ default: m.MonitorPage })),
+);
+const ImprovePage = lazy(() =>
+  import("./pages/ImprovePage").then((m) => ({ default: m.ImprovePage })),
+);
+const ExampleStorePage = lazy(() =>
+  import("./pages/ExampleStorePage").then((m) => ({
+    default: m.ExampleStorePage,
+  })),
+);
+const CanonicalLabelingTool = lazy(() =>
+  import("./components/CanonicalLabelingTool").then((m) => ({
+    default: m.CanonicalLabelingTool,
+  })),
+);
 
 import { getConfig } from "./services/api";
 import { setWorkspaceUrl } from "./services/databricksLinks";
@@ -46,6 +77,7 @@ function AppContent() {
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [showEditor, setShowEditor] = useState(false);
   const [showExampleStore, setShowExampleStore] = useState(false);
+  const [showCanonicalLabeling, setShowCanonicalLabeling] = useState(false);
   const [stageMode, setStageMode] = useState<StageMode>("browse");
   const toast = useToast();
   const keyboardHelp = useKeyboardShortcutsHelp();
@@ -86,7 +118,16 @@ function AppContent() {
     const modeParam = params.get("mode") as StageMode | null;
 
     if (stageParam) {
-      const validStages: WorkflowStage[] = ["data", "template", "curate", "label", "train", "deploy", "monitor", "improve"];
+      const validStages: WorkflowStage[] = [
+        "data",
+        "template",
+        "curate",
+        "label",
+        "train",
+        "deploy",
+        "monitor",
+        "improve",
+      ];
       if (validStages.includes(stageParam)) {
         console.log(`[App] URL param: jumping to stage=${stageParam}`);
         workflow.setCurrentStage(stageParam);
@@ -178,7 +219,12 @@ function AppContent() {
   }
 
   const renderStage = () => {
-    console.log("[App] renderStage called with currentStage:", currentStage, "mode:", stageMode);
+    console.log(
+      "[App] renderStage called with currentStage:",
+      currentStage,
+      "mode:",
+      stageMode,
+    );
 
     switch (currentStage) {
       case "data":
@@ -232,6 +278,10 @@ function AppContent() {
         appName={config?.app_name || "Databits Workbench"}
         currentUser={config?.current_user || "Unknown"}
         workspaceUrl={config?.workspace_url || ""}
+        showCanonicalLabeling={showCanonicalLabeling}
+        onToggleCanonicalLabeling={() =>
+          setShowCanonicalLabeling(!showCanonicalLabeling)
+        }
         showExamples={showExampleStore}
         onToggleExamples={() => setShowExampleStore(!showExampleStore)}
       />
@@ -249,11 +299,13 @@ function AppContent() {
 
       <main className="flex-1 flex flex-col">
         <ErrorBoundary>
-          <Suspense fallback={
-            <div className="flex-1 flex items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin text-db-orange" />
-            </div>
-          }>
+          <Suspense
+            fallback={
+              <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-db-orange" />
+              </div>
+            }
+          >
             {renderStage()}
           </Suspense>
         </ErrorBoundary>
@@ -277,14 +329,33 @@ function AppContent() {
         onClose={keyboardHelp.close}
       />
 
+      {/* Canonical Labeling Tool Overlay */}
+      {showCanonicalLabeling && (
+        <div className="fixed inset-0 z-40 bg-db-gray-50">
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-screen">
+                <Loader2 className="w-10 h-10 animate-spin text-db-orange" />
+              </div>
+            }
+          >
+            <CanonicalLabelingTool
+              onClose={() => setShowCanonicalLabeling(false)}
+            />
+          </Suspense>
+        </div>
+      )}
+
       {/* Example Store Overlay */}
       {showExampleStore && (
         <div className="fixed inset-0 z-40 bg-db-gray-50">
-          <Suspense fallback={
-            <div className="flex items-center justify-center min-h-screen">
-              <Loader2 className="w-10 h-10 animate-spin text-db-orange" />
-            </div>
-          }>
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-screen">
+                <Loader2 className="w-10 h-10 animate-spin text-db-orange" />
+              </div>
+            }
+          >
             <ExampleStorePage onClose={() => setShowExampleStore(false)} />
           </Suspense>
         </div>

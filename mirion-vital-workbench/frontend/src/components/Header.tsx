@@ -2,9 +2,18 @@
  * Header component with app title, user info, and theme toggle
  */
 
-import { Database, ExternalLink, User, Sun, Moon, Monitor, BookOpen } from 'lucide-react';
-import { clsx } from 'clsx';
-import { useTheme } from '../hooks/useTheme';
+import {
+  Database,
+  ExternalLink,
+  User,
+  Sun,
+  Moon,
+  Monitor,
+  BookOpen,
+  Tag,
+} from "lucide-react";
+import { clsx } from "clsx";
+import { useTheme } from "../hooks/useTheme";
 
 interface HeaderProps {
   appName: string;
@@ -12,6 +21,8 @@ interface HeaderProps {
   workspaceUrl: string;
   showExamples?: boolean;
   onToggleExamples?: () => void;
+  showCanonicalLabeling?: boolean;
+  onToggleCanonicalLabeling?: () => void;
 }
 
 export function Header({
@@ -20,10 +31,12 @@ export function Header({
   workspaceUrl,
   showExamples,
   onToggleExamples,
+  showCanonicalLabeling,
+  onToggleCanonicalLabeling,
 }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
 
-  const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
+  const ThemeIcon = theme === "light" ? Sun : theme === "dark" ? Moon : Monitor;
 
   return (
     <header className="bg-db-dark text-white px-4 py-3 flex items-center justify-between">
@@ -33,6 +46,22 @@ export function Header({
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Canonical Labeling Tool Button */}
+        {onToggleCanonicalLabeling && (
+          <button
+            onClick={onToggleCanonicalLabeling}
+            className={clsx(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors",
+              showCanonicalLabeling
+                ? "bg-blue-600 text-white"
+                : "text-db-gray-300 hover:text-white hover:bg-white/10",
+            )}
+          >
+            <Tag className="w-4 h-4" />
+            <span>Canonical Labels</span>
+          </button>
+        )}
+
         {/* Example Store Button */}
         {onToggleExamples && (
           <button
@@ -41,7 +70,7 @@ export function Header({
               "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors",
               showExamples
                 ? "bg-purple-600 text-white"
-                : "text-db-gray-300 hover:text-white hover:bg-white/10"
+                : "text-db-gray-300 hover:text-white hover:bg-white/10",
             )}
           >
             <BookOpen className="w-4 h-4" />
@@ -51,7 +80,7 @@ export function Header({
 
         {workspaceUrl && (
           <button
-            onClick={() => window.open(workspaceUrl, '_blank')}
+            onClick={() => window.open(workspaceUrl, "_blank")}
             className="flex items-center gap-1 text-sm text-db-gray-300 hover:text-white transition-colors"
           >
             <ExternalLink className="w-4 h-4" />
