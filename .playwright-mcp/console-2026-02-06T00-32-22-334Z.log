@@ -1,0 +1,146 @@
+[   38159ms] Error: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.
+    at Object.throwInvalidHookError (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:11549:17)
+    at useMemo (http://localhost:3000/node_modules/.vite/deps/chunk-RLJ2RCJQ.js?v=e512907b:1094:29)
+    at http://localhost:3000/src/pages/ProjectPage.tsx?t=1770337951821:130:29
+    at commitHookEffectListMount (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:16963:34)
+    at commitPassiveMountOnFiber (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18206:19)
+    at commitPassiveMountEffects_complete (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18179:17)
+    at commitPassiveMountEffects_begin (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18169:15)
+    at commitPassiveMountEffects (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18159:11)
+    at flushPassiveEffectsImpl (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19543:11)
+    at flushPassiveEffects (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19500:22)
+[   38159ms] Error: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.
+    at Object.throwInvalidHookError (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:11549:17)
+    at useMemo (http://localhost:3000/node_modules/.vite/deps/chunk-RLJ2RCJQ.js?v=e512907b:1094:29)
+    at http://localhost:3000/src/pages/ProjectPage.tsx?t=1770337951821:130:29
+    at commitHookEffectListMount (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:16963:34)
+    at invokePassiveEffectMountInDEV (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18374:19)
+    at invokeEffectsInDev (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19754:19)
+    at commitDoubleInvokeEffectsInDEV (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19739:15)
+    at flushPassiveEffectsImpl (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19556:13)
+    at flushPassiveEffects (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19500:22)
+    at http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19381:17
+[   38160ms] [ERROR] The above error occurred in the <ProjectPage> component:
+
+    at ProjectPage (http://localhost:3000/src/pages/ProjectPage.tsx?t=1770337951821:91:27)
+    at RenderedRoute (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=e512907b:6284:26)
+    at Routes (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=e512907b:7133:3)
+    at div
+    at ProjectsProvider (http://localhost:3000/src/contexts/ProjectsContext.tsx:25:36)
+    at UserProvider (http://localhost:3000/src/contexts/UserContext.tsx:25:32)
+    at App
+    at Router (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=e512907b:7074:13)
+    at BrowserRouter (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=e512907b:10191:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:14079
+[   38160ms] [ERROR] The above error occurred in the <ProjectPage> component:
+
+    at ProjectPage (http://localhost:3000/src/pages/ProjectPage.tsx?t=1770337951821:91:27)
+    at RenderedRoute (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=e512907b:6284:26)
+    at Routes (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=e512907b:7133:3)
+    at div
+    at ProjectsProvider (http://localhost:3000/src/contexts/ProjectsContext.tsx:25:36)
+    at UserProvider (http://localhost:3000/src/contexts/UserContext.tsx:25:32)
+    at App
+    at Router (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=e512907b:7074:13)
+    at BrowserRouter (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=e512907b:10191:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:14079
+[   38160ms] Error: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.
+    at Object.throwInvalidHookError (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:11549:17)
+    at useMemo (http://localhost:3000/node_modules/.vite/deps/chunk-RLJ2RCJQ.js?v=e512907b:1094:29)
+    at http://localhost:3000/src/pages/ProjectPage.tsx?t=1770337951821:130:29
+    at commitHookEffectListMount (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:16963:34)
+    at commitPassiveMountOnFiber (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18206:19)
+    at commitPassiveMountEffects_complete (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18179:17)
+    at commitPassiveMountEffects_begin (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18169:15)
+    at commitPassiveMountEffects (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18159:11)
+    at flushPassiveEffectsImpl (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19543:11)
+    at flushPassiveEffects (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19500:22)
+[   42385ms] Error: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.
+    at Object.throwInvalidHookError (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:11549:17)
+    at useMemo (http://localhost:3000/node_modules/.vite/deps/chunk-RLJ2RCJQ.js?v=e512907b:1094:29)
+    at http://localhost:3000/src/pages/ProjectPage.tsx?t=1770337951821:130:29
+    at commitHookEffectListMount (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:16963:34)
+    at commitPassiveMountOnFiber (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18206:19)
+    at commitPassiveMountEffects_complete (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18179:17)
+    at commitPassiveMountEffects_begin (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18169:15)
+    at commitPassiveMountEffects (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18159:11)
+    at flushPassiveEffectsImpl (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19543:11)
+    at flushPassiveEffects (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19500:22)
+[   42385ms] Error: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.
+    at Object.throwInvalidHookError (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:11549:17)
+    at useMemo (http://localhost:3000/node_modules/.vite/deps/chunk-RLJ2RCJQ.js?v=e512907b:1094:29)
+    at http://localhost:3000/src/pages/ProjectPage.tsx?t=1770337951821:130:29
+    at commitHookEffectListMount (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:16963:34)
+    at invokePassiveEffectMountInDEV (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18374:19)
+    at invokeEffectsInDev (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19754:19)
+    at commitDoubleInvokeEffectsInDEV (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19739:15)
+    at flushPassiveEffectsImpl (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19556:13)
+    at flushPassiveEffects (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19500:22)
+    at http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19381:17
+[   42386ms] [ERROR] The above error occurred in the <ProjectPage> component:
+
+    at ProjectPage (http://localhost:3000/src/pages/ProjectPage.tsx?t=1770337951821:91:27)
+    at RenderedRoute (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=e512907b:6284:26)
+    at Routes (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=e512907b:7133:3)
+    at div
+    at ProjectsProvider (http://localhost:3000/src/contexts/ProjectsContext.tsx:25:36)
+    at UserProvider (http://localhost:3000/src/contexts/UserContext.tsx:25:32)
+    at App
+    at Router (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=e512907b:7074:13)
+    at BrowserRouter (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=e512907b:10191:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:14079
+[   42386ms] [ERROR] The above error occurred in the <ProjectPage> component:
+
+    at ProjectPage (http://localhost:3000/src/pages/ProjectPage.tsx?t=1770337951821:91:27)
+    at RenderedRoute (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=e512907b:6284:26)
+    at Routes (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=e512907b:7133:3)
+    at div
+    at ProjectsProvider (http://localhost:3000/src/contexts/ProjectsContext.tsx:25:36)
+    at UserProvider (http://localhost:3000/src/contexts/UserContext.tsx:25:32)
+    at App
+    at Router (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=e512907b:7074:13)
+    at BrowserRouter (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=e512907b:10191:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:14079
+[   42386ms] Error: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.
+    at Object.throwInvalidHookError (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:11549:17)
+    at useMemo (http://localhost:3000/node_modules/.vite/deps/chunk-RLJ2RCJQ.js?v=e512907b:1094:29)
+    at http://localhost:3000/src/pages/ProjectPage.tsx?t=1770337951821:130:29
+    at commitHookEffectListMount (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:16963:34)
+    at commitPassiveMountOnFiber (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18206:19)
+    at commitPassiveMountEffects_complete (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18179:17)
+    at commitPassiveMountEffects_begin (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18169:15)
+    at commitPassiveMountEffects (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:18159:11)
+    at flushPassiveEffectsImpl (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19543:11)
+    at flushPassiveEffects (http://localhost:3000/node_modules/.vite/deps/chunk-YFB5YCE7.js?v=e512907b:19500:22)
