@@ -2080,3 +2080,158 @@ export const DSPY_OPTIMIZERS: {
     description: "K-nearest neighbor example selection",
   },
 ];
+
+// ============================================================================
+// Training Jobs (TRAIN Stage)
+// ============================================================================
+
+export type TrainingJobStatus = 
+  | "pending" 
+  | "queued" 
+  | "running" 
+  | "succeeded" 
+  | "failed" 
+  | "cancelled" 
+  | "timeout";
+
+export interface TrainingJob {
+  id: string;
+  training_sheet_id: string;
+  training_sheet_name?: string;
+  model_name: string;
+  base_model: string;
+  status: TrainingJobStatus;
+  training_config: Record<string, any>;
+  train_val_split: number;
+  
+  // Counts (calculated by backend)
+  total_pairs: number;
+  train_pairs: number;
+  val_pairs: number;
+  
+  // Progress tracking
+  progress_percent: number;
+  current_epoch?: number;
+  total_epochs?: number;
+  
+  // External IDs
+  fmapi_job_id?: string;
+  fmapi_run_id?: string;
+  mlflow_experiment_id?: string;
+  mlflow_run_id?: string;
+  
+  // Unity Catalog registration
+  register_to_uc: boolean;
+  uc_model_name?: string;
+  uc_model_version?: string;
+  
+  // Metrics (populated on completion)
+  metrics?: Record<string, any>;
+  
+  // Error handling
+  error_message?: string;
+  error_details?: Record<string, any>;
+  
+  // Timestamps
+  created_at?: string;
+  created_by?: string;
+  started_at?: string;
+  completed_at?: string;
+  updated_at?: string;
+}
+
+export interface TrainingJobCreateRequest {
+  training_sheet_id: string;
+  model_name: string;
+  base_model: string;
+  training_config: Record<string, any>;
+  train_val_split: number;
+  register_to_uc?: boolean;
+  uc_catalog?: string;
+  uc_schema?: string;
+}
+
+export interface TrainingJobListResponse {
+  jobs: TrainingJob[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface TrainingJobMetrics {
+  job_id: string;
+  train_loss?: number;
+  val_loss?: number;
+  train_accuracy?: number;
+  val_accuracy?: number;
+  learning_rate?: number;
+  epochs_completed?: number;
+  training_duration_seconds?: number;
+  tokens_processed?: number;
+  cost_dbu?: number;
+  custom_metrics?: Record<string, any>;
+}
+
+export interface TrainingJobEvent {
+  id: string;
+  job_id: string;
+  event_type: string;
+  old_status?: string;
+  new_status?: string;
+  event_data?: Record<string, any>;
+  message?: string;
+  created_at: string;
+}
+
+export interface TrainingJobEventsResponse {
+  events: TrainingJobEvent[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface TrainingJobLineage {
+  job_id: string;
+  training_sheet_id: string;
+  training_sheet_name?: string;
+  sheet_id?: string;
+  sheet_name?: string;
+  template_id?: string;
+  template_name?: string;
+  model_name: string;
+  model_version?: string;
+  qa_pair_ids: string[];
+  canonical_label_ids: string[];
+}
+
+export interface TrainingJobCancelRequest {
+  reason?: string;
+}
+
+// Available base models for training
+export const AVAILABLE_TRAINING_MODELS = [
+  {
+    id: "databricks-meta-llama-3-1-70b-instruct",
+    name: "Llama 3.1 70B Instruct",
+    description: "Best quality, higher cost",
+    recommended: false,
+  },
+  {
+    id: "databricks-meta-llama-3-1-8b-instruct",
+    name: "Llama 3.1 8B Instruct",
+    description: "Good balance of quality and speed",
+    recommended: true,
+  },
+  {
+    id: "databricks-dbrx-instruct",
+    name: "DBRX Instruct",
+    description: "Databricks native model",
+    recommended: false,
+  },
+  {
+    id: "databricks-mixtral-8x7b-instruct",
+    name: "Mixtral 8x7B Instruct",
+    description: "Strong reasoning capabilities",
+    recommended: false,
+  },
+] as const;

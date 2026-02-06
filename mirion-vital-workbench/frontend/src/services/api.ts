@@ -69,6 +69,14 @@ import type {
   ExampleBatchCreateResponse,
   ExampleListResponse,
   EffectivenessDashboardStats,
+  // Training Job types
+  TrainingJob,
+  TrainingJobCreateRequest,
+  TrainingJobListResponse,
+  TrainingJobStatus,
+  TrainingJobMetrics,
+  TrainingJobEventsResponse,
+  TrainingJobLineage,
 } from "../types";
 
 const API_BASE = "/api/v1";
@@ -1851,4 +1859,121 @@ export async function syncOptimizationResults(runId: string): Promise<{
   return fetchJson(`${API_BASE}/dspy/runs/${runId}/sync`, {
     method: "POST",
   });
+}
+
+// ============================================================================
+// Training Jobs API (TRAIN Stage)
+// ============================================================================
+
+/**
+ * Create a new training job
+ */
+export async function createTrainingJob(
+  data: TrainingJobCreateRequest,
+): Promise<TrainingJob> {
+  return fetchJson(`${API_BASE}/training/jobs`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * List training jobs with optional filtering
+ */
+export async function listTrainingJobs(params?: {
+  training_sheet_id?: string;
+  status?: TrainingJobStatus;
+  created_by?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<TrainingJobListResponse> {
+  const query = new URLSearchParams();
+  if (params?.training_sheet_id)
+    query.set("training_sheet_id", params.training_sheet_id);
+  if (params?.status) query.set("status", params.status);
+  if (params?.created_by) query.set("created_by", params.created_by);
+  if (params?.page) query.set("page", params.page.toString());
+  if (params?.page_size) query.set("page_size", params.page_size.toString());
+
+  const queryString = query.toString();
+  return fetchJson(
+    `${API_BASE}/training/jobs${queryString ? `?${queryString}` : ""}`,
+  );
+}
+
+/**
+ * Get training job details
+ */
+export async function getTrainingJob(jobId: string): Promise<TrainingJob> {
+  return fetchJson(`${API_BASE}/training/jobs/${jobId}`);
+}
+
+/**
+ * Poll FMAPI for job status and update database
+ */
+export async function pollTrainingJob(jobId: string): Promise<TrainingJob> {
+  return fetchJson(`${API_BASE}/training/jobs/${jobId}/poll`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Cancel a running training job
+ */
+export async function cancelTrainingJob(
+  jobId: string,
+  reason?: string,
+): Promise<TrainingJob> {
+  return fetchJson(`${API_BASE}/training/jobs/${jobId}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+/**
+ * Get training job metrics (only available after job completes)
+ */
+export async function getTrainingJobMetrics(
+  jobId: string,
+): Promise<TrainingJobMetrics> {
+  return fetchJson(`${API_BASE}/training/jobs/${jobId}/metrics`);
+}
+
+/**
+ * Get training job event history
+ */
+export async function getTrainingJobEvents(
+  jobId: string,
+  params?: {
+    page?: number;
+    page_size?: number;
+  },
+): Promise<TrainingJobEventsResponse> {
+  const query = new URLSearchParams();
+  if (params?.page) query.set("page", params.page.toString());
+  if (params?.page_size) query.set("page_size", params.page_size.toString());
+
+  const queryString = query.toString();
+  return fetchJson(
+    `${API_BASE}/training/jobs/${jobId}/events${queryString ? `?${queryString}` : ""}`,
+  );
+}
+
+/**
+ * Get training job lineage (trace to source data)
+ */
+export async function getTrainingJobLineage(
+  jobId: string,
+): Promise<TrainingJobLineage> {
+  return fetchJson(`${API_BASE}/training/jobs/${jobId}/lineage`);
+}
+
+/**
+ * Get all active training jobs
+ */
+export async function getActiveTrainingJobs(): Promise<TrainingJob[]> {
+  const response = await fetchJson<{ jobs: TrainingJob[]; total: number }>(
+    `${API_BASE}/training/active`,
+  );
+  return response.jobs;
 }
