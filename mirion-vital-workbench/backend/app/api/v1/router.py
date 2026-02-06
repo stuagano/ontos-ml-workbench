@@ -22,6 +22,7 @@ from app.api.v1.endpoints import (
     settings,
     sheets,
     templates,
+    training,
     unity_catalog,
 )
 
@@ -47,6 +48,9 @@ router.include_router(unity_catalog.router)
 router.include_router(gaps.router)
 router.include_router(attribution.router)
 router.include_router(feedback.router)
+
+# Training - Foundation Model API fine-tuning jobs
+router.include_router(training.router)
 
 # Deployment and Model Serving
 router.include_router(deployment.router)
