@@ -74,6 +74,13 @@ import type {
 const API_BASE = "/api/v1";
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
+  console.log("🌐 API Call:", {
+    url,
+    method: options?.method || "GET",
+    baseURL: API_BASE,
+    fullURL: url,
+  });
+
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -86,14 +93,31 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
     const error = await response
       .json()
       .catch(() => ({ detail: "Unknown error" }));
+    console.error("❌ API Error:", {
+      url,
+      status: response.status,
+      statusText: response.statusText,
+      error,
+    });
     throw new Error(error.detail || `HTTP ${response.status}`);
   }
 
   if (response.status === 204) {
+    console.log("✅ API Response (204 No Content):", { url });
     return undefined as T;
   }
 
-  return response.json();
+  const data = await response.json();
+  console.log("✅ API Response:", {
+    url,
+    status: response.status,
+    data:
+      typeof data === "object" && data !== null
+        ? { ...data, _preview: JSON.stringify(data).substring(0, 200) + "..." }
+        : data,
+  });
+
+  return data;
 }
 
 // ============================================================================
@@ -1023,7 +1047,8 @@ export async function previewAssembly(
   params?: {
     offset?: number;
     limit?: number;
-    response_source_filter?: string[];
+    response_source?: string;
+    flagged_only?: boolean;
   },
 ): Promise<AssemblyPreviewResponse> {
   const queryParams = new URLSearchParams();
@@ -1031,10 +1056,11 @@ export async function previewAssembly(
     queryParams.append("offset", String(params.offset));
   if (params?.limit !== undefined)
     queryParams.append("limit", String(params.limit));
-  if (params?.response_source_filter) {
-    params.response_source_filter.forEach((f) =>
-      queryParams.append("response_source_filter", f),
-    );
+  if (params?.response_source) {
+    queryParams.append("response_source", params.response_source);
+  }
+  if (params?.flagged_only) {
+    queryParams.append("flagged_only", "true");
   }
   const query = queryParams.toString();
   return fetchJson(
@@ -1514,7 +1540,8 @@ export async function listExamples(params?: {
   if (params?.min_quality_score !== undefined)
     searchParams.set("min_quality_score", String(params.min_quality_score));
   if (params?.page) searchParams.set("page", String(params.page));
-  if (params?.page_size) searchParams.set("page_size", String(params.page_size));
+  if (params?.page_size)
+    searchParams.set("page_size", String(params.page_size));
 
   const query = searchParams.toString();
   return fetchJson(`${API_BASE}/examples${query ? `?${query}` : ""}`);
@@ -1664,7 +1691,8 @@ export async function getEffectivenessDashboard(params?: {
 }): Promise<EffectivenessDashboardStats> {
   const searchParams = new URLSearchParams();
   if (params?.domain) searchParams.set("domain", params.domain);
-  if (params?.function_name) searchParams.set("function_name", params.function_name);
+  if (params?.function_name)
+    searchParams.set("function_name", params.function_name);
   if (params?.period) searchParams.set("period", params.period);
 
   const query = searchParams.toString();
@@ -1688,7 +1716,9 @@ import type {
 /**
  * Get DSPy signature for a template
  */
-export async function getDSPySignature(templateId: string): Promise<DSPySignature> {
+export async function getDSPySignature(
+  templateId: string,
+): Promise<DSPySignature> {
   return fetchJson(`${API_BASE}/dspy/templates/${templateId}/signature`);
 }
 
@@ -1730,7 +1760,9 @@ export async function exportToDSPy(
 /**
  * Get raw DSPy signature code
  */
-export async function getDSPySignatureCode(templateId: string): Promise<string> {
+export async function getDSPySignatureCode(
+  templateId: string,
+): Promise<string> {
   return fetchJson(`${API_BASE}/dspy/templates/${templateId}/signature-code`);
 }
 

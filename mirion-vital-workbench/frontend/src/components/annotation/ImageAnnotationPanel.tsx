@@ -8,7 +8,7 @@
  * - Save/submit controls
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -133,6 +133,14 @@ export function ImageAnnotationPanel({
   );
   const [isFlagging, setIsFlagging] = useState(false);
   const [flagReason, setFlagReason] = useState("");
+
+  // Reset state when task changes (navigating to different image)
+  useEffect(() => {
+    setCurrentBoxes(task.existingAnnotations?.[0]?.result || []);
+    setIsFlagging(false);
+    setFlagReason("");
+  }, [task.id]);
+
   // Handle annotation changes
   const handleAnnotationsChange = useCallback((boxes: BoundingBox[]) => {
     setCurrentBoxes(boxes);
@@ -230,6 +238,7 @@ export function ImageAnnotationPanel({
       {/* Annotation Area */}
       <div className="flex-1 p-4 overflow-auto">
         <SimpleAnnotator
+          key={task.id}
           imageUrl={task.imageUrl}
           labels={labelsWithColors}
           existingBoxes={currentBoxes}

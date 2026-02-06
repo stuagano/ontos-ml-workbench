@@ -17,6 +17,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Database,
   Table2,
@@ -29,9 +30,16 @@ import {
   ArrowRight,
   Wand2,
   CheckCircle,
+  RefreshCw,
+  Search,
+  Filter,
+  Edit,
+  Shield,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { UCBrowser, type UCItem } from "../components/UCBrowser";
+import { DataTable, Column, RowAction } from "../components/DataTable";
+import { StageSubNav, StageMode } from "../components/StageSubNav";
 import {
   createSheet,
   getSheet,
@@ -44,6 +52,7 @@ import {
 } from "../services/api";
 import { useToast } from "../components/Toast";
 import { useWorkflow } from "../context/WorkflowContext";
+import { useModules } from "../hooks/useModules";
 import type {
   Sheet,
   SheetPreview,
@@ -64,29 +73,51 @@ interface BaseTableConfig {
   rowCount: number;
 }
 
-type BuilderStep = "choose-sheet" | "select-base" | "build-sheet";
+type BuilderStep = "build-sheet" | "no-sheet";
 
 // ============================================================================
-// Base Table Selector
+// Sheet Browser Modal - Unified browse existing + create new
 // ============================================================================
 
-interface BaseTableSelectorProps {
-  onSelect: (config: BaseTableConfig) => void;
+interface SheetBrowserModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelectExisting: (sheetId: string) => void;
+  onCreateFromTable: (config: BaseTableConfig) => void;
 }
 
-function BaseTableSelector({ onSelect }: BaseTableSelectorProps) {
-  const [selectedTable, setSelectedTable] = useState<UCItem | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+function SheetBrowserModal({
+  isOpen,
+  onClose,
+  onSelectExisting,
+  onCreateFromTable,
+}: SheetBrowserModalProps) {
+  const [activeTab, setActiveTab] = useState<"browse" | "create">("browse");
+  const [sheets, setSheets] = useState<Sheet[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const toast = useToast();
+
+  useEffect(() => {
+    if (isOpen) {
+      listSheets({ page_size: 50 })
+        .then((result) => {
+          setSheets(result.sheets);
+          setIsLoading(false);
+        })
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : "Failed to load sheets");
+          setIsLoading(false);
+        });
+    }
+  }, [isOpen]);
 
   const handleTableSelect = async (item: UCItem) => {
     if (item.type !== "table") return;
 
-    setSelectedTable(item);
-    setIsLoading(true);
-
     try {
-      // Get table preview to extract columns and row count
+      // Get table preview to extract columns
       const preview = await previewTable(
         item.catalogName!,
         item.schemaName!,
@@ -94,7 +125,6 @@ function BaseTableSelector({ onSelect }: BaseTableSelectorProps) {
         1,
       );
 
-      // Get columns from the preview response keys
       const columns: { name: string; type: string }[] = [];
       if (preview.rows.length > 0) {
         Object.keys(preview.rows[0]).forEach((key) => {
@@ -102,161 +132,150 @@ function BaseTableSelector({ onSelect }: BaseTableSelectorProps) {
         });
       }
 
-      onSelect({
+      onCreateFromTable({
         catalog: item.catalogName!,
         schema: item.schemaName!,
         table: item.name,
         columns,
         rowCount: preview.count,
       });
+      onClose();
     } catch (err) {
       toast.error(
         "Failed to load table",
         err instanceof Error ? err.message : "Unknown error",
       );
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  return (
-    <div className="max-w-4xl mx-auto">
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
-          <Database className="w-8 h-8 text-blue-600" />
-        </div>
-        <h2 className="text-2xl font-semibold text-db-gray-800 mb-2">
-          Select Base Table
-        </h2>
-        <p className="text-db-gray-500 max-w-lg mx-auto">
-          Choose a table that defines your row structure. Each row in this table
-          becomes a row in your AI Sheet.
-        </p>
-      </div>
-
-      <div className="bg-white rounded-xl border border-db-gray-200 shadow-sm">
-        <div className="p-4 border-b border-db-gray-200">
-          <h3 className="font-medium text-db-gray-700 flex items-center gap-2">
-            <Table2 className="w-4 h-4" />
-            Browse Unity Catalog
-          </h3>
-        </div>
-        <div className="p-4">
-          <UCBrowser onSelect={handleTableSelect} filter={["table"]} />
-        </div>
-      </div>
-
-      {selectedTable && isLoading && (
-        <div className="mt-4 flex items-center justify-center gap-2 text-db-gray-500">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          Loading table structure...
-        </div>
-      )}
-    </div>
+  const filteredSheets = sheets.filter((sheet) =>
+    sheet.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
-}
 
-// ============================================================================
-// Sheet Selector Component
-// ============================================================================
-
-interface SheetSelectorProps {
-  onSelectExisting: (sheetId: string) => void;
-  onCreateNew: () => void;
-}
-
-function SheetSelector({ onSelectExisting, onCreateNew }: SheetSelectorProps) {
-  const [sheets, setSheets] = useState<Sheet[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    listSheets({ page_size: 50 })
-      .then((result) => {
-        setSheets(result.sheets);
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to load sheets");
-        setIsLoading(false);
-      });
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-db-gray-400" />
-      </div>
-    );
-  }
+  if (!isOpen) return null;
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
-          <Table2 className="w-8 h-8 text-blue-600" />
-        </div>
-        <h2 className="text-2xl font-semibold text-db-gray-800 mb-2">
-          AI Sheets
-        </h2>
-        <p className="text-db-gray-500 max-w-lg mx-auto">
-          Open an existing sheet to continue working, or create a new one from a
-          Unity Catalog table.
-        </p>
-      </div>
-
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          {error}
-        </div>
-      )}
-
-      {/* Existing sheets */}
-      {sheets.length > 0 && (
-        <div className="bg-white rounded-xl border border-db-gray-200 shadow-sm mb-6">
-          <div className="p-4 border-b border-db-gray-200">
-            <h3 className="font-medium text-db-gray-700">Your Sheets</h3>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-db-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-db-gray-800 flex items-center gap-2">
+              <Table2 className="w-6 h-6 text-blue-600" />
+              Select or Create Sheet
+            </h2>
+            <button
+              onClick={onClose}
+              className="p-1 hover:bg-db-gray-100 rounded"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <div className="divide-y divide-db-gray-100">
-            {sheets.map((sheet) => (
-              <button
-                key={sheet.id}
-                onClick={() => onSelectExisting(sheet.id)}
-                className="w-full p-4 text-left hover:bg-db-gray-50 transition-colors flex items-center justify-between"
-              >
-                <div>
-                  <div className="font-medium text-db-gray-800">
-                    {sheet.name}
-                  </div>
-                  {sheet.description && (
-                    <div className="text-sm text-db-gray-500 mt-0.5">
-                      {sheet.description}
-                    </div>
-                  )}
-                  <div className="text-xs text-db-gray-400 mt-1">
-                    {sheet.columns.length} columns · {sheet.status}
-                    {sheet.updated_at &&
-                      ` · ${new Date(sheet.updated_at).toLocaleDateString()}`}
-                  </div>
+
+          {/* Tabs */}
+          <div className="flex gap-2 border-b border-db-gray-200">
+            <button
+              onClick={() => setActiveTab("browse")}
+              className={clsx(
+                "px-4 py-2 font-medium text-sm border-b-2 transition-colors",
+                activeTab === "browse"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-db-gray-500 hover:text-db-gray-700",
+              )}
+            >
+              Your Sheets
+            </button>
+            <button
+              onClick={() => setActiveTab("create")}
+              className={clsx(
+                "px-4 py-2 font-medium text-sm border-b-2 transition-colors",
+                activeTab === "create"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-db-gray-500 hover:text-db-gray-700",
+              )}
+            >
+              <Plus className="w-4 h-4 inline mr-1" />
+              Create from Table
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-6">
+          {activeTab === "browse" && (
+            <div className="space-y-4">
+              {/* Search */}
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search sheets..."
+                className="w-full px-4 py-2 border border-db-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-db-gray-400" />
                 </div>
-                <div className="text-db-gray-400">→</div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+              ) : error ? (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                  {error}
+                </div>
+              ) : filteredSheets.length > 0 ? (
+                <div className="space-y-2">
+                  {filteredSheets.map((sheet) => (
+                    <button
+                      key={sheet.id}
+                      onClick={() => {
+                        onSelectExisting(sheet.id);
+                        onClose();
+                      }}
+                      className="w-full p-4 text-left bg-white border border-db-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
+                    >
+                      <div className="font-medium text-db-gray-800">
+                        {sheet.name}
+                      </div>
+                      {sheet.description && (
+                        <div className="text-sm text-db-gray-500 mt-0.5">
+                          {sheet.description}
+                        </div>
+                      )}
+                      <div className="text-xs text-db-gray-400 mt-1">
+                        {sheet.columns.length} columns · {sheet.status}
+                        {sheet.updated_at &&
+                          ` · ${new Date(sheet.updated_at).toLocaleDateString()}`}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-db-gray-500">
+                  <Table2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>No sheets found</p>
+                  <button
+                    onClick={() => setActiveTab("create")}
+                    className="mt-4 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  >
+                    Create your first sheet →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
-      {/* Create new */}
-      <button
-        onClick={onCreateNew}
-        className="w-full p-6 bg-white rounded-xl border-2 border-dashed border-db-gray-300 hover:border-blue-400 hover:bg-blue-50/50 transition-colors text-center"
-      >
-        <Plus className="w-8 h-8 mx-auto text-db-gray-400 mb-2" />
-        <div className="font-medium text-db-gray-700">Create New Sheet</div>
-        <div className="text-sm text-db-gray-500 mt-1">
-          Start from a Unity Catalog table
+          {activeTab === "create" && (
+            <div>
+              <p className="text-sm text-db-gray-500 mb-4">
+                Browse Unity Catalog and select a table to create a new AI Sheet.
+                Each row in the table becomes a row in your sheet.
+              </p>
+              <div className="bg-white border border-db-gray-200 rounded-lg overflow-hidden">
+                <UCBrowser onSelect={handleTableSelect} filter={["table"]} />
+              </div>
+            </div>
+          )}
         </div>
-      </button>
+      </div>
     </div>
   );
 }
@@ -525,35 +544,49 @@ function AddColumnModal({
 // Main Sheet Builder Component
 // ============================================================================
 
-export function SheetBuilder() {
+interface SheetBuilderProps {
+  mode?: "browse" | "create";
+  onModeChange?: (mode: "browse" | "create") => void;
+}
+
+export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProps) {
   const workflow = useWorkflow();
-  const currentStage = workflow.state.currentStage;
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const { openModule, activeModule, isOpen: isModuleOpen, closeModule } = useModules({ stage: "data" });
 
-  // Derive step from workflow state - if we have a selected source (sheet), go to build-sheet
-  // If we're on 'template' stage, we should be in build-sheet mode
-  const getInitialStep = (): BuilderStep => {
-    if (workflow.state.selectedSource) {
-      return "build-sheet";
-    }
-    if (currentStage === "template") {
-      // If user navigates to template without selecting data, send them back
-      return "choose-sheet";
-    }
-    return "choose-sheet";
-  };
-
-  const [step, setStep] = useState<BuilderStep>(getInitialStep);
+  // ALL HOOKS MUST BE DECLARED BEFORE ANY CONDITIONAL RETURNS
+  // (React requires hooks to be called in the same order every render)
+  const [stageMode, setStageMode] = useState<StageMode>("browse");
+  const [searchQuery, setSearchQuery] = useState("");
   const [baseTable, setBaseTable] = useState<BaseTableConfig | null>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [preview, setPreview] = useState<SheetPreview | null>(null);
   const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
   const [isLoadingSheet, setIsLoadingSheet] = useState(false);
-  const toast = useToast();
+  const [isSheetBrowserOpen, setIsSheetBrowserOpen] = useState(false);
+
+  // Fetch sheets for browse mode
+  const { data: sheetsData, isLoading: isSheetsLoading } = useQuery({
+    queryKey: ["sheets", searchQuery],
+    queryFn: () => listSheets({ page_size: 100 }),
+    enabled: stageMode === "browse",
+  });
+
+  // Derive step from workflow state - if we have a selected source (sheet), go to build-sheet
+  const getInitialStep = (): BuilderStep => {
+    if (workflow.state.selectedSource) {
+      return "build-sheet";
+    }
+    return "no-sheet";
+  };
+
+  const [step, setStep] = useState<BuilderStep>(getInitialStep);
 
   // Sync step with workflow state when navigating via breadcrumbs
   useEffect(() => {
-    if (workflow.state.selectedSource && step === "choose-sheet") {
-      // If we have a selected source but showing choose-sheet, restore to build-sheet
+    if (workflow.state.selectedSource && step === "no-sheet") {
+      // If we have a selected source but showing no-sheet, restore to build-sheet
       setStep("build-sheet");
     }
   }, [workflow.state.selectedSource, step]);
@@ -577,7 +610,7 @@ export function SheetBuilder() {
           console.error("Failed to restore sheet:", err);
           // Clear the workflow state if we can't load the sheet
           workflow.setSelectedSource(null);
-          setStep("choose-sheet");
+          setStep("no-sheet");
         })
         .finally(() => {
           setIsLoadingSheet(false);
@@ -585,13 +618,23 @@ export function SheetBuilder() {
     }
   }, [workflow.state.selectedSource, sheet, step]);
 
-  // Load an existing sheet by ID
+  // Load preview when sheet changes
+  useEffect(() => {
+    if (sheet?.id && sheet.columns.length > 0) {
+      getSheetPreview(sheet.id, 50)
+        .then(setPreview)
+        .catch((err) => console.error("Failed to load preview:", err));
+    }
+  }, [sheet?.id, sheet?.columns.length]);
+
+  // Load an existing sheet by ID (moved up before it's used in render)
   const handleSelectExisting = async (sheetId: string) => {
     setIsLoadingSheet(true);
     try {
       const loadedSheet = await getSheet(sheetId);
       setSheet(loadedSheet);
       setStep("build-sheet");
+      setStageMode("create"); // Switch to create mode to show the sheet editor
 
       // Save to workflow context so breadcrumb navigation works
       workflow.setSelectedSource({
@@ -612,7 +655,7 @@ export function SheetBuilder() {
     }
   };
 
-  // Create sheet when base table is selected
+  // Create sheet when base table is selected (moved up before any early returns)
   const handleBaseTableSelect = async (config: BaseTableConfig) => {
     setBaseTable(config);
 
@@ -678,14 +721,263 @@ export function SheetBuilder() {
     }
   };
 
-  // Load preview when sheet changes
-  useEffect(() => {
-    if (sheet?.id && sheet.columns.length > 0) {
-      getSheetPreview(sheet.id, 50)
-        .then(setPreview)
-        .catch((err) => console.error("Failed to load preview:", err));
+  // Handle table selection from UCBrowser (browse mode)
+  const handleBrowseTableSelect = (item: UCItem) => {
+    if (item.type !== "table") return;
+
+    // When selecting a table from browse mode, switch to create mode and start sheet creation
+    if (onModeChange) {
+      onModeChange("create");
     }
-  }, [sheet?.id, sheet?.columns.length]);
+
+    // Create a base table config and trigger sheet creation
+    previewTable(item.catalogName!, item.schemaName!, item.name, 1)
+      .then((previewResult) => {
+        const columns: { name: string; type: string }[] = [];
+        if (previewResult.rows.length > 0) {
+          Object.keys(previewResult.rows[0]).forEach((key) => {
+            columns.push({ name: key, type: "string" });
+          });
+        }
+
+        handleBaseTableSelect({
+          catalog: item.catalogName!,
+          schema: item.schemaName!,
+          table: item.name,
+          columns,
+          rowCount: previewResult.count,
+        });
+      })
+      .catch((err) => {
+        toast.error("Failed to load table", err instanceof Error ? err.message : "Unknown error");
+      });
+  };
+
+  // BROWSE MODE: Show table of existing sheets with StageSubNav
+  if (stageMode === "browse") {
+    const sheets = sheetsData?.sheets || [];
+    const filteredSheets = sheets.filter((s) =>
+      s.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Define table columns for sheets
+    const columns: Column<Sheet>[] = [
+      {
+        key: "name",
+        header: "Sheet Name",
+        width: "40%",
+        render: (sheet) => (
+          <div className="flex items-center gap-3">
+            <Table2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
+            <div className="min-w-0">
+              <div className="font-medium text-db-gray-900">{sheet.name}</div>
+              {sheet.description && (
+                <div className="text-sm text-db-gray-500 truncate">
+                  {sheet.description}
+                </div>
+              )}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: "columns",
+        header: "Columns",
+        width: "15%",
+        render: (sheet) => (
+          <span className="text-sm text-db-gray-600">
+            {sheet.columns.length} columns
+          </span>
+        ),
+      },
+      {
+        key: "row_count",
+        header: "Rows",
+        width: "15%",
+        render: (sheet) => (
+          <span className="text-sm text-db-gray-600">
+            {sheet.row_count?.toLocaleString() || "N/A"}
+          </span>
+        ),
+      },
+      {
+        key: "updated",
+        header: "Last Updated",
+        width: "20%",
+        render: (sheet) => (
+          <span className="text-sm text-db-gray-500">
+            {sheet.updated_at
+              ? new Date(sheet.updated_at).toLocaleDateString()
+              : "N/A"}
+          </span>
+        ),
+      },
+    ];
+
+    // Define row actions
+    const rowActions: RowAction<Sheet>[] = [
+      {
+        label: "Open",
+        icon: Edit,
+        onClick: (sheet) => handleSelectExisting(sheet.id),
+        className: "text-blue-600",
+      },
+      {
+        label: "Delete",
+        icon: Trash2,
+        onClick: (sheet) => {
+          if (confirm(`Delete sheet "${sheet.name}"?`)) {
+            // TODO: Implement delete
+            toast.info("Delete", "Delete functionality coming soon");
+          }
+        },
+        className: "text-red-600",
+      },
+    ];
+
+    const emptyState = (
+      <div className="text-center py-20 bg-white rounded-lg">
+        <Table2 className="w-16 h-16 text-db-gray-300 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-db-gray-700 mb-2">
+          No sheets found
+        </h3>
+        <p className="text-db-gray-500 mb-6">
+          {searchQuery
+            ? "Try adjusting your search"
+            : "Create your first AI Sheet from a Unity Catalog table"}
+        </p>
+        <button
+          onClick={() => setStageMode("create")}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          <Plus className="w-4 h-4" />
+          Create Sheet
+        </button>
+      </div>
+    );
+
+    return (
+      <div className="flex-1 flex flex-col bg-db-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b border-db-gray-200 px-6 py-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-db-gray-900">AI Sheets</h1>
+                <p className="text-db-gray-600 mt-1">
+                  Manage datasets imported from Unity Catalog tables
+                </p>
+              </div>
+              <button
+                onClick={() => queryClient.invalidateQueries({ queryKey: ["sheets"] })}
+                className="flex items-center gap-2 px-3 py-2 text-db-gray-600 hover:text-db-gray-800 hover:bg-db-gray-100 rounded-lg transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Stage Sub-Navigation */}
+        <StageSubNav
+          stage="data"
+          mode={stageMode}
+          onModeChange={setStageMode}
+          browseCount={sheets.length}
+        />
+
+        {/* Search */}
+        {stageMode === "browse" && (
+          <div className="px-6 pt-4">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-lg border border-db-gray-200">
+                <Filter className="w-4 h-4 text-db-gray-400" />
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-db-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search sheets by name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border-0 focus:outline-none focus:ring-0"
+                  />
+                </div>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="text-sm text-db-gray-500 hover:text-db-gray-700"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Table */}
+        <div className="flex-1 px-6 pb-6 pt-4 overflow-auto">
+          <div className="max-w-7xl mx-auto">
+            {isSheetsLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              </div>
+            ) : (
+              <DataTable
+                data={filteredSheets}
+                columns={columns}
+                rowKey={(sheet) => sheet.id}
+                onRowClick={(sheet) => handleSelectExisting(sheet.id)}
+                rowActions={rowActions}
+                emptyState={emptyState}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // CREATE MODE: Show UCBrowser to select table
+  if (stageMode === "create") {
+    return (
+      <div className="flex-1 flex flex-col bg-db-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b border-db-gray-200 px-6 py-4">
+          <div className="max-w-7xl mx-auto">
+            <h1 className="text-2xl font-bold text-db-gray-900">Create AI Sheet</h1>
+            <p className="text-db-gray-600 mt-1">
+              Select a Unity Catalog table to import as a new sheet
+            </p>
+          </div>
+        </div>
+
+        {/* Stage Sub-Navigation */}
+        <StageSubNav
+          stage="data"
+          mode={stageMode}
+          onModeChange={setStageMode}
+          browseCount={sheetsData?.sheets.length}
+        />
+
+        {/* UCBrowser - full page */}
+        <div className="flex-1 overflow-hidden px-6 pb-6 pt-4">
+          <div className="max-w-7xl mx-auto h-full">
+            <div className="h-full bg-white rounded-xl border border-db-gray-200 shadow-sm overflow-hidden">
+              <UCBrowser
+                onSelect={handleBrowseTableSelect}
+                filter={["table", "volume"]}
+                className="h-full"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // CREATE MODE: Show the sheet creation/editing flow continues below...
 
   // Add imported column
   const handleAddImported = async (config: ImportConfig, name: string) => {
@@ -746,8 +1038,8 @@ export function SheetBuilder() {
     }
   };
 
-  // Render sheet selection (initial step)
-  if (step === "choose-sheet") {
+  // Render no-sheet state (show button to open browser modal)
+  if (step === "no-sheet") {
     if (isLoadingSheet) {
       return (
         <div className="flex items-center justify-center h-full">
@@ -756,28 +1048,26 @@ export function SheetBuilder() {
       );
     }
     return (
-      <div className="p-6">
-        <SheetSelector
-          onSelectExisting={handleSelectExisting}
-          onCreateNew={() => setStep("select-base")}
-        />
-      </div>
-    );
-  }
-
-  // Render base table selection (for creating new sheet)
-  if (step === "select-base") {
-    return (
-      <div className="p-6">
-        <div className="max-w-4xl mx-auto mb-4">
+      <div className="flex items-center justify-center h-full bg-db-gray-50">
+        <div className="text-center max-w-md">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
+            <Table2 className="w-8 h-8 text-blue-600" />
+          </div>
+          <h2 className="text-2xl font-semibold text-db-gray-800 mb-2">
+            AI Sheets
+          </h2>
+          <p className="text-db-gray-500 mb-6">
+            Browse your existing sheets or create a new one from a Unity Catalog
+            table.
+          </p>
           <button
-            onClick={() => setStep("choose-sheet")}
-            className="text-sm text-db-gray-500 hover:text-db-gray-700 flex items-center gap-1"
+            onClick={() => setIsSheetBrowserOpen(true)}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 font-medium"
           >
-            ← Back to sheets
+            <Database className="w-5 h-5" />
+            Browse & Create Sheets
           </button>
         </div>
-        <BaseTableSelector onSelect={handleBaseTableSelect} />
       </div>
     );
   }
@@ -789,11 +1079,12 @@ export function SheetBuilder() {
       <div className="px-6 py-4 border-b border-db-gray-200 bg-white flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => setStep("choose-sheet")}
-            className="text-db-gray-400 hover:text-db-gray-600"
-            title="Back to sheets"
+            onClick={() => setIsSheetBrowserOpen(true)}
+            className="text-db-gray-400 hover:text-db-gray-600 flex items-center gap-2"
+            title="Switch sheet"
           >
-            ←
+            <Database className="w-4 h-4" />
+            <span className="text-sm">Switch</span>
           </button>
           <div>
             <h1 className="text-xl font-semibold text-db-gray-800">
@@ -836,7 +1127,37 @@ export function SheetBuilder() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-6 space-y-6">
+        {/* Data Quality Inspector Callout */}
+        {sheet && sheet.columns.length > 0 && (
+          <div className="bg-gradient-to-r from-green-50 to-teal-50 border border-green-200 rounded-lg p-6">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-green-100 rounded-lg">
+                <Shield className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-db-gray-900 mb-1">
+                  Inspect Data Quality
+                </h3>
+                <p className="text-sm text-db-gray-600 mb-4">
+                  Run automated quality checks to catch issues before training. Checks schema, completeness, distribution, and more.
+                </p>
+                <button
+                  onClick={() => openModule("data-quality", {
+                    stage: "data" as const,
+                    sheetId: sheet.id,
+                    sheetName: sheet.name,
+                  })}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <Shield className="w-4 h-4" />
+                  Run Quality Checks
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {sheet?.columns.length === 0 ? (
           /* Empty state */
           <div className="h-full flex items-center justify-center">
@@ -966,6 +1287,52 @@ export function SheetBuilder() {
                 Continue to Template Builder
                 <ArrowRight className="w-5 h-5" />
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sheet Browser Modal */}
+      <SheetBrowserModal
+        isOpen={isSheetBrowserOpen}
+        onClose={() => setIsSheetBrowserOpen(false)}
+        onSelectExisting={handleSelectExisting}
+        onCreateFromTable={handleBaseTableSelect}
+      />
+
+      {/* Module Modal */}
+      {isModuleOpen && activeModule && sheet && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-db-gray-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {activeModule.icon && (
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <activeModule.icon className="w-5 h-5 text-green-600" />
+                  </div>
+                )}
+                <div>
+                  <h2 className="text-xl font-semibold">{activeModule.name}</h2>
+                  <p className="text-sm text-db-gray-500">{activeModule.description}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => closeModule()}
+                className="p-2 hover:bg-db-gray-100 rounded-lg transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <activeModule.component
+                context={{
+                  stage: "data" as const,
+                  sheetId: sheet.id,
+                  sheetName: sheet.name,
+                }}
+                onClose={closeModule}
+                displayMode="modal"
+              />
             </div>
           </div>
         </div>

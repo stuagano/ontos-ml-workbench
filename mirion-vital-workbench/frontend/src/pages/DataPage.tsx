@@ -1,16 +1,15 @@
 /**
- * DataPage - DATA stage for configuring multi-dataset sources
+ * DataPage - DATA stage for managing sheets and data sources
  *
  * Features:
- * - Preset selection for common data patterns
- * - Multiple data source configuration (primary, secondary, images, labels)
- * - Join key configuration with visual mapping
- * - Preview of joined data
- * - Column selection for each source
+ * - Browse mode: DataTable view of all sheets
+ * - Create mode: Multi-dataset source configuration
+ * - Sheet management (create, edit, delete, export)
+ * - Unity Catalog integration for data source selection
  */
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Database,
   Table2,
@@ -28,14 +27,41 @@ import {
   Settings2,
   AlertCircle,
   Key,
+  Eye,
+  Download,
+  Calendar,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { UCBrowser, type UCItem } from "../components/UCBrowser";
-import { previewTable, listTables } from "../services/api";
+import {
+  DataTable,
+  type Column,
+  type RowAction,
+} from "../components/DataTable";
+import { StageSubNav } from "../components/StageSubNav";
+import { CanonicalLabelStats } from "../components/CanonicalLabelStats";
+import {
+  previewTable,
+  listTables,
+  listSheets,
+  deleteSheet,
+  exportSheet,
+} from "../services/api";
 import { useToast } from "../components/Toast";
 import { useWorkflow } from "../context/WorkflowContext";
-import type { DataSourceConfig, SourceColumn, JoinKeyMapping } from "../types";
+import type {
+  DataSourceConfig,
+  SourceColumn,
+  JoinKeyMapping,
+  Sheet,
+} from "../types";
 import { DATASET_PRESETS } from "../types";
+
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
+type ViewMode = "browse" | "create";
 
 // ============================================================================
 // Preset Selection Component
@@ -684,14 +710,303 @@ function BrowserModal({
 }
 
 // ============================================================================
-// Main Component
+// Browse Mode: Sheet List with DataTable
 // ============================================================================
 
-interface DataPageProps {
-  onContinue?: () => void;
+interface BrowseModeProps {
+  onCreateNew: () => void;
+  onSelectSheet: (sheet: Sheet) => void;
 }
 
-export function DataPage({ onContinue }: DataPageProps) {
+function BrowseMode({ onCreateNew, onSelectSheet }: BrowseModeProps) {
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedSheet, setSelectedSheet] = useState<Sheet | null>(null);
+
+  // Fetch sheets
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["sheets", searchTerm],
+    queryFn: () =>
+      listSheets({
+        search: searchTerm || undefined,
+        page: 1,
+        page_size: 100,
+      }),
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteSheet(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sheets"] });
+      toast.success("Sheet deleted", "Sheet has been removed");
+    },
+    onError: (error: Error) => {
+      toast.error("Delete failed", error.message);
+    },
+  });
+
+  // Export mutation
+  const exportMutation = useMutation({
+    mutationFn: (sheet: Sheet) =>
+      exportSheet(sheet.id, {
+        catalog: "main",
+        schema: "default",
+        table: `${sheet.name}_export`,
+        overwrite: true,
+      }),
+    onSuccess: (data) => {
+      toast.success("Export started", `Exporting to ${data.destination}`);
+    },
+    onError: (error: Error) => {
+      toast.error("Export failed", error.message);
+    },
+  });
+
+  // Define columns
+  const columns: Column<Sheet>[] = [
+    {
+      key: "name",
+      header: "Sheet Name",
+      width: "30%",
+      render: (sheet) => (
+        <div>
+          <div className="font-medium text-db-gray-900">{sheet.name}</div>
+          {sheet.description && (
+            <div className="text-xs text-db-gray-500 mt-0.5">
+              {sheet.description}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "columns",
+      header: "Columns",
+      width: "10%",
+      render: (sheet) => (
+        <span className="text-db-gray-700">{sheet.columns.length}</span>
+      ),
+    },
+    {
+      key: "row_count",
+      header: "Rows",
+      width: "10%",
+      render: (sheet) => (
+        <span className="text-db-gray-700">
+          {sheet.row_count?.toLocaleString() || "0"}
+        </span>
+      ),
+    },
+    {
+      key: "has_template",
+      header: "Template",
+      width: "10%",
+      render: (sheet) => (
+        <div className="flex items-center gap-1">
+          {sheet.has_template ? (
+            <>
+              <Check className="w-4 h-4 text-green-600" />
+              <span className="text-xs text-green-700">Yes</span>
+            </>
+          ) : (
+            <>
+              <X className="w-4 h-4 text-db-gray-300" />
+              <span className="text-xs text-db-gray-400">No</span>
+            </>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: "15%",
+      render: (sheet) => (
+        <span
+          className={clsx(
+            "px-2 py-1 rounded text-xs font-medium",
+            sheet.status === "published"
+              ? "bg-green-100 text-green-700"
+              : sheet.status === "draft"
+                ? "bg-blue-100 text-blue-700"
+                : "bg-db-gray-100 text-db-gray-600",
+          )}
+        >
+          {sheet.status}
+        </span>
+      ),
+    },
+    {
+      key: "created_at",
+      header: "Created",
+      width: "15%",
+      render: (sheet) => (
+        <div className="flex items-center gap-1 text-sm text-db-gray-600">
+          <Calendar className="w-3.5 h-3.5" />
+          <span>
+            {sheet.created_at
+              ? new Date(sheet.created_at).toLocaleDateString()
+              : "—"}
+          </span>
+        </div>
+      ),
+    },
+  ];
+
+  // Define row actions
+  const rowActions: RowAction<Sheet>[] = [
+    {
+      label: "Open",
+      icon: Eye,
+      onClick: (sheet) => {
+        setSelectedSheet(sheet);
+        onSelectSheet(sheet);
+      },
+    },
+    {
+      label: "Export",
+      icon: Download,
+      onClick: (sheet) => exportMutation.mutate(sheet),
+    },
+    {
+      label: "Delete",
+      icon: Trash2,
+      onClick: (sheet) => {
+        if (confirm(`Delete sheet "${sheet.name}"?`)) {
+          deleteMutation.mutate(sheet.id);
+        }
+      },
+      className: "text-red-600 hover:bg-red-50",
+    },
+  ];
+
+  // Empty state
+  const emptyState = (
+    <div className="text-center py-12">
+      <Database className="w-12 h-12 text-db-gray-300 mx-auto mb-3" />
+      <h3 className="text-lg font-medium text-db-gray-700 mb-1">
+        No sheets yet
+      </h3>
+      <p className="text-sm text-db-gray-500 mb-4">
+        Create your first sheet to get started
+      </p>
+      <button
+        onClick={onCreateNew}
+        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+      >
+        <Plus className="w-4 h-4" />
+        Create Sheet
+      </button>
+    </div>
+  );
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64 text-red-500">
+        <X className="w-5 h-5 mr-2" />
+        Failed to load sheets: {(error as Error).message}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-db-gray-200 bg-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-db-gray-900">
+              All Sheets
+            </h2>
+            <p className="text-sm text-db-gray-500 mt-0.5">
+              {data?.total || 0} total sheets
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="text"
+              placeholder="Search sheets..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="px-3 py-2 border border-db-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={onCreateNew}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <Plus className="w-4 h-4" />
+              Create Sheet
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* DataTable */}
+      <div className="flex-1 overflow-auto p-6">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+            <span className="ml-3 text-db-gray-500">Loading sheets...</span>
+          </div>
+        ) : (
+          <>
+            <DataTable
+              data={data?.sheets || []}
+              columns={columns}
+              rowKey={(sheet) => sheet.id}
+              onRowClick={(sheet) => {
+                setSelectedSheet(sheet);
+                onSelectSheet(sheet);
+              }}
+              rowActions={rowActions}
+              emptyState={emptyState}
+            />
+
+            {/* Canonical Label Stats */}
+            {selectedSheet && (
+              <div className="mt-8 border-t pt-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-db-gray-900">
+                    Canonical Labels for "{selectedSheet.name}"
+                  </h3>
+                  <button
+                    onClick={() => setSelectedSheet(null)}
+                    className="text-sm text-db-gray-500 hover:text-db-gray-700"
+                  >
+                    Close
+                  </button>
+                </div>
+                <CanonicalLabelStats
+                  sheetId={selectedSheet.id}
+                  onViewMostReused={(label) => {
+                    console.log("View label:", label);
+                    toast.success(
+                      "Label selected",
+                      `Viewing ${label.label_type} label`,
+                    );
+                  }}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Create Mode: Original Configuration UI
+// ============================================================================
+
+interface CreateModeProps {
+  onCancel: () => void;
+  onComplete: () => void;
+}
+
+function CreateMode({ onCancel, onComplete }: CreateModeProps) {
   const toast = useToast();
   const {
     state,
@@ -699,16 +1014,9 @@ export function DataPage({ onContinue }: DataPageProps) {
     removeDataSource,
     updateDataSource,
     setJoinKeyMappings,
-    goToNextStage,
   } = useWorkflow();
 
-  const [selectedPreset, setSelectedPreset] = useState<string | null>(
-    state.datasetConfig?.sources.length === 1
-      ? "sensor-only"
-      : state.datasetConfig?.sources.length
-        ? "full-multimodal"
-        : null,
-  );
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [browserModal, setBrowserModal] = useState<{
     isOpen: boolean;
     role: DataSourceConfig["role"];
@@ -723,7 +1031,6 @@ export function DataPage({ onContinue }: DataPageProps) {
 
   const handleSelectPreset = (presetId: string) => {
     setSelectedPreset(presetId);
-    // Don't clear existing sources, just update the view
   };
 
   const handleBrowseForRole = (role: DataSourceConfig["role"]) => {
@@ -756,7 +1063,7 @@ export function DataPage({ onContinue }: DataPageProps) {
     );
   };
 
-  const handleContinue = () => {
+  const handleSave = () => {
     const primarySource = getSourceForRole("primary");
     if (!primarySource) {
       toast.error(
@@ -766,43 +1073,48 @@ export function DataPage({ onContinue }: DataPageProps) {
       return;
     }
 
-    if (onContinue) {
-      onContinue();
-    }
-    goToNextStage();
-    toast.success("Data configured", "Proceeding to Template stage");
+    toast.success("Sheet configured", "Data sources configured successfully");
+    onComplete();
   };
 
   const currentPreset = DATASET_PRESETS.find((p) => p.id === selectedPreset);
   const suggestedJoinKeys = currentPreset?.suggestedJoinKeys || [];
-
-  const canContinue = getSourceForRole("primary") !== null;
+  const canSave = getSourceForRole("primary") !== null;
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-db-gray-50">
+    <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="px-6 py-4 border-b border-db-gray-200 bg-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-db-gray-900">
-              Configure Data Sources
-            </h1>
-            <p className="text-db-gray-600 mt-1">
-              Select and configure your multimodal data sources for the Databit
+            <h2 className="text-lg font-semibold text-db-gray-900">
+              Create New Sheet
+            </h2>
+            <p className="text-sm text-db-gray-500 mt-0.5">
+              Configure data sources for your sheet
             </p>
           </div>
-          {canContinue && (
+          <div className="flex items-center gap-3">
             <button
-              onClick={handleContinue}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              onClick={onCancel}
+              className="px-4 py-2 text-db-gray-700 hover:bg-db-gray-100 rounded-lg"
             >
-              Continue to Template
-              <ArrowRight className="w-4 h-4" />
+              Cancel
             </button>
-          )}
+            {canSave && (
+              <button
+                onClick={handleSave}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <Check className="w-4 h-4" />
+                Save Sheet
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
+      {/* Content */}
       <div className="flex-1 overflow-auto p-6">
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Step 1: Select Preset */}
@@ -811,9 +1123,9 @@ export function DataPage({ onContinue }: DataPageProps) {
               <span className="flex items-center justify-center w-6 h-6 bg-blue-100 text-blue-600 rounded-full text-sm font-medium">
                 1
               </span>
-              <h2 className="text-lg font-semibold text-db-gray-800">
+              <h3 className="text-lg font-semibold text-db-gray-800">
                 What kind of data are you working with?
-              </h2>
+              </h3>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -835,13 +1147,13 @@ export function DataPage({ onContinue }: DataPageProps) {
                 <span className="flex items-center justify-center w-6 h-6 bg-blue-100 text-blue-600 rounded-full text-sm font-medium">
                   2
                 </span>
-                <h2 className="text-lg font-semibold text-db-gray-800">
+                <h3 className="text-lg font-semibold text-db-gray-800">
                   Add your data sources
-                </h2>
+                </h3>
               </div>
 
               <div className="space-y-4">
-                {/* Primary Source - Always shown */}
+                {/* Primary Source */}
                 <DataSourceCard
                   role="primary"
                   config={getSourceForRole("primary")}
@@ -854,7 +1166,7 @@ export function DataPage({ onContinue }: DataPageProps) {
                   isRequired={true}
                 />
 
-                {/* Conditional sources based on preset */}
+                {/* Conditional sources */}
                 {(selectedPreset === "sensor-quality" ||
                   selectedPreset === "full-multimodal") && (
                   <DataSourceCard
@@ -909,9 +1221,9 @@ export function DataPage({ onContinue }: DataPageProps) {
                 <span className="flex items-center justify-center w-6 h-6 bg-blue-100 text-blue-600 rounded-full text-sm font-medium">
                   3
                 </span>
-                <h2 className="text-lg font-semibold text-db-gray-800">
+                <h3 className="text-lg font-semibold text-db-gray-800">
                   Configure how data sources are joined
-                </h2>
+                </h3>
               </div>
 
               <JoinConfig
@@ -919,39 +1231,6 @@ export function DataPage({ onContinue }: DataPageProps) {
                 mappings={mappings}
                 onUpdateMappings={setJoinKeyMappings}
               />
-            </div>
-          )}
-
-          {/* Summary */}
-          {canContinue && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-6">
-              <h3 className="font-medium text-blue-800 mb-3">
-                Configuration Summary
-              </h3>
-              <div className="space-y-2 text-sm">
-                {sources.map((source) => (
-                  <div key={source.role} className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-green-600" />
-                    <span className="text-db-gray-700">
-                      <strong>{ROLE_INFO[source.role].label}:</strong>{" "}
-                      {source.source.fullPath}
-                    </span>
-                    {source.joinKeys.length > 0 && (
-                      <span className="text-db-gray-500">
-                        (join keys: {source.joinKeys.join(", ")})
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <button
-                onClick={handleContinue}
-                className="mt-4 flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                Continue to Template
-                <ArrowRight className="w-4 h-4" />
-              </button>
             </div>
           )}
         </div>
@@ -967,6 +1246,44 @@ export function DataPage({ onContinue }: DataPageProps) {
           browserModal.role === "images" ? ["table", "volume"] : ["table"]
         }
       />
+    </div>
+  );
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
+export function DataPage() {
+  const [viewMode, setViewMode] = useState<ViewMode>("browse");
+
+  const handleSelectSheet = (sheet: Sheet) => {
+    // Navigate to sheet detail view or open in modal
+    // For now, just show a toast
+    console.log("Selected sheet:", sheet);
+  };
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden bg-db-gray-50">
+      {/* Stage Sub-Navigation */}
+      <StageSubNav
+        stage="data"
+        mode={viewMode}
+        onModeChange={(mode) => setViewMode(mode as ViewMode)}
+      />
+
+      {/* Content */}
+      {viewMode === "browse" ? (
+        <BrowseMode
+          onCreateNew={() => setViewMode("create")}
+          onSelectSheet={handleSelectSheet}
+        />
+      ) : (
+        <CreateMode
+          onCancel={() => setViewMode("browse")}
+          onComplete={() => setViewMode("browse")}
+        />
+      )}
     </div>
   );
 }

@@ -36,7 +36,11 @@ import {
   ChevronLeft,
   ChevronRight,
   FileCode,
+  Search,
+  Filter,
 } from "lucide-react";
+import { DataTable, Column, RowAction } from "../components/DataTable";
+import { StageSubNav } from "../components/StageSubNav";
 import { useWorkflow } from "../context/WorkflowContext";
 import { clsx } from "clsx";
 import {
@@ -545,7 +549,12 @@ function FeedbackPanel({ stats, isLoading }: FeedbackPanelProps) {
 // Main MonitorPage Component
 // ============================================================================
 
-export function MonitorPage() {
+interface MonitorPageProps {
+  mode?: "browse" | "create";
+}
+
+export function MonitorPage({ mode = "browse" }: MonitorPageProps) {
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedEndpoint, setSelectedEndpoint] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
   const queryClient = useQueryClient();
@@ -634,19 +643,239 @@ export function MonitorPage() {
     });
   }
 
+  // No endpoint selected - show browse mode with endpoint list
+  if (!selectedEndpoint) {
+    const filteredEndpoints = allEndpoints.filter((ep) =>
+      ep.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Define table columns for endpoints
+    const columns: Column<ServingEndpoint>[] = [
+      {
+        key: "name",
+        header: "Endpoint Name",
+        width: "30%",
+        render: (ep) => (
+          <div className="flex items-center gap-3">
+            <Server className="w-4 h-4 text-rose-600 flex-shrink-0" />
+            <div className="min-w-0">
+              <div className="font-medium text-db-gray-900">{ep.name}</div>
+              <div className="text-sm text-db-gray-500 truncate">
+                {ep.creator || "System"}
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: "status",
+        header: "Status",
+        width: "15%",
+        render: (ep) => (
+          <span
+            className={clsx(
+              "px-2 py-1 rounded-full text-xs font-medium",
+              ep.state === "READY"
+                ? "bg-green-100 text-green-700"
+                : ep.state === "NOT_READY"
+                  ? "bg-yellow-100 text-yellow-700"
+                  : "bg-red-100 text-red-700"
+            )}
+          >
+            {ep.state}
+          </span>
+        ),
+      },
+      {
+        key: "creator",
+        header: "Creator",
+        width: "15%",
+        render: (ep) => (
+          <span className="text-sm text-db-gray-600">
+            {ep.creator || "System"}
+          </span>
+        ),
+      },
+      {
+        key: "created",
+        header: "Created",
+        width: "20%",
+        render: (ep) => (
+          <span className="text-sm text-db-gray-500">
+            {ep.created_at
+              ? new Date(ep.created_at).toLocaleDateString()
+              : "N/A"}
+          </span>
+        ),
+      },
+    ];
+
+    // Define row actions
+    const rowActions: RowAction<ServingEndpoint>[] = [
+      {
+        label: "Monitor",
+        icon: Eye,
+        onClick: (ep) => setSelectedEndpoint(ep.name),
+        className: "text-rose-600",
+        show: (ep) => ep.state === "READY",
+      },
+      {
+        label: "View in Databricks",
+        icon: ExternalLink,
+        onClick: (ep) => openDatabricks.servingEndpoint(ep.name),
+      },
+    ];
+
+    const emptyState = (
+      <div className="text-center py-20 bg-white rounded-lg">
+        <Activity className="w-16 h-16 text-db-gray-300 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-db-gray-700 mb-2">
+          {searchQuery ? "No endpoints found" : "No endpoints to monitor"}
+        </h3>
+        <p className="text-db-gray-500 mb-6">
+          {searchQuery
+            ? "Try adjusting your search"
+            : "Deploy a model in the Deploy stage to start monitoring"}
+        </p>
+        {!searchQuery && (
+          <button
+            onClick={() => openDatabricks.servingEndpoints()}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700"
+          >
+            <ExternalLink className="w-4 h-4" />
+            View Serving Endpoints
+          </button>
+        )}
+      </div>
+    );
+
+    return (
+      <div className="flex-1 flex flex-col bg-db-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b border-db-gray-200 px-6 py-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-db-gray-900">Monitor</h1>
+                <p className="text-db-gray-600 mt-1">
+                  Track performance, detect drift, and manage feedback
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() =>
+                    queryClient.invalidateQueries({
+                      queryKey: ["serving-endpoints"],
+                    })
+                  }
+                  className="flex items-center gap-2 px-3 py-2 text-db-gray-600 hover:text-db-gray-800 hover:bg-db-gray-100 rounded-lg transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Refresh
+                </button>
+                <button
+                  onClick={() => openDatabricks.mlflowTracing()}
+                  className="flex items-center gap-2 text-sm text-rose-600 hover:text-rose-700"
+                >
+                  <Eye className="w-4 h-4" />
+                  MLflow Tracing
+                </button>
+                <button
+                  onClick={() => openDatabricks.lakehouseMonitoring()}
+                  className="flex items-center gap-2 text-sm text-rose-600 hover:text-rose-700"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Lakehouse Monitoring
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stage Sub-Navigation */}
+        <StageSubNav
+          stage="monitor"
+          mode="browse"
+          onModeChange={() => {}}
+          browseCount={allEndpoints.length}
+        />
+
+        {/* Search */}
+        <div className="px-6 pt-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-lg border border-db-gray-200">
+              <Filter className="w-4 h-4 text-db-gray-400" />
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-db-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search endpoints..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border-0 focus:outline-none focus:ring-0"
+                />
+              </div>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="text-sm text-db-gray-500 hover:text-db-gray-700"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="flex-1 px-6 pb-6 pt-4 overflow-auto">
+          <div className="max-w-7xl mx-auto">
+            {endpointsLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-rose-600" />
+              </div>
+            ) : (
+              <DataTable
+                data={filteredEndpoints}
+                columns={columns}
+                rowKey={(ep) => ep.name}
+                onRowClick={(ep) =>
+                  ep.state === "READY" && setSelectedEndpoint(ep.name)
+                }
+                rowActions={rowActions}
+                emptyState={emptyState}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Endpoint selected - show monitoring dashboard
   return (
     <div className="flex-1 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Workflow Banner */}
         <WorkflowBanner />
 
-        {/* Header */}
+        {/* Header with Back Button */}
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-db-gray-900">Monitor</h1>
-            <p className="text-db-gray-600 mt-1">
-              Track performance, detect drift, and manage feedback
-            </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSelectedEndpoint(null)}
+              className="p-2 hover:bg-db-gray-100 rounded-lg transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-db-gray-900">
+                Monitor: {selectedEndpoint}
+              </h1>
+              <p className="text-db-gray-600 mt-1">
+                Track performance, detect drift, and manage feedback
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -658,7 +887,7 @@ export function MonitorPage() {
             </button>
             <button
               onClick={() => openDatabricks.lakehouseMonitoring()}
-              className="flex items-center gap-2 px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors"
+              className="flex items-center gap-2 text-sm text-rose-600 hover:text-rose-700"
             >
               <ExternalLink className="w-4 h-4" />
               Lakehouse Monitoring
@@ -880,6 +1109,8 @@ export function MonitorPage() {
             </div>
           </div>
         )}
+
+        {/* Monitor Browser Modal removed - using inline table view */}
       </div>
     </div>
   );

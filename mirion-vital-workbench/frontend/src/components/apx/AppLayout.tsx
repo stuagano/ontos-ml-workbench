@@ -56,41 +56,34 @@ interface StageConfig {
   description: string;
 }
 
-const STAGES: StageConfig[] = [
+const LIFECYCLE_STAGES: StageConfig[] = [
   {
     id: "data",
-    label: "Data",
+    label: "Sheets",
     icon: Database,
     color: "text-blue-500",
-    description: "Select data source",
-  },
-  {
-    id: "template",
-    label: "Template",
-    icon: FileText,
-    color: "text-purple-500",
-    description: "Build prompt templates",
+    description: "Create and manage data sources",
   },
   {
     id: "curate",
-    label: "Curate",
+    label: "Generate",
     icon: ClipboardList,
     color: "text-amber-500",
-    description: "Review and curate data",
+    description: "Generate AI labels and responses",
   },
   {
     id: "label",
-    label: "Label",
+    label: "Review",
     icon: Tag,
     color: "text-orange-500",
-    description: "Label training data",
+    description: "Review and verify labeled examples",
   },
   {
     id: "train",
     label: "Train",
     icon: Cpu,
     color: "text-green-500",
-    description: "Train models",
+    description: "Fine-tune models",
   },
   {
     id: "deploy",
@@ -114,6 +107,31 @@ const STAGES: StageConfig[] = [
     description: "Continuous improvement",
   },
 ];
+
+// Tools are separate from workflow stages
+const TOOLS_CONFIG = {
+  promptTemplates: {
+    id: "prompt-templates",
+    label: "Prompt Templates",
+    icon: FileText,
+    color: "text-purple-500",
+    description: "Manage reusable prompt templates",
+  },
+  exampleStore: {
+    id: "example-store",
+    label: "Example Store",
+    icon: BookOpen,
+    color: "text-emerald-500",
+    description: "Dynamic few-shot examples",
+  },
+  dspyOptimizer: {
+    id: "dspy-optimizer",
+    label: "DSPy Optimizer",
+    icon: Beaker,
+    color: "text-pink-500",
+    description: "Optimize prompts with DSPy",
+  },
+};
 
 // ============================================================================
 // Logo Component
@@ -149,7 +167,7 @@ function ThemeToggle() {
       className={clsx(
         "p-2 rounded-lg text-db-gray-600 dark:text-gray-400",
         "hover:bg-db-gray-100 dark:hover:bg-gray-800 transition-colors",
-        !open && "mx-auto"
+        !open && "mx-auto",
       )}
       title={`Theme: ${theme}`}
     >
@@ -227,7 +245,7 @@ function StageNav({
     <SidebarGroup>
       <SidebarGroupLabel>Lifecycle</SidebarGroupLabel>
       <SidebarMenu>
-        {STAGES.map((stage) => {
+        {LIFECYCLE_STAGES.map((stage) => {
           const Icon = stage.icon;
           const isActive = stage.id === currentStage;
           const isComplete = completedStages.includes(stage.id);
@@ -258,49 +276,91 @@ function StageNav({
 }
 
 // ============================================================================
-// Quick Actions (Examples, Optimize)
+// Tools Section (Asset Management - Not Workflow Stages)
 // ============================================================================
 
-interface QuickActionsProps {
+interface ToolsNavProps {
+  showPromptTemplates: boolean;
+  onTogglePromptTemplates: () => void;
   showExamples: boolean;
   onToggleExamples: () => void;
-  onOpenOptimize?: () => void;
+  showDSPyOptimizer: boolean;
+  onToggleDSPyOptimizer: () => void;
 }
 
-function QuickActions({
+function ToolsNav({
+  showPromptTemplates,
+  onTogglePromptTemplates,
   showExamples,
   onToggleExamples,
-  onOpenOptimize,
-}: QuickActionsProps) {
+  showDSPyOptimizer,
+  onToggleDSPyOptimizer,
+}: ToolsNavProps) {
   const { open } = useSidebar();
+  const PromptTemplatesIcon = TOOLS_CONFIG.promptTemplates.icon;
+  const ExampleStoreIcon = TOOLS_CONFIG.exampleStore.icon;
+  const DSPyIcon = TOOLS_CONFIG.dspyOptimizer.icon;
 
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Tools</SidebarGroupLabel>
       <SidebarMenu>
+        {/* Prompt Templates */}
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            isActive={showPromptTemplates}
+            tooltip={TOOLS_CONFIG.promptTemplates.description}
+            onClick={onTogglePromptTemplates}
+          >
+            <PromptTemplatesIcon
+              className={clsx(
+                "w-5 h-5 flex-shrink-0",
+                showPromptTemplates
+                  ? TOOLS_CONFIG.promptTemplates.color
+                  : "text-db-gray-500",
+              )}
+            />
+            {open && <span>{TOOLS_CONFIG.promptTemplates.label}</span>}
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+
+        {/* Example Store */}
         <SidebarMenuItem>
           <SidebarMenuButton
             isActive={showExamples}
-            tooltip="Example Store"
+            tooltip={TOOLS_CONFIG.exampleStore.description}
             onClick={onToggleExamples}
           >
-            <BookOpen
+            <ExampleStoreIcon
               className={clsx(
                 "w-5 h-5 flex-shrink-0",
-                showExamples ? "text-purple-500" : "text-db-gray-500"
+                showExamples
+                  ? TOOLS_CONFIG.exampleStore.color
+                  : "text-db-gray-500",
               )}
             />
-            {open && <span>Example Store</span>}
+            {open && <span>{TOOLS_CONFIG.exampleStore.label}</span>}
           </SidebarMenuButton>
         </SidebarMenuItem>
-        {onOpenOptimize && (
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip="DSPy Optimize" onClick={onOpenOptimize}>
-              <Beaker className="w-5 h-5 flex-shrink-0 text-db-gray-500" />
-              {open && <span>DSPy Optimize</span>}
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        )}
+
+        {/* DSPy Optimizer */}
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            isActive={showDSPyOptimizer}
+            tooltip={TOOLS_CONFIG.dspyOptimizer.description}
+            onClick={onToggleDSPyOptimizer}
+          >
+            <DSPyIcon
+              className={clsx(
+                "w-5 h-5 flex-shrink-0",
+                showDSPyOptimizer
+                  ? TOOLS_CONFIG.dspyOptimizer.color
+                  : "text-db-gray-500",
+              )}
+            />
+            {open && <span>{TOOLS_CONFIG.dspyOptimizer.label}</span>}
+          </SidebarMenuButton>
+        </SidebarMenuItem>
       </SidebarMenu>
     </SidebarGroup>
   );
@@ -317,9 +377,12 @@ interface AppLayoutProps {
   completedStages?: PipelineStage[];
   currentUser: string;
   workspaceUrl?: string;
+  showPromptTemplates: boolean;
+  onTogglePromptTemplates: () => void;
   showExamples: boolean;
   onToggleExamples: () => void;
-  onOpenOptimize?: () => void;
+  showDSPyOptimizer: boolean;
+  onToggleDSPyOptimizer: () => void;
 }
 
 export function AppLayout({
@@ -329,9 +392,12 @@ export function AppLayout({
   completedStages = [],
   currentUser,
   workspaceUrl,
+  showPromptTemplates,
+  onTogglePromptTemplates,
   showExamples,
   onToggleExamples,
-  onOpenOptimize,
+  showDSPyOptimizer,
+  onToggleDSPyOptimizer,
 }: AppLayoutProps) {
   return (
     <SidebarProvider>
@@ -346,10 +412,13 @@ export function AppLayout({
             onStageClick={onStageClick}
             completedStages={completedStages}
           />
-          <QuickActions
+          <ToolsNav
+            showPromptTemplates={showPromptTemplates}
+            onTogglePromptTemplates={onTogglePromptTemplates}
             showExamples={showExamples}
             onToggleExamples={onToggleExamples}
-            onOpenOptimize={onOpenOptimize}
+            showDSPyOptimizer={showDSPyOptimizer}
+            onToggleDSPyOptimizer={onToggleDSPyOptimizer}
           />
         </SidebarContent>
 
@@ -362,7 +431,7 @@ export function AppLayout({
         <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-db-gray-200 dark:border-gray-700 h-14 flex items-center px-4">
           <SidebarTrigger />
           <div className="ml-4 text-sm font-medium text-db-gray-700 dark:text-gray-300">
-            {STAGES.find((s) => s.id === currentStage)?.description}
+            {LIFECYCLE_STAGES.find((s) => s.id === currentStage)?.description}
           </div>
         </header>
         <main className="flex-1 overflow-auto bg-db-gray-50 dark:bg-gray-950">

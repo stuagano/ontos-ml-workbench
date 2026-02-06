@@ -20,6 +20,19 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
-    sourcemap: true,
+    sourcemap: false, // Disable sourcemaps in production (saves 2MB)
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor chunks for better caching
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-query': ['@tanstack/react-query'],
+          'vendor-ui': ['lucide-react', 'clsx'],
+          'vendor-state': ['zustand'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600, // Increase limit for vendor chunks
+    minify: 'esbuild', // Use esbuild (faster, no extra dependency)
   },
 });

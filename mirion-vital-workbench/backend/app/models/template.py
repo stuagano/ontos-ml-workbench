@@ -1,4 +1,8 @@
-"""Pydantic models for Databits (Templates)."""
+"""Pydantic models for Templates (PRD v2.3: added label_type for canonical label matching).
+
+Templates define reusable prompt configurations that can be applied to Sheets.
+The label_type field links templates to canonical labels for automatic label reuse.
+"""
 
 from datetime import datetime
 from enum import Enum
@@ -32,10 +36,16 @@ class Example(BaseModel):
 
 
 class TemplateCreate(BaseModel):
-    """Request body for creating a template."""
+    """Request body for creating a template (PRD v2.3: added label_type)."""
 
     name: str = Field(..., min_length=1, max_length=255)
     description: str | None = None
+
+    # PRD v2.3: Label type for canonical label matching
+    label_type: str | None = Field(
+        default=None,
+        description="Label type (e.g., entity_extraction, classification, localization) for canonical label matching",
+    )
 
     # Schema
     input_schema: list[SchemaField] | None = None
@@ -61,10 +71,11 @@ class TemplateCreate(BaseModel):
 
 
 class TemplateUpdate(BaseModel):
-    """Request body for updating a template."""
+    """Request body for updating a template (PRD v2.3: added label_type)."""
 
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
+    label_type: str | None = None  # PRD v2.3
     input_schema: list[SchemaField] | None = None
     output_schema: list[SchemaField] | None = None
     prompt_template: str | None = None
@@ -80,13 +91,18 @@ class TemplateUpdate(BaseModel):
 
 
 class TemplateResponse(BaseModel):
-    """Template response model."""
+    """Template response model (PRD v2.3: added label_type)."""
 
     id: str
     name: str
     description: str | None = None
     version: str
     status: TemplateStatus
+
+    # PRD v2.3: Label type for canonical label matching
+    label_type: str | None = Field(
+        default=None, description="Label type for canonical label matching"
+    )
 
     input_schema: list[SchemaField] | None = None
     output_schema: list[SchemaField] | None = None

@@ -3,16 +3,26 @@
 **Mission control for Mirion's AI-powered radiation safety platform** - from raw sensor data to production ML models with full governance.
 
 ```
-DATA → TEMPLATE → CURATE → TRAIN → DEPLOY → MONITOR → IMPROVE
+DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
 ```
+
+**PRD Version:** v2.3 (Validated - Ready for Implementation)  
+**Documentation:** `docs/PRD.md`, `VALIDATION_SUMMARY.md`
 
 ## Overview
 
 VITAL Platform Workbench is a Databricks App that provides a unified workflow for building, governing, and improving AI systems for radiation safety applications. It enables Mirion's domain experts, physicists, and data stewards to participate in AI development without writing code.
 
+### Core Concepts
+
+**Sheets** → Lightweight pointers to Unity Catalog data sources (multimodal fusion)  
+**Canonical Labels** → Ground truth labels enabling "label once, reuse everywhere"  
+**Training Sheets** → Materialized Q&A datasets with automatic label reuse  
+**Templates** → Reusable prompt IP encoding Mirion's 60+ years of expertise
+
 ### The Prompt Template Paradigm
 
-**Key Insight:** With LLMs, data modality no longer matters. Images, sensor telemetry, documents, and structured data all converge through **prompt templates** - reusable IP assets that encode Mirion's 60+ years of radiation safety expertise.
+**Key Insight:** With LLMs, data modality no longer matters. Images, sensor telemetry, documents, and structured data all converge through **prompt templates** - reusable IP assets that encode Mirion's domain expertise.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -27,6 +37,14 @@ VITAL Platform Workbench is a Databricks App that provides a unified workflow fo
 │                                   all 86 facilities                │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+### Validated Use Cases (PRD v2.3)
+
+The data model has been validated end-to-end with:
+- **Document AI**: Medical invoice entity extraction (PDFs + structured billing data)
+- **Vision AI**: PCB defect detection (images + real-time sensor fusion)
+
+Both use cases support multiple labelsets per source item and governance constraints.
 
 ### Key Features
 
@@ -152,34 +170,39 @@ vital-workbench/
 ## Lifecycle Stages
 
 ### 1. DATA
-Extract, transform, and enrich radiation safety data:
-- Inspection image processing
-- Sensor telemetry ingestion
-- Equipment maintenance logs
-- Calibration records
-- Monte Carlo simulation outputs
+Extract and define **Sheets** (lightweight pointers to Unity Catalog sources):
+- Inspection image processing → Unity Catalog volumes
+- Sensor telemetry ingestion → Delta tables
+- Equipment maintenance logs → Structured tables
+- Multimodal data fusion (images + sensors + metadata)
 
-### 2. TEMPLATE
-Create prompt templates (Mirion's ML IP):
-- Define input/output schemas for radiation data
-- Craft system prompts with physics domain knowledge
-- Add few-shot examples from historical data
-- Configure model settings
-- Version control with semantic versioning
+### 2. GENERATE
+Apply **Templates** to **Sheets** to generate Q&A pairs:
+- Template defines input/output schema + prompt
+- Canonical label lookup provides automatic pre-approval
+- Three generation modes: AI-generated, Manual, Existing Column
+- Creates **Training Sheets** (Q&A datasets)
 
-### 3. CURATE
-Review and label training data:
-- AI pre-labeling with confidence scores
-- Physicist/expert review queue
-- Approve/reject/correct workflow
-- Quality scoring and deduplication
+### 3. LABEL
+Two labeling workflows for expert review:
+
+**Mode A: Training Sheet Review**
+- Expert reviews Q&A pairs
+- Approve/Edit/Reject actions
+- Creates canonical labels for future reuse
+
+**Mode B: Canonical Labeling Tool (TOOLS section)**
+- Label source data directly before generating Q&A pairs
+- "Label once, reuse everywhere"
+- Multiple labelsets per item: `(sheet_id, item_ref, label_type)`
 
 ### 4. TRAIN
-Fine-tune models for radiation safety:
-- Data assembly from approved items
+Fine-tune models with dual quality gates:
+- **Status** (quality): Only `labeled` (expert-approved) pairs
+- **Usage Constraints** (governance): Check `allowed_uses`, `prohibited_uses`
 - FMAPI fine-tuning integration
 - MLflow experiment tracking
-- Model evaluation against physics benchmarks
+- Lineage recorded in `model_training_lineage` table
 
 ### 5. DEPLOY
 Serve models across ACE architecture:
@@ -199,7 +222,7 @@ Track production performance:
 Continuous feedback loops:
 - Physicist feedback collection
 - Gap analysis for edge cases
-- Retraining candidate extraction
+- Retraining candidate extraction from canonical labels
 - Version comparison
 
 ## Sample Data
@@ -241,20 +264,37 @@ DATABRICKS_SCHEMA=workbench
 DATABRICKS_WAREHOUSE_ID=your-warehouse-id
 ```
 
-## Delta Tables
+## Delta Tables (PRD v2.3)
 
-The app uses these Unity Catalog tables:
+The app uses these Unity Catalog tables in `mirion_vital.workbench`:
+
+**Core Data Model:**
+
+| Table | Purpose | Key Features |
+|-------|---------|--------------|
+| `sheets` | Dataset definitions | Pointers to Unity Catalog tables + volumes |
+| `canonical_labels` | Ground truth labels | Composite key `(sheet_id, item_ref, label_type)` |
+| `templates` | Prompt templates | Includes `label_type` field for canonical label matching |
+| `training_sheets` | Q&A datasets | Materialized from Sheets + Templates |
+| `qa_pairs` | Individual Q&A pairs | Links to `canonical_label_id`, includes `allowed_uses`, `prohibited_uses` |
+| `model_training_lineage` | Training provenance | Tracks which models used which Training Sheets |
+| `example_store` | Few-shot examples | Managed examples for DSPy |
+
+**Domain-Specific Tables:**
 
 | Table | Purpose |
 |-------|---------|
-| `templates` | Prompt template definitions and versions |
-| `curation_items` | Items for expert review with labels |
-| `job_runs` | Job execution history |
 | `defect_detections` | Defect detection results |
 | `maintenance_predictions` | Predictive maintenance outputs |
 | `anomaly_alerts` | Anomaly detection alerts |
 | `feedback_items` | Expert feedback for improvement |
-| `model_registry` | Deployed model versions |
+| `job_runs` | Job execution history |
+
+**Key Schema Features:**
+- Multimodal support via Unity Catalog volumes (images, PDFs, audio)
+- Multiple labelsets per item for different tasks
+- Usage constraints for data governance (PHI, PII, proprietary)
+- Complete lineage tracking: source data → labels → Q&A pairs → models
 
 ## License
 

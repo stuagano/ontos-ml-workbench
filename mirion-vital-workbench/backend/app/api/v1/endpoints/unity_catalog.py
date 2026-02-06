@@ -1,11 +1,13 @@
 """Unity Catalog browsing API endpoints."""
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel
 
 from app.core.databricks import get_workspace_client
+from app.services.cache_service import get_cache_service
 
 router = APIRouter(prefix="/uc", tags=["unity-catalog"])
+cache = get_cache_service()
 
 
 class CatalogInfo(BaseModel):
@@ -46,17 +48,31 @@ class VolumeFile(BaseModel):
 
 
 @router.get("/catalogs", response_model=list[CatalogInfo])
-async def list_catalogs():
+async def list_catalogs(response: Response):
     """List all accessible catalogs."""
+    cache_key = "uc:catalogs"
+
+    # Try cache first
+    cached = cache.get(cache_key)
+    if cached is not None:
+        response.headers["X-Cache"] = "HIT"
+        return cached
+
+    response.headers["X-Cache"] = "MISS"
     client = get_workspace_client()
 
     try:
         catalogs = client.catalogs.list()
-        return [
+        result = [
             CatalogInfo(name=c.name, comment=c.comment, owner=c.owner)
             for c in catalogs
             if c.name  # Filter out None names
         ]
+
+        # Cache for 5 minutes
+        cache.set(cache_key, result, ttl=300)
+
+        return result
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to list catalogs: {str(e)}"
@@ -64,13 +80,22 @@ async def list_catalogs():
 
 
 @router.get("/catalogs/{catalog_name}/schemas", response_model=list[SchemaInfo])
-async def list_schemas(catalog_name: str):
+async def list_schemas(catalog_name: str, response: Response):
     """List schemas in a catalog."""
+    cache_key = f"uc:schemas:{catalog_name}"
+
+    # Try cache first
+    cached = cache.get(cache_key)
+    if cached is not None:
+        response.headers["X-Cache"] = "HIT"
+        return cached
+
+    response.headers["X-Cache"] = "MISS"
     client = get_workspace_client()
 
     try:
         schemas = client.schemas.list(catalog_name=catalog_name)
-        return [
+        result = [
             SchemaInfo(
                 name=s.name,
                 catalog_name=s.catalog_name,
@@ -80,6 +105,11 @@ async def list_schemas(catalog_name: str):
             for s in schemas
             if s.name  # Filter out None names
         ]
+
+        # Cache for 5 minutes
+        cache.set(cache_key, result, ttl=300)
+
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list schemas: {str(e)}")
 
@@ -89,9 +119,18 @@ async def list_schemas(catalog_name: str):
     response_model=list[TableInfo],
 )
 async def list_tables(
-    catalog_name: str, schema_name: str, include_columns: bool = False
+    catalog_name: str, schema_name: str, include_columns: bool = False, response: Response = None
 ):
     """List tables in a schema."""
+    cache_key = f"uc:tables:{catalog_name}:{schema_name}:cols={include_columns}"
+
+    # Try cache first
+    cached = cache.get(cache_key)
+    if cached is not None:
+        response.headers["X-Cache"] = "HIT"
+        return cached
+
+    response.headers["X-Cache"] = "MISS"
     client = get_workspace_client()
 
     try:
@@ -117,6 +156,9 @@ async def list_tables(
                 ]
 
             result.append(table_info)
+
+        # Cache for 5 minutes
+        cache.set(cache_key, result, ttl=300)
 
         return result
     except Exception as e:

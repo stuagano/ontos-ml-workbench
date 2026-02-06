@@ -48,6 +48,7 @@ from app.models.sheet import (
     TemplateConfigAttach,
 )
 from app.services.inference_service import FewShotExample, get_inference_service
+from app.services.lakebase_service import get_lakebase_service
 from app.services.sql_service import get_sql_service
 
 router = APIRouter(prefix="/sheets", tags=["sheets"])
@@ -58,10 +59,26 @@ _settings = get_settings()
 SHEETS_TABLE = _settings.get_table("sheets")
 SHEET_DATA_TABLE = _settings.get_table("sheet_data")
 
+# Lakebase service for fast reads
+_lakebase = get_lakebase_service()
+
 
 def _row_to_sheet(row: dict) -> SheetResponse:
-    """Convert a database row to SheetResponse."""
-    columns_raw = json.loads(row["columns"]) if row.get("columns") else []
+    """Convert a database row to SheetResponse.
+
+    Handles both Delta Lake (column: id) and Lakebase (column: sheet_id) schemas,
+    and handles JSON columns as either strings or dicts.
+    """
+    columns_data = row.get("columns")
+    if isinstance(columns_data, str):
+        columns_raw = json.loads(columns_data) if columns_data else []
+    elif isinstance(columns_data, list):
+        columns_raw = columns_data
+    else:
+        columns_raw = []
+
+    # Handle different column names between Delta and Lakebase
+    sheet_id = row.get("sheet_id") or row.get("id")
     columns = [
         ColumnResponse(
             id=col["id"],
@@ -90,7 +107,7 @@ def _row_to_sheet(row: dict) -> SheetResponse:
             logger.warning(f"Failed to parse template_config: {e}")
 
     return SheetResponse(
-        id=row["id"],
+        id=sheet_id,
         name=row["name"],
         description=row.get("description"),
         version=row.get("version", "1.0.0"),
@@ -112,6 +129,18 @@ def _escape_sql(value: str | None) -> str:
     return f"'{value.replace(chr(39), chr(39) + chr(39))}'"
 
 
+def _escape_json_for_sql(json_str: str) -> str:
+    """Escape a JSON string for SQL insertion.
+
+    Use base64 encoding to avoid all escaping issues with nested JSON,
+    backslashes, and quotes. Store as base64 string, decode when reading.
+    """
+    import base64
+    # Encode to base64 to avoid all escaping issues
+    encoded = base64.b64encode(json_str.encode('utf-8')).decode('ascii')
+    return f"'base64:{encoded}'"
+
+
 # ============================================================================
 # Sheet CRUD
 # ============================================================================
@@ -124,7 +153,35 @@ async def list_sheets(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ):
-    """List all sheets with optional filtering."""
+    """List all sheets with optional filtering.
+
+    Uses Lakebase for sub-10ms reads when available, falls back to Delta Lake.
+    """
+    offset = (page - 1) * page_size
+
+    # Try Lakebase first for fast reads (if no search - Lakebase doesn't support text search yet)
+    if _lakebase.is_available and not search:
+        rows = _lakebase.list_sheets(
+            status=status.value if status else None,
+            limit=page_size,
+            offset=offset,
+        )
+        # Only use Lakebase results if we got data; otherwise fall back to Delta
+        if rows:
+            sheets = [_row_to_sheet(row) for row in rows]
+
+            # For total count, we'd need another query - for now estimate from returned rows
+            total = len(sheets) + offset if len(sheets) == page_size else len(sheets) + offset
+
+            return SheetListResponse(
+                sheets=sheets,
+                total=total,
+                page=page,
+                page_size=page_size,
+            )
+        # Fall through to Delta Lake if Lakebase returned no results
+
+    # Fallback to Delta Lake
     sql_service = get_sql_service()
 
     conditions = []
@@ -134,7 +191,6 @@ async def list_sheets(
         conditions.append(f"(name LIKE '%{search}%' OR description LIKE '%{search}%')")
 
     where_clause = " AND ".join(conditions) if conditions else "1=1"
-    offset = (page - 1) * page_size
 
     # Get total count
     count_sql = f"SELECT COUNT(*) as cnt FROM {SHEETS_TABLE} WHERE {where_clause}"
@@ -187,33 +243,57 @@ async def create_sheet(sheet: SheetCreate):
 
     columns_json = json.dumps(columns_data) if columns_data else "[]"
 
+    # Note: Delta Lake table has limited columns (id, name, description, status, columns)
+    # Additional columns like version, row_count, created_by, created_at, updated_at
+    # are only in Lakebase. We insert what's available.
     sql = f"""
     INSERT INTO {SHEETS_TABLE} (
-        id, name, description, version, status, columns,
-        row_count, created_by, created_at, updated_at
+        id, name, description, status, columns
     ) VALUES (
         '{sheet_id}',
         {_escape_sql(sheet.name)},
         {_escape_sql(sheet.description)},
-        '1.0.0',
         'draft',
-        {_escape_sql(columns_json)},
-        NULL,
-        '{user}',
-        current_timestamp(),
-        current_timestamp()
+        {_escape_sql(columns_json)}
     )
     """
     sql_service.execute_update(sql)
+
+    # Sync to Lakebase for fast reads
+    if _lakebase.is_available:
+        try:
+            _lakebase.upsert_sheet({
+                "sheet_id": sheet_id,
+                "name": sheet.name,
+                "description": sheet.description,
+                "version": "1.0.0",
+                "status": "draft",
+                "columns": columns_data,
+                "row_count": None,
+                "created_by": user,
+            })
+            logger.info(f"Synced sheet {sheet_id} to Lakebase")
+        except Exception as e:
+            logger.warning(f"Failed to sync sheet to Lakebase: {e}")
 
     return await get_sheet(sheet_id)
 
 
 @router.get("/{sheet_id}", response_model=SheetResponse)
 async def get_sheet(sheet_id: str):
-    """Get a sheet by ID."""
-    sql_service = get_sql_service()
+    """Get a sheet by ID.
 
+    Uses Lakebase for sub-10ms reads when available, falls back to Delta Lake.
+    """
+    # Try Lakebase first for fast reads
+    if _lakebase.is_available:
+        row = _lakebase.get_sheet(sheet_id)
+        if row:
+            return _row_to_sheet(row)
+        # Fall through to Delta Lake if not found in Lakebase
+
+    # Fallback to Delta Lake
+    sql_service = get_sql_service()
     sql = f"SELECT * FROM {SHEETS_TABLE} WHERE id = '{sheet_id}'"
     rows = sql_service.execute(sql)
 
@@ -439,6 +519,24 @@ async def attach_template_config(sheet_id: str, request: TemplateConfigAttach):
     """
     sql_service.execute_update(sql)
 
+    # Sync to Lakebase for fast reads
+    if _lakebase.is_available:
+        try:
+            _lakebase.upsert_sheet({
+                "sheet_id": sheet_id,
+                "name": existing.name,
+                "description": existing.description,
+                "version": existing.version,
+                "status": existing.status.value,
+                "columns": [col.model_dump() for col in existing.columns],
+                "template_config": template.model_dump(),
+                "row_count": existing.row_count,
+                "created_by": existing.created_by,
+            })
+            logger.debug(f"Synced sheet {sheet_id} template to Lakebase")
+        except Exception as e:
+            logger.warning(f"Failed to sync template to Lakebase: {e}")
+
     logger.info(
         f"Attached template config to sheet {sheet_id}: {template.name or 'unnamed'}"
     )
@@ -536,7 +634,7 @@ async def assemble_sheet(sheet_id: str, request: AssembleRequest | None = None):
         '{assembly_id}',
         '{sheet_id}',
         {_escape_sql(sheet.name)},
-        {_escape_sql(template_json)},
+        {_escape_json_for_sql(template_json)},
         'assembling',
         {len(preview.rows)},
         0, 0, 0, 0,
@@ -557,6 +655,15 @@ async def assemble_sheet(sheet_id: str, request: AssembleRequest | None = None):
     # Render prompts and create assembly rows
     assembled_count = 0
     errors = []
+    total_to_assemble = len(preview.rows)
+    batch_update_interval = 10  # Update progress every 10 rows
+
+    # Update status to 'assembling' with expected row count
+    sql_service.execute_update(f"""
+        UPDATE {ASSEMBLIES_TABLE}
+        SET status = 'assembling', total_rows = {total_to_assemble}, updated_at = current_timestamp()
+        WHERE id = '{assembly_id}'
+    """)
 
     # Determine response source mode
     from app.models.sheet import ResponseSourceMode
@@ -640,7 +747,7 @@ async def assemble_sheet(sheet_id: str, request: AssembleRequest | None = None):
                 '{assembly_id}',
                 {row.row_index},
                 {_escape_sql(rendered_prompt)},
-                {_escape_sql(source_data_json)},
+                {_escape_json_for_sql(source_data_json)},
                 {_escape_sql(response_value) if response_value else "NULL"},
                 '{response_source}',
                 FALSE,
@@ -648,7 +755,38 @@ async def assemble_sheet(sheet_id: str, request: AssembleRequest | None = None):
             )
             """
             sql_service.execute_update(row_sql)
+
+            # Sync row to Lakebase for fast reads
+            if _lakebase.is_available:
+                try:
+                    _lakebase.upsert_assembly_row({
+                        "assembly_id": assembly_id,
+                        "row_index": row.row_index,
+                        "prompt": rendered_prompt,
+                        "source_data": row_data,
+                        "response": response_value,
+                        "response_source": response_source,
+                        "is_flagged": False,
+                    })
+                except Exception as lb_err:
+                    logger.debug(f"Lakebase row sync failed: {lb_err}")
+
             assembled_count += 1
+
+            # Update progress periodically (every N rows)
+            if assembled_count % batch_update_interval == 0:
+                progress_sql = f"""
+                UPDATE {ASSEMBLIES_TABLE}
+                SET total_rows = {total_to_assemble},
+                    ai_generated_count = {assembled_count},
+                    updated_at = current_timestamp()
+                WHERE id = '{assembly_id}'
+                """
+                try:
+                    sql_service.execute_update(progress_sql)
+                    logger.info(f"Assembly progress: {assembled_count}/{total_to_assemble} rows")
+                except Exception as progress_err:
+                    logger.warning(f"Failed to update progress: {progress_err}")
 
         except Exception as e:
             errors.append({"row_index": row.row_index, "error": str(e)})
@@ -664,6 +802,26 @@ async def assemble_sheet(sheet_id: str, request: AssembleRequest | None = None):
     WHERE id = '{assembly_id}'
     """
     sql_service.execute_update(sql)
+
+    # Sync to Lakebase for fast reads
+    if _lakebase.is_available:
+        try:
+            _lakebase.upsert_assembly({
+                "assembly_id": assembly_id,
+                "sheet_id": sheet_id,
+                "sheet_name": sheet.name,
+                "template_config": template_config.model_dump(),
+                "status": status,
+                "total_rows": assembled_count,
+                "ai_generated_count": 0,
+                "human_labeled_count": 0,
+                "human_verified_count": 0,
+                "flagged_count": 0,
+                "created_by": user,
+            })
+            logger.info(f"Synced assembly {assembly_id} to Lakebase")
+        except Exception as e:
+            logger.warning(f"Failed to sync assembly to Lakebase: {e}")
 
     logger.info(
         f"Assembled sheet {sheet_id} into assembly {assembly_id}: {assembled_count} rows"
@@ -720,6 +878,13 @@ async def list_assemblies(
         template_config_dict = (
             json.loads(row["template_config"]) if row.get("template_config") else {}
         )
+        # Calculate empty_count from other stats
+        total = row.get("total_rows", 0)
+        ai_count = row.get("ai_generated_count", 0)
+        human_count = row.get("human_labeled_count", 0)
+        verified_count = row.get("human_verified_count", 0)
+        empty_count = max(0, total - ai_count - human_count - verified_count)
+
         assemblies.append(
             AssembledDataset(
                 id=row["id"],
@@ -727,11 +892,12 @@ async def list_assemblies(
                 sheet_name=row.get("sheet_name"),
                 template_config=TemplateConfig(**template_config_dict),
                 status=AssemblyStatus(row.get("status", "ready")),
-                total_rows=row.get("total_rows", 0),
-                ai_generated_count=row.get("ai_generated_count", 0),
-                human_labeled_count=row.get("human_labeled_count", 0),
-                human_verified_count=row.get("human_verified_count", 0),
+                total_rows=total,
+                ai_generated_count=ai_count,
+                human_labeled_count=human_count,
+                human_verified_count=verified_count,
                 flagged_count=row.get("flagged_count", 0),
+                empty_count=empty_count,
                 created_at=row.get("created_at"),
                 created_by=row.get("created_by"),
                 updated_at=row.get("updated_at"),
@@ -774,10 +940,11 @@ async def get_preview(
         # Build query from first imported column's table (base table)
         first_import = imported_cols[0]
         if first_import.import_config:
+            # Use backticks for identifiers that may contain special characters (e.g., hyphens)
             base_table = (
-                f"{first_import.import_config.catalog}."
-                f"{first_import.import_config.schema_name}."
-                f"{first_import.import_config.table}"
+                f"`{first_import.import_config.catalog}`."
+                f"`{first_import.import_config.schema_name}`."
+                f"`{first_import.import_config.table}`"
             )
 
             # Get row count

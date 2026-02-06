@@ -281,6 +281,341 @@ CREATE INDEX idx_agent_retrieval_outcome ON agent_retrieval_events(outcome) WHER
 CREATE INDEX idx_agent_retrieval_unsync ON agent_retrieval_events(synced_to_delta) WHERE synced_to_delta = FALSE;
 
 -- ============================================================================
+-- OPERATIONAL STATE - Application Data for Sub-10ms Reads
+-- ============================================================================
+
+-- Global label library (settings/label-classes endpoint)
+CREATE TABLE IF NOT EXISTS label_classes (
+    label_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    -- Label definition
+    name VARCHAR(100) NOT NULL,
+    color VARCHAR(20) DEFAULT '#6b7280',
+    description TEXT,
+    hotkey VARCHAR(10),
+
+    -- Scope: NULL means global, otherwise scoped to a preset
+    preset_name VARCHAR(100),  -- defect_detection, quality_inspection, etc.
+
+    -- Ordering
+    display_order INTEGER DEFAULT 0,
+
+    -- Metadata
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT unique_label_name_preset UNIQUE (name, preset_name)
+);
+
+CREATE INDEX idx_label_classes_preset ON label_classes(preset_name) WHERE preset_name IS NOT NULL;
+CREATE INDEX idx_label_classes_active ON label_classes(is_active) WHERE is_active = TRUE;
+
+-- Sheets (AI datasets with imported columns)
+-- PRD v2.3: Lightweight pointers to Unity Catalog data sources
+CREATE TABLE IF NOT EXISTS sheets (
+    sheet_id VARCHAR(255) PRIMARY KEY,
+
+    -- Sheet metadata
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    version VARCHAR(50) DEFAULT '1.0.0',
+    status VARCHAR(50) DEFAULT 'draft',  -- draft, published, archived
+
+    -- Unity Catalog source references (multimodal)
+    primary_table VARCHAR(500),  -- e.g., 'mirion_vital.raw.pcb_inspections'
+    secondary_sources JSONB DEFAULT '[]',  -- Array of {type, path, join_key}
+    join_keys TEXT[] DEFAULT '{}',
+    filter_condition TEXT,
+    sample_size INTEGER,
+
+    -- Column definitions (JSON array of ColumnDefinition)
+    columns JSONB NOT NULL DEFAULT '[]',
+
+    -- Attached template config (frozen snapshot)
+    template_config JSONB,
+    has_template BOOLEAN DEFAULT FALSE,
+
+    -- Statistics
+    row_count INTEGER DEFAULT 0,
+    canonical_label_count INTEGER DEFAULT 0,  -- v2.3: Count of canonical labels
+
+    -- Metadata
+    created_by VARCHAR(255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT valid_sheet_status CHECK (status IN ('draft', 'published', 'archived'))
+);
+
+CREATE INDEX idx_sheets_status ON sheets(status);
+CREATE INDEX idx_sheets_updated ON sheets(updated_at DESC);
+CREATE INDEX idx_sheets_table ON sheets(primary_table) WHERE primary_table IS NOT NULL;
+
+-- ============================================================================
+-- CANONICAL LABELS - Ground Truth Layer (PRD v2.3)
+-- ============================================================================
+
+-- Canonical labels enable "label once, reuse everywhere"
+-- Expert-validated ground truth labels independent of Q&A pairs
+-- Supports multiple labelsets per item via composite key
+CREATE TABLE IF NOT EXISTS canonical_labels (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    -- Links to source data
+    sheet_id VARCHAR(255) NOT NULL REFERENCES sheets(sheet_id) ON DELETE CASCADE,
+    item_ref VARCHAR(500) NOT NULL,  -- Reference to source item (e.g., inspection_id, invoice_id)
+
+    -- Label type (enables multiple labelsets per item)
+    label_type VARCHAR(100) NOT NULL,  -- entity_extraction, classification, localization, etc.
+
+    -- Expert's ground truth label (flexible JSON)
+    label_data JSONB NOT NULL,  -- Entities, bounding boxes, classifications, etc.
+
+    -- Quality metadata
+    confidence VARCHAR(20) DEFAULT 'high',  -- high, medium, low
+    notes TEXT,
+
+    -- Governance constraints (PRD v2.2)
+    allowed_uses TEXT[] DEFAULT '{training,validation,evaluation,few_shot,testing}',
+    prohibited_uses TEXT[] DEFAULT '{}',
+    usage_reason TEXT,
+    data_classification VARCHAR(50) DEFAULT 'internal',  -- public, internal, confidential, restricted
+
+    -- Audit trail
+    labeled_by VARCHAR(255) NOT NULL,
+    labeled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_modified_by VARCHAR(255),
+    last_modified_at TIMESTAMPTZ,
+
+    -- Version control
+    version INTEGER DEFAULT 1,
+
+    -- Statistics
+    reuse_count INTEGER DEFAULT 0,  -- How many Training Sheets use this label
+    last_used_at TIMESTAMPTZ,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    -- Composite unique key: one label per (sheet_id, item_ref, label_type)
+    CONSTRAINT unique_canonical_label UNIQUE (sheet_id, item_ref, label_type),
+    CONSTRAINT valid_confidence CHECK (confidence IN ('high', 'medium', 'low')),
+    CONSTRAINT valid_data_classification CHECK (data_classification IN ('public', 'internal', 'confidential', 'restricted'))
+);
+
+CREATE INDEX idx_canonical_labels_sheet ON canonical_labels(sheet_id);
+CREATE INDEX idx_canonical_labels_item ON canonical_labels(sheet_id, item_ref);
+CREATE INDEX idx_canonical_labels_type ON canonical_labels(label_type);
+CREATE INDEX idx_canonical_labels_composite ON canonical_labels(sheet_id, item_ref, label_type);
+CREATE INDEX idx_canonical_labels_reuse ON canonical_labels(reuse_count DESC) WHERE reuse_count > 0;
+CREATE INDEX idx_canonical_labels_created ON canonical_labels(created_at DESC);
+
+-- Sheet data rows (actual cell values for imported data)
+-- For large datasets, consider partitioning by sheet_id
+CREATE TABLE IF NOT EXISTS sheet_rows (
+    row_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sheet_id VARCHAR(255) NOT NULL REFERENCES sheets(sheet_id) ON DELETE CASCADE,
+
+    -- Row position
+    row_index INTEGER NOT NULL,
+
+    -- Cell values as JSON object (column_id -> CellValue)
+    cells JSONB NOT NULL DEFAULT '{}',
+
+    -- Sync tracking (for Delta Lake sync)
+    synced_to_delta BOOLEAN DEFAULT FALSE,
+    synced_at TIMESTAMPTZ,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT unique_sheet_row UNIQUE (sheet_id, row_index)
+);
+
+CREATE INDEX idx_sheet_rows_sheet ON sheet_rows(sheet_id, row_index);
+CREATE INDEX idx_sheet_rows_unsync ON sheet_rows(synced_to_delta) WHERE synced_to_delta = FALSE;
+
+-- Training Sheets (materialized Q&A pairs from Sheets + Templates)
+-- PRD v2.3: Formerly "Assemblies", renamed for clarity
+CREATE TABLE IF NOT EXISTS assemblies (
+    assembly_id VARCHAR(255) PRIMARY KEY,
+
+    -- Source references
+    sheet_id VARCHAR(255) NOT NULL REFERENCES sheets(sheet_id),
+    sheet_name VARCHAR(255),
+
+    -- Frozen template config (snapshot at assembly time)
+    template_config JSONB NOT NULL,
+    template_label_type VARCHAR(100),  -- v2.3: Links to canonical label label_type
+
+    -- Assembly metadata
+    status VARCHAR(50) DEFAULT 'assembling',  -- assembling, ready, failed, archived
+    total_rows INTEGER DEFAULT 0,
+
+    -- Statistics (v2.3: includes canonical label reuse)
+    ai_generated_count INTEGER DEFAULT 0,
+    human_labeled_count INTEGER DEFAULT 0,
+    human_verified_count INTEGER DEFAULT 0,
+    canonical_reused_count INTEGER DEFAULT 0,  -- v2.3: Pre-approved via canonical labels
+    flagged_count INTEGER DEFAULT 0,
+
+    -- Error info (if status == failed)
+    error_message TEXT,
+
+    -- Metadata
+    created_by VARCHAR(255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMPTZ,
+
+    CONSTRAINT valid_assembly_status CHECK (status IN ('assembling', 'ready', 'failed', 'archived'))
+);
+
+CREATE INDEX idx_assemblies_sheet ON assemblies(sheet_id);
+CREATE INDEX idx_assemblies_status ON assemblies(status);
+CREATE INDEX idx_assemblies_updated ON assemblies(updated_at DESC);
+CREATE INDEX idx_assemblies_label_type ON assemblies(template_label_type) WHERE template_label_type IS NOT NULL;
+
+-- Assembly rows (Q&A pairs for curation)
+-- PRD v2.3: Links to canonical labels for label reuse
+CREATE TABLE IF NOT EXISTS assembly_rows (
+    row_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    assembly_id VARCHAR(255) NOT NULL REFERENCES assemblies(assembly_id) ON DELETE CASCADE,
+
+    -- Row position
+    row_index INTEGER NOT NULL,
+
+    -- Rendered prompt
+    prompt TEXT NOT NULL,
+
+    -- Source data snapshot (for reference/debugging)
+    source_data JSONB DEFAULT '{}',
+    item_ref VARCHAR(500),  -- v2.3: Reference to source item for canonical label lookup
+
+    -- Response
+    response TEXT,
+    response_source VARCHAR(50) DEFAULT 'empty',  -- empty, ai_generated, human_labeled, human_verified, canonical
+
+    -- v2.3: Canonical label linkage
+    canonical_label_id UUID REFERENCES canonical_labels(id),  -- Link to ground truth
+    labeling_mode VARCHAR(50) DEFAULT 'ai_generated',  -- ai_generated, manual, existing_column, canonical
+
+    -- Generation metadata
+    generated_at TIMESTAMPTZ,
+
+    -- Labeling metadata
+    labeled_at TIMESTAMPTZ,
+    labeled_by VARCHAR(255),
+    verified_at TIMESTAMPTZ,
+    verified_by VARCHAR(255),
+
+    -- Quality flags
+    is_flagged BOOLEAN DEFAULT FALSE,
+    flag_reason TEXT,
+    confidence_score DOUBLE PRECISION,
+
+    -- v2.3: Usage constraints (from canonical label or set directly)
+    allowed_uses TEXT[] DEFAULT '{training,validation,evaluation,few_shot,testing}',
+    prohibited_uses TEXT[] DEFAULT '{}',
+
+    -- Sync tracking
+    synced_to_delta BOOLEAN DEFAULT FALSE,
+    synced_at TIMESTAMPTZ,
+
+    CONSTRAINT unique_assembly_row UNIQUE (assembly_id, row_index),
+    CONSTRAINT valid_response_source CHECK (response_source IN ('empty', 'ai_generated', 'human_labeled', 'human_verified', 'canonical')),
+    CONSTRAINT valid_labeling_mode CHECK (labeling_mode IN ('ai_generated', 'manual', 'existing_column', 'canonical'))
+);
+
+CREATE INDEX idx_assembly_rows_assembly ON assembly_rows(assembly_id, row_index);
+CREATE INDEX idx_assembly_rows_source ON assembly_rows(response_source);
+CREATE INDEX idx_assembly_rows_canonical ON assembly_rows(canonical_label_id) WHERE canonical_label_id IS NOT NULL;
+CREATE INDEX idx_assembly_rows_mode ON assembly_rows(labeling_mode);
+CREATE INDEX idx_assembly_rows_flagged ON assembly_rows(is_flagged) WHERE is_flagged = TRUE;
+CREATE INDEX idx_assembly_rows_unsync ON assembly_rows(synced_to_delta) WHERE synced_to_delta = FALSE;
+
+-- Template library (reusable prompt templates)
+-- PRD v2.3: Added label_type for canonical label matching
+CREATE TABLE IF NOT EXISTS templates (
+    template_id VARCHAR(255) PRIMARY KEY,
+
+    -- Template metadata
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    version VARCHAR(50) DEFAULT '1.0.0',
+
+    -- Template definition (TemplateConfig as JSON)
+    config JSONB NOT NULL,
+
+    -- v2.3: Label type for canonical label matching
+    label_type VARCHAR(100),  -- entity_extraction, classification, localization, etc.
+
+    -- Categorization
+    category VARCHAR(100),  -- defect_detection, anomaly_detection, etc.
+    tags TEXT[] DEFAULT '{}',
+
+    -- Usage tracking
+    usage_count INTEGER DEFAULT 0,
+    last_used_at TIMESTAMPTZ,
+
+    -- Metadata
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by VARCHAR(255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_templates_category ON templates(category) WHERE category IS NOT NULL;
+CREATE INDEX idx_templates_label_type ON templates(label_type) WHERE label_type IS NOT NULL;
+CREATE INDEX idx_templates_tags ON templates USING GIN(tags);
+CREATE INDEX idx_templates_active ON templates(is_active) WHERE is_active = TRUE;
+
+-- ============================================================================
+-- MODEL TRAINING LINEAGE - Track Training Sheet Usage (PRD v2.1)
+-- ============================================================================
+
+-- Tracks which models were trained on which Training Sheets
+-- Enables complete provenance: source data → labels → Q&A pairs → models
+CREATE TABLE IF NOT EXISTS model_training_lineage (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    -- Model identification
+    model_id VARCHAR(500) NOT NULL,  -- Unity Catalog model ID
+    model_name VARCHAR(500) NOT NULL,
+    model_version VARCHAR(100) NOT NULL,
+
+    -- Training Sheet used
+    assembly_id VARCHAR(255) NOT NULL REFERENCES assemblies(assembly_id),
+    assembly_name VARCHAR(255),
+
+    -- Q&A pairs used (array of row_ids)
+    qa_pair_ids UUID[] DEFAULT '{}',
+    qa_pair_count INTEGER DEFAULT 0,
+
+    -- Training configuration
+    training_config JSONB,  -- Model params, hyperparameters, etc.
+
+    -- MLflow integration
+    mlflow_run_id VARCHAR(255),
+    mlflow_experiment_id VARCHAR(255),
+
+    -- Training metadata
+    training_started_at TIMESTAMPTZ,
+    training_completed_at TIMESTAMPTZ,
+    training_status VARCHAR(50) DEFAULT 'pending',  -- pending, running, completed, failed
+
+    -- Metadata
+    created_by VARCHAR(255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_model_lineage_model ON model_training_lineage(model_id);
+CREATE INDEX idx_model_lineage_assembly ON model_training_lineage(assembly_id);
+CREATE INDEX idx_model_lineage_mlflow ON model_training_lineage(mlflow_run_id) WHERE mlflow_run_id IS NOT NULL;
+CREATE INDEX idx_model_lineage_status ON model_training_lineage(training_status);
+CREATE INDEX idx_model_lineage_created ON model_training_lineage(created_at DESC);
+
+-- ============================================================================
 -- HELPER FUNCTIONS
 -- ============================================================================
 

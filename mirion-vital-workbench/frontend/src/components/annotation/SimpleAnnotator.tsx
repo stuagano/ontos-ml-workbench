@@ -47,6 +47,20 @@ export function SimpleAnnotator({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
 
+  // Reset boxes when existingBoxes prop changes (e.g., navigating to new image)
+  useEffect(() => {
+    setBoxes(existingBoxes);
+  }, [existingBoxes]);
+
+  // Reset state when image URL changes (navigating to different image)
+  useEffect(() => {
+    setImageLoaded(false);
+    setImageError(null);
+    setImage(null);
+    setCurrentBox(null);
+    setIsDrawing(false);
+  }, [imageUrl]);
+
   // Load image
   useEffect(() => {
     const img = new Image();
@@ -208,6 +222,20 @@ export function SimpleAnnotator({
     onAnnotationsChange([]);
   }, [onAnnotationsChange]);
 
+  const updateBoxLabel = useCallback(
+    (id: string, newLabel: string) => {
+      const label = labels.find((l) => l.name === newLabel);
+      const newBoxes = boxes.map((box) =>
+        box.id === id
+          ? { ...box, label: newLabel, color: label?.color || box.color }
+          : box
+      );
+      setBoxes(newBoxes);
+      onAnnotationsChange(newBoxes);
+    },
+    [boxes, labels, onAnnotationsChange]
+  );
+
   if (imageError) {
     return (
       <div
@@ -298,7 +326,18 @@ export function SimpleAnnotator({
                   className="w-3 h-3 rounded"
                   style={{ backgroundColor: box.color }}
                 />
-                <span>{box.label}</span>
+                <select
+                  value={box.label}
+                  onChange={(e) => updateBoxLabel(box.id, e.target.value)}
+                  className="bg-transparent border-none text-sm font-medium cursor-pointer hover:bg-gray-200 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  style={{ color: box.color }}
+                >
+                  {labels.map((label) => (
+                    <option key={label.name} value={label.name}>
+                      {label.name}
+                    </option>
+                  ))}
+                </select>
                 <span className="text-gray-400">#{idx + 1}</span>
                 <button
                   onClick={() => deleteBox(box.id)}

@@ -52,8 +52,11 @@ class SQLService:
 
         statement_id = response.statement_id
 
-        # Poll for completion
+        # Poll for completion with adaptive backoff
         start_time = time.time()
+        poll_interval = 0.1  # Start with 100ms polls
+        max_poll_interval = 1.0  # Max 1 second
+
         while True:
             status = self.client.statement_execution.get_statement(statement_id)
             state = status.status.state
@@ -76,7 +79,9 @@ class SQLService:
                 self.client.statement_execution.cancel_execution(statement_id)
                 raise TimeoutError(f"SQL execution timed out after {timeout_seconds}s")
 
-            time.sleep(0.5)
+            # Adaptive polling: start fast, slow down for long queries
+            time.sleep(poll_interval)
+            poll_interval = min(poll_interval * 1.5, max_poll_interval)
 
         # Get results
         result = self.client.statement_execution.get_statement(statement_id)
@@ -106,9 +111,11 @@ class SQLService:
             schema=self.schema,
         )
 
-        # Wait for completion
+        # Wait for completion with adaptive backoff
         statement_id = response.statement_id
         start_time = time.time()
+        poll_interval = 0.1  # Start with 100ms polls
+        max_poll_interval = 1.0
 
         while True:
             status = self.client.statement_execution.get_statement(statement_id)
@@ -131,7 +138,8 @@ class SQLService:
             if time.time() - start_time > 60:
                 raise TimeoutError("SQL execution timed out")
 
-            time.sleep(0.5)
+            time.sleep(poll_interval)
+            poll_interval = min(poll_interval * 1.5, max_poll_interval)
 
 
 # Singleton instance

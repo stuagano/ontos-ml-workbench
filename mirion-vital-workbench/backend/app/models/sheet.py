@@ -93,6 +93,17 @@ class ResponseSchemaField(BaseModel):
     options: list[str] | None = None  # For enum/select fields
 
 
+class LabelClass(BaseModel):
+    """A label class for annotation tasks."""
+
+    name: str = Field(..., description="Label name (e.g., 'Defect', 'Normal')")
+    color: str = Field(default="#6b7280", description="Hex color for the label")
+    description: str | None = Field(default=None, description="Optional description")
+    hotkey: str | None = Field(
+        default=None, description="Keyboard shortcut (e.g., '1', 'd')"
+    )
+
+
 class TemplateConfig(BaseModel):
     """
     Transformation blueprint attached to a Sheet.
@@ -138,6 +149,12 @@ class TemplateConfig(BaseModel):
     temperature: float = Field(default=0.7, ge=0, le=2)
     max_tokens: int = Field(default=1024, ge=1, le=32000)
 
+    # Annotation label classes (for image/manual labeling workflows)
+    label_classes: list[LabelClass] | None = Field(
+        default=None,
+        description="Label classes available for annotation tasks",
+    )
+
     # Metadata
     name: str | None = Field(
         default=None,
@@ -167,6 +184,9 @@ class TemplateConfigAttach(BaseModel):
     temperature: float = Field(default=0.7, ge=0, le=2)
     max_tokens: int = Field(default=1024, ge=1, le=32000)
 
+    # Annotation label classes
+    label_classes: list[LabelClass] | None = None
+
     # Metadata
     name: str | None = None
     description: str | None = None
@@ -183,6 +203,7 @@ class TemplateConfigAttach(BaseModel):
             model=self.model,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
+            label_classes=self.label_classes,
             name=self.name,
             description=self.description,
         )
@@ -262,7 +283,7 @@ class ColumnResponse(BaseModel):
 
 
 class SheetResponse(BaseModel):
-    """Sheet response model."""
+    """Sheet response model (PRD v2.3: lightweight pointer to Unity Catalog data)."""
 
     id: str
     name: str
@@ -270,6 +291,24 @@ class SheetResponse(BaseModel):
     version: str
     status: SheetStatus
     columns: list[ColumnResponse]
+
+    # PRD v2.3: Unity Catalog source references (multimodal)
+    primary_table: str | None = Field(
+        default=None,
+        description="Primary Unity Catalog table (e.g., 'mirion_vital.raw.pcb_inspections')",
+    )
+    secondary_sources: list[dict[str, Any]] | None = Field(
+        default=None, description="Additional sources: [{type, path, join_key}, ...]"
+    )
+    join_keys: list[str] | None = Field(
+        default=None, description="Join keys for multimodal data fusion"
+    )
+    filter_condition: str | None = Field(
+        default=None, description="Optional WHERE clause for filtering"
+    )
+    sample_size: int | None = Field(
+        default=None, description="Optional row limit for sampling"
+    )
 
     # Attached template config (GCP-style)
     template_config: TemplateConfig | None = Field(
@@ -281,7 +320,12 @@ class SheetResponse(BaseModel):
         description="Whether a template config is attached",
     )
 
+    # Statistics
     row_count: int | None = None
+    canonical_label_count: int | None = Field(
+        default=None, description="PRD v2.3: Count of canonical labels for this sheet"
+    )
+
     created_by: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None

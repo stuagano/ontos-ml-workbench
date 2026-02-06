@@ -1,8 +1,7 @@
-// Pipeline stages
+// Pipeline stages (PRD v2.3: updated workflow)
 export type PipelineStage =
   | "data"
-  | "template"
-  | "curate"
+  | "generate" // v2.3: renamed from "curate"
   | "label"
   | "train"
   | "deploy"
@@ -78,6 +77,7 @@ export interface Template {
   description?: string;
   version: string;
   status: TemplateStatus;
+  label_type?: string; // PRD v2.3: For canonical label matching
   input_schema?: SchemaField[];
   output_schema?: SchemaField[];
   prompt_template?: string;
@@ -93,6 +93,382 @@ export interface Template {
   created_by?: string;
   created_at?: string;
   updated_at?: string;
+}
+
+// ============================================================================
+// Labelsets (PRD v2.3) - Reusable Label Collections
+// ============================================================================
+
+export type LabelsetStatus = "draft" | "published" | "archived";
+
+export interface LabelClass {
+  name: string;
+  display_name?: string;
+  color: string;
+  description?: string;
+  hotkey?: string;
+  confidence_threshold?: number;
+}
+
+export interface ResponseSchema {
+  type: string;
+  properties: Record<string, any>;
+  required?: string[];
+  examples?: Record<string, any>[];
+}
+
+export interface Labelset {
+  id: string;
+  name: string;
+  description?: string;
+  label_classes: LabelClass[];
+  response_schema?: ResponseSchema;
+  label_type: string;
+  canonical_label_count: number;
+  status: LabelsetStatus;
+  version: string;
+  allowed_uses?: string[];
+  prohibited_uses?: string[];
+  created_by?: string;
+  created_at?: string;
+  updated_at?: string;
+  published_by?: string;
+  published_at?: string;
+  tags?: string[];
+  use_case?: string;
+}
+
+export interface LabelsetCreate {
+  name: string;
+  description?: string;
+  label_classes?: LabelClass[];
+  response_schema?: ResponseSchema;
+  label_type: string;
+  allowed_uses?: string[];
+  prohibited_uses?: string[];
+  tags?: string[];
+  use_case?: string;
+}
+
+export interface LabelsetUpdate {
+  name?: string;
+  description?: string;
+  label_classes?: LabelClass[];
+  response_schema?: ResponseSchema;
+  allowed_uses?: string[];
+  prohibited_uses?: string[];
+  tags?: string[];
+  use_case?: string;
+  version?: string;
+}
+
+export interface LabelsetStats {
+  labelset_id: string;
+  labelset_name: string;
+  canonical_label_count: number;
+  total_label_classes: number;
+  assemblies_using_count: number;
+  training_jobs_count: number;
+  coverage_stats?: Record<string, any>;
+}
+
+// ============================================================================
+// Curated Datasets (PRD v2.3) - Training-Ready QA Pairs
+// ============================================================================
+
+export type DatasetStatus = "draft" | "approved" | "in_use" | "archived";
+
+export interface QualityMetrics {
+  total_examples: number;
+  avg_confidence: number;
+  label_distribution: Record<string, number>;
+  response_length_avg: number;
+  response_length_std: number;
+  human_verified_count: number;
+  ai_generated_count: number;
+  pre_labeled_count: number;
+}
+
+export interface DatasetSplit {
+  train_pct: number;
+  val_pct: number;
+  test_pct: number;
+  stratify_by?: string;
+}
+
+export interface CuratedDataset {
+  id: string;
+  name: string;
+  description?: string;
+  labelset_id?: string;
+  assembly_ids: string[];
+  split_config?: DatasetSplit;
+  quality_threshold: number;
+  status: DatasetStatus;
+  version: string;
+  example_count: number;
+  quality_metrics?: QualityMetrics;
+  created_at?: string;
+  created_by?: string;
+  approved_at?: string;
+  approved_by?: string;
+  last_used_at?: string;
+  tags: string[];
+  use_case?: string;
+  intended_models: string[];
+  prohibited_uses: string[];
+}
+
+export interface CuratedDatasetCreate {
+  name: string;
+  description?: string;
+  labelset_id?: string;
+  assembly_ids?: string[];
+  split_config?: DatasetSplit;
+  quality_threshold?: number;
+  tags?: string[];
+  use_case?: string;
+  intended_models?: string[];
+  prohibited_uses?: string[];
+}
+
+export interface CuratedDatasetUpdate {
+  name?: string;
+  description?: string;
+  assembly_ids?: string[];
+  split_config?: DatasetSplit;
+  quality_threshold?: number;
+  tags?: string[];
+  use_case?: string;
+  intended_models?: string[];
+  prohibited_uses?: string[];
+}
+
+export interface DatasetExample {
+  example_id: string;
+  assembly_id: string;
+  prompt: string;
+  response: string;
+  label?: string;
+  confidence?: number;
+  source_mode: string;
+  reviewed: boolean;
+  split?: string;
+}
+
+export interface DatasetPreview {
+  dataset_id: string;
+  total_examples: number;
+  examples: DatasetExample[];
+  quality_metrics: QualityMetrics;
+}
+
+export interface ApprovalRequest {
+  approved_by: string;
+  notes?: string;
+}
+
+export interface ListCuratedDatasetsParams {
+  status?: DatasetStatus;
+  labelset_id?: string;
+  use_case?: string;
+  tags?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ListCuratedDatasetsResponse {
+  datasets: CuratedDataset[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+// ============================================================================
+// Canonical Labels (PRD v2.3) - Ground Truth Layer
+// ============================================================================
+
+/**
+ * Expert confidence in the label
+ */
+export type LabelConfidence = "high" | "medium" | "low";
+
+/**
+ * Data classification for governance
+ */
+export type DataClassification =
+  | "public"
+  | "internal"
+  | "confidential"
+  | "restricted";
+
+/**
+ * Usage types for data governance
+ */
+export type UsageType =
+  | "training"
+  | "validation"
+  | "evaluation"
+  | "few_shot"
+  | "testing";
+
+/**
+ * Canonical label - expert-validated ground truth
+ * Enables "label once, reuse everywhere" across Training Sheets
+ */
+export interface CanonicalLabel {
+  id: string;
+  sheet_id: string;
+  item_ref: string; // Reference to source item
+  label_type: string; // Composite key component (e.g., "entity_extraction", "classification")
+
+  // Expert's ground truth label (flexible JSON)
+  label_data: any; // Entities, bounding boxes, classifications, etc.
+
+  // Quality metadata
+  confidence: LabelConfidence;
+  notes?: string;
+
+  // Governance constraints (PRD v2.2)
+  allowed_uses: UsageType[];
+  prohibited_uses: UsageType[];
+  usage_reason?: string;
+  data_classification: DataClassification;
+
+  // Audit trail
+  labeled_by: string;
+  labeled_at: string;
+  last_modified_by?: string;
+  last_modified_at?: string;
+
+  // Version control
+  version: number;
+
+  // Statistics
+  reuse_count: number; // How many Training Sheets use this label
+  last_used_at?: string;
+
+  created_at: string;
+}
+
+/**
+ * Request to create a canonical label
+ */
+export interface CanonicalLabelCreateRequest {
+  sheet_id: string;
+  item_ref: string;
+  label_type: string;
+  label_data: any;
+  confidence?: LabelConfidence;
+  notes?: string;
+  allowed_uses?: UsageType[];
+  prohibited_uses?: UsageType[];
+  usage_reason?: string;
+  data_classification?: DataClassification;
+  labeled_by: string;
+}
+
+/**
+ * Request to update a canonical label
+ */
+export interface CanonicalLabelUpdateRequest {
+  label_data?: any;
+  confidence?: LabelConfidence;
+  notes?: string;
+  allowed_uses?: UsageType[];
+  prohibited_uses?: UsageType[];
+  usage_reason?: string;
+  data_classification?: DataClassification;
+  last_modified_by?: string;
+}
+
+/**
+ * Canonical label lookup by composite key
+ */
+export interface CanonicalLabelLookup {
+  sheet_id: string;
+  item_ref: string;
+  label_type: string;
+}
+
+/**
+ * Bulk canonical label lookup
+ */
+export interface CanonicalLabelBulkLookup {
+  sheet_id: string;
+  items: Array<{ item_ref: string; label_type: string }>;
+}
+
+/**
+ * Bulk lookup response
+ */
+export interface CanonicalLabelBulkLookupResponse {
+  found: CanonicalLabel[];
+  not_found: Array<{ item_ref: string; label_type: string }>;
+  found_count: number;
+  not_found_count: number;
+}
+
+/**
+ * Statistics about canonical labels for a sheet
+ */
+export interface CanonicalLabelStats {
+  sheet_id: string;
+  total_labels: number;
+  labels_by_type: Record<string, number>; // label_type -> count
+  coverage_percent?: number; // % of sheet items with at least one label
+  avg_reuse_count: number;
+  most_reused_labels: CanonicalLabel[];
+}
+
+/**
+ * All labelsets for a single source item
+ */
+export interface ItemLabelsets {
+  sheet_id: string;
+  item_ref: string;
+  labelsets: CanonicalLabel[]; // All canonical labels for this item
+  label_types: string[]; // Unique label types available
+}
+
+/**
+ * Usage constraint check request
+ */
+export interface UsageConstraintCheck {
+  canonical_label_id: string;
+  requested_usage: UsageType;
+}
+
+/**
+ * Usage constraint check response
+ */
+export interface UsageConstraintCheckResponse {
+  allowed: boolean;
+  reason?: string;
+  canonical_label_id: string;
+  requested_usage: UsageType;
+}
+
+/**
+ * Canonical label version history
+ */
+export interface CanonicalLabelVersion {
+  version: number;
+  label_data: any;
+  confidence: LabelConfidence;
+  notes?: string;
+  modified_by: string;
+  modified_at: string;
+}
+
+/**
+ * List response with pagination
+ */
+export interface CanonicalLabelListResponse {
+  labels: CanonicalLabel[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
 // Curation types
@@ -427,6 +803,18 @@ export interface Sheet {
   row_count?: number;
   template_config?: TemplateConfig; // Attached template (GCP pattern)
   has_template: boolean; // Quick check if template is attached
+
+  // PRD v2.3: Unity Catalog source references (multimodal)
+  primary_table?: string; // e.g., 'mirion_vital.raw.pcb_inspections'
+  secondary_sources?: Array<{
+    type: string;
+    path: string;
+    join_keys: string[];
+  }>;
+  join_keys?: string[];
+  filter_condition?: string;
+  canonical_label_count?: number; // v2.3: Number of canonical labels created from this sheet
+
   created_by?: string;
   created_at?: string;
   updated_at?: string;
@@ -566,12 +954,23 @@ export interface ResponseSchemaField {
 export type ResponseSourceMode =
   | "existing_column"
   | "ai_generated"
-  | "manual_labeling";
+  | "manual_labeling"
+  | "canonical"; // PRD v2.3: Lookup from canonical labels
 
 /**
  * Template configuration attached to a Sheet
  * Defines how to transform sheet data into prompt/response pairs
  */
+/**
+ * A label class for annotation tasks
+ */
+export interface LabelClass {
+  name: string;
+  color: string;
+  description?: string;
+  hotkey?: string;
+}
+
 export interface TemplateConfig {
   system_instruction?: string;
   prompt_template: string; // Uses {{column_name}} syntax
@@ -581,6 +980,8 @@ export interface TemplateConfig {
   model: string;
   temperature: number;
   max_tokens: number;
+  label_classes?: LabelClass[]; // Labels for annotation tasks
+  label_type?: string; // PRD v2.3: For canonical label lookup (e.g., "entity_extraction", "classification")
   name?: string;
   description?: string;
   version: string;
@@ -598,6 +999,8 @@ export interface TemplateConfigAttachRequest {
   model?: string;
   temperature?: number;
   max_tokens?: number;
+  label_classes?: LabelClass[]; // Labels for annotation tasks
+  label_type?: string; // PRD v2.3: For canonical label lookup
   name?: string;
   description?: string;
 }
@@ -615,7 +1018,8 @@ export type ResponseSource =
   | "imported"
   | "ai_generated"
   | "human_labeled"
-  | "human_verified";
+  | "human_verified"
+  | "canonical"; // PRD v2.3: From canonical labels
 
 /**
  * A single assembled row with rendered prompt and response
@@ -626,10 +1030,22 @@ export interface AssembledRow {
   source_data: Record<string, unknown>;
   response?: string;
   response_source: ResponseSource;
+
+  // PRD v2.3: Canonical label integration
+  item_ref?: string; // Reference to source item for canonical lookup
+  canonical_label_id?: string; // Link to ground truth label
+  labeling_mode?: "ai_generated" | "manual" | "existing_column" | "canonical";
+  allowed_uses?: UsageType[]; // v2.3: Usage constraints from canonical label
+  prohibited_uses?: UsageType[];
+
+  generated_at?: string;
   labeled_by?: string;
   labeled_at?: string;
   verified_by?: string;
   verified_at?: string;
+  is_flagged?: boolean;
+  flag_reason?: string;
+  confidence_score?: number;
   notes?: string;
 }
 
@@ -648,6 +1064,11 @@ export interface AssembledDataset {
   human_labeled_count: number;
   human_verified_count: number;
   flagged_count?: number;
+
+  // PRD v2.3: Canonical label tracking
+  canonical_reused_count?: number; // How many rows use canonical labels
+  template_label_type?: string; // Label type from template config
+
   error_message?: string;
   created_by?: string;
   created_at?: string;
@@ -681,7 +1102,8 @@ export interface AssembleResponse {
 export interface AssemblyPreviewRequest {
   offset?: number;
   limit?: number;
-  response_source_filter?: ResponseSource[];
+  response_source?: ResponseSource;
+  flagged_only?: boolean;
 }
 
 /**
@@ -691,8 +1113,15 @@ export interface AssemblyPreviewResponse {
   assembly_id: string;
   rows: AssembledRow[];
   total_rows: number;
+  preview_rows: number;
   offset: number;
   limit: number;
+  // Stats
+  ai_generated_count: number;
+  human_labeled_count: number;
+  human_verified_count: number;
+  flagged_count: number;
+  empty_count: number;
 }
 
 /**
@@ -735,6 +1164,9 @@ export interface AssemblyExportRequest {
   volume_path: string;
   include_only_verified?: boolean;
   include_system_instruction?: boolean;
+  // Train/validation split
+  train_split?: number; // 0.5-0.95, if provided creates separate train/val files
+  random_seed?: number; // Default 42
 }
 
 /**
@@ -745,6 +1177,12 @@ export interface AssemblyExportResponse {
   volume_path: string;
   format: ExportFormat;
   examples_exported: number;
+  excluded_count?: number;
+  // Train/val split info (when train_split is provided)
+  train_path?: string;
+  val_path?: string;
+  train_count?: number;
+  val_count?: number;
 }
 
 // Common presets
@@ -1415,7 +1853,11 @@ export const EXAMPLE_DOMAINS: { id: ExampleDomain; label: string }[] = [
 /**
  * Difficulty options for UI
  */
-export const EXAMPLE_DIFFICULTIES: { id: ExampleDifficulty; label: string; color: string }[] = [
+export const EXAMPLE_DIFFICULTIES: {
+  id: ExampleDifficulty;
+  label: string;
+  color: string;
+}[] = [
   { id: "easy", label: "Easy", color: "green" },
   { id: "medium", label: "Medium", color: "amber" },
   { id: "hard", label: "Hard", color: "red" },
@@ -1607,10 +2049,34 @@ export const DEFAULT_OPTIMIZATION_CONFIG: OptimizationConfig = {
 /**
  * Optimizer options for UI
  */
-export const DSPY_OPTIMIZERS: { id: DSPyOptimizerType; label: string; description: string }[] = [
-  { id: "BootstrapFewShot", label: "Bootstrap Few-Shot", description: "Basic few-shot optimization" },
-  { id: "BootstrapFewShotWithRandomSearch", label: "Bootstrap + Random Search", description: "Few-shot with hyperparameter search" },
-  { id: "MIPRO", label: "MIPRO", description: "Multi-stage instruction optimization" },
-  { id: "COPRO", label: "COPRO", description: "Collaborative prompt optimization" },
-  { id: "KNNFewShot", label: "KNN Few-Shot", description: "K-nearest neighbor example selection" },
+export const DSPY_OPTIMIZERS: {
+  id: DSPyOptimizerType;
+  label: string;
+  description: string;
+}[] = [
+  {
+    id: "BootstrapFewShot",
+    label: "Bootstrap Few-Shot",
+    description: "Basic few-shot optimization",
+  },
+  {
+    id: "BootstrapFewShotWithRandomSearch",
+    label: "Bootstrap + Random Search",
+    description: "Few-shot with hyperparameter search",
+  },
+  {
+    id: "MIPRO",
+    label: "MIPRO",
+    description: "Multi-stage instruction optimization",
+  },
+  {
+    id: "COPRO",
+    label: "COPRO",
+    description: "Collaborative prompt optimization",
+  },
+  {
+    id: "KNNFewShot",
+    label: "KNN Few-Shot",
+    description: "K-nearest neighbor example selection",
+  },
 ];

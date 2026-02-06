@@ -5,22 +5,26 @@
  * DATA → TEMPLATE → CURATE → TRAIN → DEPLOY → MONITOR → IMPROVE
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
 import { Header } from "./components/Header";
 import { PipelineBreadcrumb } from "./components/PipelineBreadcrumb";
+import { StageSubNav, type StageMode } from "./components/StageSubNav";
 import { TemplateEditor } from "./components/TemplateEditor";
-import { SheetBuilder } from "./pages/SheetBuilder";
-import { TemplateBuilderPage } from "./pages/TemplateBuilderPage";
-import { CuratePage } from "./pages/CuratePage";
-import { LabelingWorkflow } from "./components/labeling";
-import { TrainPage } from "./pages/TrainPage";
-import { DeployPage } from "./pages/DeployPage";
-import { MonitorPage } from "./pages/MonitorPage";
-import { ImprovePage } from "./pages/ImprovePage";
-import { ExampleStorePage } from "./pages/ExampleStorePage";
+
+// Lazy load pages - only load when needed
+const SheetBuilder = lazy(() => import("./pages/SheetBuilder").then(m => ({ default: m.SheetBuilder })));
+const TemplateBuilderPage = lazy(() => import("./pages/TemplateBuilderPage").then(m => ({ default: m.TemplateBuilderPage })));
+const TemplatePage = lazy(() => import("./pages/TemplatePage").then(m => ({ default: m.TemplatePage })));
+const CuratePage = lazy(() => import("./pages/CuratePage").then(m => ({ default: m.CuratePage })));
+const LabelingWorkflow = lazy(() => import("./components/labeling").then(m => ({ default: m.LabelingWorkflow })));
+const TrainPage = lazy(() => import("./pages/TrainPage").then(m => ({ default: m.TrainPage })));
+const DeployPage = lazy(() => import("./pages/DeployPage").then(m => ({ default: m.DeployPage })));
+const MonitorPage = lazy(() => import("./pages/MonitorPage").then(m => ({ default: m.MonitorPage })));
+const ImprovePage = lazy(() => import("./pages/ImprovePage").then(m => ({ default: m.ImprovePage })));
+const ExampleStorePage = lazy(() => import("./pages/ExampleStorePage").then(m => ({ default: m.ExampleStorePage })));
 
 import { getConfig } from "./services/api";
 import { setWorkspaceUrl } from "./services/databricksLinks";
@@ -42,6 +46,7 @@ function AppContent() {
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [showEditor, setShowEditor] = useState(false);
   const [showExampleStore, setShowExampleStore] = useState(false);
+  const [stageMode, setStageMode] = useState<StageMode>("browse");
   const toast = useToast();
   const keyboardHelp = useKeyboardShortcutsHelp();
   const workflow = useWorkflow();
@@ -50,6 +55,7 @@ function AppContent() {
   const currentStage = workflow.state.currentStage as PipelineStage;
   const setCurrentStage = (stage: PipelineStage) => {
     workflow.setCurrentStage(stage as WorkflowStage);
+    setStageMode("browse"); // Reset to browse mode when switching stages
   };
 
   // Fetch app config
@@ -70,6 +76,41 @@ function AppContent() {
       setWorkspaceUrl(config.workspace_url);
     }
   }, [config?.workspace_url]);
+
+  // URL parameter support for direct navigation (dev mode)
+  // Usage: ?stage=curate&sheetId=xxx or ?stage=template
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const stageParam = params.get("stage") as WorkflowStage | null;
+    const sheetIdParam = params.get("sheetId");
+    const modeParam = params.get("mode") as StageMode | null;
+
+    if (stageParam) {
+      const validStages: WorkflowStage[] = ["data", "template", "curate", "label", "train", "deploy", "monitor", "improve"];
+      if (validStages.includes(stageParam)) {
+        console.log(`[App] URL param: jumping to stage=${stageParam}`);
+        workflow.setCurrentStage(stageParam);
+
+        // If a sheet ID is provided, set it as the selected source
+        if (sheetIdParam) {
+          console.log(`[App] URL param: setting sheetId=${sheetIdParam}`);
+          workflow.setSelectedSource({
+            id: sheetIdParam,
+            name: "URL-loaded sheet",
+            type: "table",
+            fullPath: sheetIdParam,
+          } as any);
+        }
+
+        if (modeParam === "browse" || modeParam === "create") {
+          setStageMode(modeParam);
+        }
+
+        // Clear URL params after applying
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+    }
+  }, []); // Run once on mount
 
   // Keyboard shortcut handlers
   const handleNewTemplate = useCallback(() => {
@@ -137,48 +178,52 @@ function AppContent() {
   }
 
   const renderStage = () => {
-    console.log("[App] renderStage called with currentStage:", currentStage);
-    console.log("[App] workflow.state:", workflow.state);
+    console.log("[App] renderStage called with currentStage:", currentStage, "mode:", stageMode);
 
-    let component;
     switch (currentStage) {
       case "data":
-        // AI Sheets - select base table and import columns
-        component = <SheetBuilder />;
-        console.log("[App] Rendering SheetBuilder for 'data' stage");
-        break;
+        // Data stage: browse UC tables vs create new sheet
+        return <SheetBuilder mode={stageMode} onModeChange={setStageMode} />;
+
       case "template":
-        // Build prompt templates from selected data columns
-        component = <TemplateBuilderPage />;
-        console.log("[App] Rendering TemplateBuilderPage for 'template' stage");
-        break;
+        // Template stage: browse library vs create new
+        if (stageMode === "browse") {
+          return (
+            <TemplatePage
+              onEditTemplate={(template) => {
+                setEditingTemplate(template);
+                if (template === null) {
+                  setStageMode("create"); // Switch to create mode for new template
+                } else {
+                  setShowEditor(true);
+                }
+              }}
+            />
+          );
+        }
+        return <TemplateBuilderPage onCancel={() => setStageMode("browse")} />;
+
       case "curate":
-        component = <CuratePage />;
-        break;
+        return <CuratePage mode={stageMode} />;
+
       case "label":
-        // Roboflow-inspired labeling workflow
-        component = <LabelingWorkflow />;
-        break;
+        return <LabelingWorkflow />;
+
       case "train":
-        component = <TrainPage />;
-        break;
+        return <TrainPage mode={stageMode} onModeChange={setStageMode} />;
+
       case "deploy":
-        component = <DeployPage />;
-        break;
+        return <DeployPage mode={stageMode} />;
+
       case "monitor":
-        component = <MonitorPage />;
-        break;
+        return <MonitorPage mode={stageMode} />;
+
       case "improve":
-        component = <ImprovePage />;
-        break;
+        return <ImprovePage mode={stageMode} onModeChange={setStageMode} />;
+
       default:
-        console.log(
-          "[App] Default case - rendering SheetBuilder for stage:",
-          currentStage,
-        );
-        component = <SheetBuilder />;
+        return <SheetBuilder mode={stageMode} onModeChange={setStageMode} />;
     }
-    return component;
   };
 
   return (
@@ -196,8 +241,22 @@ function AppContent() {
         onStageClick={setCurrentStage}
       />
 
+      <StageSubNav
+        stage={currentStage}
+        mode={stageMode}
+        onModeChange={setStageMode}
+      />
+
       <main className="flex-1 flex flex-col">
-        <ErrorBoundary>{renderStage()}</ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={
+            <div className="flex-1 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-db-orange" />
+            </div>
+          }>
+            {renderStage()}
+          </Suspense>
+        </ErrorBoundary>
       </main>
 
       {/* Template Editor Modal */}
@@ -221,7 +280,13 @@ function AppContent() {
       {/* Example Store Overlay */}
       {showExampleStore && (
         <div className="fixed inset-0 z-40 bg-db-gray-50">
-          <ExampleStorePage onClose={() => setShowExampleStore(false)} />
+          <Suspense fallback={
+            <div className="flex items-center justify-center min-h-screen">
+              <Loader2 className="w-10 h-10 animate-spin text-db-orange" />
+            </div>
+          }>
+            <ExampleStorePage onClose={() => setShowExampleStore(false)} />
+          </Suspense>
         </div>
       )}
     </div>

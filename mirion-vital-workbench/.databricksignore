@@ -1,4 +1,5 @@
 .venv/
+backend/.venv/
 __pycache__/
 *.pyc
 .git/
@@ -9,3 +10,6 @@ frontend/
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
+uv.lock
+frontend/dist/
+*.log

@@ -22,7 +22,6 @@ import {
   Tag,
   Pause,
   Play,
-  MoreHorizontal,
   FileSpreadsheet,
   BarChart3,
   Settings,
@@ -30,6 +29,10 @@ import {
   ChevronRight,
   AlertCircle,
   X,
+  RefreshCw,
+  Filter,
+  Search,
+  Eye,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -43,6 +46,7 @@ import {
   listSheets,
 } from "../services/api";
 import { useToast } from "../components/Toast";
+import { DataTable, Column, RowAction } from "../components/DataTable";
 import type {
   LabelingJob,
   LabelingJobCreateRequest,
@@ -130,174 +134,8 @@ function ProgressBar({
 }
 
 // ============================================================================
-// Job Card Component
+// Job Card Component - Removed (using DataTable now)
 // ============================================================================
-
-interface JobCardProps {
-  job: LabelingJob;
-  onViewTasks: (job: LabelingJob) => void;
-  onStart: (job: LabelingJob) => void;
-  onPause: (job: LabelingJob) => void;
-  onResume: (job: LabelingJob) => void;
-  onDelete: (job: LabelingJob) => void;
-  onViewStats: (job: LabelingJob) => void;
-}
-
-function JobCard({
-  job,
-  onViewTasks,
-  onStart,
-  onPause,
-  onResume,
-  onDelete,
-  onViewStats,
-}: JobCardProps) {
-  const [showMenu, setShowMenu] = useState(false);
-
-  return (
-    <div className="bg-white rounded-lg border border-db-gray-200 p-5 hover:shadow-md transition-shadow">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-            <Tag className="w-5 h-5 text-amber-600" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-db-gray-800">{job.name}</h3>
-            {job.description && (
-              <p className="text-sm text-db-gray-500 line-clamp-1">
-                {job.description}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span
-            className={clsx(
-              "text-xs px-2 py-1 rounded-full font-medium",
-              statusColors[job.status],
-            )}
-          >
-            {statusLabels[job.status]}
-          </span>
-
-          <div className="relative">
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-1.5 rounded-lg hover:bg-db-gray-100 text-db-gray-400"
-            >
-              <MoreHorizontal className="w-4 h-4" />
-            </button>
-
-            {showMenu && (
-              <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setShowMenu(false)}
-                />
-                <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-db-gray-200 py-1 z-20">
-                  <button
-                    onClick={() => {
-                      onViewStats(job);
-                      setShowMenu(false);
-                    }}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-db-gray-50 flex items-center gap-2"
-                  >
-                    <BarChart3 className="w-4 h-4" />
-                    View Statistics
-                  </button>
-                  {job.status === "draft" && (
-                    <button
-                      onClick={() => {
-                        onStart(job);
-                        setShowMenu(false);
-                      }}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-db-gray-50 flex items-center gap-2 text-green-600"
-                    >
-                      <Play className="w-4 h-4" />
-                      Start Job
-                    </button>
-                  )}
-                  {job.status === "active" && (
-                    <button
-                      onClick={() => {
-                        onPause(job);
-                        setShowMenu(false);
-                      }}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-db-gray-50 flex items-center gap-2 text-amber-600"
-                    >
-                      <Pause className="w-4 h-4" />
-                      Pause Job
-                    </button>
-                  )}
-                  {job.status === "paused" && (
-                    <button
-                      onClick={() => {
-                        onResume(job);
-                        setShowMenu(false);
-                      }}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-db-gray-50 flex items-center gap-2 text-green-600"
-                    >
-                      <Play className="w-4 h-4" />
-                      Resume Job
-                    </button>
-                  )}
-                  {job.status === "draft" && (
-                    <button
-                      onClick={() => {
-                        onDelete(job);
-                        setShowMenu(false);
-                      }}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-db-gray-50 flex items-center gap-2 text-red-600"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Delete Job
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Progress */}
-      <div className="mb-4">
-        <ProgressBar
-          labeled={job.labeled_items}
-          reviewed={job.reviewed_items}
-          approved={job.approved_items}
-          total={job.total_items}
-        />
-      </div>
-
-      {/* Meta info */}
-      <div className="flex items-center justify-between text-sm">
-        <div className="flex items-center gap-4 text-db-gray-500">
-          <span className="flex items-center gap-1">
-            <FileSpreadsheet className="w-4 h-4" />
-            {(job.target_columns || []).length} columns
-          </span>
-          {job.ai_assist_enabled && (
-            <span className="flex items-center gap-1 text-purple-600">
-              <Settings className="w-4 h-4" />
-              AI Assist
-            </span>
-          )}
-        </div>
-
-        <button
-          onClick={() => onViewTasks(job)}
-          className="flex items-center gap-1 text-db-orange hover:text-db-red font-medium"
-        >
-          View Tasks
-          <ChevronRight className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ============================================================================
 // Create Job Modal
@@ -903,6 +741,10 @@ function StatsModal({ job, isOpen, onClose }: StatsModalProps) {
 }
 
 // ============================================================================
+// Job Browser Modal - Removed (using full-page table view now)
+// ============================================================================
+
+// ============================================================================
 // Main Page Component
 // ============================================================================
 
@@ -915,17 +757,23 @@ export function LabelingJobsPage({ onViewTasks }: LabelingJobsPageProps) {
   const toast = useToast();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [statsJob, setStatsJob] = useState<LabelingJob | null>(null);
-  const [filter, setFilter] = useState<LabelingJobStatus | "all">("all");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<LabelingJobStatus | "">("");
 
   // Fetch jobs
   const { data, isLoading, error } = useQuery({
-    queryKey: ["labeling-jobs", filter],
+    queryKey: ["labeling-jobs", search, statusFilter],
     queryFn: () =>
       listLabelingJobs({
-        status: filter === "all" ? undefined : filter,
-        limit: 50,
+        status: statusFilter || undefined,
+        limit: 100,
       }),
   });
+
+  const jobs = data?.jobs || [];
+  const filteredJobs = jobs.filter((job) =>
+    job.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   // Mutations
   const startMutation = useMutation({
@@ -983,89 +831,251 @@ export function LabelingJobsPage({ onViewTasks }: LabelingJobsPageProps) {
     [onViewTasks, toast],
   );
 
-  return (
-    <div className="flex-1 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-db-gray-800">Labeling Jobs</h1>
-          <p className="text-db-gray-500 mt-1">
-            Create and manage annotation workflows for your datasets
-          </p>
+  // Define table columns
+  const columns: Column<LabelingJob>[] = [
+    {
+      key: "name",
+      header: "Job Name",
+      width: "25%",
+      render: (job) => (
+        <div className="flex items-center gap-3">
+          <Tag className="w-4 h-4 text-orange-600 flex-shrink-0" />
+          <div className="min-w-0">
+            <div className="font-medium text-db-gray-900">{job.name}</div>
+            {job.description && (
+              <div className="text-sm text-db-gray-500 truncate">
+                {job.description}
+              </div>
+            )}
+          </div>
         </div>
-
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-db-orange text-white rounded-lg hover:bg-db-red transition-colors"
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: "12%",
+      render: (job) => (
+        <span
+          className={clsx("px-2 py-1 rounded-full text-xs font-medium", statusColors[job.status])}
         >
-          <Plus className="w-5 h-5" />
-          Create Job
-        </button>
+          {statusLabels[job.status]}
+        </span>
+      ),
+    },
+    {
+      key: "progress",
+      header: "Progress",
+      width: "30%",
+      render: (job) => (
+        <div className="min-w-0">
+          <ProgressBar
+            labeled={job.labeled_items}
+            reviewed={job.reviewed_items}
+            approved={job.approved_items}
+            total={job.total_items}
+          />
+        </div>
+      ),
+    },
+    {
+      key: "features",
+      header: "Features",
+      width: "18%",
+      render: (job) => (
+        <div className="flex items-center gap-3 text-sm text-db-gray-600">
+          <span className="flex items-center gap-1">
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            {(job.target_columns || []).length}
+          </span>
+          {job.ai_assist_enabled && (
+            <span className="flex items-center gap-1 text-purple-600">
+              <Settings className="w-3.5 h-3.5" />
+              AI
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "updated",
+      header: "Last Updated",
+      width: "15%",
+      render: (job) => (
+        <span className="text-sm text-db-gray-500">
+          {job.updated_at
+            ? new Date(job.updated_at).toLocaleDateString()
+            : "N/A"}
+        </span>
+      ),
+    },
+  ];
+
+  // Define row actions
+  const rowActions: RowAction<LabelingJob>[] = [
+    {
+      label: "View Tasks",
+      icon: Eye,
+      onClick: handleViewTasks,
+      className: "text-orange-600",
+    },
+    {
+      label: "View Statistics",
+      icon: BarChart3,
+      onClick: setStatsJob,
+    },
+    {
+      label: "Start Job",
+      icon: Play,
+      onClick: (job) => startMutation.mutate(job.id),
+      show: (job) => job.status === "draft",
+      className: "text-green-600",
+    },
+    {
+      label: "Pause Job",
+      icon: Pause,
+      onClick: (job) => pauseMutation.mutate(job.id),
+      show: (job) => job.status === "active",
+      className: "text-amber-600",
+    },
+    {
+      label: "Resume Job",
+      icon: Play,
+      onClick: (job) => resumeMutation.mutate(job.id),
+      show: (job) => job.status === "paused",
+      className: "text-green-600",
+    },
+    {
+      label: "Delete",
+      icon: Trash2,
+      onClick: (job) => {
+        if (confirm(`Delete "${job.name}"?`)) {
+          deleteMutation.mutate(job.id);
+        }
+      },
+      show: (job) => job.status === "draft",
+      className: "text-red-600",
+    },
+  ];
+
+  const emptyState = (
+    <div className="text-center py-20 bg-white rounded-lg">
+      <Tag className="w-16 h-16 text-db-gray-300 mx-auto mb-4" />
+      <h3 className="text-lg font-medium text-db-gray-700 mb-2">
+        No labeling jobs found
+      </h3>
+      <p className="text-db-gray-500 mb-6">
+        {search || statusFilter
+          ? "Try adjusting your filters"
+          : "Create your first labeling job to start annotating data"}
+      </p>
+      <button
+        onClick={() => setShowCreateModal(true)}
+        className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+      >
+        <Plus className="w-4 h-4" />
+        Create Job
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="flex-1 flex flex-col bg-db-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-db-gray-200 px-6 py-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-db-gray-900">Labeling Jobs</h1>
+              <p className="text-db-gray-600 mt-1">
+                Create and manage annotation workflows for your datasets
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => queryClient.invalidateQueries({ queryKey: ["labeling-jobs"] })}
+                className="flex items-center gap-2 px-3 py-2 text-db-gray-600 hover:text-db-gray-800 hover:bg-db-gray-100 rounded-lg transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </button>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Create Job
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-2 mb-6">
-        {(["all", "draft", "active", "paused", "completed"] as const).map(
-          (status) => (
-            <button
-              key={status}
-              onClick={() => setFilter(status)}
-              className={clsx(
-                "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                filter === status
-                  ? "bg-db-orange text-white"
-                  : "bg-db-gray-100 text-db-gray-600 hover:bg-db-gray-200",
-              )}
+      <div className="px-6 py-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-lg border border-db-gray-200">
+            <Filter className="w-4 h-4 text-db-gray-400" />
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-db-gray-400" />
+              <input
+                type="text"
+                placeholder="Filter jobs by name or description..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border-0 focus:outline-none focus:ring-0"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as LabelingJobStatus | "")}
+              className="px-3 py-2 border border-db-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
             >
-              {status === "all" ? "All Jobs" : statusLabels[status]}
-            </button>
-          ),
-        )}
+              <option value="">All Status</option>
+              <option value="draft">Draft</option>
+              <option value="active">Active</option>
+              <option value="paused">Paused</option>
+              <option value="completed">Completed</option>
+            </select>
+            {(search || statusFilter) && (
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("");
+                }}
+                className="text-sm text-db-gray-500 hover:text-db-gray-700"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Content */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-db-orange" />
-        </div>
-      ) : error ? (
-        <div className="text-center py-12">
-          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-          <p className="text-db-gray-600">Failed to load labeling jobs</p>
-        </div>
-      ) : !data?.jobs.length ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-db-gray-200">
-          <Tag className="w-12 h-12 text-db-gray-300 mx-auto mb-3" />
-          <h3 className="text-lg font-medium text-db-gray-700 mb-1">
-            No labeling jobs yet
-          </h3>
-          <p className="text-db-gray-500 mb-4">
-            Create your first labeling job to start annotating data
-          </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-db-orange text-white rounded-lg hover:bg-db-red"
-          >
-            <Plus className="w-5 h-5" />
-            Create Job
-          </button>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {data.jobs.map((job) => (
-            <JobCard
-              key={job.id}
-              job={job}
-              onViewTasks={handleViewTasks}
-              onStart={(j) => startMutation.mutate(j.id)}
-              onPause={(j) => pauseMutation.mutate(j.id)}
-              onResume={(j) => resumeMutation.mutate(j.id)}
-              onDelete={(j) => deleteMutation.mutate(j.id)}
-              onViewStats={(j) => setStatsJob(j)}
+      {/* Table */}
+      <div className="flex-1 px-6 pb-6 overflow-auto">
+        <div className="max-w-7xl mx-auto">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-20">
+              <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+              <p className="text-db-gray-600">Failed to load labeling jobs</p>
+            </div>
+          ) : (
+            <DataTable
+              data={filteredJobs}
+              columns={columns}
+              rowKey={(job) => job.id}
+              onRowClick={handleViewTasks}
+              rowActions={rowActions}
+              emptyState={emptyState}
             />
-          ))}
+          )}
         </div>
-      )}
+      </div>
 
       {/* Create Modal */}
       <CreateJobModal

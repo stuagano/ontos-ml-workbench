@@ -24,11 +24,13 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
-  AlertCircle,
   Database,
   Wand2,
   Layers,
+  X,
+  CheckCircle,
 } from "lucide-react";
+import { clsx } from "clsx";
 import { useWorkflow } from "../context/WorkflowContext";
 import { useToast } from "../components/Toast";
 import {
@@ -36,6 +38,8 @@ import {
   getSheetPreview,
   attachTemplateToSheet,
   assembleSheet,
+  getAssembly,
+  listSheets,
 } from "../services/api";
 import type {
   Sheet,
@@ -186,6 +190,231 @@ function OutputFieldEditor({
 }
 
 // ============================================================================
+// Template Browser Modal - Unified browse existing + create new
+// ============================================================================
+
+interface TemplateBrowserModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelectSheet: (sheetId: string) => void;
+}
+
+function TemplateBrowserModal({
+  isOpen,
+  onClose,
+  onSelectSheet,
+}: TemplateBrowserModalProps) {
+  const [activeTab, setActiveTab] = useState<"browse" | "create">("browse");
+  const [sheets, setSheets] = useState<Sheet[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      listSheets({ page_size: 50 })
+        .then((result) => {
+          setSheets(result.sheets);
+          setIsLoading(false);
+        })
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : "Failed to load sheets");
+          setIsLoading(false);
+        });
+    }
+  }, [isOpen]);
+
+  const filteredSheets = sheets.filter((sheet) =>
+    sheet.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  // Sheets with templates (for browsing)
+  const sheetsWithTemplates = filteredSheets.filter((s) => s.has_template);
+
+  // Sheets without templates (for creating new template)
+  const sheetsWithoutTemplates = filteredSheets.filter((s) => !s.has_template);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-db-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-db-gray-800 flex items-center gap-2">
+              <Wand2 className="w-6 h-6 text-purple-600" />
+              Select or Create Template
+            </h2>
+            <button
+              onClick={onClose}
+              className="p-1 hover:bg-db-gray-100 rounded"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-2 border-b border-db-gray-200">
+            <button
+              onClick={() => setActiveTab("browse")}
+              className={clsx(
+                "px-4 py-2 font-medium text-sm border-b-2 transition-colors",
+                activeTab === "browse"
+                  ? "border-purple-600 text-purple-600"
+                  : "border-transparent text-db-gray-500 hover:text-db-gray-700",
+              )}
+            >
+              Your Templates ({sheetsWithTemplates.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("create")}
+              className={clsx(
+                "px-4 py-2 font-medium text-sm border-b-2 transition-colors",
+                activeTab === "create"
+                  ? "border-purple-600 text-purple-600"
+                  : "border-transparent text-db-gray-500 hover:text-db-gray-700",
+              )}
+            >
+              <Plus className="w-4 h-4 inline mr-1" />
+              Create New ({sheetsWithoutTemplates.length} available sheets)
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-6">
+          {activeTab === "browse" && (
+            <div className="space-y-4">
+              {/* Search */}
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search templates..."
+                className="w-full px-4 py-2 border border-db-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              />
+
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-db-gray-400" />
+                </div>
+              ) : error ? (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                  {error}
+                </div>
+              ) : sheetsWithTemplates.length > 0 ? (
+                <div className="space-y-2">
+                  {sheetsWithTemplates.map((sheet) => (
+                    <button
+                      key={sheet.id}
+                      onClick={() => {
+                        onSelectSheet(sheet.id);
+                        onClose();
+                      }}
+                      className="w-full p-4 text-left bg-white border border-db-gray-200 rounded-lg hover:border-purple-400 hover:bg-purple-50/50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium text-db-gray-800">
+                            {sheet.template_config?.name || sheet.name}
+                          </div>
+                          {sheet.template_config?.description && (
+                            <div className="text-sm text-db-gray-500 mt-0.5">
+                              {sheet.template_config.description}
+                            </div>
+                          )}
+                          <div className="text-xs text-db-gray-400 mt-1">
+                            Sheet: {sheet.name} · {sheet.columns.length} columns
+                            {sheet.updated_at &&
+                              ` · ${new Date(sheet.updated_at).toLocaleDateString()}`}
+                          </div>
+                        </div>
+                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-db-gray-500">
+                  <Wand2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>No templates found</p>
+                  <button
+                    onClick={() => setActiveTab("create")}
+                    className="mt-4 text-purple-600 hover:text-purple-700 text-sm font-medium"
+                  >
+                    Create your first template →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "create" && (
+            <div className="space-y-4">
+              <p className="text-sm text-db-gray-500">
+                Select a sheet to attach a template. Only sheets without templates
+                are shown.
+              </p>
+
+              {/* Search */}
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search sheets..."
+                className="w-full px-4 py-2 border border-db-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              />
+
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-db-gray-400" />
+                </div>
+              ) : sheetsWithoutTemplates.length > 0 ? (
+                <div className="space-y-2">
+                  {sheetsWithoutTemplates.map((sheet) => (
+                    <button
+                      key={sheet.id}
+                      onClick={() => {
+                        onSelectSheet(sheet.id);
+                        onClose();
+                      }}
+                      className="w-full p-4 text-left bg-white border border-db-gray-200 rounded-lg hover:border-purple-400 hover:bg-purple-50/50 transition-colors"
+                    >
+                      <div className="font-medium text-db-gray-800">
+                        {sheet.name}
+                      </div>
+                      {sheet.description && (
+                        <div className="text-sm text-db-gray-500 mt-0.5">
+                          {sheet.description}
+                        </div>
+                      )}
+                      <div className="text-xs text-db-gray-400 mt-1">
+                        {sheet.columns.length} columns · {sheet.status}
+                        {sheet.updated_at &&
+                          ` · ${new Date(sheet.updated_at).toLocaleDateString()}`}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-db-gray-500">
+                  <Database className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>All sheets already have templates</p>
+                  <p className="text-sm mt-2">
+                    Create a new sheet in the DATA stage to add more templates.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // Preview Panel
 // ============================================================================
 
@@ -282,7 +511,11 @@ function PreviewPanel({ template, sampleRow, columns }: PreviewPanelProps) {
 // Main Component
 // ============================================================================
 
-export function TemplateBuilderPage() {
+interface TemplateBuilderPageProps {
+  onCancel?: () => void;
+}
+
+export function TemplateBuilderPage({ onCancel }: TemplateBuilderPageProps) {
   console.log("[TemplateBuilderPage] Component rendering");
   const workflow = useWorkflow();
   const toast = useToast();
@@ -299,6 +532,8 @@ export function TemplateBuilderPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isAssembling, setIsAssembling] = useState(false);
+  const [assemblyProgress, setAssemblyProgress] = useState<{ current: number; total: number } | null>(null);
+  const [isTemplateBrowserOpen, setIsTemplateBrowserOpen] = useState(false);
 
   const [config, setConfig] = useState<LocalTemplateConfig>({
     name: "",
@@ -314,6 +549,77 @@ export function TemplateBuilderPage() {
     maxTokens: 1024,
   });
 
+  // Handle sheet selection from modal or workflow context
+  const handleSelectSheet = async (sheetId: string) => {
+    setIsLoading(true);
+    try {
+      const [loadedSheet, loadedPreview] = await Promise.all([
+        getSheet(sheetId),
+        getSheetPreview(sheetId, 5),
+      ]);
+
+      setSheet(loadedSheet);
+      setPreview(loadedPreview);
+
+      // Extract columns from sheet
+      const cols: SourceColumn[] = loadedSheet.columns.map((c) => ({
+        name: c.name,
+        type: c.data_type,
+        comment: c.import_config?.table,
+      }));
+      setColumns(cols);
+
+      // If sheet already has a template attached, load it
+      if (loadedSheet.template_config) {
+        const tc = loadedSheet.template_config;
+        setConfig((prev) => ({
+          ...prev,
+          name: tc.name || `Template for ${loadedSheet.name}`,
+          description: tc.description || "",
+          systemPrompt: tc.system_instruction || prev.systemPrompt,
+          userPromptTemplate: tc.prompt_template,
+          responseSourceMode: tc.response_source_mode || "existing_column",
+          responseColumn: tc.response_column,
+          model: tc.model,
+          temperature: tc.temperature,
+          maxTokens: tc.max_tokens,
+          outputFields: (tc.response_schema || []).map((f) => ({
+            id: crypto.randomUUID(),
+            name: f.name,
+            type: f.type,
+            description: f.description || "",
+            required: f.required ?? true,
+          })),
+        }));
+      } else {
+        // Pre-populate template name
+        setConfig((prev) => ({
+          ...prev,
+          name: `Template for ${loadedSheet.name}`,
+          responseSourceMode: "existing_column",
+          // Default response column to last column if available
+          responseColumn: cols.length > 0 ? cols[cols.length - 1].name : "",
+        }));
+      }
+
+      // Update workflow context
+      workflow.setSelectedSource({
+        id: loadedSheet.id,
+        name: loadedSheet.name,
+        type: "table",
+        fullPath: loadedSheet.name,
+      });
+    } catch (err) {
+      console.error("Failed to load sheet:", err);
+      toast.error(
+        "Failed to load data",
+        err instanceof Error ? err.message : "Unknown error",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load sheet and columns from workflow context
   useEffect(() => {
     const selectedSource = workflow.state.selectedSource;
@@ -322,63 +628,9 @@ export function TemplateBuilderPage() {
       return;
     }
 
-    setIsLoading(true);
     const sheetId = selectedSource.id;
-
-    Promise.all([getSheet(sheetId), getSheetPreview(sheetId, 5)])
-      .then(([loadedSheet, loadedPreview]) => {
-        setSheet(loadedSheet);
-        setPreview(loadedPreview);
-
-        // Extract columns from sheet (all columns are now imported)
-        const cols: SourceColumn[] = loadedSheet.columns.map((c) => ({
-          name: c.name,
-          type: c.data_type,
-          comment: c.import_config?.table,
-        }));
-        setColumns(cols);
-
-        // If sheet already has a template attached, load it
-        if (loadedSheet.template_config) {
-          const tc = loadedSheet.template_config;
-          setConfig((prev) => ({
-            ...prev,
-            name: tc.name || `Template for ${loadedSheet.name}`,
-            description: tc.description || "",
-            systemPrompt: tc.system_instruction || prev.systemPrompt,
-            userPromptTemplate: tc.prompt_template,
-            responseSourceMode: tc.response_source_mode || "existing_column",
-            responseColumn: tc.response_column,
-            model: tc.model,
-            temperature: tc.temperature,
-            maxTokens: tc.max_tokens,
-            outputFields: (tc.response_schema || []).map((f) => ({
-              id: crypto.randomUUID(),
-              name: f.name,
-              type: f.type,
-              description: f.description || "",
-              required: f.required ?? true,
-            })),
-          }));
-        } else {
-          // Pre-populate template name
-          setConfig((prev) => ({
-            ...prev,
-            name: `Template for ${loadedSheet.name}`,
-            responseSourceMode: "existing_column",
-            // Default response column to last column if available
-            responseColumn: cols.length > 0 ? cols[cols.length - 1].name : "",
-          }));
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to load sheet:", err);
-        toast.error("Failed to load data", err.message);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [workflow.state.selectedSource]);
+    handleSelectSheet(sheetId);
+  }, []);
 
   // Insert column reference into prompt
   const insertColumn = (columnName: string) => {
@@ -498,17 +750,34 @@ export function TemplateBuilderPage() {
     }
 
     setIsAssembling(true);
+    setAssemblyProgress(null);
     try {
+      // Start assembly
       const result = await assembleSheet(sheet.id, {});
+      const assemblyId = result.assembly_id;
+
+      // Poll for progress until complete
+      let assembly = await getAssembly(assemblyId);
+      while (assembly.status === "assembling") {
+        // Update progress state
+        const progress = assembly.ai_generated_count || 0;
+        const total = assembly.total_rows || 0;
+        setAssemblyProgress({ current: progress, total });
+        console.log(`Assembly progress: ${progress}/${total} rows`);
+
+        // Wait 500ms before next poll
+        await new Promise(resolve => setTimeout(resolve, 500));
+        assembly = await getAssembly(assemblyId);
+      }
 
       toast.success(
         "Dataset assembled!",
-        `Created ${result.total_rows} prompt/response pairs`,
+        `Created ${assembly.total_rows} prompt/response pairs`,
       );
 
       // Store assembly ID in workflow context for CuratePage
       workflow.setSelectedTemplate({
-        id: result.assembly_id,
+        id: assemblyId,
         name: config.name,
         description: config.description,
         system_prompt: config.systemPrompt,
@@ -525,6 +794,7 @@ export function TemplateBuilderPage() {
       );
     } finally {
       setIsAssembling(false);
+      setAssemblyProgress(null);
     }
   };
 
@@ -547,26 +817,36 @@ export function TemplateBuilderPage() {
     );
   }
 
-  // No data selected
-  if (!workflow.state.selectedSource) {
+  // No sheet selected - show button to open browser modal
+  if (!sheet) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full bg-gray-50">
         <div className="text-center max-w-md">
-          <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">
-            No Data Selected
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 mb-4">
+            <Wand2 className="w-8 h-8 text-purple-600" />
+          </div>
+          <h2 className="text-2xl font-semibold text-db-gray-800 mb-2">
+            Prompt Templates
           </h2>
-          <p className="text-gray-500 mb-4">
-            Please select a dataset in the DATA stage first before building a
-            template.
+          <p className="text-db-gray-500 mb-6">
+            Browse your existing templates or create a new one by attaching a
+            template to a sheet.
           </p>
           <button
-            onClick={() => workflow.setCurrentStage("data")}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            onClick={() => setIsTemplateBrowserOpen(true)}
+            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 inline-flex items-center gap-2 font-medium"
           >
-            Go to DATA Stage
+            <Wand2 className="w-5 h-5" />
+            Browse & Create Templates
           </button>
         </div>
+
+        {/* Template Browser Modal */}
+        <TemplateBrowserModal
+          isOpen={isTemplateBrowserOpen}
+          onClose={() => setIsTemplateBrowserOpen(false)}
+          onSelectSheet={handleSelectSheet}
+        />
       </div>
     );
   }
@@ -576,41 +856,61 @@ export function TemplateBuilderPage() {
       {/* Header */}
       <div className="px-6 py-4 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-              <Wand2 className="w-5 h-5 text-purple-600" />
-              Build Prompt Template
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Create a template to transform your data using AI
-            </p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsTemplateBrowserOpen(true)}
+              className="text-db-gray-400 hover:text-db-gray-600 flex items-center gap-2"
+              title="Switch template"
+            >
+              <Wand2 className="w-4 h-4" />
+              <span className="text-sm">Switch</span>
+            </button>
+            <div>
+              <h1 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                {config.name || sheet?.name || "Prompt Template"}
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Sheet: {sheet?.name} · {sheet?.columns.length || 0} columns
+              </p>
+            </div>
           </div>
-          <button
-            onClick={handleSave}
-            disabled={
-              isSaving || !config.userPromptTemplate || !config.responseColumn
-            }
-            className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {isSaving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
-            Save Template
-          </button>
-          <button
-            onClick={handleAssembleAndContinue}
-            disabled={isAssembling || !sheet?.has_template}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {isAssembling ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Layers className="w-4 h-4" />
-            )}
-            Assemble & Continue
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSave}
+              disabled={
+                isSaving || !config.userPromptTemplate || !config.responseColumn
+              }
+              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Save Template
+            </button>
+            <button
+              onClick={handleAssembleAndContinue}
+              disabled={isAssembling || !sheet?.has_template}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isAssembling ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {assemblyProgress ? (
+                    <span>Assembling {assemblyProgress.current}/{assemblyProgress.total}...</span>
+                  ) : (
+                    <span>Assembling...</span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Layers className="w-4 h-4" />
+                  Assemble & Continue
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1001,6 +1301,13 @@ Provide your classification and reasoning."
           </div>
         </div>
       </div>
+
+      {/* Template Browser Modal */}
+      <TemplateBrowserModal
+        isOpen={isTemplateBrowserOpen}
+        onClose={() => setIsTemplateBrowserOpen(false)}
+        onSelectSheet={handleSelectSheet}
+      />
     </div>
   );
 }

@@ -9,7 +9,6 @@ import {
   ThumbsUp,
   ThumbsDown,
   RefreshCw,
-  ArrowRight,
   Loader2,
   Target,
   ChevronLeft,
@@ -18,7 +17,10 @@ import {
   FileCode,
   RotateCcw,
   BarChart3,
+  Eye,
+  CheckCircle2,
 } from "lucide-react";
+import { DataTable, Column, RowAction } from "../components/DataTable";
 import { ExampleEffectivenessDashboard } from "./ExampleEffectivenessDashboard";
 import { useWorkflow } from "../context/WorkflowContext";
 import { clsx } from "clsx";
@@ -103,90 +105,7 @@ function WorkflowBanner() {
   );
 }
 
-// ============================================================================
-// FeedbackCard Component
-// ============================================================================
-
-interface FeedbackCardProps {
-  item: FeedbackItem;
-  onAddToTraining: (feedbackId: string) => void;
-  isConverting: boolean;
-}
-
-function FeedbackCard({
-  item,
-  onAddToTraining,
-  isConverting,
-}: FeedbackCardProps) {
-  const timeAgo = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffHours < 1) return "just now";
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${diffDays}d ago`;
-  };
-
-  return (
-    <div className="bg-white rounded-lg border border-db-gray-200 p-4">
-      <div className="flex items-start justify-between mb-3">
-        <div
-          className={clsx(
-            "flex items-center gap-1 text-sm px-2 py-1 rounded-full",
-            item.rating === "positive"
-              ? "bg-green-100 text-green-700"
-              : "bg-red-100 text-red-700",
-          )}
-        >
-          {item.rating === "positive" ? (
-            <ThumbsUp className="w-3 h-3" />
-          ) : (
-            <ThumbsDown className="w-3 h-3" />
-          )}
-          {item.rating}
-        </div>
-        <span className="text-xs text-db-gray-400">
-          {timeAgo(item.created_at)}
-        </span>
-      </div>
-
-      <div className="space-y-2 text-sm">
-        <div>
-          <span className="text-db-gray-500">Input:</span>
-          <p className="text-db-gray-800 line-clamp-2">{item.input_text}</p>
-        </div>
-        <div>
-          <span className="text-db-gray-500">Output:</span>
-          <p className="text-db-gray-800 line-clamp-2">{item.output_text}</p>
-        </div>
-        {item.feedback_text && (
-          <div className="pt-2 border-t border-db-gray-100">
-            <span className="text-db-gray-500">Comment:</span>
-            <p className="text-db-gray-800">{item.feedback_text}</p>
-          </div>
-        )}
-      </div>
-
-      {item.rating === "negative" && (
-        <button
-          onClick={() => onAddToTraining(item.id)}
-          disabled={isConverting}
-          className="mt-3 text-sm text-indigo-600 hover:text-indigo-700 flex items-center gap-1 disabled:opacity-50"
-        >
-          {isConverting ? (
-            <Loader2 className="w-3 h-3 animate-spin" />
-          ) : (
-            <ArrowRight className="w-3 h-3" />
-          )}
-          Add to training data
-        </button>
-      )}
-    </div>
-  );
-}
+// FeedbackCard removed - using DataTable now
 
 // ============================================================================
 // GapCard Component
@@ -267,9 +186,23 @@ function StatsCard({
 // ImprovePage Component
 // ============================================================================
 
+// ============================================================================
+// Example Browser Modal - Unified browse examples + add new
+// ============================================================================
+
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
 type ImproveView = "feedback" | "effectiveness";
 
-export function ImprovePage() {
+interface ImprovePageProps {
+  mode?: "browse" | "create";
+  onModeChange?: (mode: "browse" | "create") => void;
+}
+
+export function ImprovePage({ mode = "browse", onModeChange }: ImprovePageProps) {
   const [view, setView] = useState<ImproveView>("feedback");
   const [selectedEndpointId, setSelectedEndpointId] = useState<string | null>(
     null,
@@ -277,7 +210,6 @@ export function ImprovePage() {
   const [ratingFilter, setRatingFilter] = useState<
     "all" | "positive" | "negative"
   >("all");
-  const [convertingId, setConvertingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const toast = useToast();
 
@@ -335,11 +267,9 @@ export function ImprovePage() {
         "Added to training data",
         "Item is now in the curation queue",
       );
-      setConvertingId(null);
     },
     onError: (error) => {
       toast.error("Failed to convert feedback", error.message);
-      setConvertingId(null);
     },
   });
 
@@ -353,7 +283,6 @@ export function ImprovePage() {
       alert("No templates available. Create a template first.");
       return;
     }
-    setConvertingId(feedbackId);
     // Use first template for now - could add a selector
     convertMutation.mutate({ feedbackId, templateId: templates[0].id });
   };
@@ -466,8 +395,8 @@ export function ImprovePage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Recent feedback */}
+            <div className="grid grid-cols-1 gap-6">
+              {/* Recent feedback - now with DataTable */}
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-semibold text-db-gray-800">
@@ -490,26 +419,101 @@ export function ImprovePage() {
                   </div>
                 </div>
 
-                {feedbackItems.length === 0 ? (
-                  <div className="bg-white rounded-lg border border-db-gray-200 p-8 text-center">
-                    <MessageSquare className="w-10 h-10 text-db-gray-300 mx-auto mb-3" />
-                    <p className="text-db-gray-500">No feedback yet</p>
-                    <p className="text-sm text-db-gray-400 mt-1">
-                      Feedback will appear here as users rate responses
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                    {feedbackItems.map((item) => (
-                      <FeedbackCard
-                        key={item.id}
-                        item={item}
-                        onAddToTraining={handleAddToTraining}
-                        isConverting={convertingId === item.id}
-                      />
-                    ))}
-                  </div>
-                )}
+                {(() => {
+                  // Define table columns for feedback
+                  const columns: Column<FeedbackItem>[] = [
+                    {
+                      key: "rating",
+                      header: "Rating",
+                      width: "10%",
+                      render: (item) =>
+                        item.rating === "positive" ? (
+                          <ThumbsUp className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <ThumbsDown className="w-4 h-4 text-red-600" />
+                        ),
+                    },
+                    {
+                      key: "endpoint",
+                      header: "Endpoint",
+                      width: "20%",
+                      render: (item) => (
+                        <span className="text-sm text-db-gray-900 truncate">
+                          {item.endpoint_id || "N/A"}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: "input",
+                      header: "Input",
+                      width: "35%",
+                      render: (item) => (
+                        <span className="text-sm text-db-gray-600 truncate">
+                          {item.input_text?.slice(0, 100) || "No input"}...
+                        </span>
+                      ),
+                    },
+                    {
+                      key: "comment",
+                      header: "Comment",
+                      width: "25%",
+                      render: (item) => (
+                        <span className="text-sm text-db-gray-500 truncate">
+                          {item.feedback_text || "No comment"}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: "time",
+                      header: "Time",
+                      width: "10%",
+                      render: (item) => (
+                        <span className="text-sm text-db-gray-500">
+                          {item.created_at
+                            ? new Date(item.created_at).toLocaleDateString()
+                            : "N/A"}
+                        </span>
+                      ),
+                    },
+                  ];
+
+                  // Define row actions
+                  const rowActions: RowAction<FeedbackItem>[] = [
+                    {
+                      label: "Add to Training",
+                      icon: CheckCircle2,
+                      onClick: (item) => handleAddToTraining(item.id),
+                      className: "text-indigo-600",
+                    },
+                    {
+                      label: "View Details",
+                      icon: Eye,
+                      onClick: (item) => {
+                        toast.info("View Details", `Feedback ID: ${item.id}`);
+                      },
+                    },
+                  ];
+
+                  const emptyState = (
+                    <div className="bg-white rounded-lg border border-db-gray-200 p-8 text-center">
+                      <MessageSquare className="w-10 h-10 text-db-gray-300 mx-auto mb-3" />
+                      <p className="text-db-gray-500">No feedback yet</p>
+                      <p className="text-sm text-db-gray-400 mt-1">
+                        Feedback will appear here as users rate responses
+                      </p>
+                    </div>
+                  );
+
+                  return (
+                    <DataTable
+                      data={feedbackItems}
+                      columns={columns}
+                      rowKey={(item) => item.id}
+                      rowActions={rowActions}
+                      emptyState={emptyState}
+                    />
+                  );
+                })()}
               </div>
 
               {/* Gap analysis */}

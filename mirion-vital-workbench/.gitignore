@@ -8,9 +8,11 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
 dist-ssr
 *.local
+
+# Allow frontend/dist for Databricks Apps deployment
+!frontend/dist/
 
 # Editor directories and files
 .vscode/*
@@ -97,3 +99,6 @@ TESTING_*.md
 .playwright-mcp/
 test-results/
 playwright-report/
+
+# Personal Claude Code preferences
+.claude/local.md

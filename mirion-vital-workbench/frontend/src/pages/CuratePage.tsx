@@ -33,7 +33,15 @@ import {
   Layers,
   Download,
   Image as ImageIcon,
+  Plus,
+  RefreshCw,
+  Search,
+  Filter,
+  Table2,
+  Eye,
 } from "lucide-react";
+import { DataTable, Column, RowAction } from "../components/DataTable";
+import { StageSubNav, StageMode } from "../components/StageSubNav";
 import { clsx } from "clsx";
 import { useWorkflow } from "../context/WorkflowContext";
 import {
@@ -43,6 +51,8 @@ import {
   updateAssembledRow,
   generateAssemblyResponses,
   exportAssembly,
+  listSheets,
+  assembleSheet,
 } from "../services/api";
 import { useToast } from "../components/Toast";
 import { SkeletonCard } from "../components/Skeleton";
@@ -52,6 +62,8 @@ import {
   LabelConfig,
   Annotation,
 } from "../components/annotation";
+import { useSheetCanonicalStats } from "../hooks/useCanonicalLabels";
+import { CanonicalLabelModal } from "../components/CanonicalLabelModal";
 import type { AssembledDataset, AssembledRow, ResponseSource } from "../types";
 
 // ============================================================================
@@ -64,6 +76,7 @@ const sourceColors: Record<ResponseSource, string> = {
   ai_generated: "bg-purple-100 text-purple-700",
   human_labeled: "bg-green-100 text-green-700",
   human_verified: "bg-emerald-100 text-emerald-700",
+  canonical: "bg-cyan-100 text-cyan-700",
 };
 
 const sourceLabels: Record<ResponseSource, string> = {
@@ -72,6 +85,7 @@ const sourceLabels: Record<ResponseSource, string> = {
   ai_generated: "AI Generated",
   human_labeled: "Human Labeled",
   human_verified: "Verified",
+  canonical: "Canonical",
 };
 
 // ============================================================================
@@ -283,6 +297,7 @@ interface DetailPanelProps {
   hasNext: boolean;
   hasPrevious: boolean;
   isSaving: boolean;
+  onCreateCanonicalLabel?: () => void;
 }
 
 function DetailPanel({
@@ -295,6 +310,7 @@ function DetailPanel({
   hasNext,
   hasPrevious,
   isSaving,
+  onCreateCanonicalLabel,
 }: DetailPanelProps) {
   const [editedResponse, setEditedResponse] = useState(row.response || "");
   const [markAsVerified, setMarkAsVerified] = useState(false);
@@ -423,6 +439,17 @@ function DetailPanel({
           </kbd>
         </button>
 
+        {/* Create Canonical Label button */}
+        {onCreateCanonicalLabel && row.response && (
+          <button
+            onClick={onCreateCanonicalLabel}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors font-medium"
+          >
+            <Plus className="w-4 h-4" />
+            Create Canonical Label
+          </button>
+        )}
+
         {/* Navigation */}
         <div className="flex items-center justify-between">
           <button
@@ -448,6 +475,10 @@ function DetailPanel({
     </div>
   );
 }
+
+// ============================================================================
+// Assembly Browser Modal - Removed (using inline browse/create pattern)
+// ============================================================================
 
 // ============================================================================
 // Workflow Context Banner
@@ -514,7 +545,13 @@ function WorkflowBanner() {
 // Main Component
 // ============================================================================
 
-export function CuratePage() {
+interface CuratePageProps {
+  mode?: "browse" | "create";
+}
+
+export function CuratePage({ mode = "browse" }: CuratePageProps) {
+  const [stageMode, setStageMode] = useState<StageMode>("browse");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
   const [sourceFilter, setSourceFilter] = useState<ResponseSource | "">("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -526,18 +563,26 @@ export function CuratePage() {
   const [selectedAssemblyId, setSelectedAssemblyId] = useState<string | null>(
     null,
   );
+  const [isAssembling, setIsAssembling] = useState(false);
+  const [showCanonicalLabelModal, setShowCanonicalLabelModal] = useState(false);
   const queryClient = useQueryClient();
   const toast = useToast();
-  const { state: workflowState } = useWorkflow();
+  const { state: _workflowState } = useWorkflow();
 
-  // Get assembly ID from local state OR workflow context
-  const assemblyId =
-    selectedAssemblyId || workflowState.selectedTemplate?.id || null;
+  // Get assembly ID from local state only (template ID is NOT an assembly ID)
+  const assemblyId = selectedAssemblyId;
 
   // Fetch list of all assemblies for the picker
   const { data: assemblies, isLoading: assembliesLoading } = useQuery({
     queryKey: ["assemblies"],
     queryFn: () => listAssemblies(),
+  });
+
+  // Fetch sheets for create mode (only sheets with templates)
+  const { data: sheetsData, isLoading: sheetsLoading } = useQuery({
+    queryKey: ["sheets"],
+    queryFn: () => listSheets({ page_size: 50 }),
+    enabled: stageMode === "create" && !selectedAssemblyId,
   });
 
   // Fetch assembly metadata
@@ -553,10 +598,13 @@ export function CuratePage() {
     queryFn: () =>
       previewAssembly(assemblyId!, {
         limit: 100,
-        response_source_filter: sourceFilter ? [sourceFilter] : undefined,
+        response_source: sourceFilter || undefined,
       }),
     enabled: !!assemblyId,
   });
+
+  // Fetch canonical label stats for the sheet
+  const { data: canonicalStats } = useSheetCanonicalStats(assembly?.sheet_id);
 
   const rows = previewData?.rows || [];
   const selectedRow =
@@ -596,16 +644,24 @@ export function CuratePage() {
     }));
   }, [showImageAnnotation, rows, assemblyId]);
 
-  // Default label classes for annotation (can be configured via template later)
+  // Label classes from template_config, with fallback to defaults
   const annotationLabels: LabelConfig[] = useMemo(() => {
-    // TODO: Pull label classes from template_config once we add that field
+    // Pull from template_config if available
+    const templateLabels = assembly?.template_config?.label_classes;
+    if (templateLabels && templateLabels.length > 0) {
+      return templateLabels.map((l) => ({
+        name: l.name,
+        color: l.color || "#6b7280",
+      }));
+    }
+    // Default fallback labels
     return [
       { name: "Defect", color: "#ef4444" },
       { name: "Normal", color: "#22c55e" },
       { name: "Warning", color: "#f59e0b" },
       { name: "Unknown", color: "#6b7280" },
     ];
-  }, []);
+  }, [assembly?.template_config?.label_classes]);
 
   // Update row mutation
   const updateMutation = useMutation({
@@ -745,67 +801,387 @@ export function CuratePage() {
 
   const isLoading = assemblyLoading || rowsLoading;
 
-  // No assembly selected - show picker
+  // Handle assembly selection
+  const handleSelectAssembly = (id: string) => {
+    setSelectedAssemblyId(id);
+    queryClient.invalidateQueries({ queryKey: ["assembly", id] });
+    queryClient.invalidateQueries({ queryKey: ["assemblyPreview", id] });
+  };
+
+  // Handle creating assembly from sheet
+  const handleCreateAssembly = async (sheetId: string) => {
+    setIsAssembling(true);
+    try {
+      const result = await assembleSheet(sheetId, {});
+      toast.success(
+        "Assembly created!",
+        `Created ${result.total_rows} prompt/response pairs`,
+      );
+      setSelectedAssemblyId(result.assembly_id);
+      queryClient.invalidateQueries({ queryKey: ["assemblies"] });
+    } catch (err) {
+      toast.error(
+        "Failed to create assembly",
+        err instanceof Error ? err.message : "Unknown error",
+      );
+    } finally {
+      setIsAssembling(false);
+    }
+  };
+
+  // No assembly selected - show browse/create modes with table
   if (!assemblyId) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center max-w-lg">
-          <Layers className="w-12 h-12 text-purple-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">
-            Select an Assembly
-          </h2>
-          <p className="text-gray-500 mb-6">
-            Choose an assembly to curate, or create a new one from the Template
-            Builder.
-          </p>
+    const filteredAssemblies = (assemblies || []).filter((asm) =>
+      (asm.sheet_name || asm.id)
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()),
+    );
 
-          {/* Assembly Picker */}
-          {assembliesLoading ? (
-            <div className="text-gray-400">Loading assemblies...</div>
-          ) : assemblies && assemblies.length > 0 ? (
-            <div className="space-y-2 mb-6 max-h-64 overflow-y-auto">
-              {assemblies.map((asm) => (
-                <button
-                  key={asm.id}
-                  onClick={() => setSelectedAssemblyId(asm.id)}
-                  className="w-full text-left px-4 py-3 bg-white border border-gray-200 rounded-lg hover:border-purple-400 hover:bg-purple-50 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium text-gray-800">
-                        {asm.template_config?.name || asm.id}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {asm.total_rows} rows · {asm.human_verified_count}{" "}
-                        verified
-                        {asm.template_config?.response_source_mode ===
-                          "manual_labeling" && (
-                          <span className="ml-2 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">
-                            Manual Labeling
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
+    const sheetsWithTemplates = (sheetsData?.sheets || []).filter(
+      (s) => s.has_template,
+    );
+    const filteredSheets = sheetsWithTemplates.filter((sheet) =>
+      sheet.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
+
+    // BROWSE MODE: Show table of existing assemblies
+    if (stageMode === "browse") {
+      // Define table columns for assemblies
+      const columns: Column<AssembledDataset>[] = [
+        {
+          key: "name",
+          header: "Assembly Name",
+          width: "35%",
+          render: (asm) => (
+            <div className="flex items-center gap-3">
+              <Layers className="w-4 h-4 text-teal-600 flex-shrink-0" />
+              <div className="min-w-0">
+                <div className="font-medium text-db-gray-900">
+                  {asm.sheet_name || asm.id.slice(0, 8)}
+                </div>
+                {asm.template_config?.name && (
+                  <div className="text-sm text-db-gray-500 truncate">
+                    Template: {asm.template_config.name}
                   </div>
-                </button>
-              ))}
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="text-gray-400 mb-6">No assemblies found</div>
-          )}
+          ),
+        },
+        {
+          key: "rows",
+          header: "Total Rows",
+          width: "15%",
+          render: (asm) => (
+            <span className="text-sm text-db-gray-600">
+              {asm.total_rows.toLocaleString()}
+            </span>
+          ),
+        },
+        {
+          key: "verified",
+          header: "Verified",
+          width: "15%",
+          render: (asm) => (
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-db-gray-200 rounded-full h-2">
+                <div
+                  className="bg-green-600 h-2 rounded-full"
+                  style={{
+                    width: `${(asm.human_verified_count / asm.total_rows) * 100}%`,
+                  }}
+                />
+              </div>
+              <span className="text-sm text-db-gray-600">
+                {asm.human_verified_count}
+              </span>
+            </div>
+          ),
+        },
+        {
+          key: "type",
+          header: "Type",
+          width: "15%",
+          render: (asm) => (
+            <span
+              className={clsx(
+                "px-2 py-1 rounded-full text-xs font-medium",
+                asm.template_config?.response_source_mode === "manual_labeling"
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-purple-100 text-purple-700",
+              )}
+            >
+              {asm.template_config?.response_source_mode === "manual_labeling"
+                ? "Manual Labeling"
+                : "AI Generated"}
+            </span>
+          ),
+        },
+        {
+          key: "updated",
+          header: "Last Updated",
+          width: "20%",
+          render: (asm) => (
+            <span className="text-sm text-db-gray-500">
+              {asm.updated_at
+                ? new Date(asm.updated_at).toLocaleDateString()
+                : "N/A"}
+            </span>
+          ),
+        },
+      ];
 
-          <button
-            onClick={() =>
-              (window.location.href = window.location.origin + "/#/template")
+      // Define row actions
+      const rowActions: RowAction<AssembledDataset>[] = [
+        {
+          label: "Open",
+          icon: Eye,
+          onClick: (asm) => handleSelectAssembly(asm.id),
+          className: "text-teal-600",
+        },
+        {
+          label: "Export",
+          icon: Download,
+          onClick: async (asm) => {
+            try {
+              await exportAssembly(asm.id, {
+                format: "openai_chat",
+                volume_path: `/Volumes/main/default/datasets/assembly_${asm.id}.jsonl`,
+                include_only_verified: false,
+                include_system_instruction: true,
+              });
+              toast.success("Exported", "Assembly exported successfully");
+            } catch (err) {
+              toast.error(
+                "Export failed",
+                err instanceof Error ? err.message : "Unknown error",
+              );
             }
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          },
+        },
+      ];
+
+      const emptyState = (
+        <div className="text-center py-20 bg-white rounded-lg">
+          <Layers className="w-16 h-16 text-db-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-db-gray-700 mb-2">
+            No assemblies found
+          </h3>
+          <p className="text-db-gray-500 mb-6">
+            {searchQuery
+              ? "Try adjusting your search"
+              : "Create your first assembly from a sheet with a template"}
+          </p>
+          <button
+            onClick={() => setStageMode("create")}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
           >
-            Go to Template Builder
+            <Plus className="w-4 h-4" />
+            Create Assembly
           </button>
         </div>
-      </div>
-    );
+      );
+
+      return (
+        <div className="flex-1 flex flex-col bg-db-gray-50">
+          {/* Header */}
+          <div className="bg-white border-b border-db-gray-200 px-6 py-4">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-db-gray-900">
+                    Assembled Datasets
+                  </h1>
+                  <p className="text-db-gray-600 mt-1">
+                    Review and label prompt/response pairs for fine-tuning
+                  </p>
+                </div>
+                <button
+                  onClick={() =>
+                    queryClient.invalidateQueries({ queryKey: ["assemblies"] })
+                  }
+                  className="flex items-center gap-2 px-3 py-2 text-db-gray-600 hover:text-db-gray-800 hover:bg-db-gray-100 rounded-lg transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Stage Sub-Navigation */}
+          <StageSubNav
+            stage="curate"
+            mode={stageMode}
+            onModeChange={setStageMode}
+            browseCount={assemblies?.length}
+          />
+
+          {/* Search */}
+          <div className="px-6 pt-4">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-lg border border-db-gray-200">
+                <Filter className="w-4 h-4 text-db-gray-400" />
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-db-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search assemblies..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border-0 focus:outline-none focus:ring-0"
+                  />
+                </div>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="text-sm text-db-gray-500 hover:text-db-gray-700"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="flex-1 px-6 pb-6 pt-4 overflow-auto">
+            <div className="max-w-7xl mx-auto">
+              {assembliesLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+                </div>
+              ) : (
+                <DataTable
+                  data={filteredAssemblies}
+                  columns={columns}
+                  rowKey={(asm) => asm.id}
+                  onRowClick={(asm) => handleSelectAssembly(asm.id)}
+                  rowActions={rowActions}
+                  emptyState={emptyState}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // CREATE MODE: Show sheet selection to create new assembly
+    if (stageMode === "create") {
+      return (
+        <div className="flex-1 flex flex-col bg-db-gray-50">
+          {/* Header */}
+          <div className="bg-white border-b border-db-gray-200 px-6 py-4">
+            <div className="max-w-7xl mx-auto">
+              <h1 className="text-2xl font-bold text-db-gray-900">
+                Create Assembly
+              </h1>
+              <p className="text-db-gray-600 mt-1">
+                Select a sheet with a template to create prompt/response pairs
+              </p>
+            </div>
+          </div>
+
+          {/* Stage Sub-Navigation */}
+          <StageSubNav
+            stage="curate"
+            mode={stageMode}
+            onModeChange={setStageMode}
+            browseCount={assemblies?.length}
+          />
+
+          {/* Search */}
+          <div className="px-6 pt-4">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-lg border border-db-gray-200">
+                <Filter className="w-4 h-4 text-db-gray-400" />
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-db-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search sheets..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border-0 focus:outline-none focus:ring-0"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sheets Grid */}
+          <div className="flex-1 px-6 pb-6 pt-4 overflow-auto">
+            <div className="max-w-7xl mx-auto">
+              {sheetsLoading || isAssembling ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+                  {isAssembling && (
+                    <span className="ml-3 text-db-gray-600">
+                      Creating assembly...
+                    </span>
+                  )}
+                </div>
+              ) : filteredSheets.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredSheets.map((sheet) => (
+                    <button
+                      key={sheet.id}
+                      onClick={() => handleCreateAssembly(sheet.id)}
+                      disabled={isAssembling}
+                      className="p-4 text-left border border-db-gray-200 rounded-lg hover:border-teal-400 hover:bg-teal-50 transition-colors bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-teal-50 rounded-lg">
+                          <Table2 className="w-4 h-4 text-teal-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-db-gray-900 truncate">
+                            {sheet.name}
+                          </div>
+                          {sheet.template_config && (
+                            <div className="text-xs text-db-gray-500 mt-1 truncate">
+                              Template: {sheet.template_config.name}
+                            </div>
+                          )}
+                          <div className="flex gap-3 mt-2 text-xs text-db-gray-500">
+                            <span>{sheet.columns.length} columns</span>
+                            {sheet.row_count && (
+                              <span>
+                                {sheet.row_count.toLocaleString()} rows
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-20 bg-white rounded-lg">
+                  <Table2 className="w-16 h-16 text-db-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-db-gray-700 mb-2">
+                    No sheets with templates found
+                  </h3>
+                  <p className="text-db-gray-500 mb-6">
+                    Create a sheet and attach a template first
+                  </p>
+                  <button
+                    onClick={() =>
+                      (window.location.href =
+                        window.location.origin + "/#/data")
+                    }
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+                  >
+                    Go to Data Stage
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
   }
 
   return (
@@ -921,6 +1297,41 @@ export function CuratePage() {
 
               {/* Stats */}
               <StatsBar assembly={assembly} />
+            </div>
+          )}
+
+          {/* Canonical Label Indicator */}
+          {canonicalStats && canonicalStats.total_labels > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full">
+                    <CheckCircle className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-blue-900">
+                      Canonical Labels Available
+                    </h3>
+                    <p className="text-sm text-blue-700">
+                      {canonicalStats.total_labels} expert-validated labels
+                      available
+                      {canonicalStats.coverage_percent && (
+                        <>
+                          {" "}
+                          ({canonicalStats.coverage_percent.toFixed(1)}%
+                          coverage)
+                        </>
+                      )}
+                      {" · "}
+                      Avg {canonicalStats.avg_reuse_count.toFixed(1)}x reuse
+                    </p>
+                  </div>
+                </div>
+                <div className="text-xs text-blue-600">
+                  {assembly?.canonical_reused_count || 0} rows use canonical
+                  labels
+                </div>
+              </div>
             </div>
           )}
 
@@ -1048,6 +1459,7 @@ export function CuratePage() {
           hasNext={selectedIndex < rows.length - 1}
           hasPrevious={selectedIndex > 0}
           isSaving={updateMutation.isPending}
+          onCreateCanonicalLabel={() => setShowCanonicalLabelModal(true)}
         />
       )}
 
@@ -1181,6 +1593,21 @@ export function CuratePage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Canonical Label Modal */}
+      {selectedRow && assembly && (
+        <CanonicalLabelModal
+          isOpen={showCanonicalLabelModal}
+          onClose={() => setShowCanonicalLabelModal(false)}
+          sheetId={assembly.sheet_id}
+          itemRef={selectedRow.item_ref || `row_${selectedRow.row_index}`}
+          labeledBy="user@example.com"
+          defaultLabelType={assembly.template_label_type || "classification"}
+          defaultLabelData={
+            selectedRow.response ? JSON.parse(selectedRow.response) : undefined
+          }
+        />
       )}
     </div>
   );

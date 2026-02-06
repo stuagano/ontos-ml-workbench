@@ -55,22 +55,51 @@ class InferenceService:
         self._client = None
 
     def _get_client(self) -> httpx.Client:
-        """Get or create HTTP client for FMAPI calls."""
+        """Get or create HTTP client for FMAPI calls.
+
+        Uses the Databricks SDK's API client to get proper OAuth authentication.
+        """
         if self._client is None:
             workspace_client = get_workspace_client()
-            # Get the host and token from workspace client config
             host = workspace_client.config.host
-            token = workspace_client.config.token
+
+            # Get headers from the SDK's API client (handles OAuth token refresh)
+            # The SDK's _api property has the authenticated client
+            api_client = workspace_client.api_client
+
+            # Create client with dynamic auth header function
+            self._workspace_client = workspace_client
+            self._host = host
 
             self._client = httpx.Client(
                 base_url=f"{host}/serving-endpoints",
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Content-Type": "application/json",
-                },
                 timeout=120.0,  # Long timeout for model inference
             )
         return self._client
+
+    def _get_auth_headers(self) -> dict[str, str]:
+        """Get fresh authentication headers from the Databricks SDK.
+
+        Handles both PAT and OAuth (U2M) authentication.
+        """
+        headers = {"Content-Type": "application/json"}
+
+        # Check for static token first (PAT auth)
+        if self._workspace_client.config.token:
+            headers["Authorization"] = f"Bearer {self._workspace_client.config.token}"
+            return headers
+
+        # Use OAuth token (U2M auth via CLI profile)
+        try:
+            token_obj = self._workspace_client.config.oauth_token()
+            if token_obj and token_obj.access_token:
+                headers["Authorization"] = f"{token_obj.token_type} {token_obj.access_token}"
+            else:
+                logger.warning("No OAuth token available, requests may fail")
+        except Exception as e:
+            logger.error(f"Failed to get OAuth token: {e}")
+
+        return headers
 
     def _substitute_variables(self, template: str, row_data: dict[str, Any]) -> str:
         """
@@ -142,14 +171,15 @@ Output:"""
         return full_prompt
 
     def _is_image_column(self, value: Any) -> bool:
-        """Check if a value appears to be an image path."""
+        """Check if a value appears to be an image path or URL."""
         if not isinstance(value, str):
             return False
-        # Check for Volume paths or common image extensions
-        return value.startswith("/Volumes/") and any(
-            value.lower().endswith(ext)
-            for ext in [".jpg", ".jpeg", ".png", ".gif", ".webp"]
-        )
+        # Check for Volume paths or HTTPS URLs with common image extensions
+        image_extensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
+        has_image_ext = any(value.lower().endswith(ext) for ext in image_extensions)
+        is_volume_path = value.startswith("/Volumes/")
+        is_https_url = value.startswith("https://") or value.startswith("http://")
+        return has_image_ext and (is_volume_path or is_https_url)
 
     def _load_image_from_volume(self, volume_path: str) -> str | None:
         """
@@ -174,6 +204,43 @@ Output:"""
             return base64.b64encode(image_bytes).decode("utf-8")
         except Exception as e:
             logger.error(f"Failed to load image from volume {volume_path}: {e}")
+            return None
+
+    def _load_image_from_url(self, url: str) -> str | None:
+        """
+        Load an image from an HTTP/HTTPS URL and return base64 encoded.
+
+        Args:
+            url: HTTPS URL to image file
+
+        Returns:
+            Base64 encoded image data, or None if failed
+        """
+        try:
+            response = httpx.get(url, timeout=30.0, follow_redirects=True)
+            response.raise_for_status()
+            image_bytes = response.content
+            return base64.b64encode(image_bytes).decode("utf-8")
+        except Exception as e:
+            logger.error(f"Failed to load image from URL {url}: {e}")
+            return None
+
+    def _load_image(self, path_or_url: str) -> str | None:
+        """
+        Load an image from either a Volume path or HTTPS URL.
+
+        Args:
+            path_or_url: Either /Volumes/... path or https://... URL
+
+        Returns:
+            Base64 encoded image data, or None if failed
+        """
+        if path_or_url.startswith("/Volumes/"):
+            return self._load_image_from_volume(path_or_url)
+        elif path_or_url.startswith("http://") or path_or_url.startswith("https://"):
+            return self._load_image_from_url(path_or_url)
+        else:
+            logger.warning(f"Unknown image path format: {path_or_url}")
             return None
 
     def _detect_image_columns(self, row_data: dict[str, Any]) -> list[str]:
@@ -245,7 +312,7 @@ Output:"""
             # Add images
             for col_name in image_columns:
                 image_path = row_data[col_name]
-                image_b64 = self._load_image_from_volume(image_path)
+                image_b64 = self._load_image(image_path)
                 if image_b64:
                     # Determine media type
                     if image_path.lower().endswith(".png"):
@@ -288,12 +355,21 @@ Output:"""
         }
 
         logger.info(f"Calling FMAPI model {selected_model}")
+        logger.debug(f"FMAPI payload: {json.dumps(payload, default=str)[:500]}")
 
-        response = client.post(
-            f"/{selected_model}/invocations",
-            json=payload,
-        )
-        response.raise_for_status()
+        try:
+            response = client.post(
+                f"/{selected_model}/invocations",
+                json=payload,
+                headers=self._get_auth_headers(),
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"FMAPI HTTP error: {e.response.status_code} - {e.response.text[:500]}")
+            raise ValueError(f"FMAPI call failed: {e.response.status_code} - {e.response.text[:200]}")
+        except httpx.RequestError as e:
+            logger.error(f"FMAPI request error: {e}")
+            raise ValueError(f"FMAPI connection failed: {e}")
 
         result = response.json()
 
@@ -302,6 +378,54 @@ Output:"""
             return result["choices"][0]["message"]["content"].strip()
         else:
             raise ValueError(f"Unexpected FMAPI response format: {result}")
+
+    async def chat_completion(
+        self,
+        messages: list[dict[str, Any]],
+        model: str | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 1024,
+    ) -> dict[str, Any]:
+        """
+        Direct chat completion for testing and assembly generation.
+
+        Args:
+            messages: List of message dicts with 'role' and 'content'
+            model: Model to use (defaults to text model)
+            temperature: Generation temperature
+            max_tokens: Maximum tokens to generate
+
+        Returns:
+            Dict with 'content' and optionally 'confidence'
+        """
+        selected_model = model or self.DEFAULT_TEXT_MODEL
+        client = self._get_client()
+
+        payload = {
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+
+        logger.info(f"Chat completion with model {selected_model}")
+
+        try:
+            response = client.post(
+                f"/{selected_model}/invocations",
+                json=payload,
+                headers=self._get_auth_headers(),
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"FMAPI HTTP error: {e.response.status_code} - {e.response.text[:500]}")
+            raise ValueError(f"FMAPI call failed: {e.response.status_code}")
+
+        result = response.json()
+
+        if "choices" in result and len(result["choices"]) > 0:
+            return {"content": result["choices"][0]["message"]["content"].strip()}
+        else:
+            raise ValueError(f"Unexpected response format: {result}")
 
     async def generate_batch(
         self,

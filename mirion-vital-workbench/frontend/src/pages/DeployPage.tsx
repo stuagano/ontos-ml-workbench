@@ -28,6 +28,8 @@ import {
   Zap,
   Database,
   FileCode,
+  Filter,
+  Search,
 } from "lucide-react";
 import { useWorkflow } from "../context/WorkflowContext";
 import { clsx } from "clsx";
@@ -43,6 +45,7 @@ import {
 } from "../services/api";
 import { openDatabricks } from "../services/databricksLinks";
 import { useToast } from "../components/Toast";
+import { DataTable, Column, RowAction } from "../components/DataTable";
 
 // ============================================================================
 // Status Config
@@ -532,87 +535,8 @@ function DeploymentWizard({
 }
 
 // ============================================================================
-// Endpoint Card Component
+// Endpoint Card Component - Removed (using DataTable now)
 // ============================================================================
-
-interface EndpointCardProps {
-  endpoint: ServingEndpoint;
-  onPlayground: () => void;
-  onRefresh: () => void;
-}
-
-function EndpointCard({
-  endpoint,
-  onPlayground,
-  onRefresh,
-}: EndpointCardProps) {
-  const config = STATUS_CONFIG[endpoint.state] || STATUS_CONFIG.unknown;
-  const Icon = config.icon;
-  const isReady = endpoint.state === "READY";
-
-  return (
-    <div className="bg-white rounded-lg border border-db-gray-200 p-4 hover:border-cyan-300 transition-all">
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-3">
-          <div className={clsx("p-2 rounded-lg", config.bgColor)}>
-            <Icon
-              className={clsx(
-                "w-5 h-5",
-                config.color,
-                endpoint.state === "NOT_READY" && "animate-spin",
-              )}
-            />
-          </div>
-          <div>
-            <h3 className="font-medium text-db-gray-800">{endpoint.name}</h3>
-            <div className="flex items-center gap-2 mt-1">
-              <span
-                className={clsx(
-                  "text-xs px-2 py-0.5 rounded-full",
-                  config.bgColor,
-                  config.color,
-                )}
-              >
-                {config.label}
-              </span>
-              {endpoint.config_update && (
-                <span className="text-xs text-amber-600">
-                  Update: {endpoint.config_update}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <button
-            onClick={onRefresh}
-            className="p-1.5 text-db-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded"
-            title="Refresh status"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-          {isReady && (
-            <button
-              onClick={onPlayground}
-              className="p-1.5 text-db-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded"
-              title="Open playground"
-            >
-              <Play className="w-4 h-4" />
-            </button>
-          )}
-          <button
-            onClick={() => openDatabricks.servingEndpoint(endpoint.name)}
-            className="p-1.5 text-db-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded"
-            title="View in Databricks"
-          >
-            <ExternalLink className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ============================================================================
 // Playground Component
@@ -747,12 +671,22 @@ function Playground({ endpoint, onClose }: PlaygroundProps) {
 }
 
 // ============================================================================
+// Deployment Browser Modal - Removed (using full-page table view now)
+// ============================================================================
+
+// ============================================================================
 // Main DeployPage Component
 // ============================================================================
 
-export function DeployPage() {
+interface DeployPageProps {
+  mode?: "browse" | "create";
+}
+
+export function DeployPage({ mode = "browse" }: DeployPageProps) {
   const queryClient = useQueryClient();
-  const [showWizard, setShowWizard] = useState(false);
+  const [showWizard, setShowWizard] = useState(mode === "create");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
   const [playgroundEndpoint, setPlaygroundEndpoint] =
     useState<ServingEndpoint | null>(null);
 
@@ -766,164 +700,286 @@ export function DeployPage() {
     refetchInterval: 15000, // Poll every 15s
   });
 
+  const filteredEndpoints = (endpoints || []).filter((endpoint) => {
+    const matchesSearch = endpoint.name.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = !statusFilter || endpoint.state === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
   const activeEndpoints = endpoints?.filter(
     (e) => e.state === "READY" || e.state === "NOT_READY",
   );
   const failedEndpoints = endpoints?.filter((e) => e.state === "FAILED");
 
-  return (
-    <div className="flex-1 p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Workflow Banner */}
-        <WorkflowBanner />
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-db-gray-900">Deploy</h1>
-            <p className="text-db-gray-600 mt-1">
-              Deploy models to Databricks Model Serving
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => openDatabricks.servingEndpoints()}
-              className="flex items-center gap-2 text-sm text-cyan-600 hover:text-cyan-700"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Model Serving
-            </button>
-            <button
-              onClick={() => setShowWizard(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
-            >
-              <Rocket className="w-4 h-4" />
-              Deploy Model
-            </button>
+  // Define table columns
+  const columns: Column<ServingEndpoint>[] = [
+    {
+      key: "name",
+      header: "Endpoint Name",
+      width: "30%",
+      render: (endpoint) => (
+        <div className="flex items-center gap-3">
+          <Server className="w-4 h-4 text-cyan-600 flex-shrink-0" />
+          <div className="min-w-0">
+            <div className="font-medium text-db-gray-900">{endpoint.name}</div>
+            {endpoint.creator && (
+              <div className="text-sm text-db-gray-500 truncate">
+                Created by {endpoint.creator}
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Quick Deploy Card */}
-        <div className="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl border border-cyan-200 p-6 mb-6">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-white rounded-lg shadow-sm">
-              <Rocket className="w-8 h-8 text-cyan-600" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-lg font-semibold text-db-gray-800">
-                One-Click Deployment
-              </h2>
-              <p className="text-db-gray-600 mt-1">
-                Deploy trained models to a serving endpoint in three easy steps.
-                Select your model, choose a version, and configure the endpoint.
-              </p>
-              <button
-                onClick={() => setShowWizard(true)}
-                className="mt-4 flex items-center gap-2 text-cyan-600 hover:text-cyan-700 font-medium"
-              >
-                Start Deployment
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Active Endpoints */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-db-gray-800">
-              Serving Endpoints
-            </h2>
-            <button
-              onClick={() => refetch()}
-              className="flex items-center gap-1 text-sm text-db-gray-500 hover:text-db-gray-700"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Refresh
-            </button>
-          </div>
-
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-db-gray-400" />
-            </div>
-          ) : endpoints && endpoints.length > 0 ? (
-            <div className="space-y-3">
-              {endpoints.map((endpoint) => (
-                <EndpointCard
-                  key={endpoint.name}
-                  endpoint={endpoint}
-                  onPlayground={() => setPlaygroundEndpoint(endpoint)}
-                  onRefresh={() => refetch()}
-                />
-              ))}
-            </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: "15%",
+      render: (endpoint) => {
+        const config = STATUS_CONFIG[endpoint.state] || STATUS_CONFIG.unknown;
+        const Icon = config.icon;
+        return (
+          <span className={clsx("px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 w-fit", config.bgColor, config.color)}>
+            <Icon className={clsx("w-3 h-3", endpoint.state === "NOT_READY" && "animate-spin")} />
+            {config.label}
+          </span>
+        );
+      },
+    },
+    {
+      key: "creator",
+      header: "Creator",
+      width: "15%",
+      render: (endpoint) => (
+        <span className="text-sm text-db-gray-600">
+          {endpoint.creator || "System"}
+        </span>
+      ),
+    },
+    {
+      key: "config",
+      header: "Configuration",
+      width: "20%",
+      render: (endpoint) => (
+        <div className="text-sm text-db-gray-600">
+          {endpoint.config_update ? (
+            <span className="text-amber-600">Update: {endpoint.config_update}</span>
           ) : (
-            <div className="text-center py-12 bg-db-gray-50 rounded-xl border-2 border-dashed border-db-gray-200">
-              <Server className="w-12 h-12 text-db-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-db-gray-600">
-                No endpoints yet
-              </h3>
-              <p className="text-db-gray-400 mt-1">
-                Deploy your first model to create a serving endpoint
+            <span>Active</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "created",
+      header: "Created",
+      width: "20%",
+      render: (endpoint) => (
+        <span className="text-sm text-db-gray-500">
+          {endpoint.created_at
+            ? new Date(endpoint.created_at).toLocaleString()
+            : "N/A"}
+        </span>
+      ),
+    },
+  ];
+
+  // Define row actions
+  const rowActions: RowAction<ServingEndpoint>[] = [
+    {
+      label: "Open Playground",
+      icon: Play,
+      onClick: setPlaygroundEndpoint,
+      show: (endpoint) => endpoint.state === "READY",
+      className: "text-cyan-600",
+    },
+    {
+      label: "Refresh Status",
+      icon: RefreshCw,
+      onClick: () => refetch(),
+    },
+    {
+      label: "View in Databricks",
+      icon: ExternalLink,
+      onClick: (endpoint) => openDatabricks.servingEndpoint(endpoint.name),
+    },
+  ];
+
+  const emptyState = (
+    <div className="text-center py-20 bg-white rounded-lg">
+      <Server className="w-16 h-16 text-db-gray-300 mx-auto mb-4" />
+      <h3 className="text-lg font-medium text-db-gray-700 mb-2">
+        No serving endpoints found
+      </h3>
+      <p className="text-db-gray-500 mb-6">
+        {search || statusFilter
+          ? "Try adjusting your filters"
+          : "Deploy your first model to create a serving endpoint"}
+      </p>
+      <button
+        onClick={() => setShowWizard(true)}
+        className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
+      >
+        <Rocket className="w-4 h-4" />
+        Deploy Model
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="flex-1 flex flex-col bg-db-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-db-gray-200 px-6 py-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-db-gray-900">Deployments</h1>
+              <p className="text-db-gray-600 mt-1">
+                Deploy models to Databricks Model Serving
               </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => refetch()}
+                className="flex items-center gap-2 px-3 py-2 text-db-gray-600 hover:text-db-gray-800 hover:bg-db-gray-100 rounded-lg transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </button>
+              <button
+                onClick={() => openDatabricks.servingEndpoints()}
+                className="flex items-center gap-2 px-4 py-2 border border-cyan-300 text-cyan-700 rounded-lg hover:bg-cyan-50 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Model Serving
+              </button>
               <button
                 onClick={() => setShowWizard(true)}
-                className="mt-4 flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 mx-auto"
+                className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
               >
                 <Rocket className="w-4 h-4" />
                 Deploy Model
               </button>
             </div>
-          )}
+          </div>
         </div>
+      </div>
 
-        {/* Stats Summary */}
-        {endpoints && endpoints.length > 0 && (
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white rounded-lg border border-db-gray-200 p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-50 rounded-lg">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-db-gray-800">
-                    {activeEndpoints?.filter((e) => e.state === "READY")
-                      .length || 0}
+      {/* Workflow Banner */}
+      <div className="px-6 py-4">
+        <div className="max-w-7xl mx-auto">
+          <WorkflowBanner />
+        </div>
+      </div>
+
+      {/* Stats Summary */}
+      {endpoints && endpoints.length > 0 && (
+        <div className="px-6">
+          <div className="max-w-7xl mx-auto mb-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-white rounded-lg border border-db-gray-200 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-50 rounded-lg">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
                   </div>
-                  <div className="text-sm text-db-gray-500">Ready</div>
+                  <div>
+                    <div className="text-2xl font-bold text-db-gray-800">
+                      {activeEndpoints?.filter((e) => e.state === "READY").length || 0}
+                    </div>
+                    <div className="text-sm text-db-gray-500">Ready</div>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="bg-white rounded-lg border border-db-gray-200 p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-50 rounded-lg">
-                  <Clock className="w-5 h-5 text-amber-600" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-db-gray-800">
-                    {activeEndpoints?.filter((e) => e.state === "NOT_READY")
-                      .length || 0}
+              <div className="bg-white rounded-lg border border-db-gray-200 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-amber-50 rounded-lg">
+                    <Clock className="w-5 h-5 text-amber-600" />
                   </div>
-                  <div className="text-sm text-db-gray-500">Starting</div>
+                  <div>
+                    <div className="text-2xl font-bold text-db-gray-800">
+                      {activeEndpoints?.filter((e) => e.state === "NOT_READY").length || 0}
+                    </div>
+                    <div className="text-sm text-db-gray-500">Starting</div>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="bg-white rounded-lg border border-db-gray-200 p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-red-50 rounded-lg">
-                  <XCircle className="w-5 h-5 text-red-600" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-db-gray-800">
-                    {failedEndpoints?.length || 0}
+              <div className="bg-white rounded-lg border border-db-gray-200 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-red-50 rounded-lg">
+                    <XCircle className="w-5 h-5 text-red-600" />
                   </div>
-                  <div className="text-sm text-db-gray-500">Failed</div>
+                  <div>
+                    <div className="text-2xl font-bold text-db-gray-800">
+                      {failedEndpoints?.length || 0}
+                    </div>
+                    <div className="text-sm text-db-gray-500">Failed</div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="px-6">
+        <div className="max-w-7xl mx-auto mb-4">
+          <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-lg border border-db-gray-200">
+            <Filter className="w-4 h-4 text-db-gray-400" />
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-db-gray-400" />
+              <input
+                type="text"
+                placeholder="Filter endpoints by name..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border-0 focus:outline-none focus:ring-0"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-db-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+            >
+              <option value="">All Status</option>
+              <option value="READY">Ready</option>
+              <option value="NOT_READY">Starting</option>
+              <option value="PENDING">Pending</option>
+              <option value="FAILED">Failed</option>
+            </select>
+            {(search || statusFilter) && (
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("");
+                }}
+                className="text-sm text-db-gray-500 hover:text-db-gray-700"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="flex-1 px-6 pb-6 overflow-auto">
+        <div className="max-w-7xl mx-auto">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-cyan-600" />
+            </div>
+          ) : (
+            <DataTable
+              data={filteredEndpoints}
+              columns={columns}
+              rowKey={(endpoint) => endpoint.name}
+              onRowClick={setPlaygroundEndpoint}
+              rowActions={rowActions}
+              emptyState={emptyState}
+            />
+          )}
+        </div>
       </div>
 
       {/* Deployment Wizard Modal */}
