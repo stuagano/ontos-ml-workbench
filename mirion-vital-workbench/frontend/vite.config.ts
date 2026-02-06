@@ -13,7 +13,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: "http://localhost:8001",
         changeOrigin: true,
       },
     },
@@ -25,14 +25,14 @@ export default defineConfig({
       output: {
         manualChunks: {
           // Vendor chunks for better caching
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-query': ['@tanstack/react-query'],
-          'vendor-ui': ['lucide-react', 'clsx'],
-          'vendor-state': ['zustand'],
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-query": ["@tanstack/react-query"],
+          "vendor-ui": ["lucide-react", "clsx"],
+          "vendor-state": ["zustand"],
         },
       },
     },
     chunkSizeWarningLimit: 600, // Increase limit for vendor chunks
-    minify: 'esbuild', // Use esbuild (faster, no extra dependency)
+    minify: "esbuild", // Use esbuild (faster, no extra dependency)
   },
 });

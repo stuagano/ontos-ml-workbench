@@ -21,6 +21,7 @@ from app.api.v1.endpoints import (
     registries,
     settings,
     sheets,
+    sheets_v2,
     templates,
     training,
     unity_catalog,
@@ -30,6 +31,7 @@ router = APIRouter(prefix="/api/v1")
 
 # Include all endpoint routers
 router.include_router(sheets.router)
+router.include_router(sheets_v2.router)  # PRD v2.3 - simplified sheets
 router.include_router(assemblies.router)
 router.include_router(templates.router)
 router.include_router(

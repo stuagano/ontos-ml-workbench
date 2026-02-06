@@ -106,7 +106,7 @@ Sample data for Mirion use cases in `synthetic_data/`:
 
 ## Delta Tables (PRD v2.3)
 
-Location: `mirion_vital.workbench`
+Location: `home_stuart_gano.mirion_vital_workbench` (using home catalog for development)
 
 **Core Data Model:**
 

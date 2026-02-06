@@ -21,12 +21,12 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.core.config import get_settings
 from app.models.canonical_label import (
-    CanonicalLabel,
     CanonicalLabelBulkLookup,
     CanonicalLabelBulkLookupResponse,
     CanonicalLabelCreate,
     CanonicalLabelListResponse,
     CanonicalLabelLookup,
+    CanonicalLabelResponse,
     CanonicalLabelStats,
     CanonicalLabelUpdate,
     CanonicalLabelVersion,
@@ -51,8 +51,8 @@ ASSEMBLIES_TABLE = _settings.get_table("assemblies")
 ASSEMBLY_ROWS_TABLE = _settings.get_table("assembly_rows")
 
 
-def _row_to_canonical_label(row: dict) -> CanonicalLabel:
-    """Convert database row to CanonicalLabel model."""
+def _row_to_canonical_label(row: dict) -> CanonicalLabelResponse:
+    """Convert database row to CanonicalLabelResponse model."""
     # Parse JSON columns
     label_data = row.get("label_data")
     if isinstance(label_data, str):
@@ -66,7 +66,7 @@ def _row_to_canonical_label(row: dict) -> CanonicalLabel:
     if isinstance(prohibited_uses, str):
         prohibited_uses = json.loads(prohibited_uses)
 
-    return CanonicalLabel(
+    return CanonicalLabelResponse(
         id=row["id"],
         sheet_id=row["sheet_id"],
         item_ref=row["item_ref"],
@@ -94,10 +94,10 @@ def _row_to_canonical_label(row: dict) -> CanonicalLabel:
 # ============================================================================
 
 
-@router.post("/", response_model=CanonicalLabel, status_code=201)
+@router.post("/", response_model=CanonicalLabelResponse, status_code=201)
 async def create_canonical_label(
     label: CanonicalLabelCreate,
-) -> CanonicalLabel:
+) -> CanonicalLabelResponse:
     """
     Create a new canonical label.
 
@@ -178,8 +178,8 @@ async def create_canonical_label(
     return await get_canonical_label(label_id)
 
 
-@router.get("/{label_id}", response_model=CanonicalLabel)
-async def get_canonical_label(label_id: str) -> CanonicalLabel:
+@router.get("/{label_id}", response_model=CanonicalLabelResponse)
+async def get_canonical_label(label_id: str) -> CanonicalLabelResponse:
     """Get a canonical label by ID."""
     sql = f"""
         SELECT *
@@ -194,11 +194,11 @@ async def get_canonical_label(label_id: str) -> CanonicalLabel:
     return _row_to_canonical_label(result[0])
 
 
-@router.put("/{label_id}", response_model=CanonicalLabel)
+@router.put("/{label_id}", response_model=CanonicalLabelResponse)
 async def update_canonical_label(
     label_id: str,
     updates: CanonicalLabelUpdate,
-) -> CanonicalLabel:
+) -> CanonicalLabelResponse:
     """
     Update a canonical label.
 
@@ -301,10 +301,10 @@ async def delete_canonical_label(label_id: str) -> None:
 # ============================================================================
 
 
-@router.post("/lookup", response_model=CanonicalLabel | None)
+@router.post("/lookup", response_model=CanonicalLabelResponse | None)
 async def lookup_canonical_label(
     lookup: CanonicalLabelLookup,
-) -> CanonicalLabel | None:
+) -> CanonicalLabelResponse | None:
     """
     Lookup a canonical label by composite key (sheet_id, item_ref, label_type).
 

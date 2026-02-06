@@ -31,7 +31,7 @@ After backend changes:
 ## Conventions
 - Use Pydantic models for all request/response schemas
 - Async by default for route handlers
-- Unity Catalog tables: `mirion_vital.workbench.*`
+- Unity Catalog tables: `home_stuart_gano.mirion_vital_workbench.*`
 - Service layer handles all Databricks SDK calls
 - Use composite keys: `(sheet_id, item_ref, label_type)` for canonical labels
 - Terminology: "Sheet", "Training Sheet", "Canonical Label" (not old terms)

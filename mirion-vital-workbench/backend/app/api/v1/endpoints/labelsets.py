@@ -14,7 +14,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.core.config import CANONICAL_LABELS_TABLE, LAKEBASE_DB
+from app.core.config import get_settings
 from app.models.labelset import (
     Labelset,
     LabelsetCreate,
@@ -27,7 +27,9 @@ from app.services.sql_service import get_sql_service
 
 router = APIRouter()
 
-LABELSETS_TABLE = f"{LAKEBASE_DB}.labelsets"
+_settings = get_settings()
+LABELSETS_TABLE = _settings.get_table("labelsets")
+CANONICAL_LABELS_TABLE = _settings.get_table("canonical_labels")
 
 
 # ============================================================================

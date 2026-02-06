@@ -4,7 +4,7 @@ status: backlog
 created: 2026-02-06T16:22:58Z
 progress: 0%
 prd: .claude/prds/vital-workbench.md
-github: [Will be updated when synced to GitHub]
+github: https://github.com/databricks-field-eng/mirion-workspace/issues/1
 ---
 
 # Epic: VITAL Platform Workbench
@@ -271,8 +271,28 @@ Error handling, performance optimization, security review, deployment automation
 - Most tools don't support multimodal natively
 - We solve all three via Canonical Labels + Unity Catalog + APX
 
+## Tasks Created
+
+- [ ] #2 - Delta Table Schemas - Unity Catalog Foundation (parallel: false)
+- [ ] #3 - Sheet Management API - Dataset Definition Service (parallel: true)
+- [ ] #4 - Template Library API - Prompt Management Service (parallel: true)
+- [ ] #5 - Canonical Labels API - Ground Truth Management (parallel: true)
+- [ ] #6 - Q&A Generation Engine - Training Sheet Creation (parallel: false)
+- [ ] #7 - Q&A Review UI - LABEL Stage Frontend (parallel: false)
+- [ ] #8 - Frontend Stage Navigation - 7-Stage Workflow + TOOLS (parallel: false)
+- [ ] #9 - JSONL Export + Seed Data - Training Format & Samples (parallel: true)
+- [ ] #10 - Example Store Schema + API - Vector-Backed Few-Shot (P1) (parallel: true)
+- [ ] #11 - Example Store UI - Upload & Similarity Testing (P1) (parallel: true)
+
+**Total tasks:** 10 (8 MVP + 2 P1)
+**Parallel tasks:** 6
+**Sequential tasks:** 4
+**Estimated total effort:** 156-208 hours (6-8 weeks for MVP)
+
+**Critical Path:** #2 → #3-5 (parallel) → #6 → #7 → #8 → MVP Complete
+
 **Next Steps After Epic Decomposition:**
-1. Create detailed task files with acceptance criteria
-2. Set up development branch strategy
-3. Create seed data for PCB + medical invoice use cases
+1. ✅ Task files created with detailed acceptance criteria
+2. Set up development branch strategy (or use main branch for MVP)
+3. Start with Task 001 (Delta Table Schemas)
 4. Schedule kickoff with domain expert for validation
