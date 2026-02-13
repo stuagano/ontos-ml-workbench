@@ -1,0 +1,19 @@
+# Databricks Apps Resource Configuration
+# Deploys the VITAL Workbench as a Databricks App
+
+resources:
+  apps:
+    vital-workbench:
+      name: vital-workbench-${bundle.target}
+      description: "VITAL Platform Workbench - Mission control for Mirion's AI-powered radiation safety platform"
+
+      # Resources for the app
+      resources:
+        - name: warehouse
+          description: SQL Warehouse for queries
+          sql_warehouse:
+            id: ${var.warehouse_id}
+            permission: CAN_USE
+
+      # Source code files to include
+      source_code_path: .

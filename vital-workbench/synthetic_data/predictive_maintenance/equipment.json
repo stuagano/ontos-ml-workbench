@@ -1,0 +1,112 @@
+{
+  "description": "Synthetic equipment metadata for radiation detection equipment",
+  "schema_version": "1.0",
+  "equipment_types": [
+    {"type": "HPGe", "description": "High-Purity Germanium Detector", "typical_lifespan_hours": 87600},
+    {"type": "NaI", "description": "Sodium Iodide Scintillation Detector", "typical_lifespan_hours": 43800},
+    {"type": "GM", "description": "Geiger-Mueller Tube", "typical_lifespan_hours": 26280},
+    {"type": "Ion_Chamber", "description": "Ionization Chamber", "typical_lifespan_hours": 131400},
+    {"type": "Portal_Monitor", "description": "Portal Radiation Monitor", "typical_lifespan_hours": 65700}
+  ],
+  "equipment": [
+    {
+      "equipment_id": "DET-NPP-COOK-001",
+      "type": "HPGe",
+      "manufacturer": "Mirion Technologies",
+      "model": "GC4020",
+      "serial_number": "GC4020-2019-00542",
+      "facility": "Cook Nuclear Plant",
+      "location": "Unit 1 - Containment",
+      "install_date": "2019-03-15",
+      "last_calibration": "2023-11-01",
+      "operating_hours": 35040,
+      "maintenance_history": [
+        {"date": "2021-06-10", "type": "scheduled", "description": "Routine calibration"},
+        {"date": "2022-03-22", "type": "unscheduled", "description": "Cooling system repair"},
+        {"date": "2023-11-01", "type": "scheduled", "description": "Annual calibration"}
+      ],
+      "current_status": "operational",
+      "health_score": 0.92
+    },
+    {
+      "equipment_id": "DET-NPP-PALO-001",
+      "type": "NaI",
+      "manufacturer": "Mirion Technologies",
+      "model": "SAM-940",
+      "serial_number": "SAM940-2018-01234",
+      "facility": "Palo Verde Nuclear Generating Station",
+      "location": "Unit 2 - Auxiliary Building",
+      "install_date": "2018-07-20",
+      "last_calibration": "2023-09-01",
+      "operating_hours": 47520,
+      "maintenance_history": [
+        {"date": "2020-02-15", "type": "scheduled", "description": "PMT replacement"},
+        {"date": "2021-08-30", "type": "unscheduled", "description": "Crystal integrity check"},
+        {"date": "2023-09-01", "type": "scheduled", "description": "Full recalibration"}
+      ],
+      "current_status": "degraded",
+      "health_score": 0.68,
+      "alerts": ["Crystal crack detected - replacement recommended"]
+    },
+    {
+      "equipment_id": "DET-NPP-WATTS-003",
+      "type": "GM",
+      "manufacturer": "Mirion Technologies",
+      "model": "RDS-31",
+      "serial_number": "RDS31-2020-00891",
+      "facility": "Watts Bar Nuclear Plant",
+      "location": "Unit 1 - Turbine Building",
+      "install_date": "2020-11-10",
+      "last_calibration": "2023-12-01",
+      "operating_hours": 27000,
+      "maintenance_history": [
+        {"date": "2022-05-20", "type": "scheduled", "description": "Annual calibration"},
+        {"date": "2023-12-01", "type": "scheduled", "description": "Calibration and seal inspection"}
+      ],
+      "current_status": "operational",
+      "health_score": 0.85,
+      "alerts": ["Seal showing early wear - monitor closely"]
+    },
+    {
+      "equipment_id": "DET-NPP-DIABLO-002",
+      "type": "Ion_Chamber",
+      "manufacturer": "Mirion Technologies",
+      "model": "RM-80",
+      "serial_number": "RM80-2017-00156",
+      "facility": "Diablo Canyon Power Plant",
+      "location": "Unit 2 - Reactor Building",
+      "install_date": "2017-04-05",
+      "last_calibration": "2023-08-15",
+      "operating_hours": 58440,
+      "maintenance_history": [
+        {"date": "2019-10-12", "type": "unscheduled", "description": "Signal cable replacement"},
+        {"date": "2021-04-05", "type": "scheduled", "description": "4-year major service"},
+        {"date": "2023-08-15", "type": "scheduled", "description": "Annual calibration"}
+      ],
+      "current_status": "degraded",
+      "health_score": 0.72,
+      "alerts": ["Connector damage - intermittent signal loss"]
+    },
+    {
+      "equipment_id": "PM-NPP-SURRY-001",
+      "type": "Portal_Monitor",
+      "manufacturer": "Mirion Technologies",
+      "model": "IPM-903",
+      "serial_number": "IPM903-2016-00078",
+      "facility": "Surry Nuclear Power Plant",
+      "location": "Main Gate",
+      "install_date": "2016-09-01",
+      "last_calibration": "2023-07-01",
+      "operating_hours": 64800,
+      "maintenance_history": [
+        {"date": "2018-09-01", "type": "scheduled", "description": "2-year service"},
+        {"date": "2020-09-01", "type": "scheduled", "description": "4-year major service"},
+        {"date": "2022-03-15", "type": "unscheduled", "description": "Display panel replacement"},
+        {"date": "2023-07-01", "type": "scheduled", "description": "Annual calibration"}
+      ],
+      "current_status": "at_risk",
+      "health_score": 0.58,
+      "alerts": ["Corrosion detected on housing", "High humidity exposure", "Approaching end of service life"]
+    }
+  ]
+}

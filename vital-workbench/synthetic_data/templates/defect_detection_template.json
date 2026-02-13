@@ -1,0 +1,147 @@
+{
+  "template_id": "mirion-defect-detection-v1",
+  "name": "Radiation Detector Defect Detection",
+  "description": "Analyzes inspection images of radiation detectors to identify and classify defects. Combines visual analysis with sensor context for comprehensive assessment.",
+  "version": "1.0.0",
+  "status": "published",
+  "created_by": "stuart.gano@databricks.com",
+  "created_at": "2024-01-25T10:00:00Z",
+  "use_case": "defect_detection",
+  "model_config": {
+    "model": "gemini-2.0-flash",
+    "temperature": 0.2,
+    "max_tokens": 1024
+  },
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "inspection_image_uri": {
+        "type": "string",
+        "description": "GCS URI to the inspection image"
+      },
+      "equipment_id": {
+        "type": "string",
+        "description": "Unique identifier for the equipment"
+      },
+      "equipment_type": {
+        "type": "string",
+        "enum": ["HPGe", "NaI", "GM", "Ion_Chamber", "Portal_Monitor"],
+        "description": "Type of radiation detector"
+      },
+      "facility": {
+        "type": "string",
+        "description": "Nuclear facility name"
+      },
+      "sensor_context": {
+        "type": "object",
+        "properties": {
+          "temperature_c": {"type": "number"},
+          "humidity_pct": {"type": "number"},
+          "last_calibration": {"type": "string"},
+          "operating_hours": {"type": "integer"}
+        }
+      }
+    },
+    "required": ["inspection_image_uri", "equipment_id", "equipment_type"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "defect_detected": {
+        "type": "boolean",
+        "description": "Whether any defect was detected"
+      },
+      "defect_class": {
+        "type": "string",
+        "enum": ["NONE", "MINOR_SCRATCH", "CONTAMINATION", "CRYSTAL_CRACK", "SEAL_DEGRADATION", "CONNECTOR_DAMAGE", "HOUSING_DENT", "WINDOW_CLOUDING", "CORROSION"],
+        "description": "Classification of the detected defect"
+      },
+      "severity": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 3,
+        "description": "Severity level: 0=None, 1=Minor, 2=Moderate, 3=Critical"
+      },
+      "confidence": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1,
+        "description": "Confidence score for the classification"
+      },
+      "bounding_box": {
+        "type": "object",
+        "properties": {
+          "x": {"type": "integer"},
+          "y": {"type": "integer"},
+          "width": {"type": "integer"},
+          "height": {"type": "integer"}
+        },
+        "description": "Location of defect in image (if detected)"
+      },
+      "explanation": {
+        "type": "string",
+        "description": "Detailed explanation of findings"
+      },
+      "recommended_action": {
+        "type": "string",
+        "description": "Recommended next steps"
+      }
+    },
+    "required": ["defect_detected", "defect_class", "severity", "confidence", "explanation"]
+  },
+  "system_instruction": "You are an expert radiation detector inspector with 20+ years of experience at nuclear facilities. You specialize in identifying defects in radiation detection equipment including HPGe detectors, NaI scintillators, GM tubes, ionization chambers, and portal monitors.\n\nYour role is to analyze inspection images and associated sensor data to:\n1. Identify any visible defects or anomalies\n2. Classify the defect type accurately\n3. Assess severity based on impact to detector performance\n4. Provide actionable recommendations\n\nDefect Categories:\n- NONE: No defect detected, equipment appears normal\n- MINOR_SCRATCH: Surface scratches not affecting performance\n- CONTAMINATION: Foreign material on detector surface\n- CRYSTAL_CRACK: Crack in scintillation crystal (CRITICAL)\n- SEAL_DEGRADATION: Hermetic seal showing wear\n- CONNECTOR_DAMAGE: Electrical connector issues (CRITICAL)\n- HOUSING_DENT: Physical damage to detector housing\n- WINDOW_CLOUDING: Optical window degradation\n- CORROSION: Corrosion on metal components\n\nConsider the sensor context when making assessments:\n- High operating hours increase likelihood of wear-related defects\n- High humidity environments accelerate corrosion\n- Temperature extremes can cause seal and crystal issues\n- Time since calibration affects baseline comparisons\n\nAlways err on the side of caution for safety-critical equipment.",
+  "user_prompt_template": "Analyze this inspection image of a {equipment_type} radiation detector.\n\nEquipment ID: {equipment_id}\nFacility: {facility}\n\nSensor Context:\n- Temperature: {sensor_context.temperature_c}°C\n- Humidity: {sensor_context.humidity_pct}%\n- Last Calibration: {sensor_context.last_calibration}\n- Operating Hours: {sensor_context.operating_hours}\n\nProvide your assessment in the required JSON format.",
+  "few_shot_examples": [
+    {
+      "input": {
+        "inspection_image_uri": "gs://mirion-vital/examples/crystal_crack_example.jpg",
+        "equipment_id": "DET-EXAMPLE-001",
+        "equipment_type": "NaI",
+        "facility": "Example Nuclear Plant",
+        "sensor_context": {
+          "temperature_c": 28.5,
+          "humidity_pct": 35,
+          "last_calibration": "2023-09-01",
+          "operating_hours": 26500
+        }
+      },
+      "output": {
+        "defect_detected": true,
+        "defect_class": "CRYSTAL_CRACK",
+        "severity": 3,
+        "confidence": 0.92,
+        "bounding_box": {"x": 200, "y": 150, "width": 80, "height": 25},
+        "explanation": "Visible crack extending approximately 3mm into the NaI(Tl) scintillation crystal. The crack originates from the crystal edge and propagates toward the center. This is consistent with thermal stress damage, possibly exacerbated by the elevated operating temperature (28.5°C). The high operating hours (26,500) suggest accumulated thermal cycling stress. Crystal cracks of this nature will cause light collection inefficiency and resolution degradation.",
+        "recommended_action": "IMMEDIATE: Remove detector from service. Crystal integrity is compromised and cannot be repaired. Order replacement crystal assembly. Do not attempt recalibration - detector will not meet specifications with this damage."
+      }
+    },
+    {
+      "input": {
+        "inspection_image_uri": "gs://mirion-vital/examples/normal_detector.jpg",
+        "equipment_id": "DET-EXAMPLE-002",
+        "equipment_type": "HPGe",
+        "facility": "Example Nuclear Plant",
+        "sensor_context": {
+          "temperature_c": 22.0,
+          "humidity_pct": 45,
+          "last_calibration": "2023-11-01",
+          "operating_hours": 8760
+        }
+      },
+      "output": {
+        "defect_detected": false,
+        "defect_class": "NONE",
+        "severity": 0,
+        "confidence": 0.95,
+        "explanation": "HPGe detector appears in excellent condition. Cryostat housing shows no signs of damage, corrosion, or contamination. Vacuum port and electrical connections are clean and properly seated. Dewar appears intact with no visible frost patterns indicating vacuum loss. Operating conditions are within normal parameters (22°C, 45% RH). Recent calibration (2 months ago) and moderate operating hours (8,760) are consistent with well-maintained equipment.",
+        "recommended_action": "No action required. Continue normal operation. Next scheduled inspection per facility protocol."
+      }
+    }
+  ],
+  "tags": ["defect-detection", "visual-inspection", "radiation-safety", "nuclear", "mirion"],
+  "metrics": {
+    "total_inferences": 0,
+    "avg_confidence": 0,
+    "accuracy_validated": 0
+  }
+}

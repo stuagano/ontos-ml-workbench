@@ -1,0 +1,46 @@
+bundle:
+  name: vital-workbench
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for VITAL Platform metadata
+    default: main
+  schema:
+    description: Schema within the catalog for workbench tables
+    default: vital_workbench
+  warehouse_id:
+    description: SQL Warehouse ID for query execution (required for Databricks Apps)
+    default: ""
+
+include:
+  - resources/*.yml
+
+targets:
+  # Primary development target - FEVM workspace
+  fevm:
+    mode: development
+    default: true
+    workspace:
+      profile: fe-vm-serverless-dxukih
+      host: https://fevm-serverless-dxukih.cloud.databricks.com
+    variables:
+      catalog: serverless_dxukih_catalog
+      schema: mirion
+      warehouse_id: "387bcda0f2ece20c"
+
+  # Alternative development targets (optional)
+  dev:
+    mode: development
+    workspace:
+      profile: e2-demo-west
+    variables:
+      catalog: main
+      schema: vital_workbench_dev
+
+  logfood:
+    mode: development
+    workspace:
+      profile: logfood
+    variables:
+      catalog: home_stuart_gano
+      schema: vital_workbench

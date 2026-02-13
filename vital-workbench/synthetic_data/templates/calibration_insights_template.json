@@ -1,0 +1,127 @@
+{
+  "template_id": "mirion-calibration-insights-v1",
+  "name": "Monte Carlo Calibration Insights",
+  "description": "Analyzes Monte Carlo simulation results to provide calibration factor recommendations and uncertainty assessments. Helps physicists interpret simulation outputs.",
+  "version": "1.0.0",
+  "status": "published",
+  "created_by": "stuart.gano@databricks.com",
+  "created_at": "2024-01-25T10:00:00Z",
+  "use_case": "calibration_insights",
+  "model_config": {
+    "model": "gemini-2.0-flash",
+    "temperature": 0.2,
+    "max_tokens": 1200
+  },
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "equipment_id": {"type": "string"},
+      "equipment_type": {"type": "string"},
+      "source_type": {
+        "type": "string",
+        "description": "Radioactive source isotope (e.g., Cs-137, Co-60, Am-241)"
+      },
+      "source_activity_bq": {"type": "number"},
+      "geometry": {
+        "type": "string",
+        "enum": ["point", "cylindrical", "distributed", "marinelli"]
+      },
+      "distance_cm": {"type": "number"},
+      "shielding_mm_pb": {"type": "number"},
+      "simulation_results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "simulation_id": {"type": "string"},
+            "simulated_counts": {"type": "integer"},
+            "statistical_uncertainty_pct": {"type": "number"},
+            "simulation_time_sec": {"type": "number"}
+          }
+        }
+      },
+      "previous_calibration_factor": {
+        "type": "number",
+        "description": "Calibration factor from last calibration (if available)"
+      }
+    },
+    "required": ["equipment_id", "source_type", "source_activity_bq", "simulation_results"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "recommended_calibration_factor": {"type": "number"},
+      "calibration_factor_uncertainty": {"type": "number"},
+      "confidence_level": {"type": "string"},
+      "simulation_quality_assessment": {
+        "type": "string",
+        "enum": ["excellent", "good", "acceptable", "marginal", "insufficient"]
+      },
+      "deviation_from_previous": {
+        "type": "number",
+        "description": "Percent change from previous calibration factor"
+      },
+      "deviation_significant": {"type": "boolean"},
+      "physics_insights": {
+        "type": "array",
+        "items": {"type": "string"}
+      },
+      "recommendations": {
+        "type": "array",
+        "items": {"type": "string"}
+      },
+      "additional_simulations_needed": {"type": "boolean"},
+      "explanation": {"type": "string"}
+    },
+    "required": ["recommended_calibration_factor", "calibration_factor_uncertainty", "simulation_quality_assessment", "explanation"]
+  },
+  "system_instruction": "You are a radiation physics expert specializing in Monte Carlo simulations for detector calibration. Your role is to interpret simulation results and provide calibration guidance.\n\nKey Physics Concepts:\n- Calibration Factor = Source Activity / Detected Counts (relates true activity to measured response)\n- Statistical uncertainty decreases with √N (more simulations = better precision)\n- Systematic uncertainties from geometry, source positioning, material properties\n- Shielding attenuates different energies differently (photoelectric, Compton, pair production)\n\nQuality Assessment Criteria:\n- EXCELLENT: Uncertainty < 0.5%, consistent results, > 10 simulations\n- GOOD: Uncertainty < 1%, consistent results, > 5 simulations\n- ACCEPTABLE: Uncertainty < 2%, minor variations, > 3 simulations\n- MARGINAL: Uncertainty < 5%, some variations, needs review\n- INSUFFICIENT: Uncertainty > 5% or inconsistent results\n\nDeviation Analysis:\n- < 2% change from previous: Normal aging/drift\n- 2-5% change: Investigate - possible detector degradation\n- > 5% change: Significant - verify simulation setup, check detector\n\nAlways consider:\n1. Source decay correction\n2. Geometry effects\n3. Backscatter contributions\n4. Dead time corrections\n5. Energy-dependent efficiency",
+  "user_prompt_template": "Analyze Monte Carlo calibration simulation results:\n\nEquipment: {equipment_id} ({equipment_type})\nSource: {source_type} at {source_activity_bq} Bq\nGeometry: {geometry} at {distance_cm} cm\nShielding: {shielding_mm_pb} mm Pb equivalent\n\nSimulation Results:\n{simulation_results}\n\nPrevious Calibration Factor: {previous_calibration_factor}\n\nProvide calibration insights and recommendations.",
+  "few_shot_examples": [
+    {
+      "input": {
+        "equipment_id": "DET-NPP-COOK-001",
+        "equipment_type": "HPGe",
+        "source_type": "Cs-137",
+        "source_activity_bq": 370000,
+        "geometry": "point",
+        "distance_cm": 100,
+        "shielding_mm_pb": 0,
+        "simulation_results": [
+          {"simulation_id": "MC-2024-001-001", "simulated_counts": 125000, "statistical_uncertainty_pct": 0.28, "simulation_time_sec": 45.2},
+          {"simulation_id": "MC-2024-001-002", "simulated_counts": 124800, "statistical_uncertainty_pct": 0.28, "simulation_time_sec": 44.8},
+          {"simulation_id": "MC-2024-001-003", "simulated_counts": 125200, "statistical_uncertainty_pct": 0.28, "simulation_time_sec": 45.5}
+        ],
+        "previous_calibration_factor": 2.98
+      },
+      "output": {
+        "recommended_calibration_factor": 2.96,
+        "calibration_factor_uncertainty": 0.01,
+        "confidence_level": "95%",
+        "simulation_quality_assessment": "excellent",
+        "deviation_from_previous": -0.67,
+        "deviation_significant": false,
+        "physics_insights": [
+          "Simulated efficiency of 33.8% is consistent with HPGe at 662 keV",
+          "Count rate variation of 0.16% across runs indicates excellent statistical convergence",
+          "Point source geometry at 100 cm provides clean inverse-square behavior",
+          "No shielding allows direct efficiency determination"
+        ],
+        "recommendations": [
+          "Accept calibration factor of 2.96 ± 0.01",
+          "Update detector efficiency tables",
+          "Document geometry for future reference",
+          "Consider additional shielded measurements for interpolation"
+        ],
+        "additional_simulations_needed": false,
+        "explanation": "The Monte Carlo simulations show excellent convergence with consistent results across all three runs (CV = 0.16%). The calculated calibration factor of 2.96 represents a 0.67% decrease from the previous value of 2.98, which is within normal drift expectations for a well-maintained HPGe detector. The sub-0.3% statistical uncertainty meets or exceeds regulatory requirements. The simulation count of ~125,000 provides robust statistics. This calibration can be confidently applied. Recommend proceeding with calibration update."
+      }
+    }
+  ],
+  "tags": ["calibration", "monte-carlo", "physics", "radiation-safety", "nuclear", "mirion"],
+  "metrics": {
+    "total_inferences": 0,
+    "avg_confidence": 0,
+    "accuracy_validated": 0
+  }
+}

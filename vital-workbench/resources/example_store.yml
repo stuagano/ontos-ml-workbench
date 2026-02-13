@@ -1,0 +1,107 @@
+# Example Store Resources
+# Vector Search index and embedding job configurations
+
+resources:
+  # Vector Search Endpoint (shared across indexes)
+  # Note: Vector Search endpoints are created via Databricks UI or REST API
+  # This configuration documents the expected setup
+
+  # Example Store Vector Search Index
+  # Creates a Delta Sync index on the example_store table
+  vector_search_indexes:
+    example_store_index:
+      # Index configuration
+      name: example_store_vs_index
+      endpoint_name: ${var.vector_search_endpoint}
+
+      # Source table
+      source_table: ${var.catalog}.${var.schema}.example_store
+
+      # Index type: DELTA_SYNC for automatic updates
+      index_type: DELTA_SYNC
+
+      # Primary key for the index
+      primary_key: example_id
+
+      # Embedding column configuration
+      embedding_source_column: embedding
+      embedding_dimension: 1024
+
+      # Sync configuration
+      pipeline_type: TRIGGERED  # or CONTINUOUS
+
+      # Columns to include in search results
+      columns_to_sync:
+        - example_id
+        - databit_id
+        - domain
+        - function_name
+        - difficulty
+        - capability_tags
+        - quality_score
+        - effectiveness_score
+        - usage_count
+
+# Jobs for Example Store maintenance
+jobs:
+  # Batch embedding generation job
+  example_embedding_generator:
+    name: "[${bundle.target}] Example Store - Generate Embeddings"
+
+    tasks:
+      - task_key: generate_embeddings
+        notebook_task:
+          notebook_path: ../notebooks/data/embedding_generation.py
+          base_parameters:
+            catalog: ${var.catalog}
+            schema: ${var.schema}
+            embedding_model: databricks-bge-large-en
+            batch_size: "100"
+
+        # Use serverless compute
+        environment_key: default
+
+    # Schedule: Run daily to process new examples
+    schedule:
+      quartz_cron_expression: "0 0 2 * * ?"  # 2 AM daily
+      timezone_id: America/Los_Angeles
+      pause_status: PAUSED  # Enable when ready
+
+    # Email notifications
+    email_notifications:
+      on_failure:
+        - ${var.alert_email}
+
+  # Effectiveness score update job
+  example_effectiveness_updater:
+    name: "[${bundle.target}] Example Store - Update Effectiveness Scores"
+
+    tasks:
+      - task_key: update_effectiveness
+        notebook_task:
+          notebook_path: ../notebooks/curate/update_effectiveness.py
+          base_parameters:
+            catalog: ${var.catalog}
+            schema: ${var.schema}
+
+        environment_key: default
+
+    # Schedule: Run weekly
+    schedule:
+      quartz_cron_expression: "0 0 3 ? * SUN"  # 3 AM Sundays
+      timezone_id: America/Los_Angeles
+      pause_status: PAUSED
+
+# Variables specific to Example Store
+variables:
+  vector_search_endpoint:
+    description: Name of the Vector Search endpoint to use
+    default: vital-workbench-vs-endpoint
+
+  embedding_model:
+    description: Model to use for generating embeddings
+    default: databricks-bge-large-en
+
+  alert_email:
+    description: Email for job failure alerts
+    default: ""

@@ -1,0 +1,15 @@
+.venv/
+backend/.venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+node_modules/
+frontend/
+.DS_Store
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+uv.lock
+frontend/dist/
+*.log

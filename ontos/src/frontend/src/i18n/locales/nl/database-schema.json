@@ -1,0 +1,14 @@
+{
+  "title": "Database Schema",
+  "loading": "Database schema laden...",
+  "errorLoadingSchema": "Fout bij Laden Schema",
+  "legend": "Legenda",
+  "notNull": "NOT NULL",
+  "tableCount": "{{count}} tabellen",
+  "tableCount_one": "{{count}} tabel",
+  "relationshipCount": "{{count}} relaties",
+  "relationshipCount_one": "{{count}} relatie",
+  "columns": "{{count}} kolommen",
+  "columns_one": "{{count}} kolom"
+}
+

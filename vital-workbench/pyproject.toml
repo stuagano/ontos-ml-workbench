@@ -1,0 +1,50 @@
+[project]
+name = "mirion-vital-workbench"
+version = "0.1.0"
+description = "VITAL Platform Workbench - Mission control for Mirion's AI-powered radiation safety platform"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "python-multipart>=0.0.6",
+    "databricks-sdk>=0.20.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.26.0",
+    "numpy>=1.24.0",
+    "sentence-transformers>=2.2.0",
+    "apx",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-mock>=3.12.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[[tool.uv.index]]
+url = "https://databricks-solutions.github.io/apx/simple"
+
+[tool.uv]
+package = false
+
+[tool.apx]
+backend = "backend"
+frontend = "frontend"
+python-version = "3.11"
+
+[tool.apx.metadata]
+name = "mirion-vital-workbench"
+app-name = "VITAL Workbench"
+app-slug = "vital-workbench"
+app-entrypoint = "app.main:app"
+metadata-path = "app.yaml"
+version = "0.1.0"
+description = "VITAL Platform Workbench for Mirion"
+working-dir = "backend"
