@@ -31,10 +31,10 @@ from app.services.sql_service import get_sql_service
 router = APIRouter(prefix="/assemblies", tags=["assemblies"])
 logger = logging.getLogger(__name__)
 
-# Get fully qualified table names (for Delta Lake fallback)
+# Get fully qualified table names (PRD v2.3 - training_sheets + qa_pairs)
 _settings = get_settings()
-ASSEMBLIES_TABLE = _settings.get_table("assemblies")
-ASSEMBLY_ROWS_TABLE = _settings.get_table("assembly_rows")
+ASSEMBLIES_TABLE = _settings.get_table("training_sheets")
+ASSEMBLY_ROWS_TABLE = _settings.get_table("qa_pairs")
 
 # Lakebase service for fast reads
 _lakebase = get_lakebase_service()
@@ -50,7 +50,7 @@ def _escape_sql(value: str | None) -> str:
 def _row_to_assembly(row: dict) -> AssembledDataset:
     """Convert a database row to AssembledDataset.
 
-    Handles both Delta Lake (column: id) and Lakebase (column: assembly_id) schemas.
+    Handles both old assemblies schema and new PRD v2.3 training_sheets schema.
     """
     template_config_data = row.get("template_config")
     if isinstance(template_config_data, str):
@@ -58,9 +58,28 @@ def _row_to_assembly(row: dict) -> AssembledDataset:
     elif isinstance(template_config_data, dict):
         template_config_dict = template_config_data
     else:
-        template_config_dict = {}
+        # PRD v2.3: template_config not stored in training_sheets, create minimal
+        template_config_dict = {
+            "template_id": row.get("template_id", "unknown"),
+            "prompt_template": ""
+        }
 
-    # Handle different column names between Delta and Lakebase
+    # PRD v2.3: Add ML columns from training_sheets if present
+    if row.get("feature_columns"):
+        feature_cols = row["feature_columns"]
+        # Handle both string (JSON) and list formats
+        if isinstance(feature_cols, str):
+            try:
+                template_config_dict["feature_columns"] = json.loads(feature_cols)
+            except (json.JSONDecodeError, TypeError):
+                template_config_dict["feature_columns"] = None
+        elif isinstance(feature_cols, list):
+            template_config_dict["feature_columns"] = feature_cols
+
+    if row.get("target_column"):
+        template_config_dict["target_column"] = row["target_column"]
+
+    # Handle different column names between old and new schemas
     assembly_id = row.get("assembly_id") or row.get("id")
 
     # Calculate empty count (handle both int and str types from different backends)
@@ -76,23 +95,40 @@ def _row_to_assembly(row: dict) -> AssembledDataset:
                 return default
         return default
 
-    total = to_int(row.get("total_rows"), 0)
-    ai_count = to_int(row.get("ai_generated_count"), 0)
-    human_count = to_int(row.get("human_labeled_count"), 0)
-    verified_count = to_int(row.get("human_verified_count"), 0)
+    # Map PRD v2.3 columns to old schema
+    total = to_int(row.get("total_rows") or row.get("total_items"), 0)
+    ai_count = to_int(row.get("ai_generated_count") or row.get("generated_count"), 0)
+    human_count = to_int(row.get("human_labeled_count") or row.get("approved_count"), 0)
+    verified_count = to_int(row.get("human_verified_count") or row.get("auto_approved_count"), 0)
     empty_count = max(0, total - ai_count - human_count - verified_count)
+
+    # Map PRD v2.3 status values to old AssemblyStatus enum
+    status_value = row.get("status", "ready")
+    status_mapping = {
+        "generating": "assembling",
+        "review": "ready",
+        "approved": "ready",
+        "rejected": "failed",
+        "exported": "archived",
+        # Old values pass through
+        "assembling": "assembling",
+        "ready": "ready",
+        "failed": "failed",
+        "archived": "archived"
+    }
+    mapped_status = status_mapping.get(status_value, "ready")
 
     return AssembledDataset(
         id=assembly_id,
         sheet_id=row["sheet_id"],
-        sheet_name=row.get("sheet_name"),
+        sheet_name=row.get("sheet_name") or row.get("name"),  # PRD v2.3: "name" instead of "sheet_name"
         template_config=TemplateConfig(**template_config_dict),
-        status=AssemblyStatus(row.get("status", "ready")),
+        status=AssemblyStatus(mapped_status),
         total_rows=total,
         ai_generated_count=ai_count,
         human_labeled_count=human_count,
         human_verified_count=verified_count,
-        flagged_count=to_int(row.get("flagged_count"), 0),
+        flagged_count=to_int(row.get("flagged_count") or row.get("rejected_count"), 0),
         empty_count=empty_count,
         created_at=row.get("created_at"),
         created_by=row.get("created_by"),
@@ -105,44 +141,95 @@ def _row_to_assembly(row: dict) -> AssembledDataset:
 def _row_to_assembled_row(row: dict) -> AssembledRow:
     """Convert a database row to AssembledRow.
 
-    Handles both Delta Lake (JSON string, base64 encoded) and Lakebase (dict) source_data formats.
+    Handles both old schema (assembly_rows) and new PRD v2.3 (qa_pairs with messages).
     """
     import base64
 
-    source_data_raw = row.get("source_data")
-    if isinstance(source_data_raw, str):
-        try:
-            # Check if it's base64 encoded (new format)
-            if source_data_raw.startswith("base64:"):
-                # Decode from base64
-                encoded = source_data_raw[7:]  # Strip "base64:" prefix
-                decoded = base64.b64decode(encoded).decode('utf-8')
-                source_data = json.loads(decoded)
-            else:
-                # Old format: try to parse as JSON directly (legacy data)
-                source_data = json.loads(source_data_raw) if source_data_raw else {}
-        except (json.JSONDecodeError, base64.binascii.Error) as e:
-            logger.warning(f"Failed to parse source_data for row {row.get('row_index')}: {e}")
-            source_data = {}
-    elif isinstance(source_data_raw, dict):
-        source_data = source_data_raw
-    else:
+    # PRD v2.3: Extract prompt/response from messages JSON
+    if "messages" in row:
+        messages_raw = row.get("messages")
+        if isinstance(messages_raw, str):
+            try:
+                messages = json.loads(messages_raw)
+            except json.JSONDecodeError:
+                messages = []
+        elif isinstance(messages_raw, list):
+            messages = messages_raw
+        else:
+            messages = []
+
+        # Extract user message as prompt, assistant message as response
+        prompt = ""
+        response = ""
+        for msg in messages:
+            if isinstance(msg, dict):
+                if msg.get("role") == "user":
+                    prompt = msg.get("content", "")
+                elif msg.get("role") == "assistant":
+                    response = msg.get("content", "")
+
+        # Map review_status to response_source
+        review_status = row.get("review_status", "pending")
+        if review_status == "approved":
+            response_source_val = "human_labeled"
+        elif review_status == "pending":
+            response_source_val = "empty"
+        else:
+            response_source_val = "empty"
+
+        row_index = row.get("sequence_number", 0)
+
+        # PRD v2.3: extract source_data from generation_metadata
         source_data = {}
+        generation_metadata = row.get("generation_metadata")
+        if generation_metadata:
+            if isinstance(generation_metadata, str):
+                try:
+                    meta = json.loads(generation_metadata)
+                    source_data = meta.get("source_data", {})
+                except json.JSONDecodeError:
+                    pass
+            elif isinstance(generation_metadata, dict):
+                source_data = generation_metadata.get("source_data", {})
+
+    else:
+        # Old schema
+        prompt = row.get("prompt", "")
+        response = row.get("response", "")
+        response_source_val = row.get("response_source", "empty")
+        row_index = row.get("row_index", 0)
+
+        source_data_raw = row.get("source_data")
+        if isinstance(source_data_raw, str):
+            try:
+                if source_data_raw.startswith("base64:"):
+                    encoded = source_data_raw[7:]
+                    decoded = base64.b64decode(encoded).decode('utf-8')
+                    source_data = json.loads(decoded)
+                else:
+                    source_data = json.loads(source_data_raw) if source_data_raw else {}
+            except (json.JSONDecodeError, base64.binascii.Error) as e:
+                logger.warning(f"Failed to parse source_data for row {row_index}: {e}")
+                source_data = {}
+        elif isinstance(source_data_raw, dict):
+            source_data = source_data_raw
+        else:
+            source_data = {}
 
     return AssembledRow(
-        row_index=row["row_index"],
-        prompt=row["prompt"],
+        row_index=row_index,
+        prompt=prompt,
         source_data=source_data,
-        response=row.get("response"),
-        response_source=ResponseSource(row.get("response_source", "empty")),
-        generated_at=row.get("generated_at"),
-        labeled_at=row.get("labeled_at"),
-        labeled_by=row.get("labeled_by"),
+        response=response,
+        response_source=ResponseSource(response_source_val),
+        generated_at=row.get("generated_at") or row.get("created_at"),
+        labeled_at=row.get("labeled_at") or row.get("reviewed_at"),
+        labeled_by=row.get("labeled_by") or row.get("reviewed_by"),
         verified_at=row.get("verified_at"),
         verified_by=row.get("verified_by"),
-        is_flagged=row.get("is_flagged", False),
-        flag_reason=row.get("flag_reason"),
-        confidence_score=row.get("confidence_score"),
+        is_flagged=row.get("is_flagged") or (row.get("review_status") == "flagged"),
+        flag_reason=row.get("flag_reason") or row.get("edit_reason"),
+        confidence_score=row.get("confidence_score") or row.get("quality_score"),
         notes=row.get("notes"),
     )
 
@@ -150,16 +237,6 @@ def _row_to_assembled_row(row: dict) -> AssembledRow:
 # ============================================================================
 # Assembly CRUD
 # ============================================================================
-
-
-@router.get("/test")
-async def test_assemblies():
-    """Test endpoint to verify routing."""
-    return {
-        "status": "ok",
-        "message": "assemblies router working",
-        "table": ASSEMBLIES_TABLE,
-    }
 
 
 @router.get("/list")
@@ -194,9 +271,16 @@ async def list_assemblies(
     sql = f"SELECT * FROM {ASSEMBLIES_TABLE} {where_clause} ORDER BY created_at DESC LIMIT {limit}"
 
     logger.debug(f"Using Delta Lake for list_assemblies: {sql}")
-    rows = sql_service.execute(sql)
 
-    return [_row_to_assembly(row) for row in rows]
+    try:
+        rows = sql_service.execute(sql)
+        return [_row_to_assembly(row) for row in rows]
+    except Exception as e:
+        # Handle missing table gracefully (PRD v2.3 renamed assemblies to training_sheets)
+        if "TABLE_OR_VIEW_NOT_FOUND" in str(e) or "cannot be found" in str(e):
+            logger.warning(f"Assemblies table not found: {ASSEMBLIES_TABLE}. Returning empty list.")
+            return []
+        raise
 
 
 @router.get("/{assembly_id}", response_model=AssembledDataset)
@@ -215,7 +299,14 @@ async def get_assembly(assembly_id: str):
     # Fallback to Delta Lake
     sql_service = get_sql_service()
     sql = f"SELECT * FROM {ASSEMBLIES_TABLE} WHERE id = '{assembly_id}'"
-    rows = sql_service.execute(sql)
+
+    try:
+        rows = sql_service.execute(sql)
+    except Exception as e:
+        # Handle missing table gracefully
+        if "TABLE_OR_VIEW_NOT_FOUND" in str(e) or "cannot be found" in str(e):
+            raise HTTPException(status_code=404, detail="Assembly not found (table does not exist)")
+        raise
 
     if not rows:
         raise HTTPException(status_code=404, detail="Assembly not found")
@@ -231,11 +322,11 @@ async def delete_assembly(assembly_id: str):
     # Verify exists
     await get_assembly(assembly_id)
 
-    # Delete rows first
+    # Delete rows first (PRD v2.3: training_sheet_id)
     sql_service.execute_update(
-        f"DELETE FROM {ASSEMBLY_ROWS_TABLE} WHERE assembly_id = '{assembly_id}'"
+        f"DELETE FROM {ASSEMBLY_ROWS_TABLE} WHERE training_sheet_id = '{assembly_id}'"
     )
-    # Delete assembly
+    # Delete training sheet
     sql_service.execute_update(
         f"DELETE FROM {ASSEMBLIES_TABLE} WHERE id = '{assembly_id}'"
     )
@@ -278,18 +369,23 @@ async def get_assembly_preview(
     if not assembled_rows:
         sql_service = get_sql_service()
 
-        conditions = [f"assembly_id = '{assembly_id}'"]
+        # PRD v2.3: training_sheet_id instead of assembly_id, sequence_number instead of row_index
+        conditions = [f"training_sheet_id = '{assembly_id}'"]
         if response_source:
-            conditions.append(f"response_source = '{response_source.value}'")
+            # Map old response_source to new review_status
+            if response_source.value == "ai_generated":
+                conditions.append("review_status = 'pending'")
+            elif response_source.value == "human_labeled":
+                conditions.append("review_status = 'approved'")
         if flagged_only:
-            conditions.append("is_flagged = TRUE")
+            conditions.append("review_status = 'flagged'")
 
         where_clause = " AND ".join(conditions)
 
         query_sql = f"""
         SELECT * FROM {ASSEMBLY_ROWS_TABLE}
         WHERE {where_clause}
-        ORDER BY row_index
+        ORDER BY sequence_number
         LIMIT {limit} OFFSET {offset}
         """
         rows = sql_service.execute(query_sql)
@@ -340,11 +436,11 @@ async def get_assembly_row(
             status_code=404, detail=f"Row {row_index} not found in assembly"
         )
 
-    # Fallback to Delta Lake
+    # Fallback to Delta Lake (PRD v2.3: training_sheet_id, sequence_number)
     sql_service = get_sql_service()
     row_sql = f"""
     SELECT * FROM {ASSEMBLY_ROWS_TABLE}
-    WHERE assembly_id = '{assembly_id}' AND row_index = {row_index}
+    WHERE training_sheet_id = '{assembly_id}' AND sequence_number = {row_index}
     """
     rows = sql_service.execute(row_sql)
 
@@ -373,10 +469,10 @@ async def update_assembly_row(
     # Verify assembly exists
     assembly = await get_assembly(assembly_id)
 
-    # Get existing row
+    # Get existing row (PRD v2.3: training_sheet_id, sequence_number)
     row_sql = f"""
     SELECT * FROM {ASSEMBLY_ROWS_TABLE}
-    WHERE assembly_id = '{assembly_id}' AND row_index = {row_index}
+    WHERE training_sheet_id = '{assembly_id}' AND sequence_number = {row_index}
     """
     rows = sql_service.execute(row_sql)
     if not rows:
@@ -385,45 +481,72 @@ async def update_assembly_row(
         )
 
     existing = _row_to_assembled_row(rows[0])
+    existing_row_data = rows[0]
 
-    # Build update fields (assembly_rows has no updated_at column)
+    # Build update fields for PRD v2.3 qa_pairs schema
     updates = []
     stats_updates = []
 
     if update.response is not None:
-        updates.append(f"response = {_escape_sql(update.response)}")
-
-        # Determine response source based on mark_as_verified flag or previous state
-        if update.mark_as_verified or existing.response_source == ResponseSource.AI_GENERATED:
-            # Human is verifying/correcting - either explicitly or from AI response
-            updates.append("response_source = 'human_verified'")
-            updates.append("verified_at = current_timestamp()")
-            updates.append(f"verified_by = '{user}'")
-            if existing.response_source != ResponseSource.HUMAN_VERIFIED:
-                stats_updates.append("human_verified_count = human_verified_count + 1")
+        # Parse existing messages JSON
+        messages_raw = existing_row_data.get("messages")
+        if isinstance(messages_raw, str):
+            messages = json.loads(messages_raw)
         else:
-            # Human is providing initial label
-            updates.append("response_source = 'human_labeled'")
-            updates.append("labeled_at = current_timestamp()")
-            updates.append(f"labeled_by = '{user}'")
-            if existing.response_source != ResponseSource.HUMAN_LABELED:
-                stats_updates.append("human_labeled_count = human_labeled_count + 1")
+            messages = messages_raw or []
+
+        # Store original messages if not already stored
+        if not existing_row_data.get("original_messages") and len(messages) > 0:
+            original_json = json.dumps(messages).replace("\\", "\\\\").replace("'", "''")
+            updates.append(f"original_messages = '{original_json}'")
+
+        # Update assistant response in messages
+        new_messages = []
+        for msg in messages:
+            if msg.get("role") == "assistant":
+                new_messages.append({"role": "assistant", "content": update.response})
+            else:
+                new_messages.append(msg)
+
+        messages_json = json.dumps(new_messages).replace("\\", "\\\\").replace("'", "''")
+        updates.append(f"messages = '{messages_json}'")
+
+        # Update review status based on mark_as_verified flag
+        if update.mark_as_verified:
+            updates.append("review_status = 'approved'")
+            updates.append("review_action = 'approve'")
+            if existing_row_data.get("review_status") != "approved":
+                stats_updates.append("approved_count = approved_count + 1")
+        else:
+            updates.append("review_status = 'edited'")
+            updates.append("review_action = 'edit'")
+
+        updates.append("reviewed_at = current_timestamp()")
+        updates.append(f"reviewed_by = '{user}'")
 
     if update.is_flagged is not None:
-        updates.append(f"is_flagged = {str(update.is_flagged).upper()}")
-        if update.is_flagged and not existing.is_flagged:
-            stats_updates.append("flagged_count = flagged_count + 1")
-        elif not update.is_flagged and existing.is_flagged:
-            stats_updates.append("flagged_count = flagged_count - 1")
+        if update.is_flagged:
+            updates.append("review_status = 'flagged'")
+            updates.append("review_action = 'flag'")
+            if existing_row_data.get("review_status") != "flagged":
+                stats_updates.append("rejected_count = rejected_count + 1")
+        else:
+            updates.append("review_status = 'pending'")
+            updates.append("review_action = NULL")
 
     if update.flag_reason is not None:
-        updates.append(f"flag_reason = {_escape_sql(update.flag_reason)}")
+        escaped_reason = update.flag_reason.replace("\\", "\\\\").replace("'", "''")
+        updates.append(f"edit_reason = '{escaped_reason}'")
 
-    # Update row
+    # Add updated_at and updated_by
+    updates.append("updated_at = current_timestamp()")
+    updates.append(f"updated_by = '{user}'")
+
+    # Update row (PRD v2.3: training_sheet_id, sequence_number)
     update_sql = f"""
     UPDATE {ASSEMBLY_ROWS_TABLE}
     SET {", ".join(updates)}
-    WHERE assembly_id = '{assembly_id}' AND row_index = {row_index}
+    WHERE training_sheet_id = '{assembly_id}' AND sequence_number = {row_index}
     """
     try:
         sql_service.execute_update(update_sql)
@@ -495,16 +618,16 @@ async def generate_responses(
     assembly = await get_assembly(assembly_id)
     template = assembly.template_config
 
-    # Build query for rows to generate
-    conditions = [f"assembly_id = '{assembly_id}'"]
+    # Build query for rows to generate (PRD v2.3: training_sheet_id, sequence_number, review_status)
+    conditions = [f"training_sheet_id = '{assembly_id}'"]
 
     if request and request.row_indices:
         indices_str = ", ".join(str(i) for i in request.row_indices)
-        conditions.append(f"row_index IN ({indices_str})")
+        conditions.append(f"sequence_number IN ({indices_str})")
 
     if not (request and request.overwrite_existing):
-        # Only generate for empty rows
-        conditions.append("response_source = 'empty'")
+        # Only generate for pending/empty rows
+        conditions.append("review_status = 'pending'")
 
     where_clause = " AND ".join(conditions)
 
@@ -512,7 +635,7 @@ async def generate_responses(
     query_sql = f"""
     SELECT * FROM {ASSEMBLY_ROWS_TABLE}
     WHERE {where_clause}
-    ORDER BY row_index
+    ORDER BY sequence_number
     """
     rows_to_generate = sql_service.execute(query_sql)
 
@@ -524,27 +647,41 @@ async def generate_responses(
             errors=None,
         )
 
-    # Collect few-shot examples from human-labeled rows
+    # Collect few-shot examples from approved rows (PRD v2.3: training_sheet_id, review_status, messages)
     few_shot_examples: list[FewShotExample] = []
     if request is None or request.include_examples:
         examples_sql = f"""
-        SELECT prompt, response FROM {ASSEMBLY_ROWS_TABLE}
-        WHERE assembly_id = '{assembly_id}'
-          AND response_source IN ('human_labeled', 'human_verified')
-          AND response IS NOT NULL
-        ORDER BY labeled_at DESC
+        SELECT messages FROM {ASSEMBLY_ROWS_TABLE}
+        WHERE training_sheet_id = '{assembly_id}'
+          AND review_status = 'approved'
+        ORDER BY reviewed_at DESC
         LIMIT 10
         """
         example_rows = sql_service.execute(examples_sql)
 
         for ex in example_rows:
-            # For few-shot, we use the prompt directly (already rendered)
-            few_shot_examples.append(
-                FewShotExample(
-                    input_values={"prompt": ex["prompt"]},
-                    output_value=ex["response"],
+            # Extract prompt/response from messages JSON
+            messages_raw = ex.get("messages")
+            if isinstance(messages_raw, str):
+                messages = json.loads(messages_raw)
+            else:
+                messages = messages_raw or []
+
+            prompt = ""
+            response = ""
+            for msg in messages:
+                if msg.get("role") == "user":
+                    prompt = msg.get("content", "")
+                elif msg.get("role") == "assistant":
+                    response = msg.get("content", "")
+
+            if prompt and response:
+                few_shot_examples.append(
+                    FewShotExample(
+                        input_values={"prompt": prompt},
+                        output_value=response,
+                    )
                 )
-            )
 
         logger.info(
             f"Collected {len(few_shot_examples)} few-shot examples for assembly {assembly_id}"
@@ -557,6 +694,19 @@ async def generate_responses(
 
     for row in rows_to_generate:
         try:
+            # Extract prompt from messages JSON (PRD v2.3)
+            messages_raw = row.get("messages")
+            if isinstance(messages_raw, str):
+                row_messages = json.loads(messages_raw)
+            else:
+                row_messages = messages_raw or []
+
+            prompt = ""
+            for msg in row_messages:
+                if msg.get("role") == "user":
+                    prompt = msg.get("content", "")
+                    break
+
             # Build prompt with few-shot examples
             messages = []
 
@@ -576,7 +726,7 @@ async def generate_responses(
                 messages.append({"role": "assistant", "content": str(ex.output_value)})
 
             # Add current prompt
-            messages.append({"role": "user", "content": row["prompt"]})
+            messages.append({"role": "user", "content": prompt})
 
             # Call inference
             result = await inference_service.chat_completion(
@@ -588,13 +738,22 @@ async def generate_responses(
 
             response_text = result.get("content", "")
 
-            # Update row with generated response
-            # Note: Delta table schema doesn't include generated_at/confidence_score
+            # Update messages with generated response (PRD v2.3)
+            new_messages = []
+            for msg in row_messages:
+                if msg.get("role") == "assistant":
+                    new_messages.append({"role": "assistant", "content": response_text})
+                else:
+                    new_messages.append(msg)
+
+            messages_json = json.dumps(new_messages).replace("\\", "\\\\").replace("'", "''")
+
             update_sql = f"""
             UPDATE {ASSEMBLY_ROWS_TABLE}
-            SET response = {_escape_sql(response_text)},
-                response_source = 'ai_generated'
-            WHERE assembly_id = '{assembly_id}' AND row_index = {row["row_index"]}
+            SET messages = '{messages_json}',
+                review_status = 'pending',
+                updated_at = current_timestamp()
+            WHERE training_sheet_id = '{assembly_id}' AND sequence_number = {row["sequence_number"]}
             """
             sql_service.execute_update(update_sql)
             generated_count += 1
@@ -603,11 +762,11 @@ async def generate_responses(
             failed_count += 1
             errors.append(
                 {
-                    "row_index": row["row_index"],
+                    "row_index": row.get("sequence_number", 0),
                     "error": str(e),
                 }
             )
-            logger.warning(f"Failed to generate for row {row['row_index']}: {e}")
+            logger.warning(f"Failed to generate for row {row.get('sequence_number')}: {e}")
 
     # Update assembly stats
     stats_sql = f"""

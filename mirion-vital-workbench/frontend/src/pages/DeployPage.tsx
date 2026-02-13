@@ -22,16 +22,12 @@ import {
   Clock,
   RefreshCw,
   ChevronRight,
-  ChevronLeft,
   X,
   AlertCircle,
   Zap,
-  Database,
-  FileCode,
   Filter,
   Search,
 } from "lucide-react";
-import { useWorkflow } from "../context/WorkflowContext";
 import { clsx } from "clsx";
 import {
   listModels,
@@ -46,112 +42,13 @@ import {
 import { openDatabricks } from "../services/databricksLinks";
 import { useToast } from "../components/Toast";
 import { DataTable, Column, RowAction } from "../components/DataTable";
-
-// ============================================================================
-// Status Config
-// ============================================================================
-
-const STATUS_CONFIG: Record<
-  string,
-  { icon: typeof CheckCircle; color: string; bgColor: string; label: string }
-> = {
-  READY: {
-    icon: CheckCircle,
-    color: "text-green-600",
-    bgColor: "bg-green-50",
-    label: "Ready",
-  },
-  NOT_READY: {
-    icon: Clock,
-    color: "text-amber-600",
-    bgColor: "bg-amber-50",
-    label: "Starting",
-  },
-  PENDING: {
-    icon: Loader2,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50",
-    label: "Pending",
-  },
-  FAILED: {
-    icon: XCircle,
-    color: "text-red-600",
-    bgColor: "bg-red-50",
-    label: "Failed",
-  },
-  unknown: {
-    icon: Clock,
-    color: "text-gray-600",
-    bgColor: "bg-gray-50",
-    label: "Unknown",
-  },
-};
-
-// ============================================================================
-// WorkflowBanner Component
-// ============================================================================
-
-function WorkflowBanner() {
-  const { state, goToPreviousStage, goToNextStage } = useWorkflow();
-
-  return (
-    <div className="bg-gradient-to-r from-cyan-50 to-blue-50 border border-cyan-200 rounded-lg p-4 mb-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          {/* Data source */}
-          {state.selectedSource && (
-            <div className="flex items-center gap-2">
-              <Database className="w-4 h-4 text-cyan-600" />
-              <div>
-                <div className="text-xs text-cyan-600 font-medium">
-                  Data Source
-                </div>
-                <div className="text-sm text-cyan-800">
-                  {state.selectedSource.name}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Template */}
-          {state.selectedTemplate && (
-            <>
-              <ChevronRight className="w-4 h-4 text-cyan-400" />
-              <div className="flex items-center gap-2">
-                <FileCode className="w-4 h-4 text-cyan-600" />
-                <div>
-                  <div className="text-xs text-cyan-600 font-medium">
-                    Template
-                  </div>
-                  <div className="text-sm text-cyan-800">
-                    {state.selectedTemplate.name}
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={goToPreviousStage}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm text-cyan-700 hover:bg-cyan-100 rounded-lg transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Back to Train
-          </button>
-          <button
-            onClick={goToNextStage}
-            className="flex items-center gap-1 px-4 py-1.5 text-sm bg-cyan-600 text-white hover:bg-cyan-700 rounded-lg transition-colors"
-          >
-            Continue to Monitor
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { WorkflowBanner } from "../components/WorkflowBanner";
+import { StatusBadge } from "../components/StatusBadge";
+import {
+  ENDPOINT_STATUS_CONFIG,
+  getStatusConfig,
+  isStatusActive,
+} from "../constants/statusConfig";
 
 // ============================================================================
 // Deployment Wizard Component
@@ -736,13 +633,12 @@ export function DeployPage({ mode = "browse" }: DeployPageProps) {
       header: "Status",
       width: "15%",
       render: (endpoint) => {
-        const config = STATUS_CONFIG[endpoint.state] || STATUS_CONFIG.unknown;
-        const Icon = config.icon;
+        const config = getStatusConfig(endpoint.state, ENDPOINT_STATUS_CONFIG);
         return (
-          <span className={clsx("px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 w-fit", config.bgColor, config.color)}>
-            <Icon className={clsx("w-3 h-3", endpoint.state === "NOT_READY" && "animate-spin")} />
-            {config.label}
-          </span>
+          <StatusBadge
+            config={config}
+            animate={isStatusActive(endpoint.state)}
+          />
         );
       },
     },
@@ -868,7 +764,7 @@ export function DeployPage({ mode = "browse" }: DeployPageProps) {
       {/* Workflow Banner */}
       <div className="px-6 py-4">
         <div className="max-w-7xl mx-auto">
-          <WorkflowBanner />
+          <WorkflowBanner stage="deploy" />
         </div>
       </div>
 

@@ -19,31 +19,65 @@ router = APIRouter(prefix="/templates", tags=["templates"])
 
 
 def _row_to_template(row: dict) -> TemplateResponse:
-    """Convert a database row to TemplateResponse."""
-    input_schema = json.loads(row["input_schema"]) if row.get("input_schema") else None
-    output_schema = (
-        json.loads(row["output_schema"]) if row.get("output_schema") else None
-    )
-    examples = json.loads(row["examples"]) if row.get("examples") else None
+    """Convert a database row to TemplateResponse.
+
+    Maps actual database schema to API response:
+    - DB: user_prompt_template -> API: prompt_template
+    - DB: output_schema (JSON string) -> API: output_schema (list)
+    - DB: few_shot_examples (array<string>) -> API: examples (list)
+    - DB: version (STRING) -> API: version (str)
+    - DB: feature_columns (array<string>) -> API: feature_columns (list)
+    - DB: target_column (string) -> API: target_column (str)
+    """
+    # Parse JSON fields
+    output_schema = None
+    if row.get("output_schema"):
+        try:
+            output_schema = json.loads(row["output_schema"])
+        except (json.JSONDecodeError, TypeError):
+            output_schema = None
+
+    # Parse few_shot_examples array<string> to Example objects
+    examples = None
+    if row.get("few_shot_examples"):
+        try:
+            examples = [json.loads(ex) for ex in row["few_shot_examples"]]
+        except (json.JSONDecodeError, TypeError):
+            examples = None
+
+    # Parse feature_columns (may come as string or list from database)
+    feature_columns = None
+    if row.get("feature_columns"):
+        fc = row["feature_columns"]
+        if isinstance(fc, str):
+            try:
+                feature_columns = json.loads(fc)
+            except (json.JSONDecodeError, TypeError):
+                feature_columns = None
+        elif isinstance(fc, list):
+            feature_columns = fc
 
     return TemplateResponse(
         id=row["id"],
         name=row["name"],
         description=row.get("description"),
+        label_type=row.get("label_type"),
+        feature_columns=feature_columns,
+        target_column=row.get("target_column"),
         version=row.get("version", "1.0.0"),
         status=TemplateStatus(row.get("status", "draft")),
-        input_schema=input_schema,
+        input_schema=None,  # Not stored in current DB schema
         output_schema=output_schema,
-        prompt_template=row.get("prompt_template"),
+        prompt_template=row.get("user_prompt_template"),
         system_prompt=row.get("system_prompt"),
         examples=examples,
-        base_model=row.get("base_model", "databricks-meta-llama-3-1-70b-instruct"),
-        temperature=float(row.get("temperature", 0.7)),
-        max_tokens=int(row.get("max_tokens", 1024)),
-        source_catalog=row.get("source_catalog"),
-        source_schema=row.get("source_schema"),
-        source_table=row.get("source_table"),
-        source_volume=row.get("source_volume"),
+        base_model="databricks-meta-llama-3-1-70b-instruct",  # Not in DB, use default
+        temperature=0.7,  # Not in DB, use default
+        max_tokens=1024,  # Not in DB, use default
+        source_catalog=None,
+        source_schema=None,
+        source_table=None,
+        source_volume=None,
         created_by=row.get("created_by"),
         created_at=row.get("created_at"),
         updated_at=row.get("updated_at"),
@@ -100,21 +134,17 @@ async def create_template(template: TemplateCreate):
     user = get_current_user()
     template_id = str(uuid.uuid4())
 
-    # Serialize complex fields to JSON
-    input_schema_json = (
-        json.dumps([s.model_dump() for s in template.input_schema])
-        if template.input_schema
-        else None
-    )
-    output_schema_json = (
-        json.dumps([s.model_dump() for s in template.output_schema])
-        if template.output_schema
-        else None
-    )
-    examples_json = (
-        json.dumps([e.model_dump() for e in template.examples])
+    # Serialize output schema to JSON string (matches actual DB schema)
+    # Note: output_schema is optional, ML config (feature_columns/target_column) is the primary way
+    output_schema_json = None
+    if template.output_schema:
+        output_schema_json = json.dumps([s.model_dump() for s in template.output_schema])
+
+    # Convert examples to array of strings (matches actual DB schema: array<string>)
+    few_shot_examples_array = (
+        [json.dumps(e.model_dump()) for e in template.examples]
         if template.examples
-        else None
+        else []
     )
 
     def escape_sql(s: str | None) -> str:
@@ -122,33 +152,48 @@ async def create_template(template: TemplateCreate):
             return "NULL"
         return "'" + s.replace("'", "''") + "'"
 
+    # Map API fields to actual database schema
+    # API: prompt_template -> DB: user_prompt_template
+    # API: feature_columns/target_column -> DB: feature_columns/target_column (ML config is primary)
+    # API: base_model, temperature, max_tokens -> NOT stored (runtime config)
+    label_type = template.label_type or "general"
+
+    # Build examples array SQL
+    if few_shot_examples_array:
+        examples_sql = "ARRAY(" + ", ".join([escape_sql(ex) for ex in few_shot_examples_array]) + ")"
+    else:
+        examples_sql = "ARRAY()"
+
+    # Build feature_columns array SQL
+    if template.feature_columns:
+        feature_columns_sql = "ARRAY(" + ", ".join([escape_sql(col) for col in template.feature_columns]) + ")"
+    else:
+        feature_columns_sql = "NULL"
+
     sql = f"""
     INSERT INTO templates (
-        id, name, description, version, status,
-        input_schema, output_schema, prompt_template, system_prompt, examples,
-        base_model, temperature, max_tokens,
-        source_catalog, source_schema, source_table, source_volume,
-        created_by, created_at, updated_at
+        id, name, description,
+        system_prompt, user_prompt_template, output_schema,
+        label_type, feature_columns, target_column, few_shot_examples,
+        version, status, parent_template_id,
+        created_by, created_at, updated_by, updated_at
     ) VALUES (
         '{template_id}',
         {escape_sql(template.name)},
         {escape_sql(template.description)},
+        {escape_sql(template.system_prompt or "You are a helpful assistant.")},
+        {escape_sql(template.prompt_template or "")},
+        {escape_sql(output_schema_json)},
+        '{label_type}',
+        {feature_columns_sql},
+        {escape_sql(template.target_column)},
+        {examples_sql},
         '1.0.0',
         'draft',
-        {escape_sql(input_schema_json)},
-        {escape_sql(output_schema_json)},
-        {escape_sql(template.prompt_template)},
-        {escape_sql(template.system_prompt)},
-        {escape_sql(examples_json)},
-        '{template.base_model}',
-        {template.temperature},
-        {template.max_tokens},
-        {escape_sql(template.source_catalog)},
-        {escape_sql(template.source_schema)},
-        {escape_sql(template.source_table)},
-        {escape_sql(template.source_volume)},
+        NULL,
         '{user}',
         current_timestamp(),
+        '{user}',
         current_timestamp()
     )
     """
@@ -193,6 +238,17 @@ async def update_template(template_id: str, template: TemplateUpdate):
         updates.append(f"name = {escape_sql(template.name)}")
     if template.description is not None:
         updates.append(f"description = {escape_sql(template.description)}")
+    if template.label_type is not None:
+        updates.append(f"label_type = {escape_sql(template.label_type)}")
+    if template.feature_columns is not None:
+        # Build feature_columns array SQL
+        if template.feature_columns:
+            feature_cols_sql = "ARRAY(" + ", ".join([escape_sql(col) for col in template.feature_columns]) + ")"
+        else:
+            feature_cols_sql = "NULL"
+        updates.append(f"feature_columns = {feature_cols_sql}")
+    if template.target_column is not None:
+        updates.append(f"target_column = {escape_sql(template.target_column)}")
     if template.input_schema is not None:
         schema_json = json.dumps([s.model_dump() for s in template.input_schema])
         updates.append(f"input_schema = {escape_sql(schema_json)}")
@@ -200,12 +256,14 @@ async def update_template(template_id: str, template: TemplateUpdate):
         schema_json = json.dumps([s.model_dump() for s in template.output_schema])
         updates.append(f"output_schema = {escape_sql(schema_json)}")
     if template.prompt_template is not None:
-        updates.append(f"prompt_template = {escape_sql(template.prompt_template)}")
+        updates.append(f"user_prompt_template = {escape_sql(template.prompt_template)}")
     if template.system_prompt is not None:
         updates.append(f"system_prompt = {escape_sql(template.system_prompt)}")
     if template.examples is not None:
-        examples_json = json.dumps([e.model_dump() for e in template.examples])
-        updates.append(f"examples = {escape_sql(examples_json)}")
+        # Convert to array<string>
+        examples_array = [json.dumps(e.model_dump()) for e in template.examples]
+        examples_sql = "ARRAY(" + ", ".join([escape_sql(ex) for ex in examples_array]) + ")"
+        updates.append(f"few_shot_examples = {examples_sql}")
     if template.base_model is not None:
         updates.append(f"base_model = '{template.base_model}'")
     if template.temperature is not None:
@@ -282,17 +340,15 @@ async def create_version(template_id: str):
     sql = f"""
     INSERT INTO templates (
         id, name, description, version, status,
-        input_schema, output_schema, prompt_template, system_prompt, examples,
-        base_model, temperature, max_tokens,
-        source_catalog, source_schema, source_table, source_volume,
-        created_by, created_at, updated_at
+        label_type, feature_columns, target_column,
+        system_prompt, user_prompt_template, output_schema, few_shot_examples,
+        parent_template_id, created_by, created_at, updated_by, updated_at
     )
     SELECT
         '{new_id}', name, description, '{new_version}', 'draft',
-        input_schema, output_schema, prompt_template, system_prompt, examples,
-        base_model, temperature, max_tokens,
-        source_catalog, source_schema, source_table, source_volume,
-        '{user}', current_timestamp(), current_timestamp()
+        label_type, feature_columns, target_column,
+        system_prompt, user_prompt_template, output_schema, few_shot_examples,
+        '{template_id}', '{user}', current_timestamp(), '{user}', current_timestamp()
     FROM templates WHERE id = '{template_id}'
     """
     sql_service.execute_update(sql)

@@ -90,11 +90,18 @@ npm run dev
 ### Deploy to Databricks
 ```bash
 # Build frontend
-cd frontend && npm run build
+cd frontend && npm run build && cd ..
 
-# Deploy bundle
-databricks bundle deploy -t dev
+# Deploy app
+databricks apps deploy vital-workbench \
+  --source-code-path /Workspace/Users/<your-email>/Apps/vital-workbench \
+  --profile=your-profile
+
+# IMPORTANT: Always poll for deployment completion
+./.claude/scripts/poll-databricks-app.sh vital-workbench your-profile
 ```
+
+**See**: `.claude/DEPLOYMENT_WORKFLOW.md` for complete deployment procedures and troubleshooting.
 
 ## Synthetic Data
 
@@ -106,7 +113,16 @@ Sample data for Mirion use cases in `synthetic_data/`:
 
 ## Delta Tables (PRD v2.3)
 
-Location: `home_stuart_gano.mirion_vital_workbench` (using home catalog for development)
+**Primary Development Location**: `serverless_dxukih_catalog.mirion` (FEVM workspace)
+
+**Configuration**: Set in `backend/.env`
+- Workspace: FEVM (https://fevm-serverless-dxukih.cloud.databricks.com)
+- Catalog: `serverless_dxukih_catalog`
+- Schema: `mirion`
+- Warehouse: `387bcda0f2ece20c`
+- Profile: `fe-vm-serverless-dxukih`
+
+**Note**: All development and deployment uses FEVM workspace. For other workspaces, create separate DAB targets in `databricks.yml`
 
 **Core Data Model:**
 

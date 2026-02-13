@@ -20,7 +20,6 @@ import {
   Save,
   AlertCircle,
   Loader2,
-  GripVertical,
   Code,
   FileText,
   Settings,
@@ -28,6 +27,7 @@ import {
   Lightbulb,
   Download,
   Table2,
+  CheckCircle,
 } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -65,10 +65,12 @@ const AVAILABLE_MODELS = [
   },
 ];
 
-const FIELD_TYPES = ["string", "number", "boolean", "array", "object"];
-
 interface TemplateEditorProps {
   template: Template | null;
+  datasetContext?: {
+    columns: Array<{ name: string; type: string }>;
+    sheetName?: string;
+  } | null;
   onClose: () => void;
   onSaved: (template: Template) => void;
 }
@@ -78,6 +80,9 @@ type EditorTab = "schema" | "prompt" | "examples" | "settings";
 interface FormState {
   name: string;
   description: string;
+  label_type: string;
+  feature_columns: string[];
+  target_column: string;
   input_schema: SchemaField[];
   output_schema: SchemaField[];
   prompt_template: string;
@@ -123,6 +128,7 @@ function mapUCTypeToSchemaType(ucType: string): string {
 
 export function TemplateEditor({
   template,
+  datasetContext,
   onClose,
   onSaved,
 }: TemplateEditorProps) {
@@ -138,6 +144,9 @@ export function TemplateEditor({
 
   // Get data source info for display
   const getSourceDescription = () => {
+    if (datasetContext?.sheetName) {
+      return datasetContext.sheetName;
+    }
     if (workflowState.datasetConfig?.sources.length) {
       const sources = workflowState.datasetConfig.sources;
       if (sources.length === 1) {
@@ -148,15 +157,48 @@ export function TemplateEditor({
     return workflowState.selectedSource?.fullPath || "configured sources";
   };
 
+  // Auto-populate input schema from dataset context
+  const inferredInputSchema: SchemaField[] = datasetContext?.columns
+    ? datasetContext.columns.map((col) => ({
+        name: col.name,
+        type: mapUCTypeToSchemaType(col.type),
+        description: `Column from dataset: ${col.name}`,
+        required: false,
+      }))
+    : [];
+
+  // Generate smart default prompt based on inferred columns
+  const getDefaultPrompt = () => {
+    if (template?.prompt_template) {
+      return template.prompt_template;
+    }
+
+    if (inferredInputSchema.length > 0) {
+      const columnRefs = inferredInputSchema
+        .slice(0, 5) // Show first 5 columns
+        .map((col) => `- ${col.name}: {{${col.name}}}`)
+        .join("\n");
+
+      const moreColumns = inferredInputSchema.length > 5
+        ? `\n... and ${inferredInputSchema.length - 5} more columns`
+        : "";
+
+      return `Analyze the following data:\n\n${columnRefs}${moreColumns}\n\nProvide your analysis as structured output.`;
+    }
+
+    return "Given the following input:\n{{input}}\n\nProvide the output as JSON.";
+  };
+
   // Form state
   const [form, setForm] = useState<FormState>({
-    name: template?.name || "",
-    description: template?.description || "",
-    input_schema: template?.input_schema || [],
+    name: template?.name || (datasetContext?.sheetName ? `${datasetContext.sheetName} Template` : ""),
+    description: template?.description || (datasetContext ? `Template for processing ${datasetContext.sheetName || "dataset"}` : ""),
+    label_type: template?.label_type || "",
+    feature_columns: template?.feature_columns || [],
+    target_column: template?.target_column || "",
+    input_schema: template?.input_schema || inferredInputSchema,
     output_schema: template?.output_schema || [],
-    prompt_template:
-      template?.prompt_template ||
-      "Given the following input:\n{{input}}\n\nProvide the output as JSON.",
+    prompt_template: getDefaultPrompt(),
     system_prompt:
       template?.system_prompt ||
       "You are a helpful assistant that follows instructions precisely.",
@@ -210,14 +252,6 @@ export function TemplateEditor({
       newErrors.name = "Name is required";
     }
 
-    if (form.input_schema.some((f) => !f.name.trim())) {
-      newErrors.input_schema = "All input fields must have names";
-    }
-
-    if (form.output_schema.some((f) => !f.name.trim())) {
-      newErrors.output_schema = "All output fields must have names";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -229,10 +263,10 @@ export function TemplateEditor({
     const data: Partial<Template> = {
       name: form.name,
       description: form.description || undefined,
-      input_schema:
-        form.input_schema.length > 0 ? form.input_schema : undefined,
-      output_schema:
-        form.output_schema.length > 0 ? form.output_schema : undefined,
+      label_type: form.label_type || undefined,
+      feature_columns: form.feature_columns.length > 0 ? form.feature_columns : undefined,
+      target_column: form.target_column || undefined,
+      // Note: input_schema and output_schema removed - use ML configuration instead
       prompt_template: form.prompt_template || undefined,
       system_prompt: form.system_prompt || undefined,
       examples: form.examples.length > 0 ? form.examples : undefined,
@@ -250,34 +284,6 @@ export function TemplateEditor({
     } else {
       createMutation.mutate(data);
     }
-  };
-
-  // Schema field management
-  const addSchemaField = (type: "input" | "output") => {
-    const key = type === "input" ? "input_schema" : "output_schema";
-    setForm({
-      ...form,
-      [key]: [
-        ...form[key],
-        { name: "", type: "string", description: "", required: true },
-      ],
-    });
-  };
-
-  const updateSchemaField = (
-    type: "input" | "output",
-    index: number,
-    field: Partial<SchemaField>,
-  ) => {
-    const key = type === "input" ? "input_schema" : "output_schema";
-    const updated = [...form[key]];
-    updated[index] = { ...updated[index], ...field };
-    setForm({ ...form, [key]: updated });
-  };
-
-  const removeSchemaField = (type: "input" | "output", index: number) => {
-    const key = type === "input" ? "input_schema" : "output_schema";
-    setForm({ ...form, [key]: form[key].filter((_, i) => i !== index) });
   };
 
   // Example management
@@ -324,6 +330,27 @@ export function TemplateEditor({
   const renderSchemaTab = () => (
     <div className="space-y-6">
       {/* Import from Source Banner */}
+      {/* Dataset context banner - when schema was auto-inferred */}
+      {datasetContext && !isEditing && inferredInputSchema.length > 0 && (
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <p className="font-medium text-green-800">
+                Input schema auto-populated
+              </p>
+              <p className="text-sm text-green-700">
+                {inferredInputSchema.length} columns from{" "}
+                <span className="font-mono">{datasetContext.sheetName}</span> have been automatically added to the input schema.
+                You can edit, remove, or add more fields below.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {hasSourceColumns && (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-center justify-between">
@@ -354,82 +381,100 @@ export function TemplateEditor({
         </div>
       )}
 
-      {/* Input Schema */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-medium text-db-gray-800">Input Schema</h3>
-          <div className="flex items-center gap-2">
-            {hasSourceColumns && form.input_schema.length > 0 && (
-              <button
-                onClick={importFromSource}
-                className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                title="Replace current fields with source columns"
-              >
-                <Download className="w-4 h-4" /> Re-import
-              </button>
-            )}
-            <button
-              onClick={() => addSchemaField("input")}
-              className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
-            >
-              <Plus className="w-4 h-4" /> Add Field
-            </button>
+      {/* ML Column Configuration */}
+      {(form.input_schema.length > 0 || inferredInputSchema.length > 0) && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
+          <div className="mb-3">
+            <h3 className="font-medium text-amber-900 mb-1">ML Configuration</h3>
+            <p className="text-sm text-amber-700">
+              Define which columns are features (inputs) and which column is the target (output to predict)
+            </p>
           </div>
-        </div>
-        {errors.input_schema && (
-          <p className="text-red-500 text-sm mb-2">{errors.input_schema}</p>
-        )}
-        <div className="space-y-2">
-          {form.input_schema.length === 0 ? (
-            <p className="text-sm text-db-gray-400 italic">
-              No input fields defined
-              {hasSourceColumns &&
-                ' - click "Import as Input Schema" above to get started'}
-            </p>
-          ) : (
-            form.input_schema.map((field, index) => (
-              <SchemaFieldRow
-                key={index}
-                field={field}
-                onChange={(f) => updateSchemaField("input", index, f)}
-                onRemove={() => removeSchemaField("input", index)}
-              />
-            ))
-          )}
-        </div>
-      </div>
 
-      {/* Output Schema */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-medium text-db-gray-800">Output Schema</h3>
-          <button
-            onClick={() => addSchemaField("output")}
-            className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
-          >
-            <Plus className="w-4 h-4" /> Add Field
-          </button>
-        </div>
-        {errors.output_schema && (
-          <p className="text-red-500 text-sm mb-2">{errors.output_schema}</p>
-        )}
-        <div className="space-y-2">
-          {form.output_schema.length === 0 ? (
-            <p className="text-sm text-db-gray-400 italic">
-              No output fields defined
-            </p>
-          ) : (
-            form.output_schema.map((field, index) => (
-              <SchemaFieldRow
-                key={index}
-                field={field}
-                onChange={(f) => updateSchemaField("output", index, f)}
-                onRemove={() => removeSchemaField("output", index)}
-              />
-            ))
+          {/* Feature Columns */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-amber-900 mb-2">
+              Feature Columns (Independent Variables)
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {(form.input_schema.length > 0 ? form.input_schema : inferredInputSchema).map((field) => (
+                <label
+                  key={field.name}
+                  className="flex items-center gap-2 px-3 py-2 bg-white border border-amber-200 rounded-lg hover:border-amber-400 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.feature_columns.includes(field.name)}
+                    onChange={(e) => {
+                      const newFeatures = e.target.checked
+                        ? [...form.feature_columns, field.name]
+                        : form.feature_columns.filter((c) => c !== field.name);
+                      setForm({ ...form, feature_columns: newFeatures });
+                    }}
+                    className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                  />
+                  <span className="text-sm font-mono text-amber-900">{field.name}</span>
+                  <span className="text-xs text-amber-600">({field.type})</span>
+                </label>
+              ))}
+            </div>
+            {form.feature_columns.length > 0 && (
+              <p className="text-xs text-amber-600 mt-2">
+                {form.feature_columns.length} feature{form.feature_columns.length > 1 ? 's' : ''} selected
+              </p>
+            )}
+          </div>
+
+          {/* Target Column */}
+          <div>
+            <label className="block text-sm font-medium text-amber-900 mb-2">
+              Target Column (Dependent Variable - What to Predict)
+            </label>
+            <select
+              value={form.target_column}
+              onChange={(e) => setForm({ ...form, target_column: e.target.value })}
+              className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value="">-- Select target column --</option>
+              {(form.input_schema.length > 0 ? form.input_schema : inferredInputSchema).map((field) => (
+                <option key={field.name} value={field.name}>
+                  {field.name} ({field.type})
+                </option>
+              ))}
+            </select>
+            {form.target_column && (
+              <p className="text-xs text-amber-600 mt-2">
+                Predicting: <span className="font-mono font-medium">{form.target_column}</span>
+              </p>
+            )}
+          </div>
+
+          {/* ML Summary */}
+          {(form.feature_columns.length > 0 || form.target_column) && (
+            <div className="mt-4 p-3 bg-amber-100 rounded-lg">
+              <p className="text-sm text-amber-900">
+                <strong>ML Task:</strong> Predict{" "}
+                <code className="px-1 py-0.5 bg-amber-200 rounded">{form.target_column || "?"}</code>{" "}
+                from{" "}
+                {form.feature_columns.length > 0 ? (
+                  <>
+                    {form.feature_columns.slice(0, 3).map((col, i) => (
+                      <span key={col}>
+                        <code className="px-1 py-0.5 bg-amber-200 rounded">{col}</code>
+                        {i < Math.min(form.feature_columns.length, 3) - 1 && ", "}
+                      </span>
+                    ))}
+                    {form.feature_columns.length > 3 && ` + ${form.feature_columns.length - 3} more`}
+                  </>
+                ) : (
+                  "?"
+                )}
+              </p>
+            </div>
           )}
         </div>
-      </div>
+      )}
+
     </div>
   );
 
@@ -664,7 +709,7 @@ export function TemplateEditor({
   );
 
   const tabs: { id: EditorTab; label: string; icon: React.ReactNode }[] = [
-    { id: "schema", label: "Schema", icon: <Code className="w-4 h-4" /> },
+    { id: "schema", label: "ML Config", icon: <Code className="w-4 h-4" /> },
     { id: "prompt", label: "Prompt", icon: <FileText className="w-4 h-4" /> },
     {
       id: "examples",
@@ -679,7 +724,7 @@ export function TemplateEditor({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-db-gray-200">
@@ -793,61 +838,6 @@ export function TemplateEditor({
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-// Schema Field Row Component
-interface SchemaFieldRowProps {
-  field: SchemaField;
-  onChange: (field: Partial<SchemaField>) => void;
-  onRemove: () => void;
-}
-
-function SchemaFieldRow({ field, onChange, onRemove }: SchemaFieldRowProps) {
-  return (
-    <div className="flex items-center gap-2 p-2 bg-db-gray-50 rounded-lg group">
-      <GripVertical className="w-4 h-4 text-db-gray-300 cursor-grab" />
-      <input
-        type="text"
-        value={field.name}
-        onChange={(e) => onChange({ name: e.target.value })}
-        className="flex-1 px-2 py-1 text-sm border border-db-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
-        placeholder="Field name"
-      />
-      <select
-        value={field.type}
-        onChange={(e) => onChange({ type: e.target.value })}
-        className="px-2 py-1 text-sm border border-db-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
-      >
-        {FIELD_TYPES.map((t) => (
-          <option key={t} value={t}>
-            {t}
-          </option>
-        ))}
-      </select>
-      <input
-        type="text"
-        value={field.description || ""}
-        onChange={(e) => onChange({ description: e.target.value })}
-        className="flex-1 px-2 py-1 text-sm border border-db-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
-        placeholder="Description"
-      />
-      <label className="flex items-center gap-1 text-xs text-db-gray-500">
-        <input
-          type="checkbox"
-          checked={field.required}
-          onChange={(e) => onChange({ required: e.target.checked })}
-          className="rounded border-db-gray-300"
-        />
-        Req
-      </label>
-      <button
-        onClick={onRemove}
-        className="p-1 text-db-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
     </div>
   );
 }

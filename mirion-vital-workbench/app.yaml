@@ -1,7 +1,13 @@
-from pathlib import Path
+# Databricks App Configuration  
+command:
+  - "bash"
+  - "-c"
+  - "cd backend && python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
-app_name = "VITAL Workbench"
-app_entrypoint = "app.main:app"
-app_slug = "vital-workbench"
-api_prefix = "/api"
-dist_dir = Path(__file__).parent / "__dist__"
+env:
+  - name: DATABRICKS_CATALOG
+    value: serverless_dxukih_catalog
+  - name: DATABRICKS_SCHEMA
+    value: mirion
+  - name: DATABRICKS_WAREHOUSE_ID
+    value: "387bcda0f2ece20c"

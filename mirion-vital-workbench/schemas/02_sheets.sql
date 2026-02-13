@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS home_stuart_gano.mirion_vital_workbench.sheets (
   sample_size INT COMMENT 'Number of items to sample (null = all)',
   filter_expression STRING COMMENT 'SQL WHERE clause to filter items',
 
+  -- Template configuration (attached via /sheets/{id}/attach-template)
+  template_config STRING COMMENT 'JSON: prompt_template, system_instruction, model, temperature, max_tokens, label_type, column_mapping, etc.',
+
   -- Status tracking
   status STRING DEFAULT 'active' COMMENT 'Status: active, archived, deleted',
   item_count INT COMMENT 'Cached count of items in dataset',

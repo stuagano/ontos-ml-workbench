@@ -1,37 +1,69 @@
-# VITAL Workbench - Quick Start Guide
+# VITAL Workbench - Quick Start
 
-Get the application running in 3 steps:
+Get the VITAL Platform Workbench running in 10 minutes.
 
-## Step 1: Seed the Database (Databricks Notebook)
+## Prerequisites
 
-1. Upload `schemas/check_and_seed.py` to your Databricks workspace
-2. Run all cells in the notebook
-3. Verify you see seeded data:
-   - 3 sheets (PCB defects, sensor telemetry, anomaly stream)
-   - 3 templates (defect classification, predictive maintenance, anomaly detection)
-   - 3 canonical labels (sample defect labels)
+- Databricks workspace with Unity Catalog
+- Node.js 18+ and Python 3.11+
+- Databricks CLI: `brew install databricks`
 
-**Workspace:** `https://fevm-serverless-dxukih.cloud.databricks.com`
+## Quick Setup
 
-## Step 2: Start the Application (Local)
-
-From the project root directory:
+### Step 1: Configure Backend (2 minutes)
 
 ```bash
+cd backend
+cp .env.example .env
+```
+
+Edit `backend/.env` with your configuration:
+
+```bash
+# Databricks Connection
+DATABRICKS_HOST=https://your-workspace.cloud.databricks.com
+DATABRICKS_TOKEN=your-token-here
+DATABRICKS_WAREHOUSE_ID=your-warehouse-id
+
+# Unity Catalog
+DATABRICKS_CATALOG=home_<username>
+DATABRICKS_SCHEMA=mirion_vital_workbench
+
+# Optional: CLI profile name
+DATABRICKS_CONFIG_PROFILE=your-profile-name
+```
+
+**Find your warehouse ID:**
+```bash
+databricks warehouses list
+```
+
+### Step 2: Initialize Database (3 minutes)
+
+Upload and run `schemas/check_and_seed.py` in your Databricks workspace, or run the schema files manually:
+
+```bash
+# In Databricks SQL Editor, run these files in order:
+# 1. schemas/01_create_catalog.sql through 08_example_store.sql
+# 2. schemas/seed_sheets.sql
+```
+
+This creates:
+- All required Delta tables
+- 3 sample Training Sheets (defect detection, sensor monitoring, anomaly detection)
+- 3 prompt templates
+- Sample canonical labels
+
+### Step 3: Start the Application (2 minutes)
+
+**Option A: Using the start script (recommended)**
+
+```bash
+# From project root
 ./start-dev.sh
 ```
 
-This will:
-- Install backend dependencies (Python virtual env)
-- Install frontend dependencies (npm)
-- Start backend on http://localhost:8000
-- Start frontend on http://localhost:5173
-
-Press `Ctrl+C` to stop both services.
-
-### Manual Start (Alternative)
-
-If you prefer to start services manually:
+**Option B: Manual start**
 
 ```bash
 # Terminal 1: Backend
@@ -47,27 +79,21 @@ npm install
 npm run dev
 ```
 
-## Step 3: Verify Everything Works
+### Step 4: Verify (1 minute)
 
 Open your browser:
 
-1. **Frontend**: http://localhost:5173
-   - Should see VITAL Workbench UI
+- **Frontend**: http://localhost:5173
+- **API Docs**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/api/v1/health
 
-2. **API Docs**: http://localhost:8000/docs
-   - Interactive API documentation
-   - Try the `/api/v1/sheets-v2` endpoints
-
-3. **Health Check**: http://localhost:8000/api/v1/health
-   - Should return `{"status": "healthy"}`
-
-### Test the API
+Test the API:
 
 ```bash
-# List sheets
+# List Training Sheets
 curl http://localhost:8000/api/v1/sheets-v2
 
-# Get specific sheet
+# Get specific Training Sheet
 curl http://localhost:8000/api/v1/sheets-v2/sheet-defect-images-001
 
 # List templates
@@ -77,56 +103,142 @@ curl http://localhost:8000/api/v1/templates
 curl http://localhost:8000/api/v1/canonical-labels
 ```
 
+## What You Can Do Now
+
+With the seeded data, explore the 7-stage workflow:
+
+1. **DATA** - Browse the 3 sample Training Sheets
+2. **GENERATE** - Create Q&A pairs from Training Sheets + templates
+3. **LABEL** - Review and approve Q&A pairs
+4. **TRAIN** - Fine-tune models (requires FMAPI setup)
+5. **DEPLOY** - Deploy models to serving endpoints
+6. **MONITOR** - Track production performance
+7. **IMPROVE** - Analyze feedback and iterate
+
+## Understanding the Workflow
+
+### Core Concepts
+
+**Training Sheets** → Lightweight pointers to Unity Catalog data sources
+**Canonical Labels** → Ground truth enabling "label once, reuse everywhere"
+**Templates** → Reusable prompt IP encoding domain expertise
+**Q&A Pairs** → Generated training data for fine-tuning
+
+### Stage Navigation
+
+The UI enforces stage order. You must:
+1. Select a Training Sheet in DATA stage
+2. Select a template in GENERATE stage
+3. Then proceed through remaining stages
+
+### TOOLS Section
+
+Access reusable assets via keyboard shortcuts:
+- **Alt+T** - Prompt Templates
+- **Alt+E** - Example Store
+- **Alt+D** - DSPy Optimizer
+- **Canonical Labeling Tool** - Label source data directly
+
 ## Troubleshooting
 
 ### Backend won't start
-- Check `.env` file exists in `backend/` directory
-- Verify Databricks credentials in `.env`
-- Check warehouse ID is correct: `387bcda0f2ece20c`
 
-### Frontend won't start
-- Delete `node_modules` and run `npm install` again
-- Check Node.js version: `node --version` (should be 18+)
+Check your configuration:
+```bash
+cat backend/.env | grep DATABRICKS
+```
 
-### Database connection errors
-- Verify you're authenticated: `databricks auth profiles`
-- Check workspace URL is correct in `backend/.env`
-- Verify warehouse is running in Databricks workspace
+Verify:
+- Warehouse ID is correct
+- Catalog and schema exist
+- Token has necessary permissions
 
 ### No data showing in UI
-- Run the Databricks notebook again
-- Check tables have data: See Step 1 verification queries
 
-## What You Can Do Now
+Verify tables exist:
+```sql
+USE CATALOG home_<username>;
+USE SCHEMA mirion_vital_workbench;
+SHOW TABLES;
+```
 
-With the seeded data, you can:
+Re-run the seed script if tables are empty.
 
-1. **View Sheets** - Browse the 3 sample datasets
-2. **View Templates** - See the prompt templates for each use case
-3. **View Canonical Labels** - Expert-labeled ground truth data
-4. **Create Training Sheets** - Combine sheets + templates to generate Q&A pairs (coming soon)
-5. **API Integration** - Use the REST API to build custom workflows
+### API returns 500 errors
 
-## Configuration
+Check backend logs for "table not found" errors. You may need to:
+1. Create missing tables (run schema SQL files)
+2. Update catalog/schema names in `backend/.env`
 
-Current configuration (in `backend/.env`):
+### Frontend loads but can't connect to backend
 
-- **Workspace**: `fevm-serverless-dxukih.cloud.databricks.com`
-- **Catalog**: `home_stuart_gano`
+Verify CORS settings in `backend/.env`:
+```bash
+CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
+```
+
+## Configuration Reference
+
+Current configuration uses:
+- **Catalog**: `home_<username>` (personal development space)
 - **Schema**: `mirion_vital_workbench`
-- **Warehouse ID**: `387bcda0f2ece20c`
-- **Profile**: `fe-vm-serverless-dxukih`
+- **Warehouse**: Your serverless or Pro warehouse
+
+For production deployment, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
+## Alternative Development Setup: APX
+
+For unified hot-reload experience:
+
+```bash
+# Install APX
+uvx --index https://databricks-solutions.github.io/apx/simple apx init
+
+# Start dev server (auto-reloads both backend and frontend)
+apx dev start
+```
+
+See archived `docs/archive/development-notes/APX_SETUP.md` for details.
 
 ## Next Steps
 
-- [ ] Explore the DATA stage (browse sheets)
-- [ ] Explore the GENERATE stage (create training sheets)
-- [ ] Explore the LABEL stage (review Q&A pairs)
-- [ ] Explore the TOOLS section (templates, canonical labels)
+- **Customize templates** for your use cases
+- **Import real data** from your Unity Catalog tables
+- **Review the PRD** at `docs/PRD.md` for complete feature list
+- **Deploy to production** following [DEPLOYMENT.md](DEPLOYMENT.md)
+
+## Sample Data Details
+
+The seed script creates:
+
+### Training Sheets (3)
+1. **PCB Defect Detection** - Vision inspection with sensor context
+2. **Sensor Monitoring** - Predictive maintenance telemetry
+3. **Anomaly Stream** - Real-time anomaly detection
+
+### Templates (3)
+1. **Defect Classifier** - Image + context → classification
+2. **Predictive Maintenance** - Telemetry → failure probability
+3. **Anomaly Detector** - Sensor stream → alert + explanation
+
+### Canonical Labels
+Sample expert-labeled ground truth for defect detection.
+
+## Additional Documentation
+
+- **[README.md](README.md)** - Project overview and architecture
+- **[CLAUDE.md](CLAUDE.md)** - AI assistant context (full technical details)
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide
+- **[RUNBOOK.md](RUNBOOK.md)** - Operations and troubleshooting
+- **[docs/PRD.md](docs/PRD.md)** - Product requirements document
 
 ## Support
 
-For issues or questions:
-- Check `CLAUDE.md` for project documentation
-- Check `backend/CLAUDE.md` for backend specifics
-- Check `backend/TASK3_COMPLETION.md` for API details
+For issues:
+1. Check [RUNBOOK.md](RUNBOOK.md) for common issues
+2. Review backend logs for errors
+3. Verify database schema matches code expectations
+
+---
+
+**Ready?** Run through Steps 1-4 above and you'll have VITAL Workbench running locally in under 10 minutes.

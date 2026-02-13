@@ -2,8 +2,8 @@
  * CuratedDatasetForm - Create/Edit form for curated datasets
  */
 
-import { useState, useEffect } from 'react';
-import { Plus, X, Info } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, X } from 'lucide-react';
 import {
   useCreateCuratedDataset,
   useUpdateCuratedDataset,
@@ -25,7 +25,7 @@ export function CuratedDatasetForm({
   const isEditing = !!dataset;
   const createMutation = useCreateCuratedDataset();
   const updateMutation = useUpdateCuratedDataset();
-  const { showToast } = useToast();
+  const { success: successToast, error: errorToast } = useToast();
 
   // Form state
   const [name, setName] = useState(dataset?.name || '');
@@ -118,7 +118,7 @@ export function CuratedDatasetForm({
 
     // Validation
     if (!name.trim()) {
-      showToast('Name is required', 'error');
+      errorToast('Name is required');
       return;
     }
 
@@ -126,7 +126,7 @@ export function CuratedDatasetForm({
     const sum =
       splitConfig.train_pct + splitConfig.val_pct + splitConfig.test_pct;
     if (Math.abs(sum - 1.0) > 0.01) {
-      showToast('Split percentages must sum to 100%', 'error');
+      errorToast('Split percentages must sum to 100%');
       return;
     }
 
@@ -146,7 +146,7 @@ export function CuratedDatasetForm({
             prohibited_uses: prohibitedUses,
           },
         });
-        showToast('Dataset updated successfully', 'success');
+        successToast('Dataset updated successfully');
         onSaved(updated);
       } else {
         const created = await createMutation.mutateAsync({
@@ -161,13 +161,12 @@ export function CuratedDatasetForm({
           intended_models: intendedModels,
           prohibited_uses: prohibitedUses,
         });
-        showToast('Dataset created successfully', 'success');
+        successToast('Dataset created successfully');
         onSaved(created);
       }
     } catch (error: any) {
-      showToast(
-        error.message || `Failed to ${isEditing ? 'update' : 'create'} dataset`,
-        'error'
+      errorToast(
+        error.message || `Failed to ${isEditing ? 'update' : 'create'} dataset`
       );
     }
   };

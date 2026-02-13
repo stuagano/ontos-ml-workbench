@@ -289,12 +289,10 @@ export function LabelStudioAnnotator({
           onLabelStudioLoad: () => {
             if (mounted) {
               setIsReady(true);
-              console.log("[LabelStudioAnnotator] Loaded successfully");
             }
           },
 
           onSubmitAnnotation: (_ls: any, annotation: any) => {
-            console.log("[LabelStudioAnnotator] Submit:", annotation);
             const result: Annotation = {
               id: annotation.id || `annotation-${Date.now()}`,
               result: annotation.serializeAnnotation(),
@@ -304,7 +302,6 @@ export function LabelStudioAnnotator({
           },
 
           onUpdateAnnotation: (_ls: any, annotation: any) => {
-            console.log("[LabelStudioAnnotator] Update:", annotation);
             if (onUpdate) {
               const result: Annotation = {
                 id: annotation.id,
@@ -316,14 +313,13 @@ export function LabelStudioAnnotator({
           },
 
           onDeleteAnnotation: (_ls: any, annotation: any) => {
-            console.log("[LabelStudioAnnotator] Delete:", annotation);
             if (onDelete) {
               onDelete(annotation.id);
             }
           },
 
           onSkipTask: () => {
-            console.log("[LabelStudioAnnotator] Skip");
+            // Task skipped
           },
         });
       } catch (error) {

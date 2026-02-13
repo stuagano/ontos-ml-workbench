@@ -18,6 +18,7 @@ import type {
   ItemLabelsets,
   UsageConstraintCheck,
   UsageConstraintCheckResponse,
+  UsageType,
 } from "../types";
 
 const API_BASE = "/api/v1/canonical-labels";
@@ -468,14 +469,14 @@ export async function createCanonicalLabelWithDefaults(
     label_data: labelData,
     confidence: options?.confidence || "high",
     notes: options?.notes,
-    allowed_uses: options?.allowedUses || [
+    allowed_uses: (options?.allowedUses || [
       "training",
       "validation",
       "evaluation",
       "few_shot",
       "testing",
-    ],
-    prohibited_uses: options?.prohibitedUses || [],
+    ]) as UsageType[],
+    prohibited_uses: (options?.prohibitedUses || []) as UsageType[],
     data_classification: "internal",
     labeled_by: labeledBy,
   });

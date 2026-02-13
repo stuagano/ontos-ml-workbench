@@ -1,0 +1,34 @@
+{
+  "defectDetection": {
+    "name": "E2E Test Defect Detection Sheet",
+    "description": "Inspection images with defect classifications for E2E testing",
+    "source_type": "unity_catalog_volume",
+    "source_path": "/Volumes/catalog/schema/test_inspection_images",
+    "data_type": "image",
+    "status": "active"
+  },
+  "predictiveMaintenance": {
+    "name": "E2E Test Maintenance Sheet",
+    "description": "Equipment telemetry for predictive maintenance E2E testing",
+    "source_type": "unity_catalog_table",
+    "source_path": "catalog.schema.test_equipment_telemetry",
+    "data_type": "tabular",
+    "status": "active"
+  },
+  "anomalyDetection": {
+    "name": "E2E Test Anomaly Detection Sheet",
+    "description": "Sensor streams with labeled anomalies for E2E testing",
+    "source_type": "unity_catalog_table",
+    "source_path": "catalog.schema.test_sensor_readings",
+    "data_type": "timeseries",
+    "status": "active"
+  },
+  "calibration": {
+    "name": "E2E Test Calibration Sheet",
+    "description": "Monte Carlo simulation outputs for E2E testing",
+    "source_type": "unity_catalog_table",
+    "source_path": "catalog.schema.test_mc_results",
+    "data_type": "tabular",
+    "status": "active"
+  }
+}

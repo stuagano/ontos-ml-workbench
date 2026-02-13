@@ -212,31 +212,29 @@ async def update_labelset(labelset_id: str, updates: LabelsetUpdate) -> Labelset
     now = datetime.utcnow().isoformat()
 
     if updates.name is not None:
-        update_fields.append(f"name = '{updates.name.replace("'", "''")}'")
+        escaped_name = updates.name.replace("'", "''")
+        update_fields.append(f"name = '{escaped_name}'")
     if updates.description is not None:
-        update_fields.append(
-            f"description = '{updates.description.replace("'", "''")}'"
-        )
+        escaped_desc = updates.description.replace("'", "''")
+        update_fields.append(f"description = '{escaped_desc}'")
     if updates.label_classes is not None:
         label_classes_json = json.dumps(
             [lc.model_dump() for lc in updates.label_classes]
         )
-        update_fields.append(
-            f"label_classes = '{label_classes_json.replace("'", "''")}'"
-        )
+        escaped_json = label_classes_json.replace("'", "''")
+        update_fields.append(f"label_classes = '{escaped_json}'")
     if updates.response_schema is not None:
         response_schema_json = json.dumps(updates.response_schema.model_dump())
-        update_fields.append(
-            f"response_schema = '{response_schema_json.replace("'", "''")}'"
-        )
+        escaped_schema = response_schema_json.replace("'", "''")
+        update_fields.append(f"response_schema = '{escaped_schema}'")
     if updates.allowed_uses is not None:
         allowed_uses_json = json.dumps(updates.allowed_uses)
-        update_fields.append(f"allowed_uses = '{allowed_uses_json.replace("'", "''")}'")
+        escaped_allowed = allowed_uses_json.replace("'", "''")
+        update_fields.append(f"allowed_uses = '{escaped_allowed}'")
     if updates.prohibited_uses is not None:
         prohibited_uses_json = json.dumps(updates.prohibited_uses)
-        update_fields.append(
-            f"prohibited_uses = '{prohibited_uses_json.replace("'", "''")}'"
-        )
+        escaped_prohibited = prohibited_uses_json.replace("'", "''")
+        update_fields.append(f"prohibited_uses = '{escaped_prohibited}'")
     if updates.tags is not None:
         tags_json = json.dumps(updates.tags)
         update_fields.append(f"tags = '{tags_json.replace("'", "''")}'")

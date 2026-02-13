@@ -4,7 +4,6 @@
  * Displays aggregated statistics for canonical labels in a sheet.
  */
 
-import React from "react";
 import { useSheetCanonicalStats } from "../hooks/useCanonicalLabels";
 import type { CanonicalLabel } from "../types";
 
@@ -52,7 +51,7 @@ export function CanonicalLabelStats({
         </div>
 
         {/* Coverage */}
-        {stats.coverage_percent !== null && (
+        {stats.coverage_percent != null && (
           <div className="bg-white border rounded-lg p-4">
             <div className="text-sm text-gray-600 mb-1">Coverage</div>
             <div className="text-3xl font-bold text-green-600">

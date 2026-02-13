@@ -14,7 +14,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
-  Play,
   CheckCircle,
   XCircle,
   Clock,
@@ -25,19 +24,16 @@ import {
   GitBranch,
   ExternalLink,
   Calendar,
-  User,
   Zap,
 } from "lucide-react";
 import {
   getTrainingJob,
-  pollTrainingJob,
   cancelTrainingJob,
   getTrainingJobMetrics,
   getTrainingJobEvents,
   getTrainingJobLineage,
 } from "../services/api";
 import { useToast } from "./Toast";
-import type { TrainingJob } from "../types";
 
 interface TrainingJobDetailProps {
   jobId: string;
@@ -45,7 +41,7 @@ interface TrainingJobDetailProps {
 }
 
 export function TrainingJobDetail({ jobId, onBack }: TrainingJobDetailProps) {
-  const { toast } = useToast();
+  const { success: successToast, error: errorToast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<
     "overview" | "metrics" | "events" | "lineage"
@@ -94,18 +90,11 @@ export function TrainingJobDetail({ jobId, onBack }: TrainingJobDetailProps) {
   const cancelJob = useMutation({
     mutationFn: () => cancelTrainingJob(jobId),
     onSuccess: () => {
-      toast({
-        title: "Job Cancelled",
-        description: "Training job has been cancelled",
-      });
+      successToast("Job Cancelled", "Training job has been cancelled");
       queryClient.invalidateQueries({ queryKey: ["training-job", jobId] });
     },
     onError: (error: any) => {
-      toast({
-        title: "Failed to Cancel",
-        description: error.message || "Unknown error",
-        variant: "destructive",
-      });
+      errorToast("Failed to Cancel", error.message || "Unknown error");
     },
   });
 
@@ -330,13 +319,13 @@ export function TrainingJobDetail({ jobId, onBack }: TrainingJobDetailProps) {
                 <div>
                   <dt className="text-sm text-db-gray-500">Duration</dt>
                   <dd className="mt-1 text-sm font-medium text-db-gray-900">
-                    {formatDuration(job.duration_seconds)}
+                    {formatDuration(job.duration_seconds ?? null)}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-sm text-db-gray-500">Created</dt>
                   <dd className="mt-1 text-sm font-medium text-db-gray-900">
-                    {formatTimestamp(job.created_at)}
+                    {formatTimestamp(job.created_at ?? "")}
                   </dd>
                 </div>
               </dl>
@@ -437,7 +426,7 @@ export function TrainingJobDetail({ jobId, onBack }: TrainingJobDetailProps) {
         {activeTab === "metrics" && metrics && (
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
-              {metrics.final_train_loss !== null && (
+              {metrics.final_train_loss != null && (
                 <div className="bg-white border border-db-gray-200 rounded-lg p-4">
                   <div className="text-sm text-db-gray-500 mb-1">
                     Final Train Loss
@@ -447,7 +436,7 @@ export function TrainingJobDetail({ jobId, onBack }: TrainingJobDetailProps) {
                   </div>
                 </div>
               )}
-              {metrics.final_val_loss !== null && (
+              {metrics.final_val_loss != null && (
                 <div className="bg-white border border-db-gray-200 rounded-lg p-4">
                   <div className="text-sm text-db-gray-500 mb-1">
                     Final Val Loss
@@ -457,7 +446,7 @@ export function TrainingJobDetail({ jobId, onBack }: TrainingJobDetailProps) {
                   </div>
                 </div>
               )}
-              {metrics.best_val_accuracy !== null && (
+              {metrics.best_val_accuracy != null && (
                 <div className="bg-white border border-db-gray-200 rounded-lg p-4">
                   <div className="text-sm text-db-gray-500 mb-1">
                     Best Accuracy
@@ -486,12 +475,12 @@ export function TrainingJobDetail({ jobId, onBack }: TrainingJobDetailProps) {
         {/* Events Tab */}
         {activeTab === "events" && (
           <div className="space-y-2">
-            {!events || events.length === 0 ? (
+            {!events?.events || events.events.length === 0 ? (
               <div className="text-center py-8 text-db-gray-500">
                 No events recorded
               </div>
             ) : (
-              events.map((event) => (
+              events.events.map((event) => (
                 <div
                   key={event.id}
                   className="flex items-start gap-3 p-3 bg-white border border-db-gray-200 rounded-lg"
@@ -511,13 +500,13 @@ export function TrainingJobDetail({ jobId, onBack }: TrainingJobDetailProps) {
                         {event.message}
                       </p>
                     )}
-                    {event.details && (
+                    {event.event_data && (
                       <details className="mt-2">
                         <summary className="text-xs text-db-gray-500 cursor-pointer">
                           Details
                         </summary>
                         <pre className="text-xs bg-db-gray-50 p-2 rounded mt-1 overflow-x-auto">
-                          {JSON.stringify(event.details, null, 2)}
+                          {JSON.stringify(event.event_data, null, 2)}
                         </pre>
                       </details>
                     )}
@@ -601,9 +590,11 @@ export function TrainingJobDetail({ jobId, onBack }: TrainingJobDetailProps) {
                 </h3>
                 <div className="text-sm text-db-gray-600">
                   <div className="font-medium">{lineage.template.name}</div>
-                  <div className="text-xs text-db-gray-500 mt-1">
-                    {lineage.template.description}
-                  </div>
+                  {lineage.template.label_type && (
+                    <div className="text-xs text-db-gray-500 mt-1">
+                      Label Type: {lineage.template.label_type}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

@@ -124,34 +124,13 @@ export function TemplatePage({ onEditTemplate, onClose }: TemplatePageProps) {
   const { data, isLoading, error, isError } = useQuery({
     queryKey: ["templates", search, statusFilter],
     queryFn: async () => {
-      console.log("🔍 TemplatePage: Fetching templates with params:", {
-        search: search || undefined,
-        status: statusFilter || undefined,
-      });
-
       const result = await listTemplates({
         search: search || undefined,
         status: statusFilter || undefined,
       });
 
-      console.log("✅ TemplatePage: Received data:", {
-        total: result.total,
-        templatesCount: result.templates?.length,
-        templates: result.templates,
-      });
-
       return result;
     },
-  });
-
-  // Debug logging
-  console.log("📊 TemplatePage render state:", {
-    isLoading,
-    isError,
-    error: error?.message,
-    dataTotal: data?.total,
-    templatesLength: data?.templates?.length,
-    templates: data?.templates,
   });
 
   const deleteMutation = useMutation({
@@ -498,7 +477,9 @@ export function TemplatePage({ onEditTemplate, onClose }: TemplatePageProps) {
                 data={templates}
                 columns={columns}
                 rowKey={(template) => template.id}
-                onRowClick={handleSelectTemplate}
+                onRowClick={(template) => {
+                  onEditTemplate(template);
+                }}
                 rowActions={rowActions}
                 emptyState={emptyState}
               />

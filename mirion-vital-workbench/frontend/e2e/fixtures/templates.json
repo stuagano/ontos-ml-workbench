@@ -1,0 +1,38 @@
+{
+  "defectClassification": {
+    "name": "E2E Test Defect Classification Template",
+    "description": "Classify defects in inspection images",
+    "label_type": "defect_type",
+    "template_text": "Analyze this inspection image and classify the defect type. Image: {image_path}. Context: {sensor_data}. Expected output: defect classification (crack, corrosion, wear, none).",
+    "input_variables": ["image_path", "sensor_data"],
+    "output_format": "classification",
+    "status": "active"
+  },
+  "failurePrediction": {
+    "name": "E2E Test Failure Prediction Template",
+    "description": "Predict equipment failure probability",
+    "label_type": "failure_risk",
+    "template_text": "Based on the following equipment telemetry data: {telemetry}, predict the failure probability. Include confidence score and remaining useful life estimate.",
+    "input_variables": ["telemetry"],
+    "output_format": "structured",
+    "status": "active"
+  },
+  "anomalyDetection": {
+    "name": "E2E Test Anomaly Detection Template",
+    "description": "Detect anomalies in sensor streams",
+    "label_type": "anomaly_type",
+    "template_text": "Analyze this sensor data stream: {sensor_stream}. Identify any anomalies and classify them. Expected output: anomaly type (spike, drift, pattern_break, none) with explanation.",
+    "input_variables": ["sensor_stream"],
+    "output_format": "classification_with_explanation",
+    "status": "active"
+  },
+  "calibrationInsights": {
+    "name": "E2E Test Calibration Insights Template",
+    "description": "Generate calibration recommendations from MC results",
+    "label_type": "calibration_recommendation",
+    "template_text": "Review these Monte Carlo simulation results: {mc_results}. Provide calibration recommendations and confidence intervals.",
+    "input_variables": ["mc_results"],
+    "output_format": "recommendation",
+    "status": "active"
+  }
+}

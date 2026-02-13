@@ -85,7 +85,7 @@ def _row_to_canonical_label(row: dict) -> CanonicalLabelResponse:
         version=row.get("version", 1),
         reuse_count=row.get("reuse_count", 0),
         last_used_at=row.get("last_used_at"),
-        created_at=row["created_at"],
+        created_at=row["labeled_at"],  # Use labeled_at as created_at (table has no created_at column)
     )
 
 
@@ -130,7 +130,7 @@ async def create_canonical_label(
     sheet_sql = f"""
         SELECT COUNT(*) as count
         FROM {SHEETS_TABLE}
-        WHERE sheet_id = '{label.sheet_id}'
+        WHERE id = '{label.sheet_id}'
     """
     sheet_result = _sql.execute(sheet_sql)
     if not sheet_result or sheet_result[0]["count"] == 0:
@@ -421,7 +421,7 @@ async def list_canonical_labels(
         SELECT *
         FROM {CANONICAL_LABELS_TABLE}
         {where_clause}
-        ORDER BY created_at DESC
+        ORDER BY labeled_at DESC
         LIMIT {page_size} OFFSET {offset}
     """
     result = _sql.execute(list_sql)

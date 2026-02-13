@@ -22,30 +22,24 @@ interface StageSubNavProps {
 const stageLabels: Record<PipelineStage, { browse: string; create: string; browseIcon: typeof Library; createIcon: typeof Plus }> = {
   data: {
     browse: "Unity Catalog",
-    create: "New Sheet",
+    create: "New Dataset",
     browseIcon: FolderOpen,
     createIcon: Plus,
   },
-  template: {
-    browse: "Template Library",
-    create: "New Template",
+  label: {
+    browse: "Review Q&A Pairs",
+    create: "Batch Operations",
     browseIcon: Library,
     createIcon: Plus,
   },
   curate: {
-    browse: "Curation Queue",
-    create: "Add Items",
-    browseIcon: Library,
-    createIcon: Plus,
-  },
-  label: {
-    browse: "Labeling Tasks",
-    create: "New Task",
+    browse: "Curated Datasets",
+    create: "New Dataset",
     browseIcon: Library,
     createIcon: Plus,
   },
   train: {
-    browse: "Assemblies",
+    browse: "Training Data",
     create: "Configure Training",
     browseIcon: Library,
     createIcon: Sparkles,
@@ -73,9 +67,8 @@ const stageLabels: Record<PipelineStage, { browse: string; create: string; brows
 // Stage colors (matching PipelineBreadcrumb)
 const stageColors: Record<PipelineStage, { active: string; inactive: string }> = {
   data: { active: "bg-blue-600 text-white", inactive: "text-blue-700 hover:bg-blue-50" },
-  template: { active: "bg-purple-600 text-white", inactive: "text-purple-700 hover:bg-purple-50" },
-  curate: { active: "bg-amber-600 text-white", inactive: "text-amber-700 hover:bg-amber-50" },
   label: { active: "bg-orange-600 text-white", inactive: "text-orange-700 hover:bg-orange-50" },
+  curate: { active: "bg-amber-600 text-white", inactive: "text-amber-700 hover:bg-amber-50" },
   train: { active: "bg-green-600 text-white", inactive: "text-green-700 hover:bg-green-50" },
   deploy: { active: "bg-cyan-600 text-white", inactive: "text-cyan-700 hover:bg-cyan-50" },
   monitor: { active: "bg-rose-600 text-white", inactive: "text-rose-700 hover:bg-rose-50" },
@@ -83,10 +76,11 @@ const stageColors: Record<PipelineStage, { active: string; inactive: string }> =
 };
 
 export function StageSubNav({ stage, mode, onModeChange, browseCount }: StageSubNavProps) {
-  const labels = stageLabels[stage];
-  const colors = stageColors[stage];
-  const BrowseIcon = labels.browseIcon;
-  const CreateIcon = labels.createIcon;
+  // Safe fallback to prevent crashes if stage is undefined or not in stageLabels
+  const labels = stageLabels[stage] || stageLabels.data;
+  const colors = stageColors[stage] || stageColors.data;
+  const BrowseIcon = labels?.browseIcon || Library;
+  const CreateIcon = labels?.createIcon || Plus;
 
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-db-gray-200 dark:border-gray-700 px-4 py-2">

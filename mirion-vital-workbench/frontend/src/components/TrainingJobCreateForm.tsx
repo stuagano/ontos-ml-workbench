@@ -9,10 +9,10 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Play, Loader2, AlertCircle, Info } from "lucide-react";
+import { Play, Loader2, Info } from "lucide-react";
 import { createTrainingJob } from "../services/api";
 import { useToast } from "./Toast";
-import type { AssembledDataset, TrainingJobCreateRequest, AVAILABLE_TRAINING_MODELS } from "../types";
+import type { AssembledDataset, TrainingJobCreateRequest } from "../types";
 
 interface TrainingJobCreateFormProps {
   assembly: AssembledDataset;
@@ -48,7 +48,7 @@ const TRAINING_MODELS = [
 ];
 
 export function TrainingJobCreateForm({ assembly, onSuccess, onCancel }: TrainingJobCreateFormProps) {
-  const { toast } = useToast();
+  const { success: successToast, error: errorToast } = useToast();
 
   // Form state (UI only - not business logic)
   const [modelName, setModelName] = useState(`${assembly.sheet_name || 'model'}-v1`.replace(/\s+/g, '-').toLowerCase());
@@ -68,18 +68,11 @@ export function TrainingJobCreateForm({ assembly, onSuccess, onCancel }: Trainin
       return createTrainingJob(request);
     },
     onSuccess: (job) => {
-      toast({
-        title: "Training Job Created",
-        description: `Job ${job.id.slice(0, 8)} submitted successfully`,
-      });
+      successToast("Training Job Created", `Job ${job.id.slice(0, 8)} submitted successfully`);
       onSuccess(job.id);
     },
     onError: (error: any) => {
-      toast({
-        title: "Failed to Create Job",
-        description: error.message || "Unknown error",
-        variant: "destructive",
-      });
+      errorToast("Failed to Create Job", error.message || "Unknown error");
     },
   });
 
@@ -88,20 +81,12 @@ export function TrainingJobCreateForm({ assembly, onSuccess, onCancel }: Trainin
 
     // Basic UI validation
     if (!modelName.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Model name is required",
-        variant: "destructive",
-      });
+      errorToast("Validation Error", "Model name is required");
       return;
     }
 
     if (eligibleForTraining < 10) {
-      toast({
-        title: "Insufficient Data",
-        description: "Need at least 10 labeled pairs for training",
-        variant: "destructive",
-      });
+      errorToast("Insufficient Data", "Need at least 10 labeled pairs for training");
       return;
     }
 

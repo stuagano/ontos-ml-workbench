@@ -23,6 +23,7 @@ import {
   Moon,
   Monitor,
   Check,
+  ShieldCheck,
 } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -59,31 +60,31 @@ interface StageConfig {
 const LIFECYCLE_STAGES: StageConfig[] = [
   {
     id: "data",
-    label: "Sheets",
+    label: "Datasets",
     icon: Database,
     color: "text-blue-500",
     description: "Create and manage data sources",
   },
   {
-    id: "curate",
-    label: "Generate",
-    icon: ClipboardList,
-    color: "text-amber-500",
-    description: "Generate AI labels and responses",
-  },
-  {
     id: "label",
-    label: "Review",
+    label: "Label",
     icon: Tag,
     color: "text-orange-500",
-    description: "Review and verify labeled examples",
+    description: "Review and label Q&A pairs",
+  },
+  {
+    id: "curate",
+    label: "Curate",
+    icon: ClipboardList,
+    color: "text-amber-500",
+    description: "Build training and validation sets",
   },
   {
     id: "train",
     label: "Train",
     icon: Cpu,
     color: "text-green-500",
-    description: "Fine-tune models",
+    description: "Fine-tune models with curated data",
   },
   {
     id: "deploy",
@@ -130,6 +131,20 @@ const TOOLS_CONFIG = {
     icon: Beaker,
     color: "text-pink-500",
     description: "Optimize prompts with DSPy",
+  },
+  canonicalLabeling: {
+    id: "canonical-labeling",
+    label: "Canonical Labels",
+    icon: Tag,
+    color: "text-orange-500",
+    description: "Label source data directly",
+  },
+  dataQuality: {
+    id: "data-quality",
+    label: "Data Quality",
+    icon: ShieldCheck,
+    color: "text-teal-500",
+    description: "DQX data quality checks & monitoring",
   },
 };
 
@@ -286,6 +301,10 @@ interface ToolsNavProps {
   onToggleExamples: () => void;
   showDSPyOptimizer: boolean;
   onToggleDSPyOptimizer: () => void;
+  showCanonicalLabeling: boolean;
+  onToggleCanonicalLabeling: () => void;
+  showDataQuality: boolean;
+  onToggleDataQuality: () => void;
 }
 
 function ToolsNav({
@@ -295,11 +314,17 @@ function ToolsNav({
   onToggleExamples,
   showDSPyOptimizer,
   onToggleDSPyOptimizer,
+  showCanonicalLabeling,
+  onToggleCanonicalLabeling,
+  showDataQuality,
+  onToggleDataQuality,
 }: ToolsNavProps) {
   const { open } = useSidebar();
   const PromptTemplatesIcon = TOOLS_CONFIG.promptTemplates.icon;
   const ExampleStoreIcon = TOOLS_CONFIG.exampleStore.icon;
   const DSPyIcon = TOOLS_CONFIG.dspyOptimizer.icon;
+  const CanonicalLabelingIcon = TOOLS_CONFIG.canonicalLabeling.icon;
+  const DataQualityIcon = TOOLS_CONFIG.dataQuality.icon;
 
   return (
     <SidebarGroup>
@@ -361,6 +386,44 @@ function ToolsNav({
             {open && <span>{TOOLS_CONFIG.dspyOptimizer.label}</span>}
           </SidebarMenuButton>
         </SidebarMenuItem>
+
+        {/* Canonical Labeling */}
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            isActive={showCanonicalLabeling}
+            tooltip={TOOLS_CONFIG.canonicalLabeling.description}
+            onClick={onToggleCanonicalLabeling}
+          >
+            <CanonicalLabelingIcon
+              className={clsx(
+                "w-5 h-5 flex-shrink-0",
+                showCanonicalLabeling
+                  ? TOOLS_CONFIG.canonicalLabeling.color
+                  : "text-db-gray-500",
+              )}
+            />
+            {open && <span>{TOOLS_CONFIG.canonicalLabeling.label}</span>}
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+
+        {/* Data Quality */}
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            isActive={showDataQuality}
+            tooltip={TOOLS_CONFIG.dataQuality.description}
+            onClick={onToggleDataQuality}
+          >
+            <DataQualityIcon
+              className={clsx(
+                "w-5 h-5 flex-shrink-0",
+                showDataQuality
+                  ? TOOLS_CONFIG.dataQuality.color
+                  : "text-db-gray-500",
+              )}
+            />
+            {open && <span>{TOOLS_CONFIG.dataQuality.label}</span>}
+          </SidebarMenuButton>
+        </SidebarMenuItem>
       </SidebarMenu>
     </SidebarGroup>
   );
@@ -383,6 +446,10 @@ interface AppLayoutProps {
   onToggleExamples: () => void;
   showDSPyOptimizer: boolean;
   onToggleDSPyOptimizer: () => void;
+  showCanonicalLabeling: boolean;
+  onToggleCanonicalLabeling: () => void;
+  showDataQuality: boolean;
+  onToggleDataQuality: () => void;
 }
 
 export function AppLayout({
@@ -398,6 +465,10 @@ export function AppLayout({
   onToggleExamples,
   showDSPyOptimizer,
   onToggleDSPyOptimizer,
+  showCanonicalLabeling,
+  onToggleCanonicalLabeling,
+  showDataQuality,
+  onToggleDataQuality,
 }: AppLayoutProps) {
   return (
     <SidebarProvider>
@@ -419,6 +490,10 @@ export function AppLayout({
             onToggleExamples={onToggleExamples}
             showDSPyOptimizer={showDSPyOptimizer}
             onToggleDSPyOptimizer={onToggleDSPyOptimizer}
+            showCanonicalLabeling={showCanonicalLabeling}
+            onToggleCanonicalLabeling={onToggleCanonicalLabeling}
+            showDataQuality={showDataQuality}
+            onToggleDataQuality={onToggleDataQuality}
           />
         </SidebarContent>
 

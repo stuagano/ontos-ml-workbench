@@ -53,6 +53,8 @@ claude-flow
 hive-mind-prompt-*.txt
 
 # Python
+venv/
+.venv/
 __pycache__/
 *.py[cod]
 *$py.class
@@ -94,6 +96,9 @@ TESTING_*.md
 
 # Shell scripts in root (should be in scripts/)
 /*.sh
+
+# DQX static UI (build artifact - regenerate with scripts in Phase 3)
+backend/dqx-static/
 
 # Playwright
 .playwright-mcp/

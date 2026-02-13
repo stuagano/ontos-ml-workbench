@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.errors import NotFound, PermissionDenied
+from databricks.sdk.service.sql import StatementState
 
 from app.core.databricks import get_workspace_client, get_current_user
 from app.core.config import get_settings
@@ -25,17 +26,23 @@ class SheetService:
         self.catalog = self.settings.databricks_catalog
         self.schema = self.settings.databricks_schema
         self.table_name = f"{self.catalog}.{self.schema}.sheets"
+        self.query_timeout = self.settings.sql_query_timeout_seconds
 
-        # Get SQL warehouse for queries
-        self.warehouse_id = self.settings.databricks_warehouse_id
-        if not self.warehouse_id:
-            # Try to find a warehouse
-            warehouses = list(self.client.warehouses.list())
-            if warehouses:
-                self.warehouse_id = warehouses[0].id
-                logger.info(f"Using SQL warehouse: {warehouses[0].name}")
-            else:
-                raise ValueError("No SQL warehouse found. Please configure DATABRICKS_WAREHOUSE_ID")
+        # Get SQL warehouse for queries (or use serverless)
+        if self.settings.use_serverless_sql:
+            self.warehouse_id = None
+            logger.info("Using serverless SQL compute")
+        else:
+            self.warehouse_id = self.settings.databricks_warehouse_id
+            if not self.warehouse_id:
+                # Try to find a warehouse
+                warehouses = list(self.client.warehouses.list())
+                if warehouses:
+                    self.warehouse_id = warehouses[0].id
+                    logger.info(f"Using SQL warehouse: {warehouses[0].name}")
+                else:
+                    logger.warning("No SQL warehouse configured. Falling back to serverless SQL.")
+                    self.warehouse_id = None
 
     def validate_uc_table(self, table_path: str) -> bool:
         """
@@ -99,36 +106,56 @@ class SheetService:
         except PermissionDenied:
             raise PermissionDenied(f"No access to Unity Catalog volume: {volume_path}")
 
-    def get_table_row_count(self, table_path: str) -> int:
+    def get_table_row_count(self, table_path: str, timeout_seconds: int = 30) -> int:
         """
         Get row count for a Unity Catalog table
 
         Args:
             table_path: Full table path like "catalog.schema.table"
+            timeout_seconds: Maximum time to wait for count query
 
         Returns:
             Number of rows in the table
         """
         sql = f"SELECT COUNT(*) as count FROM {table_path}"
 
-        result = self.client.statement_execution.execute_statement(
-            statement=sql,
-            warehouse_id=self.warehouse_id
-        )
+        # Build kwargs for execute_statement
+        execute_kwargs = {
+            "statement": sql,
+            "wait_timeout": "0s"
+        }
+        if self.warehouse_id:
+            execute_kwargs["warehouse_id"] = self.warehouse_id
 
-        # Poll for result
+        result = self.client.statement_execution.execute_statement(**execute_kwargs)
+
+        # Poll for result with configurable timeout
         import time
-        for _ in range(30):
+        start_time = time.time()
+        poll_interval = 0.1
+        max_poll_interval = 1.0
+
+        while True:
+            elapsed = time.time() - start_time
+            if elapsed > timeout_seconds:
+                try:
+                    self.client.statement_execution.cancel_execution(result.statement_id)
+                except:
+                    pass
+                raise TimeoutError(f"Row count query timed out after {timeout_seconds}s for table {table_path}")
+
             status = self.client.statement_execution.get_statement(result.statement_id)
-            if status.status.state == 'SUCCEEDED':
+
+            if status.status.state == StatementState.SUCCEEDED:
                 if status.result and status.result.data_array:
                     return int(status.result.data_array[0][0])
                 return 0
-            elif status.status.state in ['FAILED', 'CANCELED']:
-                raise RuntimeError(f"Query failed: {status.status.error}")
-            time.sleep(1)
+            elif status.status.state in [StatementState.FAILED, StatementState.CANCELED]:
+                error_msg = status.status.error.message if status.status.error else "Unknown error"
+                raise RuntimeError(f"Row count query failed: {error_msg}")
 
-        raise TimeoutError("Timed out waiting for row count query")
+            time.sleep(poll_interval)
+            poll_interval = min(poll_interval * 1.5, max_poll_interval)
 
     def get_table_columns(self, table_path: str) -> List[str]:
         """
@@ -154,6 +181,81 @@ class SheetService:
         except Exception as e:
             logger.error(f"Failed to get columns for {table_path}: {e}")
             return []
+
+    def get_table_preview(self, table_path: str, limit: int = 50, timeout_seconds: int = 30) -> Dict[str, Any]:
+        """
+        Get preview data from a Unity Catalog table
+
+        Args:
+            table_path: Full table path like "catalog.schema.table"
+            limit: Maximum number of rows to return
+            timeout_seconds: Maximum time to wait for query
+
+        Returns:
+            Dict with "rows" (list of dicts) and "count" (total row count)
+        """
+        from databricks.sdk.service.sql import StatementState
+        import time
+
+        # Get total row count
+        count = self.get_table_row_count(table_path, timeout_seconds=timeout_seconds)
+
+        # Get preview rows
+        sql = f"SELECT * FROM {table_path} LIMIT {limit}"
+
+        execute_kwargs = {
+            "statement": sql,
+            "wait_timeout": "0s"
+        }
+        if self.warehouse_id:
+            execute_kwargs["warehouse_id"] = self.warehouse_id
+
+        result = self.client.statement_execution.execute_statement(**execute_kwargs)
+
+        # Poll for result
+        start_time = time.time()
+        poll_interval = 0.1
+        max_poll_interval = 1.0
+
+        while True:
+            elapsed = time.time() - start_time
+            if elapsed > timeout_seconds:
+                try:
+                    self.client.statement_execution.cancel_execution(result.statement_id)
+                except:
+                    pass
+                raise TimeoutError(f"Preview query timed out after {timeout_seconds}s")
+
+            status = self.client.statement_execution.get_statement(result.statement_id)
+
+            if status.status.state == StatementState.SUCCEEDED:
+                rows = []
+                if status.result and status.result.data_array:
+                    # Get column names from manifest
+                    column_names = []
+                    if status.manifest and status.manifest.schema and status.manifest.schema.columns:
+                        column_names = [col.name for col in status.manifest.schema.columns]
+
+                    # Convert data_array to list of dicts
+                    for data_row in status.result.data_array:
+                        row_dict = {}
+                        for idx, value in enumerate(data_row):
+                            col_name = column_names[idx] if idx < len(column_names) else f"col_{idx}"
+                            row_dict[col_name] = value
+                        rows.append(row_dict)
+
+                return {
+                    "rows": rows,
+                    "count": count
+                }
+
+            elif status.status.state in [StatementState.FAILED, StatementState.CANCELED]:
+                error_msg = status.status.error.message if status.status.error else "Unknown error"
+                raise Exception(f"Preview query failed: {error_msg}")
+
+            # Progressive backoff
+            time.sleep(poll_interval)
+            poll_interval = min(poll_interval * 1.5, max_poll_interval)
 
     def create_sheet(self, sheet_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -208,29 +310,72 @@ class SheetService:
         Returns:
             Sheet data or None if not found
         """
-        sql = f"SELECT * FROM {self.table_name} WHERE id = '{sheet_id}' AND status != 'deleted'"
+        # Select all columns for PRD v2.3 Sheet model
+        sql = f"""
+        SELECT id, name, description, status, source_type, source_table, source_volume, source_path,
+               item_id_column, text_columns, image_columns, metadata_columns,
+               sampling_strategy, sample_size, filter_expression, template_config,
+               item_count, last_validated_at, created_at, created_by, updated_at, updated_by
+        FROM {self.table_name}
+        WHERE id = '{sheet_id}' AND status != 'deleted'
+        LIMIT 1
+        """
 
-        result = self.client.statement_execution.execute_statement(
-            statement=sql,
-            warehouse_id=self.warehouse_id
-        )
+        # Build kwargs for execute_statement
+        execute_kwargs = {
+            "statement": sql,
+            "wait_timeout": "0s"
+        }
+        if self.warehouse_id:
+            execute_kwargs["warehouse_id"] = self.warehouse_id
 
-        # Poll for result
+        result = self.client.statement_execution.execute_statement(**execute_kwargs)
+
+        # Poll for result with timeout
         import time
-        for _ in range(30):
-            status = self.client.statement_execution.get_statement(result.statement_id)
-            if status.status.state == 'SUCCEEDED':
-                if status.result and status.result.data_array and len(status.result.data_array) > 0:
-                    # Convert row to dict
-                    row = status.result.data_array[0]
-                    columns = [col.name for col in status.result.manifest.schema.columns]
-                    return dict(zip(columns, row))
-                return None
-            elif status.status.state in ['FAILED', 'CANCELED']:
-                raise RuntimeError(f"Query failed: {status.status.error}")
-            time.sleep(1)
+        timeout_seconds = 30
+        start_time = time.time()
+        poll_interval = 0.1
+        max_poll_interval = 1.0
 
-        raise TimeoutError("Timed out waiting for query")
+        while True:
+            elapsed = time.time() - start_time
+            if elapsed > timeout_seconds:
+                try:
+                    self.client.statement_execution.cancel_execution(result.statement_id)
+                except:
+                    pass
+                raise TimeoutError(f"Query timed out after {timeout_seconds}s")
+
+            status = self.client.statement_execution.get_statement(result.statement_id)
+
+            if status.status.state == StatementState.SUCCEEDED:
+                if status.result and status.result.data_array and len(status.result.data_array) > 0:
+                    # Convert row to dict - columns match the SELECT statement
+                    row = status.result.data_array[0]
+                    columns = ["id", "name", "description", "status", "source_type", "source_table",
+                              "source_volume", "source_path", "item_id_column", "text_columns",
+                              "image_columns", "metadata_columns", "sampling_strategy", "sample_size",
+                              "filter_expression", "template_config", "item_count", "last_validated_at",
+                              "created_at", "created_by", "updated_at", "updated_by"]
+                    sheet_dict = dict(zip(columns, row))
+
+                    # Parse JSON arrays
+                    import json
+                    for col in ["text_columns", "image_columns", "metadata_columns"]:
+                        if col in sheet_dict and isinstance(sheet_dict[col], str):
+                            try:
+                                sheet_dict[col] = json.loads(sheet_dict[col])
+                            except:
+                                sheet_dict[col] = []
+                    return sheet_dict
+                return None
+            elif status.status.state in [StatementState.FAILED, StatementState.CANCELED]:
+                error_msg = status.status.error.message if status.status.error else "Unknown error"
+                raise RuntimeError(f"Query failed: {error_msg}")
+
+            time.sleep(poll_interval)
+            poll_interval = min(poll_interval * 1.5, max_poll_interval)
 
     def list_sheets(self, status_filter: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
         """
@@ -238,36 +383,89 @@ class SheetService:
 
         Args:
             status_filter: Optional status to filter by
-            limit: Maximum number of sheets to return
+            limit: Maximum number of sheets to return (capped at 1000 for safety)
 
         Returns:
             List of sheets
         """
+        # Cap limit to prevent huge result sets
+        limit = min(limit, 1000)
+
         where_clause = "WHERE status != 'deleted'"
         if status_filter:
             where_clause += f" AND status = '{status_filter}'"
 
-        sql = f"SELECT * FROM {self.table_name} {where_clause} ORDER BY created_at DESC LIMIT {limit}"
+        # Select all columns needed for PRD v2.3 Sheet model
+        sql = f"""
+        SELECT id, name, description, status, source_type, source_table, source_volume, source_path,
+               item_id_column, text_columns, image_columns, metadata_columns,
+               sampling_strategy, sample_size, filter_expression, template_config,
+               item_count, last_validated_at, created_at, created_by, updated_at, updated_by
+        FROM {self.table_name}
+        {where_clause}
+        ORDER BY created_at DESC
+        LIMIT {limit}
+        """
 
-        result = self.client.statement_execution.execute_statement(
-            statement=sql,
-            warehouse_id=self.warehouse_id
-        )
+        # Build kwargs for execute_statement
+        execute_kwargs = {
+            "statement": sql,
+            "wait_timeout": "0s"  # Don't wait, poll manually with better timeout control
+        }
+        if self.warehouse_id:
+            execute_kwargs["warehouse_id"] = self.warehouse_id
 
-        # Poll for result
+        result = self.client.statement_execution.execute_statement(**execute_kwargs)
+
+        # Poll for result with configurable timeout and adaptive backoff
         import time
-        for _ in range(30):
-            status = self.client.statement_execution.get_statement(result.statement_id)
-            if status.status.state == 'SUCCEEDED':
-                if status.result and status.result.data_array:
-                    columns = [col.name for col in status.result.manifest.schema.columns]
-                    return [dict(zip(columns, row)) for row in status.result.data_array]
-                return []
-            elif status.status.state in ['FAILED', 'CANCELED']:
-                raise RuntimeError(f"Query failed: {status.status.error}")
-            time.sleep(1)
+        timeout_seconds = 30  # Maximum wait time
+        start_time = time.time()
+        poll_interval = 0.1  # Start with fast polling
+        max_poll_interval = 1.0
 
-        raise TimeoutError("Timed out waiting for query")
+        while True:
+            elapsed = time.time() - start_time
+            if elapsed > timeout_seconds:
+                # Try to cancel the statement
+                try:
+                    self.client.statement_execution.cancel_execution(result.statement_id)
+                except:
+                    pass
+                raise TimeoutError(f"Query timed out after {timeout_seconds}s. Consider reducing limit or using status filter.")
+
+            status = self.client.statement_execution.get_statement(result.statement_id)
+
+            if status.status.state == StatementState.SUCCEEDED:
+                if status.result and status.result.data_array:
+                    # Column names match the SELECT statement
+                    columns = ["id", "name", "description", "status", "source_type", "source_table",
+                              "source_volume", "source_path", "item_id_column", "text_columns",
+                              "image_columns", "metadata_columns", "sampling_strategy", "sample_size",
+                              "filter_expression", "template_config", "item_count", "last_validated_at",
+                              "created_at", "created_by", "updated_at", "updated_by"]
+
+                    sheets = []
+                    for row in status.result.data_array:
+                        sheet_dict = dict(zip(columns, row))
+                        # Parse JSON arrays
+                        import json
+                        for col in ["text_columns", "image_columns", "metadata_columns"]:
+                            if col in sheet_dict and isinstance(sheet_dict[col], str):
+                                try:
+                                    sheet_dict[col] = json.loads(sheet_dict[col])
+                                except:
+                                    sheet_dict[col] = []
+                        sheets.append(sheet_dict)
+                    return sheets
+                return []
+            elif status.status.state in [StatementState.FAILED, StatementState.CANCELED]:
+                error_msg = status.status.error.message if status.status.error else "Unknown error"
+                raise RuntimeError(f"Query failed: {error_msg}")
+
+            # Adaptive backoff: start fast, slow down for long queries
+            time.sleep(poll_interval)
+            poll_interval = min(poll_interval * 1.5, max_poll_interval)
 
     def update_sheet(self, sheet_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -316,10 +514,11 @@ class SheetService:
         sql = f"UPDATE {self.table_name} SET {', '.join(set_clauses)} WHERE id = '{sheet_id}'"
 
         # Note: UPDATE might hang like INSERT, but we'll try
-        result = self.client.statement_execution.execute_statement(
-            statement=sql,
-            warehouse_id=self.warehouse_id
-        )
+        execute_kwargs = {"statement": sql}
+        if self.warehouse_id:
+            execute_kwargs["warehouse_id"] = self.warehouse_id
+
+        result = self.client.statement_execution.execute_statement(**execute_kwargs)
 
         logger.info(f"Update statement submitted for sheet {sheet_id}")
 
@@ -337,10 +536,11 @@ class SheetService:
         """
         sql = f"UPDATE {self.table_name} SET status = 'deleted', updated_at = CURRENT_TIMESTAMP(), updated_by = '{get_current_user()}' WHERE id = '{sheet_id}'"
 
-        result = self.client.statement_execution.execute_statement(
-            statement=sql,
-            warehouse_id=self.warehouse_id
-        )
+        execute_kwargs = {"statement": sql}
+        if self.warehouse_id:
+            execute_kwargs["warehouse_id"] = self.warehouse_id
+
+        result = self.client.statement_execution.execute_statement(**execute_kwargs)
 
         logger.info(f"Delete statement submitted for sheet {sheet_id}")
         return True
@@ -375,9 +575,10 @@ class SheetService:
         logger.info(f"Inserting sheet: {sheet_data['id']}")
         logger.debug(f"SQL: {sql}")
 
-        result = self.client.statement_execution.execute_statement(
-            statement=sql,
-            warehouse_id=self.warehouse_id
-        )
+        execute_kwargs = {"statement": sql}
+        if self.warehouse_id:
+            execute_kwargs["warehouse_id"] = self.warehouse_id
+
+        result = self.client.statement_execution.execute_statement(**execute_kwargs)
 
         logger.info(f"Insert statement submitted (ID: {result.statement_id})")

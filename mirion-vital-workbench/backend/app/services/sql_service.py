@@ -1,6 +1,7 @@
 """SQL execution service using Databricks SQL Warehouse."""
 
 import json
+import logging
 import time
 from typing import Any
 
@@ -9,6 +10,10 @@ from databricks.sdk.service.sql import StatementState
 from app.core.config import get_settings
 from app.core.databricks import get_workspace_client
 
+# SQL query logger - separate from main app logger for filtering
+sql_logger = logging.getLogger("sql_queries")
+sql_logger.setLevel(logging.DEBUG)
+
 
 class SQLService:
     """Execute SQL statements against Databricks SQL Warehouse."""
@@ -16,9 +21,15 @@ class SQLService:
     def __init__(self):
         self.settings = get_settings()
         self.client = get_workspace_client()
-        self.warehouse_id = self.settings.databricks_warehouse_id
         self.catalog = self.settings.databricks_catalog
         self.schema = self.settings.databricks_schema
+        self.default_timeout = self.settings.sql_query_timeout_seconds
+
+        # Support serverless SQL
+        if self.settings.use_serverless_sql:
+            self.warehouse_id = None
+        else:
+            self.warehouse_id = self.settings.databricks_warehouse_id
 
     def _full_table_name(self, table: str) -> str:
         """Get fully qualified table name."""
@@ -28,7 +39,7 @@ class SQLService:
         self,
         sql: str,
         parameters: dict[str, Any] | None = None,
-        timeout_seconds: int = 60,
+        timeout_seconds: int | None = None,
     ) -> list[dict[str, Any]]:
         """
         Execute SQL and return results as list of dicts.
@@ -36,19 +47,33 @@ class SQLService:
         Args:
             sql: SQL statement to execute
             parameters: Named parameters for the query
-            timeout_seconds: Maximum time to wait for results
+            timeout_seconds: Maximum time to wait for results (defaults to configured timeout)
 
         Returns:
             List of row dictionaries
         """
+        if timeout_seconds is None:
+            timeout_seconds = self.default_timeout
+
+        # Log the query
+        query_start = time.time()
+        sql_logger.info(f"┌─ SQL QUERY ─────────────────────────────────")
+        sql_logger.info(f"│ {sql.strip()[:500]}{'...' if len(sql) > 500 else ''}")
+        if parameters:
+            sql_logger.info(f"│ Parameters: {parameters}")
+        sql_logger.info(f"│ Catalog: {self.catalog}.{self.schema}")
+
         # Execute statement
-        response = self.client.statement_execution.execute_statement(
-            warehouse_id=self.warehouse_id,
-            statement=sql,
-            catalog=self.catalog,
-            schema=self.schema,
-            wait_timeout="0s",  # Don't wait, we'll poll
-        )
+        execute_kwargs = {
+            "statement": sql,
+            "catalog": self.catalog,
+            "schema": self.schema,
+            "wait_timeout": "0s",  # Don't wait, we'll poll
+        }
+        if self.warehouse_id:
+            execute_kwargs["warehouse_id"] = self.warehouse_id
+
+        response = self.client.statement_execution.execute_statement(**execute_kwargs)
 
         statement_id = response.statement_id
 
@@ -100,16 +125,32 @@ class SQLService:
                     row_dict[col_name] = row_data[i] if i < len(row_data) else None
                 rows.append(row_dict)
 
+        # Log completion
+        query_duration = time.time() - query_start
+        sql_logger.info(f"│ Rows: {len(rows)} | Duration: {query_duration:.3f}s")
+        sql_logger.info(f"└─────────────────────────────────────────────")
+
         return rows
 
     def execute_update(self, sql: str, parameters: dict[str, Any] | None = None) -> int:
         """Execute an INSERT/UPDATE/DELETE and return affected row count."""
-        response = self.client.statement_execution.execute_statement(
-            warehouse_id=self.warehouse_id,
-            statement=sql,
-            catalog=self.catalog,
-            schema=self.schema,
-        )
+        # Log the query
+        query_start = time.time()
+        sql_logger.info(f"┌─ SQL UPDATE ────────────────────────────────")
+        sql_logger.info(f"│ {sql.strip()[:500]}{'...' if len(sql) > 500 else ''}")
+        if parameters:
+            sql_logger.info(f"│ Parameters: {parameters}")
+        sql_logger.info(f"│ Catalog: {self.catalog}.{self.schema}")
+
+        execute_kwargs = {
+            "statement": sql,
+            "catalog": self.catalog,
+            "schema": self.schema,
+        }
+        if self.warehouse_id:
+            execute_kwargs["warehouse_id"] = self.warehouse_id
+
+        response = self.client.statement_execution.execute_statement(**execute_kwargs)
 
         # Wait for completion with adaptive backoff
         statement_id = response.statement_id
@@ -122,7 +163,11 @@ class SQLService:
             state = status.status.state
 
             if state == StatementState.SUCCEEDED:
-                return status.manifest.total_row_count if status.manifest else 0
+                row_count = status.manifest.total_row_count if status.manifest else 0
+                query_duration = time.time() - query_start
+                sql_logger.info(f"│ Affected: {row_count} rows | Duration: {query_duration:.3f}s")
+                sql_logger.info(f"└─────────────────────────────────────────────")
+                return row_count
             elif state in (
                 StatementState.FAILED,
                 StatementState.CANCELED,

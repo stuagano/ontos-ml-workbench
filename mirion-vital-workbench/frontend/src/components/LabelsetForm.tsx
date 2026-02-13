@@ -57,7 +57,7 @@ export function LabelsetForm({
 
   const createMutation = useCreateLabelset();
   const updateMutation = useUpdateLabelset();
-  const { showToast } = useToast();
+  const { success: successToast, error: errorToast } = useToast();
 
   const handleAddLabelClass = () => {
     const newClass: LabelClass = {
@@ -96,19 +96,19 @@ export function LabelsetForm({
 
     // Validation
     if (!name.trim()) {
-      showToast('Name is required', 'error');
+      errorToast('Name is required');
       return;
     }
     if (!labelType.trim()) {
-      showToast('Label type is required', 'error');
+      errorToast('Label type is required');
       return;
     }
     if (labelClasses.length === 0) {
-      showToast('At least one label class is required', 'error');
+      errorToast('At least one label class is required');
       return;
     }
     if (labelClasses.some((lc) => !lc.name.trim())) {
-      showToast('All label classes must have a name', 'error');
+      errorToast('All label classes must have a name');
       return;
     }
 
@@ -124,7 +124,7 @@ export function LabelsetForm({
             tags: tags.length > 0 ? tags : undefined,
           },
         });
-        showToast('Labelset updated successfully', 'success');
+        successToast('Labelset updated successfully');
         onSaved(updated);
       } else {
         const created = await createMutation.mutateAsync({
@@ -135,13 +135,13 @@ export function LabelsetForm({
           use_case: useCase.trim() || undefined,
           tags: tags.length > 0 ? tags : undefined,
         });
-        showToast('Labelset created successfully', 'success');
+        successToast('Labelset created successfully');
         onSaved(created);
       }
     } catch (error: any) {
-      showToast(
-        error.message || `Failed to ${isEditing ? 'update' : 'create'} labelset`,
-        'error'
+      errorToast(
+        `Failed to ${isEditing ? 'update' : 'create'} labelset`,
+        error.message
       );
     }
   };

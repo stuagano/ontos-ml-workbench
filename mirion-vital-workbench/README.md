@@ -6,8 +6,31 @@
 DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
 ```
 
-**PRD Version:** v2.3 (Validated - Ready for Implementation)  
+**PRD Version:** v2.3 (Validated - Ready for Implementation)
 **Documentation:** `docs/PRD.md`, `VALIDATION_SUMMARY.md`
+
+## Database Configuration
+
+**Primary Workspace**: FEVM (`serverless_dxukih_catalog.mirion`)
+
+```bash
+Workspace: https://fevm-serverless-dxukih.cloud.databricks.com
+Catalog:   serverless_dxukih_catalog
+Schema:    mirion
+Warehouse: 387bcda0f2ece20c
+Profile:   fe-vm-serverless-dxukih
+```
+
+**Why FEVM?**
+- ✅ Serverless compute available
+- ✅ All tables and data already exist here
+- ✅ Stable, dedicated workspace for this project
+
+**Important**: All local development and deployment uses FEVM workspace. Configuration is in `backend/.env`.
+
+**Recent Updates**:
+- Schema consolidation completed - see `RESTORATION_COMPLETE.md` for details
+- ⚠️ **Schema Management**: See `SCHEMA_MANAGEMENT.md` for preventing schema mismatches between database and code
 
 ## Overview
 
@@ -82,6 +105,8 @@ Both use cases support multiple labelsets per source item and governance constra
 - FEVM workspace (create at https://go/fevm)
 - Node.js 18+
 
+For complete prerequisites and environment setup, see **[DEPLOYMENT.md](DEPLOYMENT.md)**.
+
 ### One-Command Deployment (Recommended)
 
 Deploy to a fresh FEVM workspace with the bootstrap script:
@@ -105,6 +130,8 @@ This will:
 - Build and deploy the Databricks App
 - Grant permissions to the app service principal
 
+See **[DEPLOYMENT.md](DEPLOYMENT.md)** for detailed deployment instructions and manual setup.
+
 ### Teardown
 
 ```bash
@@ -114,6 +141,11 @@ This will:
 ### Local Development
 
 ```bash
+# Option 1: APX (Recommended - unified hot reload)
+uvx --index https://databricks-solutions.github.io/apx/simple apx init
+apx dev start
+
+# Option 2: Manual setup
 # Backend
 cd backend
 pip install -r requirements.txt
@@ -123,23 +155,18 @@ uvicorn app.main:app --reload
 # Frontend (in another terminal)
 cd frontend
 npm install
+cp .env.example .env  # Configure your settings
 npm run dev
 ```
 
-### Manual Deploy to Databricks
+### Production Deployment
 
-```bash
-# Build frontend
-cd frontend && npm install && npm run build && cd ..
+For production deployments, follow the complete workflow:
 
-# Sync to workspace
-databricks sync . /Workspace/Users/<you>/Apps/vital-workbench --profile=<profile>
-
-# Deploy app
-databricks apps deploy vital-workbench \
-  --source-code-path /Workspace/Users/<you>/Apps/vital-workbench \
-  --profile=<profile>
-```
+1. **Pre-deployment**: [PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md)
+2. **Deployment**: [DEPLOYMENT.md](DEPLOYMENT.md)
+3. **Monitoring**: [MONITORING_SETUP.md](MONITORING_SETUP.md)
+4. **Operations**: [RUNBOOK.md](RUNBOOK.md)
 
 ## Architecture
 
@@ -251,6 +278,7 @@ synthetic_data/
 
 ### Environment Variables
 
+Backend configuration (`backend/.env`):
 ```bash
 # Databricks connection (for local dev)
 DATABRICKS_HOST=https://your-workspace.cloud.databricks.com
@@ -263,6 +291,18 @@ DATABRICKS_SCHEMA=workbench
 # SQL Warehouse
 DATABRICKS_WAREHOUSE_ID=your-warehouse-id
 ```
+
+Frontend configuration (`frontend/.env`):
+```bash
+# API endpoint (for local dev)
+VITE_API_BASE_URL=http://localhost:8000
+
+# Feature flags
+VITE_ENABLE_MONITORING=true
+VITE_ENABLE_FEEDBACK=true
+```
+
+See `backend/.env.example` and `frontend/.env.example` for complete configuration options.
 
 ## Delta Tables (PRD v2.3)
 
@@ -295,6 +335,93 @@ The app uses these Unity Catalog tables in `mirion_vital.workbench`:
 - Multiple labelsets per item for different tasks
 - Usage constraints for data governance (PHI, PII, proprietary)
 - Complete lineage tracking: source data → labels → Q&A pairs → models
+
+## Deployment & Operations
+
+**📚 [DEPLOYMENT_INDEX.md](DEPLOYMENT_INDEX.md)** - Complete index of all deployment documentation
+
+### Quick Links
+
+| Document | Purpose |
+|----------|---------|
+| **[DEPLOYMENT_INDEX.md](DEPLOYMENT_INDEX.md)** | Master index - start here for all deployment needs |
+| **[DEPLOYMENT.md](DEPLOYMENT.md)** | Complete deployment guide (prerequisites, setup, backend, frontend, verification) |
+| **[PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md)** | Pre-deployment checklist, deployment steps, smoke tests, rollback procedures |
+| **[MONITORING_SETUP.md](MONITORING_SETUP.md)** | Monitoring configuration, dashboards, alerts, log aggregation |
+| **[RUNBOOK.md](RUNBOOK.md)** | Operations runbook with common issues, troubleshooting, performance tuning |
+| **[WORKFLOWS.md](WORKFLOWS.md)** | Development workflows, deployment pipeline, database migrations, release process |
+
+### Deployment Workflow
+
+```
+Development → Staging → Production
+
+1. Local Development
+   ├─ Use APX or manual setup
+   ├─ Test changes locally
+   └─ Run unit tests
+
+2. Deploy to Dev
+   ├─ Run: databricks bundle deploy -t dev
+   ├─ Verify functionality
+   └─ Run integration tests
+
+3. Deploy to Staging
+   ├─ Run: databricks bundle deploy -t staging
+   ├─ Run full test suite
+   └─ Verify with product team
+
+4. Deploy to Production
+   ├─ Follow PRODUCTION_CHECKLIST.md
+   ├─ Run: databricks bundle deploy -t production
+   ├─ Monitor for 1 hour
+   └─ Verify with smoke tests
+```
+
+### Database Migrations
+
+```bash
+# Apply schema changes
+cd schemas
+databricks sql exec --file=<migration>.sql \
+  --warehouse-id=$WAREHOUSE_ID \
+  --profile=production
+
+# Verify migration
+databricks sql exec "DESCRIBE TABLE mirion_vital.workbench.<table>" \
+  --warehouse-id=$WAREHOUSE_ID \
+  --profile=production
+```
+
+### Monitoring Quick Links
+
+After deployment, monitor the application:
+
+- **App Status**: `databricks apps get vital-workbench --profile=prod`
+- **App Logs**: `databricks apps logs vital-workbench --profile=prod --tail 100`
+- **SQL Dashboard**: Databricks SQL > Dashboards > VITAL Workbench Health
+- **System Tables**: Query `system.query.history` for performance metrics
+
+### Troubleshooting
+
+Common issues and solutions:
+
+| Issue | Quick Fix | Documentation |
+|-------|-----------|---------------|
+| App won't start | Check logs, verify warehouse running | [RUNBOOK.md](RUNBOOK.md#app-wont-start) |
+| Database connection errors | Verify warehouse ID, check permissions | [RUNBOOK.md](RUNBOOK.md#database-connection-errors) |
+| Slow performance | Check warehouse size, optimize queries | [RUNBOOK.md](RUNBOOK.md#slow-query-performance) |
+| Permission denied | Grant permissions to service principal | [DEPLOYMENT.md](DEPLOYMENT.md#configure-service-principal-permissions) |
+
+For detailed troubleshooting, see **[RUNBOOK.md](RUNBOOK.md)**.
+
+### Emergency Contacts
+
+- **On-Call Engineer**: [PagerDuty rotation]
+- **Team Slack**: #vital-workbench-ops
+- **Databricks Support**: https://help.databricks.com
+
+---
 
 ## License
 

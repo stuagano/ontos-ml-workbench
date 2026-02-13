@@ -11,18 +11,14 @@ import {
   RefreshCw,
   Loader2,
   Target,
-  ChevronLeft,
-  ChevronRight,
-  Database,
-  FileCode,
-  RotateCcw,
   BarChart3,
   Eye,
   CheckCircle2,
 } from "lucide-react";
 import { DataTable, Column, RowAction } from "../components/DataTable";
+import { StatsCard } from "../components/StatsCard";
+import { WorkflowBanner } from "../components/WorkflowBanner";
 import { ExampleEffectivenessDashboard } from "./ExampleEffectivenessDashboard";
-import { useWorkflow } from "../context/WorkflowContext";
 import { clsx } from "clsx";
 import {
   listEndpoints,
@@ -34,78 +30,6 @@ import {
 } from "../services/api";
 import { useToast } from "../components/Toast";
 import type { FeedbackItem, Gap } from "../services/api";
-
-// ============================================================================
-// WorkflowBanner Component (Final Stage)
-// ============================================================================
-
-function WorkflowBanner() {
-  const { state, goToPreviousStage, resetWorkflow, setCurrentStage } =
-    useWorkflow();
-
-  return (
-    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-4 mb-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          {/* Data source */}
-          {state.selectedSource && (
-            <div className="flex items-center gap-2">
-              <Database className="w-4 h-4 text-indigo-600" />
-              <div>
-                <div className="text-xs text-indigo-600 font-medium">
-                  Data Source
-                </div>
-                <div className="text-sm text-indigo-800">
-                  {state.selectedSource.name}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Template */}
-          {state.selectedTemplate && (
-            <>
-              <ChevronRight className="w-4 h-4 text-indigo-400" />
-              <div className="flex items-center gap-2">
-                <FileCode className="w-4 h-4 text-indigo-600" />
-                <div>
-                  <div className="text-xs text-indigo-600 font-medium">
-                    Template
-                  </div>
-                  <div className="text-sm text-indigo-800">
-                    {state.selectedTemplate.name}
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={goToPreviousStage}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-100 rounded-lg transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Back to Monitor
-          </button>
-          <button
-            onClick={() => {
-              resetWorkflow();
-              setCurrentStage("data");
-            }}
-            className="flex items-center gap-1 px-4 py-1.5 text-sm bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Start New Cycle
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// FeedbackCard removed - using DataTable now
 
 // ============================================================================
 // GapCard Component
@@ -140,47 +64,7 @@ function GapCard({ gap }: GapCardProps) {
   );
 }
 
-// ============================================================================
-// StatsCard Component
-// ============================================================================
-
-interface StatsCardProps {
-  title: string;
-  value: string | number;
-  subtitle?: string;
-  icon: typeof MessageSquare;
-  color: string;
-}
-
-function StatsCard({
-  title,
-  value,
-  subtitle,
-  icon: Icon,
-  color,
-}: StatsCardProps) {
-  return (
-    <div className="bg-white rounded-lg border border-db-gray-200 p-4">
-      <div className={clsx("flex items-center gap-2 mb-1", color)}>
-        <Icon className="w-4 h-4" />
-        <span className="text-sm">{title}</span>
-      </div>
-      <div
-        className={clsx(
-          "text-2xl font-bold",
-          color.replace("text-", "text-").replace("-600", "-700"),
-        )}
-      >
-        {value}
-      </div>
-      {subtitle && (
-        <div className={clsx("text-xs mt-1", color.replace("-600", "-500"))}>
-          {subtitle}
-        </div>
-      )}
-    </div>
-  );
-}
+// StatsCard component moved to /frontend/src/components/StatsCard.tsx
 
 // ============================================================================
 // ImprovePage Component
@@ -293,7 +177,7 @@ export function ImprovePage({ mode = "browse", onModeChange }: ImprovePageProps)
     <div className="flex-1 p-6">
       <div className="max-w-6xl mx-auto">
         {/* Workflow Banner */}
-        <WorkflowBanner />
+        <WorkflowBanner stage="improve" />
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

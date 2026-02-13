@@ -2,8 +2,8 @@
 -- Run this in Databricks SQL Editor connected to your warehouse
 
 -- Use the correct catalog/schema
-USE CATALOG home_stuart_gano;
-USE SCHEMA mirion_vital_workbench;
+USE CATALOG `erp-demonstrations`;
+USE SCHEMA vital_workbench;
 
 -- Insert sample sheets
 INSERT INTO sheets (

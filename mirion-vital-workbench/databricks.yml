@@ -16,9 +16,21 @@ include:
   - resources/*.yml
 
 targets:
-  dev:
+  # Primary development target - FEVM workspace
+  fevm:
     mode: development
     default: true
+    workspace:
+      profile: fe-vm-serverless-dxukih
+      host: https://fevm-serverless-dxukih.cloud.databricks.com
+    variables:
+      catalog: serverless_dxukih_catalog
+      schema: mirion
+      warehouse_id: "387bcda0f2ece20c"
+
+  # Alternative development targets (optional)
+  dev:
+    mode: development
     workspace:
       profile: e2-demo-west
     variables:
@@ -32,13 +44,3 @@ targets:
     variables:
       catalog: home_stuart_gano
       schema: vital_workbench
-
-  fevm:
-    mode: development
-    workspace:
-      profile: fe-vm-serverless-dxukih
-      host: https://fevm-serverless-dxukih.cloud.databricks.com
-    variables:
-      catalog: erp-demonstrations
-      schema: vital_workbench
-      warehouse_id: "387bcda0f2ece20c"  # From JDBC: /sql/1.0/warehouses/387bcda0f2ece20c

@@ -16,7 +16,7 @@
  * 6. Export for fine-tuning
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Database,
@@ -34,7 +34,7 @@ import {
   Search,
   Filter,
   Edit,
-  Shield,
+  ChevronRight,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { UCBrowser, type UCItem } from "../components/UCBrowser";
@@ -49,16 +49,22 @@ import {
   deleteColumn,
   exportSheet,
   previewTable,
+  listTemplates,
+  getTemplate,
+  attachTemplateToSheet,
+  assembleSheet,
 } from "../services/api";
 import { useToast } from "../components/Toast";
 import { useWorkflow } from "../context/WorkflowContext";
 import { useModules } from "../hooks/useModules";
+import { ColumnMappingModal, extractPlaceholders } from "../components/ColumnMappingModal";
+import { DataQualityPanel } from "../components/DataQualityPanel";
 import type {
   Sheet,
   SheetPreview,
   ColumnDefinition,
-  ColumnCreateRequest,
   ImportConfig,
+  TemplateConfigAttachRequest,
 } from "../types";
 
 // ============================================================================
@@ -73,7 +79,7 @@ interface BaseTableConfig {
   rowCount: number;
 }
 
-type BuilderStep = "build-sheet" | "no-sheet";
+type BuilderStep = "build-sheet" | "no-sheet" | "preview-data";
 
 // ============================================================================
 // Sheet Browser Modal - Unified browse existing + create new
@@ -101,7 +107,7 @@ function SheetBrowserModal({
 
   useEffect(() => {
     if (isOpen) {
-      listSheets({ page_size: 50 })
+      listSheets({ limit: 50 })
         .then((result) => {
           setSheets(result.sheets);
           setIsLoading(false);
@@ -162,7 +168,7 @@ function SheetBrowserModal({
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-db-gray-800 flex items-center gap-2">
               <Table2 className="w-6 h-6 text-blue-600" />
-              Select or Create Sheet
+              Select or Create Dataset
             </h2>
             <button
               onClick={onClose}
@@ -241,7 +247,7 @@ function SheetBrowserModal({
                         </div>
                       )}
                       <div className="text-xs text-db-gray-400 mt-1">
-                        {sheet.columns.length} columns · {sheet.status}
+                        {((sheet.text_columns?.length || 0) + (sheet.image_columns?.length || 0) + (sheet.metadata_columns?.length || 0))} columns · {sheet.status}
                         {sheet.updated_at &&
                           ` · ${new Date(sheet.updated_at).toLocaleDateString()}`}
                       </div>
@@ -553,7 +559,7 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
   const workflow = useWorkflow();
   const toast = useToast();
   const queryClient = useQueryClient();
-  const { openModule, activeModule, isOpen: isModuleOpen, closeModule } = useModules({ stage: "data" });
+  const { activeModule, isOpen: isModuleOpen, closeModule } = useModules({ stage: "data" });
 
   // ALL HOOKS MUST BE DECLARED BEFORE ANY CONDITIONAL RETURNS
   // (React requires hooks to be called in the same order every render)
@@ -562,15 +568,31 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
   const [baseTable, setBaseTable] = useState<BaseTableConfig | null>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [preview, setPreview] = useState<SheetPreview | null>(null);
+  const [ucTablePreview, setUcTablePreview] = useState<{ rows: Record<string, unknown>[]; count: number } | null>(null);
   const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
   const [isLoadingSheet, setIsLoadingSheet] = useState(false);
   const [isSheetBrowserOpen, setIsSheetBrowserOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Column mapping for template reusability
+  const [isColumnMappingOpen, setIsColumnMappingOpen] = useState(false);
+  // Using ref for synchronous access (React state updates are async)
+  const pendingColumnMappingRef = useRef<Record<string, string> | null>(null);
+  const [templateForMapping, setTemplateForMapping] = useState<{
+    id: string;
+    name: string;
+    promptTemplate: string;
+    targetColumn?: string | null;
+    featureColumns?: string[] | null;
+  } | null>(null);
 
   // Fetch sheets for browse mode
-  const { data: sheetsData, isLoading: isSheetsLoading } = useQuery({
+  const { data: sheetsData, isLoading: isSheetsLoading, error: sheetsError } = useQuery({
     queryKey: ["sheets", searchQuery],
-    queryFn: () => listSheets({ page_size: 100 }),
+    queryFn: () => listSheets({ limit: 100 }),
     enabled: stageMode === "browse",
+    retry: 2,
   });
 
   // Derive step from workflow state - if we have a selected source (sheet), go to build-sheet
@@ -582,6 +604,13 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
   };
 
   const [step, setStep] = useState<BuilderStep>(getInitialStep);
+
+  // Fetch templates for preview mode
+  const { data: templatesData } = useQuery({
+    queryKey: ["templates"],
+    queryFn: () => listTemplates({ page_size: 100 }),
+    enabled: step === "preview-data",
+  });
 
   // Sync step with workflow state when navigating via breadcrumbs
   useEffect(() => {
@@ -620,12 +649,13 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
 
   // Load preview when sheet changes
   useEffect(() => {
-    if (sheet?.id && sheet.columns.length > 0) {
+    const totalCols = (sheet?.text_columns?.length || 0) + (sheet?.image_columns?.length || 0) + (sheet?.metadata_columns?.length || 0);
+    if (sheet?.id && totalCols > 0) {
       getSheetPreview(sheet.id, 50)
         .then(setPreview)
         .catch((err) => console.error("Failed to load preview:", err));
     }
-  }, [sheet?.id, sheet?.columns.length]);
+  }, [sheet?.id, sheet?.text_columns?.length, sheet?.image_columns?.length, sheet?.metadata_columns?.length]);
 
   // Load an existing sheet by ID (moved up before it's used in render)
   const handleSelectExisting = async (sheetId: string) => {
@@ -633,21 +663,31 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
     try {
       const loadedSheet = await getSheet(sheetId);
       setSheet(loadedSheet);
-      setStep("build-sheet");
-      setStageMode("create"); // Switch to create mode to show the sheet editor
+
+      // Load preview of source table if available
+      if (loadedSheet.source_table) {
+        const [catalog, schema, table] = loadedSheet.source_table.split('.');
+        if (catalog && schema && table) {
+          const previewData = await previewTable(catalog, schema, table, 50);
+          setUcTablePreview(previewData);
+        }
+      }
+
+      setStep("preview-data");
+      // Don't change stageMode - keep it as "browse" so we can navigate back
 
       // Save to workflow context so breadcrumb navigation works
       workflow.setSelectedSource({
         id: loadedSheet.id,
         name: loadedSheet.name,
         type: "table",
-        fullPath: loadedSheet.name,
+        fullPath: loadedSheet.source_table || loadedSheet.name,
       } as UCItem);
 
-      toast.success("Sheet loaded", `Opened "${loadedSheet.name}"`);
+      toast.success("Dataset loaded", `Opened "${loadedSheet.name}"`);
     } catch (err) {
       toast.error(
-        "Failed to load sheet",
+        "Failed to load dataset",
         err instanceof Error ? err.message : "Unknown error",
       );
     } finally {
@@ -655,12 +695,114 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
     }
   };
 
+  // Generate training data from dataset + template
+  const handleGenerateTrainingData = async () => {
+    if (!sheet || !selectedTemplate) {
+      toast.error("Missing required fields", "Please select a template");
+      return;
+    }
+
+    setIsGenerating(true);
+
+    try {
+      // Step 1: Fetch the full template details
+      const template = await getTemplate(selectedTemplate);
+
+      // Step 1.5: Column mapping is ALWAYS an explicit step
+      // (No "smart" detection - always show modal to prevent silent failures)
+      const placeholders = extractPlaceholders(template.prompt_template || "");
+      const hasMLConfig = template.target_column || (template.feature_columns && template.feature_columns.length > 0);
+      const hasVariablesToMap = hasMLConfig || placeholders.length > 0;
+
+      // Use ref for synchronous access (state updates are async)
+      const currentMapping = pendingColumnMappingRef.current;
+
+      // ALWAYS show mapping modal if user hasn't confirmed mapping yet
+      // This is an explicit interim step - no auto-detection that could silently fail
+      if (hasVariablesToMap && !currentMapping) {
+        // Open mapping modal and wait for user to explicitly confirm mapping
+        setTemplateForMapping({
+          id: template.id,
+          name: template.name,
+          promptTemplate: template.prompt_template || "",
+          targetColumn: template.target_column,
+          featureColumns: template.feature_columns,
+        });
+        setIsColumnMappingOpen(true);
+        setIsGenerating(false);
+        return; // Exit and wait for mapping confirmation
+      }
+
+      // Step 2: Attach the template configuration to the sheet
+      const attachRequest: TemplateConfigAttachRequest = {
+        prompt_template: template.prompt_template || "",
+        system_instruction: template.system_prompt,
+        model: template.base_model,
+        temperature: template.temperature,
+        max_tokens: template.max_tokens,
+        label_type: template.label_type,
+        name: template.name,
+        description: template.description,
+        // Include column mapping if we have one
+        column_mapping: currentMapping || undefined,
+      };
+
+      await attachTemplateToSheet(sheet.id, attachRequest);
+
+      // Step 3: Assemble the sheet (generate Q&A pairs)
+      const assembleResponse = await assembleSheet(sheet.id, {
+        name: `${sheet.name} - ${template.name}`,
+        description: `Training data generated from ${sheet.name} using ${template.name} template`,
+      });
+
+      // Store the training sheet ID in workflow context so Training Data stage can load it
+      workflow.setSelectedAssemblyId(assembleResponse.training_sheet_id);
+
+      toast.success(
+        "Training data generated!",
+        `Created ${assembleResponse.total_items} Q&A pairs. Moving to Training Data stage...`
+      );
+
+      // Auto-advance to LABEL stage to review the generated Q&A pairs
+      setTimeout(() => {
+        workflow.setCurrentStage("label");
+      }, 1500);
+    } catch (err) {
+      toast.error(
+        "Generation failed",
+        err instanceof Error ? err.message : "Unknown error"
+      );
+    } finally {
+      setIsGenerating(false);
+      // Clear the pending mapping after generation attempt
+      pendingColumnMappingRef.current = null;
+    }
+  };
+
+  // Handle column mapping confirmation from modal
+  const handleColumnMappingConfirm = (mapping: Record<string, string>) => {
+    // Update ref for synchronous access
+    pendingColumnMappingRef.current = mapping;
+    setIsColumnMappingOpen(false);
+    // Trigger generation again with the mapping (ref is already updated)
+    setTimeout(() => {
+      handleGenerateTrainingData();
+    }, 50);
+  };
+
+  // Clear pending mapping when template selection changes
+  const handleTemplateChange = (templateId: string) => {
+    setSelectedTemplate(templateId || null);
+    // Reset mapping for new template
+    pendingColumnMappingRef.current = null;
+  };
+
   // Create sheet when base table is selected (moved up before any early returns)
   const handleBaseTableSelect = async (config: BaseTableConfig) => {
     setBaseTable(config);
 
     try {
-      // First, get the table preview to learn column names
+      // Get table preview to learn column names
       const tablePreview = await previewTable(
         config.catalog,
         config.schema,
@@ -668,30 +810,22 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
         1,
       );
 
-      // Build initial columns from the base table
-      const initialColumns: ColumnCreateRequest[] = [];
+      // Analyze columns from preview
+      const columnNames: string[] = [];
       if (tablePreview.rows && tablePreview.rows.length > 0) {
         const sampleRow = tablePreview.rows[0];
-        Object.keys(sampleRow).forEach((colName) => {
-          initialColumns.push({
-            name: colName,
-            data_type: "string",
-            source_type: "imported",
-            import_config: {
-              catalog: config.catalog,
-              schema: config.schema,
-              table: config.table,
-              column: colName,
-            },
-          });
-        });
+        columnNames.push(...Object.keys(sampleRow));
       }
 
-      // Create sheet with columns from base table
+      // Create sheet with PRD v2.3 model (lightweight pointer to UC table)
+      const sourceTable = `${config.catalog}.${config.schema}.${config.table}`;
       const newSheet = await createSheet({
-        name: `Sheet from ${config.table}`,
-        description: `AI Sheet based on ${config.catalog}.${config.schema}.${config.table}`,
-        columns: initialColumns.length > 0 ? initialColumns : undefined,
+        name: `${config.table}`,
+        description: `Dataset from ${sourceTable}`,
+        source_type: "uc_table",
+        source_table: sourceTable,
+        text_columns: columnNames, // All columns as text by default
+        item_id_column: columnNames[0], // Use first column as ID
       });
 
       setSheet(newSheet);
@@ -702,17 +836,18 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
         id: newSheet.id,
         name: newSheet.name,
         type: "table",
-        fullPath: `${config.catalog}.${config.schema}.${config.table}`,
+        fullPath: sourceTable,
         catalogName: config.catalog,
         schemaName: config.schema,
       } as UCItem);
 
       toast.success(
-        "Sheet created!",
-        initialColumns.length > 0
-          ? `Imported ${initialColumns.length} columns from base table.`
-          : "Now add columns to your sheet.",
+        "Dataset created!",
+        `Connected to ${sourceTable} with ${columnNames.length} columns.`,
       );
+
+      // Don't auto-advance yet - user needs to preview data and configure template
+      // They'll click "Generate Training Data" when ready
     } catch (err) {
       toast.error(
         "Failed to create sheet",
@@ -753,6 +888,227 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
       });
   };
 
+  // PREVIEW-DATA STEP: Show data preview when a dataset is selected (takes precedence over stageMode)
+  if (step === "preview-data" && sheet) {
+    return (
+      <div className="flex-1 flex flex-col bg-db-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b border-db-gray-200 px-6 py-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-db-gray-900 flex items-center gap-3">
+                  <Table2 className="w-6 h-6 text-blue-600" />
+                  {sheet.name}
+                </h1>
+                <p className="text-db-gray-600 mt-1">
+                  {sheet.source_table || "Dataset"}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setSheet(null);
+                  setUcTablePreview(null);
+                  setStep("no-sheet");
+                  setStageMode("browse");
+                }}
+                className="text-sm text-db-gray-500 hover:text-db-gray-700"
+              >
+                ← Back to datasets
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-6">
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* Data Preview Section */}
+            <div className="bg-white rounded-lg border border-db-gray-200 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-db-gray-200">
+                <h2 className="text-lg font-semibold text-db-gray-900">Data Preview</h2>
+                <p className="text-sm text-db-gray-600 mt-1">
+                  First 50 rows from your dataset
+                </p>
+              </div>
+
+              {isLoadingSheet ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-db-gray-400" />
+                </div>
+              ) : ucTablePreview && ucTablePreview.rows.length > 0 ? (
+                <div className="overflow-auto">
+                  <table className="w-full">
+                    <thead className="bg-db-gray-50 border-b border-db-gray-200">
+                      <tr>
+                        {Object.keys(ucTablePreview.rows[0]).map((col: string) => (
+                          <th key={col} className="px-4 py-3 text-left text-xs font-medium text-db-gray-600 uppercase">
+                            {col}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-db-gray-200">
+                      {ucTablePreview.rows.slice(0, 10).map((row: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-db-gray-50">
+                          {Object.values(row).map((val: any, colIdx: number) => (
+                            <td key={colIdx} className="px-4 py-3 text-sm text-db-gray-900">
+                              {String(val)}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="px-4 py-2 bg-db-gray-50 border-t border-db-gray-200 text-sm text-db-gray-500">
+                    Showing 10 of {ucTablePreview.count?.toLocaleString() || "?"} rows
+                  </div>
+                </div>
+              ) : (
+                <div className="px-6 py-12 text-center text-db-gray-500">
+                  No preview available
+                </div>
+              )}
+            </div>
+
+            {/* Template Selection Section */}
+            <div className="bg-white rounded-lg border border-db-gray-200 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-db-gray-900">Select Prompt Template</h2>
+                <button
+                  onClick={() => {
+                    // Infer column schema from the preview data
+                    const columns: Array<{ name: string; type: string }> = [];
+
+                    if (ucTablePreview && ucTablePreview.rows.length > 0) {
+                      const firstRow = ucTablePreview.rows[0];
+                      Object.entries(firstRow).forEach(([colName, value]) => {
+                        // Infer type from the value
+                        let type = "string";
+                        if (typeof value === "number") {
+                          type = Number.isInteger(value) ? "int" : "double";
+                        } else if (typeof value === "boolean") {
+                          type = "boolean";
+                        } else if (Array.isArray(value)) {
+                          type = "array";
+                        } else if (value !== null && typeof value === "object") {
+                          type = "struct";
+                        }
+                        columns.push({ name: colName, type });
+                      });
+                    }
+
+                    // Dispatch custom event with dataset context
+                    const event = new CustomEvent("createTemplateWithContext", {
+                      detail: {
+                        columns,
+                        sheetName: sheet?.name || "Dataset",
+                      },
+                    });
+                    window.dispatchEvent(event);
+                  }}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 border border-blue-200 transition-colors"
+                  title="Create a new prompt template with inferred schema"
+                >
+                  <Plus className="w-4 h-4" />
+                  New Template
+                </button>
+              </div>
+              <p className="text-sm text-db-gray-600 mb-4">
+                Choose a prompt template to transform your data into training Q&A pairs
+              </p>
+
+              <select
+                value={selectedTemplate || ""}
+                onChange={(e) => handleTemplateChange(e.target.value)}
+                className="w-full px-4 py-2 border border-db-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select a template...</option>
+                {(templatesData?.templates || []).map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name} - {template.description}
+                  </option>
+                ))}
+              </select>
+
+              {templatesData?.templates.length === 0 && (
+                <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  <p className="text-sm text-orange-800 font-medium mb-2">No templates found</p>
+                  <p className="text-sm text-orange-700">
+                    Create your first template using <kbd className="px-2 py-1 bg-orange-100 rounded text-xs font-mono">Alt+N</kbd> keyboard shortcut.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Generate Button */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-db-gray-900 mb-1">Ready to generate?</h3>
+                  <p className="text-sm text-db-gray-600">
+                    This will create Training Data (Q&A pairs) from your dataset using the selected template
+                  </p>
+                </div>
+                <button
+                  onClick={handleGenerateTrainingData}
+                  disabled={!selectedTemplate || isGenerating}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-db-gray-300 disabled:cursor-not-allowed inline-flex items-center gap-2 font-medium whitespace-nowrap"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="w-5 h-5" />
+                      Generate Training Data
+                      <ChevronRight className="w-5 h-5" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Column Mapping Modal - must be inside this return for preview-data step */}
+        {sheet && templateForMapping && (
+          <ColumnMappingModal
+            isOpen={isColumnMappingOpen}
+            onClose={() => {
+              setIsColumnMappingOpen(false);
+              setTemplateForMapping(null);
+            }}
+            onConfirm={handleColumnMappingConfirm}
+            templateName={templateForMapping.name}
+            promptTemplate={templateForMapping.promptTemplate}
+            targetColumn={templateForMapping.targetColumn}
+            featureColumns={templateForMapping.featureColumns}
+            sheetColumns={[
+              ...(sheet.text_columns || []).map((name) => ({
+                name,
+                type: "string",
+                category: "text" as const,
+              })),
+              ...(sheet.image_columns || []).map((name) => ({
+                name,
+                type: "image",
+                category: "image" as const,
+              })),
+              ...(sheet.metadata_columns || []).map((name) => ({
+                name,
+                type: "string",
+                category: "metadata" as const,
+              })),
+            ]}
+          />
+        )}
+      </div>
+    );
+  }
+
   // BROWSE MODE: Show table of existing sheets with StageSubNav
   if (stageMode === "browse") {
     const sheets = sheetsData?.sheets || [];
@@ -784,11 +1140,16 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
         key: "columns",
         header: "Columns",
         width: "15%",
-        render: (sheet) => (
-          <span className="text-sm text-db-gray-600">
-            {sheet.columns.length} columns
-          </span>
-        ),
+        render: (sheet) => {
+          const totalCols = (sheet.text_columns?.length || 0) +
+                           (sheet.image_columns?.length || 0) +
+                           (sheet.metadata_columns?.length || 0);
+          return (
+            <span className="text-sm text-db-gray-600">
+              {totalCols} columns
+            </span>
+          );
+        },
       },
       {
         key: "row_count",
@@ -796,7 +1157,7 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
         width: "15%",
         render: (sheet) => (
           <span className="text-sm text-db-gray-600">
-            {sheet.row_count?.toLocaleString() || "N/A"}
+            {sheet.item_count?.toLocaleString() || "N/A"}
           </span>
         ),
       },
@@ -844,14 +1205,14 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
         <p className="text-db-gray-500 mb-6">
           {searchQuery
             ? "Try adjusting your search"
-            : "Create your first AI Sheet from a Unity Catalog table"}
+            : "Create your first AI Dataset from a Unity Catalog table"}
         </p>
         <button
           onClick={() => setStageMode("create")}
           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           <Plus className="w-4 h-4" />
-          Create Sheet
+          Create Dataset
         </button>
       </div>
     );
@@ -923,6 +1284,23 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
               </div>
+            ) : sheetsError ? (
+              <div className="text-center py-20 bg-white rounded-lg border border-red-200">
+                <div className="text-red-500 text-5xl mb-4">!</div>
+                <h3 className="text-lg font-medium text-db-gray-700 mb-2">
+                  Failed to load sheets
+                </h3>
+                <p className="text-db-gray-500 mb-6 max-w-md mx-auto">
+                  {sheetsError instanceof Error ? sheetsError.message : "Unable to connect to the database. Please check your connection and try again."}
+                </p>
+                <button
+                  onClick={() => queryClient.invalidateQueries({ queryKey: ["sheets"] })}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retry
+                </button>
+              </div>
             ) : (
               <DataTable
                 data={filteredSheets}
@@ -946,9 +1324,9 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
         {/* Header */}
         <div className="bg-white border-b border-db-gray-200 px-6 py-4">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-2xl font-bold text-db-gray-900">Create AI Sheet</h1>
+            <h1 className="text-2xl font-bold text-db-gray-900">Create AI Dataset</h1>
             <p className="text-db-gray-600 mt-1">
-              Select a Unity Catalog table to import as a new sheet
+              Select a Unity Catalog table to import as a new dataset
             </p>
           </div>
         </div>
@@ -1038,8 +1416,8 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
     }
   };
 
-  // Render no-sheet state (show button to open browser modal)
-  if (step === "no-sheet") {
+  // Render no-sheet state (show button to open browser modal) - only in create mode
+  if (step === "no-sheet" && stageMode !== "browse") {
     if (isLoadingSheet) {
       return (
         <div className="flex items-center justify-center h-full">
@@ -1065,14 +1443,14 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 font-medium"
           >
             <Database className="w-5 h-5" />
-            Browse & Create Sheets
+            Browse & Create Datasets
           </button>
         </div>
       </div>
     );
   }
 
-  // Render sheet builder
+  // Render sheet builder (full editor - accessed via different route)
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -1091,7 +1469,7 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
               {sheet?.name || "AI Sheet"}
             </h1>
             <p className="text-sm text-db-gray-500">
-              {sheet?.columns.length || 0} columns · {preview?.rows.length || 0}{" "}
+              {sheet?.columns?.length || 0} columns · {preview?.rows.length || 0}{" "}
               rows
             </p>
           </div>
@@ -1128,37 +1506,14 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-6 space-y-6">
-        {/* Data Quality Inspector Callout */}
-        {sheet && sheet.columns.length > 0 && (
-          <div className="bg-gradient-to-r from-green-50 to-teal-50 border border-green-200 rounded-lg p-6">
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <Shield className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-db-gray-900 mb-1">
-                  Inspect Data Quality
-                </h3>
-                <p className="text-sm text-db-gray-600 mb-4">
-                  Run automated quality checks to catch issues before training. Checks schema, completeness, distribution, and more.
-                </p>
-                <button
-                  onClick={() => openModule("data-quality", {
-                    stage: "data" as const,
-                    sheetId: sheet.id,
-                    sheetName: sheet.name,
-                  })}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  <Shield className="w-4 h-4" />
-                  Run Quality Checks
-                </button>
-              </div>
-            </div>
+        {/* Data Quality Panel (inline) */}
+        {sheet && ((sheet.text_columns?.length || 0) + (sheet.image_columns?.length || 0) + (sheet.metadata_columns?.length || 0)) > 0 && (
+          <div className="bg-white rounded-lg border border-db-gray-200 shadow-sm overflow-hidden">
+            <DataQualityPanel sheetId={sheet.id} sheetName={sheet.name} />
           </div>
         )}
 
-        {sheet?.columns.length === 0 ? (
+        {sheet?.columns?.length === 0 ? (
           /* Empty state */
           <div className="h-full flex items-center justify-center">
             <div className="text-center max-w-md">
@@ -1190,7 +1545,7 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
                   <th className="bg-db-gray-100 px-3 py-2 border-b-2 border-db-gray-300 text-left text-xs font-medium text-db-gray-500 w-12">
                     #
                   </th>
-                  {sheet?.columns.map((col) => (
+                  {sheet?.columns?.map((col) => (
                     <th key={col.id} className="p-0">
                       <ColumnHeader
                         column={col}
@@ -1209,7 +1564,7 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
                     <td className="px-3 py-1.5 text-xs text-db-gray-400 border border-db-gray-200 bg-db-gray-50">
                       {row.row_index + 1}
                     </td>
-                    {sheet?.columns.map((col) => {
+                    {sheet?.columns?.map((col) => {
                       const cell = row.cells[col.id];
                       return <Cell key={col.id} value={cell?.value} />;
                     })}
@@ -1220,7 +1575,7 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
                 {(!preview || preview.rows.length === 0) && (
                   <tr>
                     <td
-                      colSpan={(sheet?.columns.length || 0) + 1}
+                      colSpan={(sheet?.columns?.length || 0) + 1}
                       className="px-4 py-8 text-center text-db-gray-500"
                     >
                       No data to preview. Add imported columns to see data.
@@ -1246,7 +1601,7 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
           isOpen={isAddColumnOpen}
           onClose={() => setIsAddColumnOpen(false)}
           baseTable={baseTable}
-          existingColumns={sheet.columns}
+          existingColumns={[]}
           onAddImported={handleAddImported}
         />
       )}
@@ -1265,21 +1620,14 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
                     Data Selected: {sheet.name}
                   </p>
                   <p className="text-sm text-db-gray-500">
-                    {sheet.columns.length} columns · {preview?.total_rows || 0}{" "}
+                    {((sheet.text_columns?.length || 0) + (sheet.image_columns?.length || 0) + (sheet.metadata_columns?.length || 0))} columns · {preview?.total_rows || 0}{" "}
                     rows ready
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => {
-                  console.log(
-                    "[SheetBuilder] Continue to Template button clicked",
-                  );
-                  console.log("[SheetBuilder] Current sheet:", sheet);
-                  console.log(
-                    "[SheetBuilder] Calling workflow.setCurrentStage('template')",
-                  );
-                  workflow.setCurrentStage("template");
+                  workflow.setCurrentStage("label");
                 }}
                 className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 flex items-center gap-3 font-semibold text-lg shadow-md hover:shadow-lg transition-all"
               >
@@ -1336,6 +1684,39 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
             </div>
           </div>
         </div>
+      )}
+
+      {/* Column Mapping Modal for template reusability */}
+      {sheet && templateForMapping && (
+        <ColumnMappingModal
+          isOpen={isColumnMappingOpen}
+          onClose={() => {
+            setIsColumnMappingOpen(false);
+            setTemplateForMapping(null);
+          }}
+          onConfirm={handleColumnMappingConfirm}
+          templateName={templateForMapping.name}
+          promptTemplate={templateForMapping.promptTemplate}
+          targetColumn={templateForMapping.targetColumn}
+          featureColumns={templateForMapping.featureColumns}
+          sheetColumns={[
+            ...(sheet.text_columns || []).map((name) => ({
+              name,
+              type: "string",
+              category: "text" as const,
+            })),
+            ...(sheet.image_columns || []).map((name) => ({
+              name,
+              type: "image",
+              category: "image" as const,
+            })),
+            ...(sheet.metadata_columns || []).map((name) => ({
+              name,
+              type: "string",
+              category: "metadata" as const,
+            })),
+          ]}
+        />
       )}
     </div>
   );

@@ -47,8 +47,10 @@ export function DataTable<T>({
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  const allSelected = data.length > 0 && data.every((item) => selectedRows.has(rowKey(item)));
-  const someSelected = data.some((item) => selectedRows.has(rowKey(item))) && !allSelected;
+  // Safety check: if data is undefined, default to empty array
+  const safeData = data || [];
+  const allSelected = safeData.length > 0 && safeData.every((item) => selectedRows.has(rowKey(item)));
+  const someSelected = safeData.some((item) => selectedRows.has(rowKey(item))) && !allSelected;
 
   const toggleSelectAll = () => {
     if (!onSelectionChange) return;
@@ -56,7 +58,7 @@ export function DataTable<T>({
     if (allSelected) {
       onSelectionChange(new Set());
     } else {
-      onSelectionChange(new Set(data.map((item) => rowKey(item))));
+      onSelectionChange(new Set(safeData.map((item) => rowKey(item))));
     }
   };
 
@@ -88,7 +90,7 @@ export function DataTable<T>({
     setExpandedRows(newExpanded);
   };
 
-  if (data.length === 0 && emptyState) {
+  if (safeData.length === 0 && emptyState) {
     return <>{emptyState}</>;
   }
 
@@ -125,7 +127,7 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody className="divide-y divide-db-gray-200">
-            {data.map((item) => {
+            {safeData.map((item) => {
               const id = rowKey(item);
               const isExpanded = expandedRows.has(id);
               const isSelected = selectedRows.has(id);

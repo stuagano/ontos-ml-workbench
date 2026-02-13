@@ -2,16 +2,29 @@
 Deployment API endpoints for model serving management.
 
 Provides one-click deployment from trained models to Databricks Model Serving.
+Supports endpoint lifecycle management, traffic configuration, and A/B testing.
 """
 
+import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from app.core.config import get_settings
 from app.services.deployment_service import get_deployment_service
+from app.services.sql_service import get_sql_service
 
 router = APIRouter(prefix="/deployment", tags=["deployment"])
+logger = logging.getLogger(__name__)
+
+# Get services
+_settings = get_settings()
+_sql = get_sql_service()
+
+# Table names
+ENDPOINTS_TABLE = _settings.get_table("endpoints_registry")
+LINEAGE_TABLE = _settings.get_table("model_training_lineage")
 
 
 # ============================================================================
@@ -196,3 +209,358 @@ async def query_endpoint(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/deployments")
+async def list_deployments(
+    status: str | None = Query(None, description="Filter by status"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+) -> dict[str, Any]:
+    """
+    List all deployments from the registry.
+
+    Args:
+        status: Filter by deployment status
+        page: Page number
+        page_size: Items per page
+
+    Returns:
+        Paginated list of deployments
+    """
+    service = get_deployment_service()
+    try:
+        from app.core.config import get_settings
+
+        settings = get_settings()
+        table_name = settings.get_table("endpoints_registry")
+
+        conditions = []
+        if status:
+            conditions.append(f"status = '{status}'")
+
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        offset = (page - 1) * page_size
+
+        # Get total count
+        count_sql = f"SELECT COUNT(*) as cnt FROM {table_name} {where_clause}"
+        count_result = service.sql.execute(count_sql)
+        total = count_result[0]["cnt"] if count_result else 0
+
+        # Get deployments
+        query_sql = f"""
+        SELECT *
+        FROM {table_name}
+        {where_clause}
+        ORDER BY created_at DESC
+        LIMIT {page_size} OFFSET {offset}
+        """
+        deployments = service.sql.execute(query_sql)
+
+        return {
+            "deployments": deployments,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/endpoints/{endpoint_name}/rollback")
+async def rollback_deployment(
+    endpoint_name: str,
+    target_version: str = Query(..., description="Model version to roll back to"),
+) -> dict[str, Any]:
+    """
+    Rollback a deployment to a previous model version.
+
+    Args:
+        endpoint_name: Name of the endpoint
+        target_version: Model version to roll back to
+
+    Returns:
+        Rollback result
+    """
+    service = get_deployment_service()
+    try:
+        # Get current endpoint config
+        endpoint = service.client.serving_endpoints.get(endpoint_name)
+
+        if not endpoint.config or not endpoint.config.served_entities:
+            raise HTTPException(
+                status_code=400, detail="Cannot determine current model configuration"
+            )
+
+        # Get the model name from current config
+        current_entity = endpoint.config.served_entities[0]
+        model_name = current_entity.entity_name
+
+        # Deploy the target version
+        result = service.deploy_model(
+            model_name=model_name,
+            model_version=target_version,
+            endpoint_name=endpoint_name,
+            workload_size=current_entity.workload_size or "Small",
+            scale_to_zero=current_entity.scale_to_zero_enabled or True,
+        )
+
+        return {
+            **result,
+            "action": "rollback",
+            "previous_version": current_entity.entity_version,
+            "target_version": target_version,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/endpoints/{endpoint_name}")
+async def update_deployment(
+    endpoint_name: str,
+    model_version: str = Query(..., description="New model version to deploy"),
+    workload_size: str | None = Query(None, description="Update workload size"),
+    scale_to_zero: bool | None = Query(None, description="Update scale to zero setting"),
+) -> dict[str, Any]:
+    """
+    Update an existing deployment with a new version or configuration.
+
+    Args:
+        endpoint_name: Name of the endpoint
+        model_version: New model version
+        workload_size: Optional new workload size
+        scale_to_zero: Optional new scale to zero setting
+
+    Returns:
+        Update result
+    """
+    service = get_deployment_service()
+    try:
+        # Get current endpoint config
+        endpoint = service.client.serving_endpoints.get(endpoint_name)
+
+        if not endpoint.config or not endpoint.config.served_entities:
+            raise HTTPException(
+                status_code=400, detail="Cannot determine current model configuration"
+            )
+
+        current_entity = endpoint.config.served_entities[0]
+        model_name = current_entity.entity_name
+
+        # Use current values if not specified
+        final_workload_size = workload_size or current_entity.workload_size or "Small"
+        final_scale_to_zero = (
+            scale_to_zero
+            if scale_to_zero is not None
+            else current_entity.scale_to_zero_enabled or True
+        )
+
+        # Deploy the new version
+        result = service.deploy_model(
+            model_name=model_name,
+            model_version=model_version,
+            endpoint_name=endpoint_name,
+            workload_size=final_workload_size,
+            scale_to_zero=final_scale_to_zero,
+        )
+
+        return {
+            **result,
+            "previous_version": current_entity.entity_version,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/endpoints/{endpoint_name}/history")
+async def get_deployment_history(
+    endpoint_name: str,
+    limit: int = Query(10, ge=1, le=100, description="Number of history entries"),
+) -> dict[str, Any]:
+    """
+    Get deployment history for an endpoint.
+
+    Shows all model versions that have been deployed to this endpoint
+    along with deployment timestamps and status.
+
+    Args:
+        endpoint_name: Name of the endpoint
+        limit: Number of history entries to return
+
+    Returns:
+        Deployment history
+    """
+    try:
+        # Query lineage table for deployment history
+        query_sql = f"""
+        SELECT
+            model_name,
+            model_version,
+            status,
+            created_at,
+            created_by
+        FROM {ENDPOINTS_TABLE}
+        WHERE endpoint_name = '{endpoint_name}'
+        ORDER BY created_at DESC
+        LIMIT {limit}
+        """
+        rows = _sql.execute(query_sql)
+
+        return {
+            "endpoint_name": endpoint_name,
+            "history": [
+                {
+                    "model_name": row["model_name"],
+                    "model_version": row["model_version"],
+                    "status": row["status"],
+                    "deployed_at": row["created_at"],
+                    "deployed_by": row["created_by"],
+                }
+                for row in rows
+            ],
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get deployment history: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get deployment history: {e}"
+        )
+
+
+@router.get("/models/{model_name}/deployments")
+async def get_model_deployments(model_name: str) -> dict[str, Any]:
+    """
+    Get all deployments for a specific model.
+
+    Shows which endpoints are currently serving this model
+    and their deployment status.
+
+    Args:
+        model_name: Full model name (catalog.schema.model)
+
+    Returns:
+        List of endpoints serving this model
+    """
+    try:
+        # Handle URL-encoded model names
+        model_name = model_name.replace("%2F", "/").replace("%2E", ".")
+
+        query_sql = f"""
+        SELECT
+            id,
+            name,
+            endpoint_name,
+            model_version,
+            status,
+            created_at
+        FROM {ENDPOINTS_TABLE}
+        WHERE model_name = '{model_name}'
+        ORDER BY created_at DESC
+        """
+        rows = _sql.execute(query_sql)
+
+        return {
+            "model_name": model_name,
+            "deployments": [
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "endpoint_name": row["endpoint_name"],
+                    "model_version": row["model_version"],
+                    "status": row["status"],
+                    "deployed_at": row["created_at"],
+                }
+                for row in rows
+            ],
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get model deployments: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get model deployments: {e}"
+        )
+
+
+@router.post("/endpoints/{endpoint_name}/validate")
+async def validate_endpoint(endpoint_name: str) -> dict[str, Any]:
+    """
+    Validate an endpoint configuration.
+
+    Performs health checks and configuration validation
+    before deployment or after updates.
+
+    Args:
+        endpoint_name: Name of the endpoint to validate
+
+    Returns:
+        Validation results
+    """
+    service = get_deployment_service()
+    try:
+        # Get endpoint status
+        status = service.get_endpoint_status(endpoint_name)
+
+        validation_results = {
+            "endpoint_name": endpoint_name,
+            "is_valid": True,
+            "checks": [],
+        }
+
+        # Check 1: Endpoint exists and is ready
+        if status["state"] != "READY":
+            validation_results["checks"].append({
+                "check": "endpoint_ready",
+                "status": "warning",
+                "message": f"Endpoint state is {status['state']}, not READY",
+            })
+            validation_results["is_valid"] = False
+        else:
+            validation_results["checks"].append({
+                "check": "endpoint_ready",
+                "status": "pass",
+                "message": "Endpoint is ready",
+            })
+
+        # Check 2: Has served entities
+        if not status.get("served_entities"):
+            validation_results["checks"].append({
+                "check": "served_entities",
+                "status": "fail",
+                "message": "No served entities configured",
+            })
+            validation_results["is_valid"] = False
+        else:
+            validation_results["checks"].append({
+                "check": "served_entities",
+                "status": "pass",
+                "message": f"{len(status['served_entities'])} served entities configured",
+            })
+
+        # Check 3: All entities are deployed
+        for entity in status.get("served_entities", []):
+            entity_state = entity.get("state", "unknown")
+            if entity_state != "DEPLOYED":
+                validation_results["checks"].append({
+                    "check": f"entity_{entity['name']}_deployed",
+                    "status": "warning",
+                    "message": f"Entity {entity['name']} state is {entity_state}",
+                })
+                validation_results["is_valid"] = False
+            else:
+                validation_results["checks"].append({
+                    "check": f"entity_{entity['name']}_deployed",
+                    "status": "pass",
+                    "message": f"Entity {entity['name']} is deployed",
+                })
+
+        return validation_results
+
+    except Exception as e:
+        logger.error(f"Failed to validate endpoint: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to validate endpoint: {e}"
+        )

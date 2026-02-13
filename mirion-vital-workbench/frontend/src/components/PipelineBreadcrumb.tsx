@@ -28,23 +28,17 @@ const stageColors: Record<
     border: "border-blue-500",
     completedBg: "bg-blue-100",
   },
-  template: {
-    bg: "bg-purple-50",
-    text: "text-purple-700",
-    border: "border-purple-500",
-    completedBg: "bg-purple-100",
+  label: {
+    bg: "bg-orange-50",
+    text: "text-orange-700",
+    border: "border-orange-500",
+    completedBg: "bg-orange-100",
   },
   curate: {
     bg: "bg-amber-50",
     text: "text-amber-700",
     border: "border-amber-500",
     completedBg: "bg-amber-100",
-  },
-  label: {
-    bg: "bg-orange-50",
-    text: "text-orange-700",
-    border: "border-orange-500",
-    completedBg: "bg-orange-100",
   },
   train: {
     bg: "bg-green-50",
@@ -83,8 +77,6 @@ export function PipelineBreadcrumb({
     switch (stageId) {
       case "data":
         return state.selectedSource !== null;
-      case "template":
-        return state.selectedTemplate !== null;
       default:
         return false;
     }
@@ -95,8 +87,6 @@ export function PipelineBreadcrumb({
     switch (stageId) {
       case "data":
         return state.selectedSource?.name || null;
-      case "template":
-        return state.selectedTemplate?.name || null;
       default:
         return null;
     }

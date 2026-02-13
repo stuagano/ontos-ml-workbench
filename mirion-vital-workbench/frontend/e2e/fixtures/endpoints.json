@@ -1,0 +1,38 @@
+{
+  "defectDetector": {
+    "name": "e2e-test-defect-detector-v1",
+    "model_name": "catalog.schema.defect_detector_model",
+    "model_version": "1",
+    "endpoint_name": "e2e-test-defect-detector",
+    "workload_size": "Small",
+    "scale_to_zero": true,
+    "environment_vars": {
+      "MODEL_TYPE": "defect_detection",
+      "CONFIDENCE_THRESHOLD": "0.85"
+    }
+  },
+  "maintenancePredictor": {
+    "name": "e2e-test-maintenance-predictor-v1",
+    "model_name": "catalog.schema.maintenance_predictor_model",
+    "model_version": "1",
+    "endpoint_name": "e2e-test-maintenance-predictor",
+    "workload_size": "Medium",
+    "scale_to_zero": true,
+    "environment_vars": {
+      "MODEL_TYPE": "predictive_maintenance",
+      "PREDICTION_WINDOW_HOURS": "72"
+    }
+  },
+  "anomalyDetector": {
+    "name": "e2e-test-anomaly-detector-v1",
+    "model_name": "catalog.schema.anomaly_detector_model",
+    "model_version": "1",
+    "endpoint_name": "e2e-test-anomaly-detector",
+    "workload_size": "Small",
+    "scale_to_zero": false,
+    "environment_vars": {
+      "MODEL_TYPE": "anomaly_detection",
+      "SENSITIVITY": "0.95"
+    }
+  }
+}

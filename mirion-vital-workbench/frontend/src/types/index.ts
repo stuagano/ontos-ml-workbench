@@ -1,12 +1,12 @@
-// Pipeline stages (PRD v2.3: updated workflow)
+// Pipeline stages (7-stage workflow)
 export type PipelineStage =
-  | "data"
-  | "generate" // v2.3: renamed from "curate"
-  | "label"
-  | "train"
-  | "deploy"
-  | "monitor"
-  | "improve";
+  | "data"      // Select data, preview, configure template, generate training data
+  | "label"     // Review and label Q&A pairs
+  | "curate"    // Build training and validation sets from approved labels
+  | "train"     // Fine-tune models
+  | "deploy"    // Deploy to endpoints
+  | "monitor"   // Track performance
+  | "improve";  // Feedback and retraining
 
 export const PIPELINE_STAGES: {
   id: PipelineStage;
@@ -16,27 +16,22 @@ export const PIPELINE_STAGES: {
   {
     id: "data",
     label: "DATA",
-    description: "Extract, transform, and enrich raw data",
-  },
-  {
-    id: "template",
-    label: "TEMPLATE",
-    description: "Create and manage Databits (prompt templates)",
-  },
-  {
-    id: "curate",
-    label: "CURATE",
-    description: "Review and label training data",
+    description: "Select dataset, preview data, configure template, and generate training data",
   },
   {
     id: "label",
     label: "LABEL",
-    description: "Manage labeling workflows and annotation tasks",
+    description: "Review and label Q&A pairs",
+  },
+  {
+    id: "curate",
+    label: "CURATE",
+    description: "Build training and validation sets from approved labels",
   },
   {
     id: "train",
     label: "TRAIN",
-    description: "Fine-tune models on curated data",
+    description: "Fine-tune models with curated data",
   },
   {
     id: "deploy",
@@ -78,6 +73,11 @@ export interface Template {
   version: string;
   status: TemplateStatus;
   label_type?: string; // PRD v2.3: For canonical label matching
+
+  // ML column configuration
+  feature_columns?: string[]; // Independent variables (input features)
+  target_column?: string; // Dependent variable (output/target)
+
   input_schema?: SchemaField[];
   output_schema?: SchemaField[];
   prompt_template?: string;
@@ -727,7 +727,7 @@ export interface DatasetPreset {
 /**
  * Sheet lifecycle status
  */
-export type SheetStatus = "draft" | "published" | "archived";
+export type SheetStatus = "draft" | "active" | "published" | "archived";
 
 /**
  * How the column data is sourced
@@ -793,31 +793,41 @@ export interface ColumnDefinition {
  * An AI Sheet - a spreadsheet with imported and AI-generated columns
  * Note: Uses snake_case to match backend API
  */
+/**
+ * Sheet (PRD v2.3) - Lightweight pointer to Unity Catalog data
+ * Matches backend SheetResponse model from sheets_v2
+ */
 export interface Sheet {
   id: string;
   name: string;
   description?: string;
-  version: string;
-  status: SheetStatus;
-  columns: ColumnDefinition[];
-  row_count?: number;
-  template_config?: TemplateConfig; // Attached template (GCP pattern)
-  has_template: boolean; // Quick check if template is attached
+  source_type: "uc_table" | "uc_volume" | "external";
+  source_table?: string; // e.g., 'catalog.schema.table'
+  source_volume?: string; // e.g., '/Volumes/catalog/schema/volume'
+  source_path?: string; // Path within volume if source_type is uc_volume
 
-  // PRD v2.3: Unity Catalog source references (multimodal)
-  primary_table?: string; // e.g., 'mirion_vital.raw.pcb_inspections'
-  secondary_sources?: Array<{
-    type: string;
-    path: string;
-    join_keys: string[];
-  }>;
-  join_keys?: string[];
-  filter_condition?: string;
-  canonical_label_count?: number; // v2.3: Number of canonical labels created from this sheet
+  item_id_column?: string; // Column name to use as item_ref in canonical labels
+  text_columns: string[];
+  image_columns: string[];
+  metadata_columns: string[];
 
-  created_by?: string;
-  created_at?: string;
-  updated_at?: string;
+  sampling_strategy: string; // all, random, stratified
+  sample_size?: number;
+  filter_expression?: string; // SQL WHERE clause
+
+  status: string; // active, archived, deleted
+  item_count?: number; // Cached count of items in dataset
+  last_validated_at?: string;
+
+  // Template configuration (attached to sheet)
+  has_template?: boolean;
+  template_config?: TemplateConfig;
+  columns?: ColumnDefinition[]; // Column definitions for legacy components
+
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  updated_by: string;
 }
 
 /**
@@ -866,12 +876,27 @@ export interface ColumnCreateRequest {
 }
 
 /**
- * Request for creating a sheet
+ * Request for creating a sheet (PRD v2.3)
+ * Matches backend SheetCreateRequest model from sheets_v2
  */
 export interface SheetCreateRequest {
   name: string;
   description?: string;
-  columns?: ColumnCreateRequest[];
+  source_type: "uc_table" | "uc_volume" | "external";
+  source_table?: string;
+  source_volume?: string;
+  source_path?: string;
+
+  item_id_column?: string;
+  text_columns?: string[];
+  image_columns?: string[];
+  metadata_columns?: string[];
+
+  sampling_strategy?: string;
+  sample_size?: number;
+  filter_expression?: string;
+
+  status?: string;
 }
 
 /**
@@ -982,9 +1007,21 @@ export interface TemplateConfig {
   max_tokens: number;
   label_classes?: LabelClass[]; // Labels for annotation tasks
   label_type?: string; // PRD v2.3: For canonical label lookup (e.g., "entity_extraction", "classification")
+
+  // ML column configuration
+  feature_columns?: string[]; // Independent variables (input features)
+  target_column?: string; // Dependent variable (output/target) - the column we're predicting
+
   name?: string;
   description?: string;
   version: string;
+
+  /**
+   * Maps template placeholders to sheet columns for template reusability.
+   * Keys are template placeholders (e.g., 'image'), values are sheet column names (e.g., 'image_path').
+   * Enables reusing templates across datasets with different column names.
+   */
+  column_mapping?: Record<string, string>;
 }
 
 /**
@@ -1001,8 +1038,20 @@ export interface TemplateConfigAttachRequest {
   max_tokens?: number;
   label_classes?: LabelClass[]; // Labels for annotation tasks
   label_type?: string; // PRD v2.3: For canonical label lookup
+
+  // ML column configuration
+  feature_columns?: string[]; // Independent variables (input features)
+  target_column?: string; // Dependent variable (output/target)
+
   name?: string;
   description?: string;
+
+  /**
+   * Maps template placeholders to sheet columns for template reusability.
+   * Keys are template placeholders (e.g., 'image'), values are sheet column names (e.g., 'image_path').
+   * If not provided, direct name matching is used (backward compatible).
+   */
+  column_mapping?: Record<string, string>;
 }
 
 /**
@@ -1086,13 +1135,14 @@ export interface AssembleRequest {
 }
 
 /**
- * Response from assembly creation
+ * Response from assembly creation (PRD v2.3 - training_sheets)
  */
 export interface AssembleResponse {
-  assembly_id: string;
+  training_sheet_id: string;
+  assembly_id: string; // Alias for training_sheet_id for backwards compatibility
   sheet_id: string;
-  status: AssemblyStatus;
-  total_rows: number;
+  status: string;
+  total_items: number;
   message?: string;
 }
 
@@ -2103,35 +2153,41 @@ export interface TrainingJob {
   status: TrainingJobStatus;
   training_config: Record<string, any>;
   train_val_split: number;
-  
+
   // Counts (calculated by backend)
   total_pairs: number;
   train_pairs: number;
   val_pairs: number;
-  
+
   // Progress tracking
   progress_percent: number;
   current_epoch?: number;
   total_epochs?: number;
-  
+  current_step?: number; // Current training step
+  total_steps?: number; // Total training steps
+
   // External IDs
   fmapi_job_id?: string;
   fmapi_run_id?: string;
   mlflow_experiment_id?: string;
   mlflow_run_id?: string;
-  
+
   // Unity Catalog registration
   register_to_uc: boolean;
   uc_model_name?: string;
   uc_model_version?: string;
-  
+  model_version?: string; // Alias for uc_model_version
+
   // Metrics (populated on completion)
   metrics?: Record<string, any>;
-  
+
   // Error handling
   error_message?: string;
   error_details?: Record<string, any>;
-  
+
+  // Timing
+  duration_seconds?: number;
+
   // Timestamps
   created_at?: string;
   created_by?: string;
@@ -2170,6 +2226,11 @@ export interface TrainingJobMetrics {
   tokens_processed?: number;
   cost_dbu?: number;
   custom_metrics?: Record<string, any>;
+  // Final metrics (for display)
+  final_train_loss?: number;
+  final_val_loss?: number;
+  best_val_accuracy?: number;
+  metrics_json?: string; // Raw JSON string of all metrics
 }
 
 export interface TrainingJobEvent {
@@ -2202,6 +2263,22 @@ export interface TrainingJobLineage {
   model_version?: string;
   qa_pair_ids: string[];
   canonical_label_ids: string[];
+  // Nested objects for UI display
+  sheet?: {
+    id: string;
+    name: string;
+    source_table?: string;
+  };
+  training_sheet?: {
+    id: string;
+    name: string;
+    total_rows?: number;
+  };
+  template?: {
+    id: string;
+    name: string;
+    label_type?: string;
+  };
 }
 
 export interface TrainingJobCancelRequest {
@@ -2235,3 +2312,100 @@ export const AVAILABLE_TRAINING_MODELS = [
     recommended: false,
   },
 ] as const;
+
+// ============================================================================
+// Monitoring Types (MONITOR Stage)
+// ============================================================================
+
+/**
+ * Performance metrics for an endpoint
+ */
+export interface PerformanceMetrics {
+  endpoint_id: string;
+  endpoint_name: string;
+  time_period: string;
+  total_requests: number;
+  successful_requests: number;
+  failed_requests: number;
+  avg_latency_ms?: number;
+  p50_latency_ms?: number;
+  p95_latency_ms?: number;
+  p99_latency_ms?: number;
+  error_rate: number;
+  requests_per_minute: number;
+  last_updated: string;
+}
+
+/**
+ * Real-time metrics for an endpoint
+ */
+export interface RealtimeMetrics {
+  endpoint_id: string;
+  time_window_minutes: number;
+  request_count: number;
+  requests_per_minute: number;
+  success_rate: number;
+  avg_rating: number;
+  flagged_count: number;
+  timestamp: string;
+}
+
+/**
+ * Alert configuration and response
+ */
+export interface Alert {
+  id: string;
+  endpoint_id: string;
+  alert_type: "drift" | "latency" | "error_rate" | "quality";
+  threshold: number;
+  condition: "gt" | "lt" | "eq";
+  status: "active" | "acknowledged" | "resolved";
+  triggered_at?: string;
+  current_value?: number;
+  message?: string;
+  created_at: string;
+  acknowledged_at?: string;
+  acknowledged_by?: string;
+  resolved_at?: string;
+}
+
+/**
+ * Request to create a monitoring alert
+ */
+export interface CreateAlertRequest {
+  endpoint_id: string;
+  alert_type: "drift" | "latency" | "error_rate" | "quality";
+  threshold: number;
+  condition: "gt" | "lt" | "eq";
+  enabled?: boolean;
+  notification_channels?: string[];
+}
+
+/**
+ * Data drift detection report
+ */
+export interface DriftDetection {
+  endpoint_id: string;
+  endpoint_name: string;
+  detection_time: string;
+  drift_detected: boolean;
+  drift_score: number;
+  baseline_period: string;
+  comparison_period: string;
+  affected_features?: string[];
+  severity: "low" | "medium" | "high" | "critical";
+}
+
+/**
+ * Endpoint health status
+ */
+export interface HealthStatus {
+  endpoint_id: string;
+  health_score: number;
+  status: "healthy" | "degraded" | "warning" | "critical";
+  metrics: RealtimeMetrics;
+  active_alerts: number;
+  drift_detected: boolean;
+  drift_severity: "low" | "medium" | "high" | "critical";
+  timestamp: string;
+}

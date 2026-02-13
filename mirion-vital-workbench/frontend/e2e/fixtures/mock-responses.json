@@ -1,0 +1,103 @@
+{
+  "errorResponses": {
+    "sheetNotFound": {
+      "status": 404,
+      "body": {
+        "detail": "Sheet not found"
+      }
+    },
+    "deploymentFailed": {
+      "status": 500,
+      "body": {
+        "detail": "Failed to deploy model: Endpoint creation failed"
+      }
+    },
+    "alertCreationFailed": {
+      "status": 400,
+      "body": {
+        "detail": "Invalid alert configuration: threshold must be between 0 and 1"
+      }
+    },
+    "endpointNotReady": {
+      "status": 503,
+      "body": {
+        "detail": "Endpoint is not ready yet, current state: UPDATING"
+      }
+    },
+    "feedbackValidationError": {
+      "status": 422,
+      "body": {
+        "detail": [
+          {
+            "loc": ["body", "rating"],
+            "msg": "rating must be 'positive' or 'negative'",
+            "type": "value_error"
+          }
+        ]
+      }
+    }
+  },
+  "successResponses": {
+    "sheetCreated": {
+      "status": 201,
+      "body": {
+        "id": "mock-sheet-123",
+        "name": "Mock Sheet",
+        "status": "active",
+        "created_at": "2024-01-01T00:00:00Z"
+      }
+    },
+    "deploymentSuccess": {
+      "status": 200,
+      "body": {
+        "deployment_id": "mock-deploy-123",
+        "endpoint_name": "mock-endpoint",
+        "status": "READY",
+        "action": "created",
+        "message": "Deployment successful"
+      }
+    },
+    "metricsResponse": {
+      "status": 200,
+      "body": [
+        {
+          "endpoint_id": "mock-endpoint-123",
+          "endpoint_name": "Mock Endpoint",
+          "time_period": "last_24h",
+          "total_requests": 1000,
+          "successful_requests": 950,
+          "failed_requests": 50,
+          "error_rate": 5.0,
+          "requests_per_minute": 0.69,
+          "last_updated": "2024-01-01T12:00:00Z"
+        }
+      ]
+    },
+    "driftReport": {
+      "status": 200,
+      "body": {
+        "endpoint_id": "mock-endpoint-123",
+        "endpoint_name": "Mock Endpoint",
+        "detection_time": "2024-01-01T12:00:00Z",
+        "drift_detected": true,
+        "drift_score": 0.15,
+        "baseline_period": "7d",
+        "comparison_period": "24h",
+        "affected_features": ["rating"],
+        "severity": "medium"
+      }
+    },
+    "feedbackStats": {
+      "status": 200,
+      "body": {
+        "endpoint_id": "mock-endpoint-123",
+        "total_count": 100,
+        "positive_count": 75,
+        "negative_count": 25,
+        "positive_rate": 0.75,
+        "with_comments_count": 30,
+        "period_days": 30
+      }
+    }
+  }
+}

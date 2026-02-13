@@ -18,7 +18,6 @@ import {
   Trash2,
   Tag,
   CheckCircle,
-  AlertCircle,
   ExternalLink,
   BarChart3,
   ArrowLeft,
@@ -30,7 +29,6 @@ import {
   useDeleteLabelset,
   usePublishLabelset,
   useArchiveLabelset,
-  useLabelset,
   useLabelsetStats,
   useLabelsetCanonicalLabels,
 } from '../hooks/useLabelsets';
@@ -127,36 +125,48 @@ function LabelsetBrowseView({
   const deleteMutation = useDeleteLabelset();
   const publishMutation = usePublishLabelset();
   const archiveMutation = useArchiveLabelset();
-  const { showToast } = useToast();
+  const toast = useToast();
 
-  const columns: Column[] = [
+  const columns: Column<Labelset>[] = [
     {
       key: 'status',
-      label: 'Status',
+      header: 'Status',
       render: (labelset: Labelset) => (
         <StatusBadge status={labelset.status} />
       ),
     },
-    { key: 'name', label: 'Name' },
-    { key: 'label_type', label: 'Label Type' },
+    {
+      key: 'name',
+      header: 'Name',
+      render: (labelset: Labelset) => labelset.name,
+    },
+    {
+      key: 'label_type',
+      header: 'Label Type',
+      render: (labelset: Labelset) => labelset.label_type,
+    },
     {
       key: 'label_classes',
-      label: 'Classes',
+      header: 'Classes',
       render: (labelset: Labelset) => labelset.label_classes.length,
     },
     {
       key: 'canonical_label_count',
-      label: 'Canonical Labels',
+      header: 'Canonical Labels',
       render: (labelset: Labelset) => (
         <span className="text-cyan-600 dark:text-cyan-400">
           {labelset.canonical_label_count}
         </span>
       ),
     },
-    { key: 'use_case', label: 'Use Case' },
+    {
+      key: 'use_case',
+      header: 'Use Case',
+      render: (labelset: Labelset) => labelset.use_case || '',
+    },
     {
       key: 'tags',
-      label: 'Tags',
+      header: 'Tags',
       render: (labelset: Labelset) =>
         labelset.tags?.length ? (
           <div className="flex gap-1 flex-wrap">
@@ -178,7 +188,7 @@ function LabelsetBrowseView({
     },
     {
       key: 'created_at',
-      label: 'Created',
+      header: 'Created',
       render: (labelset: Labelset) =>
         labelset.created_at
           ? new Date(labelset.created_at).toLocaleDateString()
@@ -186,35 +196,36 @@ function LabelsetBrowseView({
     },
   ];
 
-  const rowActions: RowAction[] = [
+  const rowActions: RowAction<Labelset>[] = [
     {
       label: 'View Details',
       icon: Eye,
-      onClick: (labelset) => onSelectLabelset(labelset, 'detail'),
+      onClick: (labelset: Labelset) => onSelectLabelset(labelset, 'detail'),
     },
     {
       label: 'Edit',
       icon: Edit,
-      onClick: (labelset) => onSelectLabelset(labelset, 'edit'),
-      condition: (labelset) => labelset.status === 'draft',
+      onClick: (labelset: Labelset) => onSelectLabelset(labelset, 'edit'),
+      show: (labelset: Labelset) => labelset.status === 'draft',
     },
     {
       label: 'Publish',
       icon: CheckCircle,
-      onClick: async (labelset) => {
+      onClick: async (labelset: Labelset) => {
         try {
           await publishMutation.mutateAsync(labelset.id);
-          showToast('Labelset published successfully', 'success');
-        } catch (error: any) {
-          showToast(error.message || 'Failed to publish labelset', 'error');
+          toast.success('Labelset published successfully');
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : 'Failed to publish labelset';
+          toast.error(message);
         }
       },
-      condition: (labelset) => labelset.status === 'draft',
+      show: (labelset: Labelset) => labelset.status === 'draft',
     },
     {
       label: 'Archive',
       icon: Archive,
-      onClick: async (labelset) => {
+      onClick: async (labelset: Labelset) => {
         if (
           confirm(
             `Archive labelset "${labelset.name}"? It will be hidden from lists.`
@@ -222,9 +233,10 @@ function LabelsetBrowseView({
         ) {
           try {
             await archiveMutation.mutateAsync(labelset.id);
-            showToast('Labelset archived successfully', 'success');
-          } catch (error: any) {
-            showToast(error.message || 'Failed to archive labelset', 'error');
+            toast.success('Labelset archived successfully');
+          } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Failed to archive labelset';
+            toast.error(message);
           }
         }
       },
@@ -232,7 +244,7 @@ function LabelsetBrowseView({
     {
       label: 'Delete',
       icon: Trash2,
-      onClick: async (labelset) => {
+      onClick: async (labelset: Labelset) => {
         if (
           confirm(
             `Delete labelset "${labelset.name}"? This cannot be undone.`
@@ -240,13 +252,14 @@ function LabelsetBrowseView({
         ) {
           try {
             await deleteMutation.mutateAsync(labelset.id);
-            showToast('Labelset deleted successfully', 'success');
-          } catch (error: any) {
-            showToast(error.message || 'Failed to delete labelset', 'error');
+            toast.success('Labelset deleted successfully');
+          } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Failed to delete labelset';
+            toast.error(message);
           }
         }
       },
-      condition: (labelset) =>
+      show: (labelset: Labelset) =>
         labelset.status === 'draft' && labelset.canonical_label_count === 0,
     },
   ];
@@ -301,13 +314,24 @@ function LabelsetBrowseView({
 
       {/* Table */}
       <div className="flex-1 overflow-auto p-6">
-        <DataTable
-          columns={columns}
-          data={data?.labelsets || []}
-          rowActions={rowActions}
-          isLoading={isLoading}
-          onRowClick={(labelset) => onSelectLabelset(labelset, 'detail')}
-        />
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600"></div>
+          </div>
+        ) : (
+          <DataTable<Labelset>
+            columns={columns}
+            data={data?.labelsets || []}
+            rowKey={(labelset: Labelset) => labelset.id}
+            rowActions={rowActions}
+            onRowClick={(labelset: Labelset) => onSelectLabelset(labelset, 'detail')}
+            emptyState={
+              <div className="text-center py-12 text-db-gray-500 dark:text-gray-400">
+                No labelsets found. Create one to get started.
+              </div>
+            }
+          />
+        )}
       </div>
     </>
   );

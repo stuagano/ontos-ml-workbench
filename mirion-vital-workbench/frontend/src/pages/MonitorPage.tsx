@@ -14,11 +14,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
   AlertTriangle,
-  TrendingUp,
-  TrendingDown,
   ExternalLink,
   Loader2,
-  BarChart3,
   Clock,
   Zap,
   DollarSign,
@@ -34,193 +31,101 @@ import {
   GitBranch,
   Database,
   ChevronLeft,
-  ChevronRight,
-  FileCode,
   Search,
   Filter,
 } from "lucide-react";
 import { DataTable, Column, RowAction } from "../components/DataTable";
 import { StageSubNav } from "../components/StageSubNav";
-import { useWorkflow } from "../context/WorkflowContext";
+import { MetricCard } from "../components/MetricCard";
+import { WorkflowBanner } from "../components/WorkflowBanner";
+import { MetricsLineChart, MetricSeries } from "../components/charts";
 import { clsx } from "clsx";
 import {
   listServingEndpoints,
   getFeedbackStats,
-  triggerJob,
+  getPerformanceMetrics,
+  getRealtimeMetrics,
+  listAlerts,
+  getDriftDetection,
   type ServingEndpoint,
   type FeedbackStats,
+  type Alert as ApiAlert,
+  type DriftDetection,
 } from "../services/api";
 import { openDatabricks } from "../services/databricksLinks";
 import { useToast } from "../components/Toast";
+import { StatusBadge } from "../components/StatusBadge";
+import {
+  MONITOR_ENDPOINT_STATUS_CONFIG,
+  getStatusConfig,
+  isStatusActive,
+} from "../constants/statusConfig";
 
 // ============================================================================
 // Types
 // ============================================================================
 
 type TimeRange = "1h" | "24h" | "7d" | "30d";
-type AlertSeverity = "info" | "warning" | "error";
 
-interface Alert {
-  id: string;
-  severity: AlertSeverity;
-  message: string;
-  endpoint?: string;
-  time: string;
-}
-
-// ============================================================================
-// WorkflowBanner Component
-// ============================================================================
-
-function WorkflowBanner() {
-  const { state, goToPreviousStage, goToNextStage } = useWorkflow();
-
-  return (
-    <div className="bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-lg p-4 mb-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          {/* Data source */}
-          {state.selectedSource && (
-            <div className="flex items-center gap-2">
-              <Database className="w-4 h-4 text-rose-600" />
-              <div>
-                <div className="text-xs text-rose-600 font-medium">
-                  Data Source
-                </div>
-                <div className="text-sm text-rose-800">
-                  {state.selectedSource.name}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Template */}
-          {state.selectedTemplate && (
-            <>
-              <ChevronRight className="w-4 h-4 text-rose-400" />
-              <div className="flex items-center gap-2">
-                <FileCode className="w-4 h-4 text-rose-600" />
-                <div>
-                  <div className="text-xs text-rose-600 font-medium">
-                    Template
-                  </div>
-                  <div className="text-sm text-rose-800">
-                    {state.selectedTemplate.name}
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={goToPreviousStage}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm text-rose-700 hover:bg-rose-100 rounded-lg transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Back to Deploy
-          </button>
-          <button
-            onClick={goToNextStage}
-            className="flex items-center gap-1 px-4 py-1.5 text-sm bg-rose-600 text-white hover:bg-rose-700 rounded-lg transition-colors"
-          >
-            Continue to Improve
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================================
-// Status Config
-// ============================================================================
-
-const STATUS_CONFIG: Record<
-  string,
-  { icon: typeof CheckCircle; color: string; bgColor: string; label: string }
-> = {
-  READY: {
-    icon: CheckCircle,
-    color: "text-green-600",
-    bgColor: "bg-green-50",
-    label: "Healthy",
-  },
-  NOT_READY: {
-    icon: Loader2,
-    color: "text-amber-600",
-    bgColor: "bg-amber-50",
-    label: "Starting",
-  },
-  FAILED: {
-    icon: XCircle,
-    color: "text-red-600",
-    bgColor: "bg-red-50",
-    label: "Failed",
-  },
-  unknown: {
-    icon: Activity,
-    color: "text-gray-500",
-    bgColor: "bg-gray-50",
-    label: "Unknown",
-  },
+// Map time range to hours
+const TIME_RANGE_HOURS: Record<TimeRange, number> = {
+  "1h": 1,
+  "24h": 24,
+  "7d": 168,
+  "30d": 720,
 };
 
 // ============================================================================
-// Metric Card Component
+// Mock Chart Data Generator
 // ============================================================================
 
-interface MetricCardProps {
-  title: string;
-  value: string;
-  change?: number;
-  icon: typeof Activity;
-  color: string;
-  onClick?: () => void;
+function generateMockChartData(
+  timeRange: TimeRange,
+  hasEndpoints: boolean
+): MetricSeries[] {
+  if (!hasEndpoints) {
+    return [];
+  }
+
+  const hours = TIME_RANGE_HOURS[timeRange];
+  const points = Math.min(hours, 24); // Max 24 data points
+  const now = new Date();
+  const interval = (hours * 60 * 60 * 1000) / points; // ms per point
+
+  const requestData = [];
+  const latencyData = [];
+
+  for (let i = points; i >= 0; i--) {
+    const timestamp = new Date(now.getTime() - i * interval).toISOString();
+
+    // Generate request volume (with some variation)
+    const baseRequests = 1200;
+    const variation = Math.sin(i * 0.5) * 200 + Math.random() * 100;
+    requestData.push({
+      timestamp,
+      value: Math.max(0, Math.floor(baseRequests + variation)),
+    });
+
+    // Generate latency (with some variation)
+    const baseLatency = 180;
+    const latencyVariation = Math.sin(i * 0.3) * 30 + Math.random() * 20;
+    latencyData.push({
+      timestamp,
+      value: Math.max(50, Math.floor(baseLatency + latencyVariation)),
+    });
+  }
+
+  return [
+    {
+      name: "Requests/min",
+      data: requestData,
+      color: "cyan-600",
+      strokeWidth: 2,
+    },
+  ];
 }
 
-function MetricCard({
-  title,
-  value,
-  change,
-  icon: Icon,
-  color,
-  onClick,
-}: MetricCardProps) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={!onClick}
-      className={clsx(
-        "bg-white rounded-lg border border-db-gray-200 p-4 text-left transition-all",
-        onClick && "hover:border-rose-300 hover:shadow-sm cursor-pointer",
-      )}
-    >
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm text-db-gray-500">{title}</span>
-        <Icon className={clsx("w-5 h-5", color)} />
-      </div>
-      <div className="text-2xl font-bold text-db-gray-900">{value}</div>
-      {change !== undefined && (
-        <div
-          className={clsx(
-            "flex items-center gap-1 text-sm mt-1",
-            change >= 0 ? "text-green-600" : "text-red-600",
-          )}
-        >
-          {change >= 0 ? (
-            <TrendingUp className="w-4 h-4" />
-          ) : (
-            <TrendingDown className="w-4 h-4" />
-          )}
-          {Math.abs(change)}% vs last period
-        </div>
-      )}
-    </button>
-  );
-}
+// MetricCard component moved to /frontend/src/components/MetricCard.tsx
 
 // ============================================================================
 // Endpoint Status Card
@@ -237,8 +142,7 @@ function EndpointStatusCard({
   isSelected,
   onClick,
 }: EndpointStatusCardProps) {
-  const config = STATUS_CONFIG[endpoint.state] || STATUS_CONFIG.unknown;
-  const Icon = config.icon;
+  const config = getStatusConfig(endpoint.state, MONITOR_ENDPOINT_STATUS_CONFIG);
 
   return (
     <button
@@ -262,15 +166,11 @@ function EndpointStatusCard({
             {endpoint.name}
           </span>
         </div>
-        <div className={clsx("flex items-center gap-1", config.color)}>
-          <Icon
-            className={clsx(
-              "w-3.5 h-3.5",
-              endpoint.state === "NOT_READY" && "animate-spin",
-            )}
-          />
-          <span className="text-xs">{config.label}</span>
-        </div>
+        <StatusBadge
+          config={config}
+          animate={isStatusActive(endpoint.state)}
+          size="sm"
+        />
       </div>
     </button>
   );
@@ -281,33 +181,46 @@ function EndpointStatusCard({
 // ============================================================================
 
 interface AlertItemProps {
-  alert: Alert;
+  alert: ApiAlert;
 }
 
 function AlertItem({ alert }: AlertItemProps) {
-  const colors: Record<AlertSeverity, string> = {
-    info: "bg-blue-50 border-blue-200 text-blue-800",
-    warning: "bg-amber-50 border-amber-200 text-amber-800",
-    error: "bg-red-50 border-red-200 text-red-800",
+  const getAlertColor = (status: string, alertType: string) => {
+    if (status === "active") {
+      if (alertType === "error_rate" || alertType === "quality") {
+        return "bg-red-50 border-red-200 text-red-800";
+      }
+      if (alertType === "drift" || alertType === "latency") {
+        return "bg-amber-50 border-amber-200 text-amber-800";
+      }
+    }
+    return "bg-blue-50 border-blue-200 text-blue-800";
   };
 
-  const icons: Record<AlertSeverity, typeof AlertTriangle> = {
-    info: CheckCircle,
-    warning: AlertTriangle,
-    error: XCircle,
+  const getIcon = (status: string, alertType: string) => {
+    if (status === "active") {
+      if (alertType === "error_rate" || alertType === "quality") {
+        return XCircle;
+      }
+      return AlertTriangle;
+    }
+    return CheckCircle;
   };
 
-  const Icon = icons[alert.severity];
+  const Icon = getIcon(alert.status, alert.alert_type);
+  const colorClass = getAlertColor(alert.status, alert.alert_type);
 
   return (
-    <div className={clsx("rounded-lg border p-3", colors[alert.severity])}>
+    <div className={clsx("rounded-lg border p-3", colorClass)}>
       <div className="flex items-start gap-2">
         <Icon className="w-4 h-4 mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium">{alert.message}</div>
+          <div className="text-sm font-medium">
+            {alert.message || `${alert.alert_type} alert triggered`}
+          </div>
           <div className="text-xs opacity-75 mt-1">
-            {alert.endpoint && `${alert.endpoint} · `}
-            {alert.time}
+            {alert.alert_type} · {alert.status}
+            {alert.triggered_at && ` · ${new Date(alert.triggered_at).toLocaleString()}`}
           </div>
         </div>
       </div>
@@ -320,44 +233,29 @@ function AlertItem({ alert }: AlertItemProps) {
 // ============================================================================
 
 interface DriftPanelProps {
-  hasEndpoints: boolean;
+  endpointId: string | null;
+  driftData: DriftDetection | undefined;
+  isLoading: boolean;
   onRunDriftDetection: () => void;
   isRunning: boolean;
 }
 
 function DriftPanel({
-  hasEndpoints,
+  endpointId,
+  driftData,
+  isLoading,
   onRunDriftDetection,
   isRunning,
 }: DriftPanelProps) {
-  const driftMetrics = hasEndpoints
-    ? [
-        {
-          name: "Input Distribution",
-          status: "normal" as const,
-          value: "0.08",
-          threshold: "0.25",
-        },
-        {
-          name: "Output Distribution",
-          status: "warning" as const,
-          value: "0.31",
-          threshold: "0.25",
-        },
-        {
-          name: "Data Quality",
-          status: "normal" as const,
-          value: "98.5%",
-          threshold: "95%",
-        },
-      ]
-    : [];
-
   const statusColors = {
-    normal: { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500" },
-    warning: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
+    low: { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500" },
+    medium: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
+    high: { bg: "bg-orange-50", text: "text-orange-700", dot: "bg-orange-500" },
     critical: { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" },
   };
+
+  const hasData = driftData && !isLoading;
+  const colors = hasData ? statusColors[driftData.severity] : statusColors.low;
 
   return (
     <div className="bg-white rounded-lg border border-db-gray-200 p-4">
@@ -375,10 +273,10 @@ function DriftPanel({
           </button>
           <button
             onClick={onRunDriftDetection}
-            disabled={isRunning || !hasEndpoints}
+            disabled={isRunning || !endpointId}
             className={clsx(
               "flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors",
-              isRunning || !hasEndpoints
+              isRunning || !endpointId
                 ? "bg-db-gray-100 text-db-gray-400"
                 : "bg-rose-50 text-rose-600 hover:bg-rose-100",
             )}
@@ -393,36 +291,66 @@ function DriftPanel({
         </div>
       </div>
 
-      {hasEndpoints ? (
-        <div className="grid grid-cols-3 gap-3">
-          {driftMetrics.map((metric) => {
-            const colors = statusColors[metric.status];
-            return (
-              <div
-                key={metric.name}
-                className={clsx("p-3 rounded-lg", colors.bg)}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <div className={clsx("w-2 h-2 rounded-full", colors.dot)} />
-                  <span className={clsx("text-sm font-medium", colors.text)}>
-                    {metric.name}
-                  </span>
-                </div>
-                <div className={clsx("text-2xl font-bold", colors.text)}>
-                  {metric.value}
-                </div>
-                <div className="text-xs text-db-gray-500 mt-1">
-                  Threshold: {metric.threshold}
-                </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-rose-600" />
+        </div>
+      ) : hasData ? (
+        <div className="space-y-4">
+          {/* Overall Status */}
+          <div className={clsx("p-3 rounded-lg", colors.bg)}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className={clsx("w-2 h-2 rounded-full", colors.dot)} />
+                <span className={clsx("text-sm font-medium", colors.text)}>
+                  {driftData.drift_detected ? "Drift Detected" : "No Drift"}
+                </span>
               </div>
-            );
-          })}
+              <span className={clsx("text-xs", colors.text)}>
+                Severity: {driftData.severity}
+              </span>
+            </div>
+            <div className={clsx("text-2xl font-bold", colors.text)}>
+              {(driftData.drift_score * 100).toFixed(1)}%
+            </div>
+            <div className="text-xs text-db-gray-500 mt-1">
+              Drift Score
+            </div>
+          </div>
+
+          {/* Affected Features */}
+          {driftData.affected_features && driftData.affected_features.length > 0 && (
+            <div className="p-3 bg-db-gray-50 rounded-lg">
+              <div className="text-sm font-medium text-db-gray-700 mb-2">
+                Affected Features ({driftData.affected_features.length})
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {driftData.affected_features.map((feature) => (
+                  <span
+                    key={feature}
+                    className="px-2 py-1 bg-white text-xs text-db-gray-600 rounded border border-db-gray-200"
+                  >
+                    {feature}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Time Periods */}
+          <div className="text-xs text-db-gray-500">
+            <div>Baseline: {driftData.baseline_period}</div>
+            <div>Comparison: {driftData.comparison_period}</div>
+            <div>Last checked: {new Date(driftData.detection_time).toLocaleString()}</div>
+          </div>
         </div>
       ) : (
         <div className="text-center py-8 text-db-gray-400">
           <Database className="w-8 h-8 mx-auto mb-2 opacity-50" />
           <p className="text-sm">
-            Deploy an endpoint to enable drift detection
+            {endpointId
+              ? "Click 'Run Analysis' to detect drift"
+              : "Select an endpoint to enable drift detection"}
           </p>
         </div>
       )}
@@ -567,6 +495,14 @@ export function MonitorPage({ mode = "browse" }: MonitorPageProps) {
     refetchInterval: 15000,
   });
 
+  // Derived state
+  const allEndpoints = endpoints || [];
+  const readyEndpoints = allEndpoints.filter((e) => e.state === "READY");
+  const hasEndpoints = readyEndpoints.length > 0;
+  const selectedEp = selectedEndpoint
+    ? allEndpoints.find((e) => e.name === selectedEndpoint)
+    : null;
+
   // Fetch feedback stats
   const { data: feedbackStats, isLoading: feedbackLoading } = useQuery({
     queryKey: ["feedback-stats", selectedEndpoint],
@@ -574,74 +510,96 @@ export function MonitorPage({ mode = "browse" }: MonitorPageProps) {
       getFeedbackStats({ endpoint_id: selectedEndpoint || undefined }),
   });
 
+  // Fetch performance metrics (real data)
+  const { data: perfMetrics } = useQuery({
+    queryKey: ["performance-metrics", selectedEndpoint, timeRange],
+    queryFn: () =>
+      getPerformanceMetrics({
+        endpoint_id: selectedEndpoint || undefined,
+        hours: TIME_RANGE_HOURS[timeRange],
+      }),
+    enabled: hasEndpoints,
+  });
+
+  // Fetch realtime metrics (5 minute window) - available for future use
+  const { data: _realtimeMetrics } = useQuery({
+    queryKey: ["realtime-metrics", selectedEndpoint],
+    queryFn: () =>
+      selectedEndpoint
+        ? getRealtimeMetrics(selectedEndpoint, 5)
+        : Promise.resolve(null),
+    enabled: !!selectedEndpoint,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Fetch alerts (active only)
+  const { data: alertsData } = useQuery({
+    queryKey: ["alerts", selectedEndpoint],
+    queryFn: () =>
+      listAlerts({
+        endpoint_id: selectedEndpoint || undefined,
+        status: "active",
+      }),
+    refetchInterval: 60000, // Refresh every minute
+  });
+
+  // Fetch drift detection data
+  const { data: driftData, isLoading: driftLoading } = useQuery({
+    queryKey: ["drift-detection", selectedEndpoint],
+    queryFn: () =>
+      selectedEndpoint
+        ? getDriftDetection(selectedEndpoint, {
+            baseline_days: 7,
+            comparison_hours: 24,
+          })
+        : Promise.resolve(null),
+    enabled: !!selectedEndpoint && hasEndpoints,
+  });
+
   // Drift detection mutation
   const driftMutation = useMutation({
-    mutationFn: () => triggerJob("drift_detection", {}),
+    mutationFn: () => {
+      if (!selectedEndpoint) throw new Error("No endpoint selected");
+      return getDriftDetection(selectedEndpoint, {
+        baseline_days: 7,
+        comparison_hours: 1,
+      });
+    },
     onSuccess: () => {
       toast.success(
-        "Drift Detection Started",
-        "Analysis job has been submitted",
+        "Drift Detection Completed",
+        "Analysis has been refreshed",
       );
-      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["drift-detection"] });
     },
     onError: (error: Error) => {
-      toast.error("Failed to start", error.message);
+      toast.error("Failed to detect drift", error.message);
     },
   });
 
-  // Derived state
-  const allEndpoints = endpoints || [];
-  const readyEndpoints = allEndpoints.filter((e) => e.state === "READY");
-  const selectedEp = selectedEndpoint
-    ? allEndpoints.find((e) => e.name === selectedEndpoint)
-    : null;
-
-  // Generate metrics (simulated - in production, fetch from inference tables)
-  const hasEndpoints = readyEndpoints.length > 0;
+  // Calculate metrics from real data
+  const currentMetrics = perfMetrics?.[0]; // Most recent metrics
   const metrics = {
-    latency: hasEndpoints ? `${180 + Math.floor(Math.random() * 50)}ms` : "--",
-    latencyChange: hasEndpoints ? -5 : undefined,
-    throughput: hasEndpoints
-      ? `${(1.2 + Math.random() * 0.5).toFixed(1)}k/min`
+    latency: currentMetrics?.avg_latency_ms
+      ? `${Math.round(currentMetrics.avg_latency_ms)}ms`
       : "--",
-    throughputChange: hasEndpoints ? 12 : undefined,
-    errorRate: hasEndpoints ? `${(Math.random() * 0.3).toFixed(2)}%` : "--",
-    errorRateChange: hasEndpoints ? -8 : undefined,
+    latencyChange: undefined, // Would need historical comparison
+    throughput: currentMetrics?.requests_per_minute
+      ? `${(currentMetrics.requests_per_minute / 1000).toFixed(1)}k/min`
+      : "--",
+    throughputChange: undefined,
+    errorRate: currentMetrics
+      ? `${(currentMetrics.error_rate * 100).toFixed(2)}%`
+      : "--",
+    errorRateChange: undefined,
     cost: hasEndpoints
       ? `$${(50 + readyEndpoints.length * 25).toFixed(0)}/day`
       : "--",
-    costChange: hasEndpoints ? 5 : undefined,
+    costChange: undefined,
   };
 
-  // Generate alerts
-  const alerts: Alert[] = [];
-  if (allEndpoints.some((e) => e.state === "FAILED")) {
-    const failed = allEndpoints.find((e) => e.state === "FAILED");
-    alerts.push({
-      id: "1",
-      severity: "error",
-      message: "Endpoint deployment failed",
-      endpoint: failed?.name,
-      time: "just now",
-    });
-  }
-  if (hasEndpoints && Math.random() > 0.7) {
-    alerts.push({
-      id: "2",
-      severity: "warning",
-      message: "Output distribution drift detected (PSI > 0.25)",
-      endpoint: readyEndpoints[0]?.name,
-      time: "2h ago",
-    });
-  }
-  if (hasEndpoints) {
-    alerts.push({
-      id: "3",
-      severity: "info",
-      message: "All health checks passing",
-      time: "5m ago",
-    });
-  }
+  // Use real alerts from API
+  const alerts = alertsData || [];
 
   // No endpoint selected - show browse mode with endpoint list
   if (!selectedEndpoint) {
@@ -857,7 +815,7 @@ export function MonitorPage({ mode = "browse" }: MonitorPageProps) {
     <div className="flex-1 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Workflow Banner */}
-        <WorkflowBanner />
+        <WorkflowBanner stage="monitor" />
 
         {/* Header with Back Button */}
         <div className="flex items-center justify-between mb-6">
@@ -975,7 +933,7 @@ export function MonitorPage({ mode = "browse" }: MonitorPageProps) {
                         {selectedEp.name}
                       </div>
                       <div className="text-sm text-rose-600">
-                        {STATUS_CONFIG[selectedEp.state]?.label || "Unknown"}
+                        {getStatusConfig(selectedEp.state, MONITOR_ENDPOINT_STATUS_CONFIG).label}
                       </div>
                     </div>
                   </div>
@@ -1046,7 +1004,7 @@ export function MonitorPage({ mode = "browse" }: MonitorPageProps) {
 
               {/* Charts and Alerts Row */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Chart placeholder */}
+                {/* Request Volume Chart */}
                 <div className="lg:col-span-2 bg-white rounded-lg border border-db-gray-200 p-4">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-semibold text-db-gray-800">
@@ -1063,22 +1021,26 @@ export function MonitorPage({ mode = "browse" }: MonitorPageProps) {
                       View Details
                     </button>
                   </div>
-                  <div className="h-48 flex items-center justify-center bg-db-gray-50 rounded-lg">
-                    <div className="text-center text-db-gray-400">
-                      <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">
-                        {hasEndpoints
-                          ? `Request volume (${timeRange})`
-                          : "No data available"}
-                      </p>
+                  <MetricsLineChart
+                    series={generateMockChartData(timeRange, hasEndpoints)}
+                    height={192}
+                    empty={!hasEndpoints}
+                    emptyMessage="No endpoint data available"
+                    yAxisLabel="Requests"
+                    formatYAxis={(value) => `${value}`}
+                    formatTooltip={(value) => `${value} req/min`}
+                    showLegend={false}
+                  />
+                  {hasEndpoints && (
+                    <div className="mt-2 text-center">
                       <button
                         onClick={() => openDatabricks.lakehouseMonitoring()}
-                        className="mt-2 text-xs text-rose-600 hover:text-rose-700"
+                        className="text-xs text-rose-600 hover:text-rose-700"
                       >
                         Open Lakehouse Monitoring →
                       </button>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Alerts */}
@@ -1102,7 +1064,9 @@ export function MonitorPage({ mode = "browse" }: MonitorPageProps) {
 
               {/* Drift Detection Panel */}
               <DriftPanel
-                hasEndpoints={hasEndpoints}
+                endpointId={selectedEndpoint}
+                driftData={driftData || undefined}
+                isLoading={driftLoading}
                 onRunDriftDetection={() => driftMutation.mutate()}
                 isRunning={driftMutation.isPending}
               />

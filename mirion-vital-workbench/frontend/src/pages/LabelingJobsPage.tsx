@@ -204,11 +204,11 @@ function CreateJobModal({ isOpen, onClose, onCreated }: CreateJobModalProps) {
       ...prev,
       name: `Label: ${sheet.name}`,
       // Pre-select AI columns as target columns
-      targetColumns: sheet.columns
+      targetColumns: (sheet.columns ?? [])
         .filter((c) => c.source_type === "generated")
         .map((c) => c.id),
       // Auto-create label fields from AI columns
-      labelFields: sheet.columns
+      labelFields: (sheet.columns ?? [])
         .filter((c) => c.source_type === "generated")
         .map((c) => ({
           id: c.id,
@@ -351,11 +351,11 @@ function CreateJobModal({ isOpen, onClose, onCreated }: CreateJobModalProps) {
                           </p>
                         )}
                         <div className="flex items-center gap-3 mt-2 text-xs text-db-gray-400">
-                          <span>{sheet.columns.length} columns</span>
-                          <span>{sheet.row_count || 0} rows</span>
+                          <span>{sheet.columns?.length ?? 0} columns</span>
+                          <span>{sheet.item_count || 0} rows</span>
                           <span>
                             {
-                              sheet.columns.filter(
+                              (sheet.columns ?? []).filter(
                                 (c) => c.source_type === "generated",
                               ).length
                             }{" "}

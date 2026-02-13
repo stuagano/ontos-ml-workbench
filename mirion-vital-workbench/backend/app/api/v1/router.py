@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     canonical_labels,
     curated_datasets,
     curation,
+    data_quality,
     deployment,
     dspy,
     examples,
@@ -18,9 +19,9 @@ from app.api.v1.endpoints import (
     jobs,
     labeling,
     labelsets,
+    monitoring,
     registries,
     settings,
-    sheets,
     sheets_v2,
     templates,
     training,
@@ -30,8 +31,7 @@ from app.api.v1.endpoints import (
 router = APIRouter(prefix="/api/v1")
 
 # Include all endpoint routers
-router.include_router(sheets.router)
-router.include_router(sheets_v2.router)  # PRD v2.3 - simplified sheets
+router.include_router(sheets_v2.router, prefix="/sheets", tags=["sheets"])
 router.include_router(assemblies.router)
 router.include_router(templates.router)
 router.include_router(
@@ -57,6 +57,9 @@ router.include_router(training.router)
 # Deployment and Model Serving
 router.include_router(deployment.router)
 
+# Monitoring - Performance metrics, alerts, drift detection
+router.include_router(monitoring.router)
+
 # Labeling Workflow System
 router.include_router(labeling.router)
 
@@ -71,6 +74,9 @@ router.include_router(agents.router)
 
 # Global Settings - Label classes, presets, configuration
 router.include_router(settings.router)
+
+# Data Quality - DQX-powered quality checks for Sheets
+router.include_router(data_quality.router)
 
 # Admin - Cache management and system health
 router.include_router(admin.router)

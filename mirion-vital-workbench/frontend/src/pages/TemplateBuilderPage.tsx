@@ -47,6 +47,7 @@ import type {
   SourceColumn,
   TemplateConfigAttachRequest,
   ResponseSchemaField,
+  ResponseSourceMode,
 } from "../types";
 
 // ============================================================================
@@ -61,10 +62,8 @@ interface OutputField {
   required: boolean;
 }
 
-type ResponseSourceMode =
-  | "existing_column"
-  | "ai_generated"
-  | "manual_labeling";
+// Use the global ResponseSourceMode from types/index.ts (imported above)
+// which includes: "existing_column" | "ai_generated" | "manual_labeling" | "canonical"
 
 interface LocalTemplateConfig {
   name: string;
@@ -212,7 +211,7 @@ function TemplateBrowserModal({
 
   useEffect(() => {
     if (isOpen) {
-      listSheets({ page_size: 50 })
+      listSheets({ limit: 50 })
         .then((result) => {
           setSheets(result.sheets);
           setIsLoading(false);
@@ -325,7 +324,7 @@ function TemplateBrowserModal({
                             </div>
                           )}
                           <div className="text-xs text-db-gray-400 mt-1">
-                            Sheet: {sheet.name} · {sheet.columns.length} columns
+                            Sheet: {sheet.name} · {sheet.columns?.length ?? 0} columns
                             {sheet.updated_at &&
                               ` · ${new Date(sheet.updated_at).toLocaleDateString()}`}
                           </div>
@@ -390,7 +389,7 @@ function TemplateBrowserModal({
                         </div>
                       )}
                       <div className="text-xs text-db-gray-400 mt-1">
-                        {sheet.columns.length} columns · {sheet.status}
+                        {sheet.columns?.length ?? 0} columns · {sheet.status}
                         {sheet.updated_at &&
                           ` · ${new Date(sheet.updated_at).toLocaleDateString()}`}
                       </div>
@@ -516,15 +515,8 @@ interface TemplateBuilderPageProps {
 }
 
 export function TemplateBuilderPage({ onCancel }: TemplateBuilderPageProps) {
-  console.log("[TemplateBuilderPage] Component rendering");
   const workflow = useWorkflow();
   const toast = useToast();
-
-  console.log("[TemplateBuilderPage] workflow.state:", workflow.state);
-  console.log(
-    "[TemplateBuilderPage] selectedSource:",
-    workflow.state.selectedSource,
-  );
 
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [preview, setPreview] = useState<SheetPreview | null>(null);
@@ -562,7 +554,7 @@ export function TemplateBuilderPage({ onCancel }: TemplateBuilderPageProps) {
       setPreview(loadedPreview);
 
       // Extract columns from sheet
-      const cols: SourceColumn[] = loadedSheet.columns.map((c) => ({
+      const cols: SourceColumn[] = (loadedSheet.columns ?? []).map((c) => ({
         name: c.name,
         type: c.data_type,
         comment: c.import_config?.table,
@@ -763,7 +755,6 @@ export function TemplateBuilderPage({ onCancel }: TemplateBuilderPageProps) {
         const progress = assembly.ai_generated_count || 0;
         const total = assembly.total_rows || 0;
         setAssemblyProgress({ current: progress, total });
-        console.log(`Assembly progress: ${progress}/${total} rows`);
 
         // Wait 500ms before next poll
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -802,7 +793,7 @@ export function TemplateBuilderPage({ onCancel }: TemplateBuilderPageProps) {
   const sampleRow = preview?.rows[0]?.cells
     ? Object.fromEntries(
         Object.entries(preview.rows[0].cells).map(([colId, cell]) => {
-          const col = sheet?.columns.find((c) => c.id === colId);
+          const col = sheet?.columns?.find((c) => c.id === colId);
           return [col?.name || colId, cell.value];
         }),
       )
@@ -870,7 +861,7 @@ export function TemplateBuilderPage({ onCancel }: TemplateBuilderPageProps) {
                 {config.name || sheet?.name || "Prompt Template"}
               </h1>
               <p className="text-sm text-gray-500 mt-1">
-                Sheet: {sheet?.name} · {sheet?.columns.length || 0} columns
+                Sheet: {sheet?.name} · {sheet?.columns?.length ?? 0} columns
               </p>
             </div>
           </div>

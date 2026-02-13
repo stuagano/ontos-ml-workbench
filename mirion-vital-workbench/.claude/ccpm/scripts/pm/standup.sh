@@ -18,16 +18,24 @@ echo ""
 recent_files=$(find .claude -name "*.md" -mtime -1 2>/dev/null)
 
 if [ -n "$recent_files" ]; then
-  # Count by type
-  prd_count=$(echo "$recent_files" | grep -c "/prds/" || echo 0)
-  epic_count=$(echo "$recent_files" | grep -c "/epic.md" || echo 0)
-  task_count=$(echo "$recent_files" | grep -c "/[0-9]*.md" || echo 0)
-  update_count=$(echo "$recent_files" | grep -c "/updates/" || echo 0)
+  # Count by type - use tr to remove whitespace
+  prd_count=$(echo "$recent_files" | grep -c "/prds/" 2>/dev/null || echo 0)
+  prd_count=$(echo "$prd_count" | tr -d '[:space:]')
+  prd_count="${prd_count:-0}"
+  epic_count=$(echo "$recent_files" | grep -c "/epic.md" 2>/dev/null || echo 0)
+  epic_count=$(echo "$epic_count" | tr -d '[:space:]')
+  epic_count="${epic_count:-0}"
+  task_count=$(echo "$recent_files" | grep -c "/[0-9]*.md" 2>/dev/null || echo 0)
+  task_count=$(echo "$task_count" | tr -d '[:space:]')
+  task_count="${task_count:-0}"
+  update_count=$(echo "$recent_files" | grep -c "/updates/" 2>/dev/null || echo 0)
+  update_count=$(echo "$update_count" | tr -d '[:space:]')
+  update_count="${update_count:-0}"
 
-  [ $prd_count -gt 0 ] && echo "  • Modified $prd_count PRD(s)"
-  [ $epic_count -gt 0 ] && echo "  • Updated $epic_count epic(s)"
-  [ $task_count -gt 0 ] && echo "  • Worked on $task_count task(s)"
-  [ $update_count -gt 0 ] && echo "  • Posted $update_count progress update(s)"
+  [ "$prd_count" -gt 0 ] 2>/dev/null && echo "  • Modified $prd_count PRD(s)"
+  [ "$epic_count" -gt 0 ] 2>/dev/null && echo "  • Updated $epic_count epic(s)"
+  [ "$task_count" -gt 0 ] 2>/dev/null && echo "  • Worked on $task_count task(s)"
+  [ "$update_count" -gt 0 ] 2>/dev/null && echo "  • Posted $update_count progress update(s)"
 else
   echo "  No activity recorded today"
 fi

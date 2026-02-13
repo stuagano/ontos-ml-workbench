@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useNavigate } from "react-router-dom";
+import { StatsCard } from "../components/StatsCard";
 import { getEffectivenessDashboard } from "../services/api";
 import type {
   EffectivenessDashboardStats,
@@ -67,32 +68,7 @@ function PeriodSelector({
   );
 }
 
-// ============================================================================
-// MetricCard Component
-// ============================================================================
-
-interface MetricCardProps {
-  title: string;
-  value: string;
-  subtitle?: string;
-  icon: typeof Activity;
-  color: string;
-}
-
-function MetricCard({ title, value, subtitle, icon: Icon, color }: MetricCardProps) {
-  return (
-    <div className="bg-white rounded-lg border border-db-gray-200 p-4">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm text-db-gray-500">{title}</span>
-        <Icon className={clsx("w-5 h-5", color)} />
-      </div>
-      <div className="text-2xl font-bold text-db-gray-900">{value}</div>
-      {subtitle && (
-        <div className="text-xs text-db-gray-400 mt-1">{subtitle}</div>
-      )}
-    </div>
-  );
-}
+// MetricCard component moved to /frontend/src/components/StatsCard.tsx
 
 // ============================================================================
 // UsageTrendChart Component - Pure CSS stacked bars
@@ -491,21 +467,21 @@ export function ExampleEffectivenessDashboard() {
 
         {/* Summary Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <MetricCard
+          <StatsCard
             title="Total Examples"
             value={stats.total_examples.toLocaleString()}
             subtitle={`${stats.examples_with_usage} with usage`}
             icon={Activity}
             color="text-indigo-600"
           />
-          <MetricCard
+          <StatsCard
             title={`Usage (${period})`}
             value={stats.total_uses.toLocaleString()}
             subtitle={`${stats.total_successes} success, ${stats.total_failures} failure`}
             icon={Zap}
             color="text-blue-600"
           />
-          <MetricCard
+          <StatsCard
             title="Success Rate"
             value={
               stats.overall_success_rate
@@ -521,7 +497,7 @@ export function ExampleEffectivenessDashboard() {
                 : "text-amber-600"
             }
           />
-          <MetricCard
+          <StatsCard
             title="Avg Effectiveness"
             value={
               stats.avg_effectiveness_score

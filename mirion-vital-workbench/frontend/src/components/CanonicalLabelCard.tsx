@@ -4,7 +4,6 @@
  * Displays a single canonical label with metadata, confidence, and actions.
  */
 
-import React from "react";
 import type { CanonicalLabel } from "../types";
 
 interface CanonicalLabelCardProps {

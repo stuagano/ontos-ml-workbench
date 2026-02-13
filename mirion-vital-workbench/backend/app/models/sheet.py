@@ -17,6 +17,7 @@ class SheetStatus(str, Enum):
     """Sheet lifecycle status."""
 
     DRAFT = "draft"
+    ACTIVE = "active"
     PUBLISHED = "published"
     ARCHIVED = "archived"
 
@@ -155,6 +156,16 @@ class TemplateConfig(BaseModel):
         description="Label classes available for annotation tasks",
     )
 
+    # ML Configuration
+    feature_columns: list[str] | None = Field(
+        default=None,
+        description="Independent variables (input features) - columns used to make predictions",
+    )
+    target_column: str | None = Field(
+        default=None,
+        description="Dependent variable (output/target) - the column we're trying to predict",
+    )
+
     # Metadata
     name: str | None = Field(
         default=None,
@@ -162,6 +173,15 @@ class TemplateConfig(BaseModel):
     )
     description: str | None = None
     version: str = "1.0.0"
+
+    # Column mapping for template reusability
+    column_mapping: dict[str, str] | None = Field(
+        default=None,
+        description="Maps template placeholders to sheet columns. "
+        "Keys are template placeholders (e.g., 'image'), "
+        "values are sheet column names (e.g., 'image_path'). "
+        "Enables reusing templates across datasets with different column names.",
+    )
 
 
 class TemplateConfigAttach(BaseModel):
@@ -187,9 +207,19 @@ class TemplateConfigAttach(BaseModel):
     # Annotation label classes
     label_classes: list[LabelClass] | None = None
 
+    # ML Configuration
+    feature_columns: list[str] | None = None
+    target_column: str | None = None
+
     # Metadata
     name: str | None = None
     description: str | None = None
+
+    # Column mapping for template reusability
+    column_mapping: dict[str, str] | None = Field(
+        default=None,
+        description="Maps template placeholders to sheet columns for reusability",
+    )
 
     @property
     def template_config(self) -> TemplateConfig:
@@ -204,8 +234,11 @@ class TemplateConfigAttach(BaseModel):
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             label_classes=self.label_classes,
+            feature_columns=self.feature_columns,
+            target_column=self.target_column,
             name=self.name,
             description=self.description,
+            column_mapping=self.column_mapping,
         )
 
 

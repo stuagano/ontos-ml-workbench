@@ -2,7 +2,7 @@
  * Databits Workbench - Main Application
  *
  * Complete AI lifecycle platform for Databricks:
- * DATA → TEMPLATE → CURATE → TRAIN → DEPLOY → MONITOR → IMPROVE
+ * DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
  */
 
 import { useState, useEffect, useCallback, lazy, Suspense } from "react";
@@ -18,21 +18,8 @@ import { TemplateEditor } from "./components/TemplateEditor";
 const SheetBuilder = lazy(() =>
   import("./pages/SheetBuilder").then((m) => ({ default: m.SheetBuilder })),
 );
-const TemplateBuilderPage = lazy(() =>
-  import("./pages/TemplateBuilderPage").then((m) => ({
-    default: m.TemplateBuilderPage,
-  })),
-);
-const TemplatePage = lazy(() =>
-  import("./pages/TemplatePage").then((m) => ({ default: m.TemplatePage })),
-);
 const CuratePage = lazy(() =>
   import("./pages/CuratePage").then((m) => ({ default: m.CuratePage })),
-);
-const LabelingWorkflow = lazy(() =>
-  import("./components/labeling").then((m) => ({
-    default: m.LabelingWorkflow,
-  })),
 );
 const TrainPage = lazy(() =>
   import("./pages/TrainPage").then((m) => ({ default: m.TrainPage })),
@@ -69,7 +56,6 @@ import {
 import {
   WorkflowProvider,
   useWorkflow,
-  type WorkflowStage,
 } from "./context/WorkflowContext";
 import type { PipelineStage, Template } from "./types";
 
@@ -79,14 +65,18 @@ function AppContent() {
   const [showExampleStore, setShowExampleStore] = useState(false);
   const [showCanonicalLabeling, setShowCanonicalLabeling] = useState(false);
   const [stageMode, setStageMode] = useState<StageMode>("browse");
+  const [datasetContext, setDatasetContext] = useState<{
+    columns: Array<{ name: string; type: string }>;
+    sheetName?: string;
+  } | null>(null);
   const toast = useToast();
   const keyboardHelp = useKeyboardShortcutsHelp();
   const workflow = useWorkflow();
 
-  // Map workflow stage to pipeline stage for breadcrumb
-  const currentStage = workflow.state.currentStage as PipelineStage;
+  // Workflow stage is now PipelineStage (aligned types)
+  const currentStage = workflow.state.currentStage;
   const setCurrentStage = (stage: PipelineStage) => {
-    workflow.setCurrentStage(stage as WorkflowStage);
+    workflow.setCurrentStage(stage);
     setStageMode("browse"); // Reset to browse mode when switching stages
   };
 
@@ -110,18 +100,16 @@ function AppContent() {
   }, [config?.workspace_url]);
 
   // URL parameter support for direct navigation (dev mode)
-  // Usage: ?stage=curate&sheetId=xxx or ?stage=template
+  // Usage: ?stage=label&sheetId=xxx or ?stage=data
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const stageParam = params.get("stage") as WorkflowStage | null;
+    const stageParam = params.get("stage") as PipelineStage | null;
     const sheetIdParam = params.get("sheetId");
     const modeParam = params.get("mode") as StageMode | null;
 
     if (stageParam) {
-      const validStages: WorkflowStage[] = [
+      const validStages: PipelineStage[] = [
         "data",
-        "template",
-        "curate",
         "label",
         "train",
         "deploy",
@@ -129,12 +117,10 @@ function AppContent() {
         "improve",
       ];
       if (validStages.includes(stageParam)) {
-        console.log(`[App] URL param: jumping to stage=${stageParam}`);
         workflow.setCurrentStage(stageParam);
 
         // If a sheet ID is provided, set it as the selected source
         if (sheetIdParam) {
-          console.log(`[App] URL param: setting sheetId=${sheetIdParam}`);
           workflow.setSelectedSource({
             id: sheetIdParam,
             name: "URL-loaded sheet",
@@ -153,9 +139,33 @@ function AppContent() {
     }
   }, []); // Run once on mount
 
+  // Listen for custom event to create template with dataset context
+  useEffect(() => {
+    const handleCreateTemplateWithContext = (event: CustomEvent) => {
+      const { columns, sheetName } = event.detail;
+      setDatasetContext({ columns, sheetName });
+      setEditingTemplate(null);
+      setShowEditor(true);
+      toast.info("New Template", `Creating template for ${sheetName || "dataset"}`);
+    };
+
+    window.addEventListener(
+      "createTemplateWithContext" as any,
+      handleCreateTemplateWithContext as any
+    );
+
+    return () => {
+      window.removeEventListener(
+        "createTemplateWithContext" as any,
+        handleCreateTemplateWithContext as any
+      );
+    };
+  }, [toast]);
+
   // Keyboard shortcut handlers
   const handleNewTemplate = useCallback(() => {
     setEditingTemplate(null);
+    setDatasetContext(null); // Clear any dataset context
     setShowEditor(true);
     toast.info("New Databit", "Creating new template (Alt+N)");
   }, [toast]);
@@ -219,41 +229,14 @@ function AppContent() {
   }
 
   const renderStage = () => {
-    console.log(
-      "[App] renderStage called with currentStage:",
-      currentStage,
-      "mode:",
-      stageMode,
-    );
-
     switch (currentStage) {
       case "data":
-        // Data stage: browse UC tables vs create new sheet
+        // DATA stage: Select dataset, preview data, configure template, generate training data
         return <SheetBuilder mode={stageMode} onModeChange={setStageMode} />;
 
-      case "template":
-        // Template stage: browse library vs create new
-        if (stageMode === "browse") {
-          return (
-            <TemplatePage
-              onEditTemplate={(template) => {
-                setEditingTemplate(template);
-                if (template === null) {
-                  setStageMode("create"); // Switch to create mode for new template
-                } else {
-                  setShowEditor(true);
-                }
-              }}
-            />
-          );
-        }
-        return <TemplateBuilderPage onCancel={() => setStageMode("browse")} />;
-
-      case "curate":
-        return <CuratePage mode={stageMode} />;
-
       case "label":
-        return <LabelingWorkflow />;
+        // Label stage: review and approve Q&A pairs (TEMP: using old curate page)
+        return <CuratePage mode={stageMode} />;
 
       case "train":
         return <TrainPage mode={stageMode} onModeChange={setStageMode} />;
@@ -315,10 +298,15 @@ function AppContent() {
       {showEditor && (
         <TemplateEditor
           template={editingTemplate}
-          onClose={() => setShowEditor(false)}
+          datasetContext={datasetContext}
+          onClose={() => {
+            setShowEditor(false);
+            setDatasetContext(null);
+          }}
           onSaved={(saved) => {
             setShowEditor(false);
             setEditingTemplate(null);
+            setDatasetContext(null);
           }}
         />
       )}

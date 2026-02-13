@@ -63,7 +63,8 @@ import {
   Annotation,
 } from "../components/annotation";
 import { useSheetCanonicalStats } from "../hooks/useCanonicalLabels";
-import { CanonicalLabelModal } from "../components/CanonicalLabelModal";
+import { PromoteToCanonicalModal } from "../components/PromoteToCanonicalModal";
+import { getConfig } from "../services/api";
 import type { AssembledDataset, AssembledRow, ResponseSource } from "../types";
 
 // ============================================================================
@@ -477,7 +478,7 @@ function DetailPanel({
 }
 
 // ============================================================================
-// Assembly Browser Modal - Removed (using inline browse/create pattern)
+// Training Data Browser Modal - Removed (using inline browse/create pattern)
 // ============================================================================
 
 // ============================================================================
@@ -506,13 +507,13 @@ function WorkflowBanner() {
 
           <ChevronRight className="w-4 h-4 text-db-gray-300" />
 
-          {/* Assembly */}
+          {/* Training Data */}
           <div className="flex items-center gap-2">
             <div className="p-1.5 bg-purple-100 rounded">
               <Layers className="w-4 h-4 text-purple-600" />
             </div>
             <div>
-              <p className="text-xs text-purple-600">Assembly</p>
+              <p className="text-xs text-purple-600">Training Data</p>
               <p className="text-sm font-medium text-purple-800">
                 {state.selectedTemplate?.name || "Not selected"}
               </p>
@@ -567,7 +568,15 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
   const [showCanonicalLabelModal, setShowCanonicalLabelModal] = useState(false);
   const queryClient = useQueryClient();
   const toast = useToast();
-  const { state: _workflowState } = useWorkflow();
+  const { state: workflowState } = useWorkflow();
+
+  // Auto-load assembly from workflow context if available (e.g., after generating training data)
+  useEffect(() => {
+    if (workflowState.selectedAssemblyId && !selectedAssemblyId) {
+      setSelectedAssemblyId(workflowState.selectedAssemblyId);
+      setStageMode("browse"); // Switch to browse mode automatically
+    }
+  }, [workflowState.selectedAssemblyId, selectedAssemblyId]);
 
   // Get assembly ID from local state only (template ID is NOT an assembly ID)
   const assemblyId = selectedAssemblyId;
@@ -578,10 +587,17 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
     queryFn: () => listAssemblies(),
   });
 
+  // Fetch config to get current user
+  const { data: config } = useQuery({
+    queryKey: ["config"],
+    queryFn: getConfig,
+    staleTime: Infinity,
+  });
+
   // Fetch sheets for create mode (only sheets with templates)
   const { data: sheetsData, isLoading: sheetsLoading } = useQuery({
     queryKey: ["sheets"],
-    queryFn: () => listSheets({ page_size: 50 }),
+    queryFn: () => listSheets({ limit: 50 }),
     enabled: stageMode === "create" && !selectedAssemblyId,
   });
 
@@ -814,14 +830,14 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
     try {
       const result = await assembleSheet(sheetId, {});
       toast.success(
-        "Assembly created!",
-        `Created ${result.total_rows} prompt/response pairs`,
+        "Training Data created!",
+        `Created ${result.total_items} prompt/response pairs`,
       );
       setSelectedAssemblyId(result.assembly_id);
       queryClient.invalidateQueries({ queryKey: ["assemblies"] });
     } catch (err) {
       toast.error(
-        "Failed to create assembly",
+        "Failed to create training data",
         err instanceof Error ? err.message : "Unknown error",
       );
     } finally {
@@ -850,7 +866,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
       const columns: Column<AssembledDataset>[] = [
         {
           key: "name",
-          header: "Assembly Name",
+          header: "Training Data Name",
           width: "35%",
           render: (asm) => (
             <div className="flex items-center gap-3">
@@ -950,7 +966,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
                 include_only_verified: false,
                 include_system_instruction: true,
               });
-              toast.success("Exported", "Assembly exported successfully");
+              toast.success("Exported", "Training Data exported successfully");
             } catch (err) {
               toast.error(
                 "Export failed",
@@ -977,7 +993,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
             className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
           >
             <Plus className="w-4 h-4" />
-            Create Assembly
+            Create Training Data
           </button>
         </div>
       );
@@ -1011,7 +1027,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
 
           {/* Stage Sub-Navigation */}
           <StageSubNav
-            stage="curate"
+            stage="label"
             mode={stageMode}
             onModeChange={setStageMode}
             browseCount={assemblies?.length}
@@ -1075,7 +1091,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
           <div className="bg-white border-b border-db-gray-200 px-6 py-4">
             <div className="max-w-7xl mx-auto">
               <h1 className="text-2xl font-bold text-db-gray-900">
-                Create Assembly
+                Create Training Data
               </h1>
               <p className="text-db-gray-600 mt-1">
                 Select a sheet with a template to create prompt/response pairs
@@ -1085,7 +1101,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
 
           {/* Stage Sub-Navigation */}
           <StageSubNav
-            stage="curate"
+            stage="label"
             mode={stageMode}
             onModeChange={setStageMode}
             browseCount={assemblies?.length}
@@ -1145,10 +1161,10 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
                             </div>
                           )}
                           <div className="flex gap-3 mt-2 text-xs text-db-gray-500">
-                            <span>{sheet.columns.length} columns</span>
-                            {sheet.row_count && (
+                            <span>{sheet.columns?.length ?? 0} columns</span>
+                            {sheet.item_count && (
                               <span>
-                                {sheet.row_count.toLocaleString()} rows
+                                {sheet.item_count.toLocaleString()} rows
                               </span>
                             )}
                           </div>
@@ -1195,12 +1211,12 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-bold text-db-gray-900">
-                Curate Assembly
+                Label Q&A Pairs
               </h1>
               <p className="text-db-gray-600 mt-1">
                 {showImageAnnotation
                   ? "Annotate images with bounding boxes, polygons, or masks"
-                  : "Review and label prompt/response pairs for fine-tuning"}
+                  : "Review, edit, and approve Q&A pairs for training"}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1243,14 +1259,14 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
             </div>
           </div>
 
-          {/* Assembly Info & Actions */}
+          {/* Training Data Info & Actions */}
           {assembly && (
             <div className="bg-white rounded-lg border border-db-gray-200 p-4 mb-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div>
                     <h2 className="font-medium text-db-gray-800">
-                      {assembly.template_config.name || "Assembly"}
+                      {assembly.template_config.name || "Training Data"}
                     </h2>
                     <p className="text-sm text-db-gray-500">
                       {assembly.total_rows} rows · Status: {assembly.status}
@@ -1526,12 +1542,12 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
         </div>
       )}
 
-      {/* Assembly Picker Modal */}
+      {/* Training Data Picker Modal */}
       {showAssemblyPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Select Assembly</h2>
+              <h2 className="text-lg font-semibold">Select Training Data</h2>
               <button
                 onClick={() => setShowAssemblyPicker(false)}
                 className="text-db-gray-400 hover:text-db-gray-600"
@@ -1595,18 +1611,15 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
         </div>
       )}
 
-      {/* Canonical Label Modal */}
+      {/* Promote to Canonical Label Modal */}
       {selectedRow && assembly && (
-        <CanonicalLabelModal
+        <PromoteToCanonicalModal
           isOpen={showCanonicalLabelModal}
           onClose={() => setShowCanonicalLabelModal(false)}
+          row={selectedRow}
           sheetId={assembly.sheet_id}
-          itemRef={selectedRow.item_ref || `row_${selectedRow.row_index}`}
-          labeledBy="user@example.com"
-          defaultLabelType={assembly.template_label_type || "classification"}
-          defaultLabelData={
-            selectedRow.response ? JSON.parse(selectedRow.response) : undefined
-          }
+          labelType={assembly.template_config?.label_type || "classification"}
+          labeledBy={config?.current_user || "unknown"}
         />
       )}
     </div>

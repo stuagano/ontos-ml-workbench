@@ -1,11 +1,11 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Quick Setup - Create Tables in serverless_dxukih_catalog.mirion_vital_workbench
+# MAGIC # Quick Setup - Create Tables in erp-demonstrations.vital_workbench
 
 # COMMAND ----------
 # Create schema
-spark.sql("CREATE SCHEMA IF NOT EXISTS serverless_dxukih_catalog.mirion_vital_workbench")
-print("✅ Schema created: serverless_dxukih_catalog.mirion_vital_workbench")
+spark.sql("CREATE SCHEMA IF NOT EXISTS erp-demonstrations.vital_workbench")
+print("✅ Schema created: erp-demonstrations.vital_workbench")
 
 # COMMAND ----------
 # Import datetime and user info
@@ -22,7 +22,7 @@ print(f"Setting up as: {user_email}")
 # COMMAND ----------
 # Sheets table
 spark.sql("""
-CREATE TABLE IF NOT EXISTS serverless_dxukih_catalog.mirion_vital_workbench.sheets (
+CREATE TABLE IF NOT EXISTS erp-demonstrations.vital_workbench.sheets (
   id STRING NOT NULL,
   name STRING NOT NULL,
   description STRING,
@@ -50,7 +50,7 @@ TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
 spark.sql("""
-CREATE TABLE IF NOT EXISTS serverless_dxukih_catalog.mirion_vital_workbench.templates (
+CREATE TABLE IF NOT EXISTS erp-demonstrations.vital_workbench.templates (
   id STRING NOT NULL,
   name STRING NOT NULL,
   description STRING,
@@ -75,7 +75,7 @@ TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
 spark.sql("""
-CREATE TABLE IF NOT EXISTS serverless_dxukih_catalog.mirion_vital_workbench.canonical_labels (
+CREATE TABLE IF NOT EXISTS erp-demonstrations.vital_workbench.canonical_labels (
   id STRING NOT NULL,
   sheet_id STRING NOT NULL,
   item_ref STRING NOT NULL,
@@ -94,7 +94,7 @@ TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
 spark.sql("""
-CREATE TABLE IF NOT EXISTS serverless_dxukih_catalog.mirion_vital_workbench.training_sheets (
+CREATE TABLE IF NOT EXISTS erp-demonstrations.vital_workbench.training_sheets (
   id STRING NOT NULL,
   name STRING NOT NULL,
   sheet_id STRING NOT NULL,
@@ -113,7 +113,7 @@ TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
 spark.sql("""
-CREATE TABLE IF NOT EXISTS serverless_dxukih_catalog.mirion_vital_workbench.qa_pairs (
+CREATE TABLE IF NOT EXISTS erp-demonstrations.vital_workbench.qa_pairs (
   id STRING NOT NULL,
   training_sheet_id STRING NOT NULL,
   sheet_id STRING NOT NULL,
@@ -134,7 +134,7 @@ TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
 spark.sql("""
-CREATE TABLE IF NOT EXISTS serverless_dxukih_catalog.mirion_vital_workbench.model_training_lineage (
+CREATE TABLE IF NOT EXISTS erp-demonstrations.vital_workbench.model_training_lineage (
   id STRING NOT NULL,
   model_name STRING NOT NULL,
   training_sheet_ids ARRAY<STRING> NOT NULL,
@@ -152,7 +152,7 @@ TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
 spark.sql("""
-CREATE TABLE IF NOT EXISTS serverless_dxukih_catalog.mirion_vital_workbench.example_store (
+CREATE TABLE IF NOT EXISTS erp-demonstrations.vital_workbench.example_store (
   id STRING NOT NULL,
   template_id STRING NOT NULL,
   example_type STRING NOT NULL,
@@ -264,7 +264,7 @@ if sheets_data:
         "sample_seed", "status", "item_count", "notes",
         "created_at", "created_by", "updated_at", "updated_by"])
 
-    sheets_df.write.mode("append").saveAsTable("serverless_dxukih_catalog.mirion_vital_workbench.sheets")
+    sheets_df.write.mode("append").saveAsTable("erp-demonstrations.vital_workbench.sheets")
     print(f"\n✅ Created {len(sheets_data)} sheets!")
 
 # COMMAND ----------
@@ -300,7 +300,7 @@ templates_df = spark.createDataFrame([
     "temperature", "status", "version", "use_case", "notes",
     "created_at", "created_by", "updated_at", "updated_by"])
 
-templates_df.write.mode("append").saveAsTable("serverless_dxukih_catalog.mirion_vital_workbench.templates")
+templates_df.write.mode("append").saveAsTable("erp-demonstrations.vital_workbench.templates")
 print("✅ Created 1 template!")
 
 # COMMAND ----------
@@ -310,10 +310,10 @@ print("✅ Created 1 template!")
 # COMMAND ----------
 print("\n📊 Final Status:\n")
 print("Sheets:")
-display(spark.sql("SELECT id, name, source_type, source_table, item_count, status FROM serverless_dxukih_catalog.mirion_vital_workbench.sheets"))
+display(spark.sql("SELECT id, name, source_type, source_table, item_count, status FROM erp-demonstrations.vital_workbench.sheets"))
 
 print("\nTemplates:")
-display(spark.sql("SELECT id, name, label_type, status FROM serverless_dxukih_catalog.mirion_vital_workbench.templates"))
+display(spark.sql("SELECT id, name, label_type, status FROM erp-demonstrations.vital_workbench.templates"))
 
 print("\n✅ Setup complete! Your app is ready to run.")
 print("\nRun ./start-dev.sh to start the application")

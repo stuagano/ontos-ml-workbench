@@ -22,11 +22,6 @@ const TemplatePage = lazy(() =>
 const CuratePage = lazy(() =>
   import("./pages/CuratePage").then((m) => ({ default: m.CuratePage })),
 );
-const LabelingWorkflow = lazy(() =>
-  import("./components/labeling").then((m) => ({
-    default: m.LabelingWorkflow,
-  })),
-);
 const TrainPage = lazy(() =>
   import("./pages/TrainPage").then((m) => ({ default: m.TrainPage })),
 );
@@ -42,6 +37,21 @@ const ImprovePage = lazy(() =>
 const ExampleStorePage = lazy(() =>
   import("./pages/ExampleStorePage").then((m) => ({
     default: m.ExampleStorePage,
+  })),
+);
+const CuratedDatasetsPage = lazy(() =>
+  import("./pages/CuratedDatasetsPage").then((m) => ({
+    default: m.CuratedDatasetsPage,
+  })),
+);
+const CanonicalLabelingTool = lazy(() =>
+  import("./components/CanonicalLabelingTool").then((m) => ({
+    default: m.CanonicalLabelingTool,
+  })),
+);
+const DataQualityPage = lazy(() =>
+  import("./pages/DataQualityPage").then((m) => ({
+    default: m.DataQualityPage,
   })),
 );
 import { getConfig } from "./services/api";
@@ -66,6 +76,12 @@ function AppContent() {
   const [showPromptTemplates, setShowPromptTemplates] = useState(false);
   const [showExampleStore, setShowExampleStore] = useState(false);
   const [showDSPyOptimizer, setShowDSPyOptimizer] = useState(false);
+  const [showCanonicalLabeling, setShowCanonicalLabeling] = useState(false);
+  const [showDataQuality, setShowDataQuality] = useState(false);
+  const [datasetContext, setDatasetContext] = useState<{
+    columns: Array<{ name: string; type: string }>;
+    sheetName?: string;
+  } | null>(null);
   const toast = useToast();
   const keyboardHelp = useKeyboardShortcutsHelp();
   const workflow = useWorkflow();
@@ -79,7 +95,6 @@ function AppContent() {
   // Determine completed stages based on workflow state
   const completedStages: PipelineStage[] = [];
   if (workflow.state.selectedSource) completedStages.push("data");
-  if (workflow.state.selectedTemplate) completedStages.push("template");
 
   // Fetch app config
   const {
@@ -100,9 +115,33 @@ function AppContent() {
     }
   }, [config?.workspace_url]);
 
+  // Listen for custom event to create template with dataset context (auto-populate schema)
+  useEffect(() => {
+    const handleCreateTemplateWithContext = (event: CustomEvent) => {
+      const { columns, sheetName } = event.detail;
+      setDatasetContext({ columns, sheetName });
+      setEditingTemplate(null);
+      setShowEditor(true);
+      toast.info("New Template", `Auto-populating schema from ${sheetName || "dataset"}`);
+    };
+
+    window.addEventListener(
+      "createTemplateWithContext" as any,
+      handleCreateTemplateWithContext as any
+    );
+
+    return () => {
+      window.removeEventListener(
+        "createTemplateWithContext" as any,
+        handleCreateTemplateWithContext as any
+      );
+    };
+  }, [toast]);
+
   // Keyboard shortcut handlers
   const handleNewTemplate = useCallback(() => {
     setEditingTemplate(null);
+    setDatasetContext(null); // Clear any dataset context
     setShowEditor(true);
     toast.info("New Template", "Creating new template (Alt+N)");
   }, [toast]);
@@ -112,7 +151,9 @@ function AppContent() {
     if (showPromptTemplates) setShowPromptTemplates(false);
     if (showExampleStore) setShowExampleStore(false);
     if (showDSPyOptimizer) setShowDSPyOptimizer(false);
-  }, [showEditor, showPromptTemplates, showExampleStore, showDSPyOptimizer]);
+    if (showCanonicalLabeling) setShowCanonicalLabeling(false);
+    if (showDataQuality) setShowDataQuality(false);
+  }, [showEditor, showPromptTemplates, showExampleStore, showDSPyOptimizer, showCanonicalLabeling, showDataQuality]);
 
   // Register keyboard shortcuts
   useKeyboardShortcuts([
@@ -139,6 +180,18 @@ function AppContent() {
       modifiers: ["alt"],
       handler: () => setShowDSPyOptimizer(!showDSPyOptimizer),
       description: "Toggle DSPy Optimizer",
+    },
+    {
+      key: "l",
+      modifiers: ["alt"],
+      handler: () => setShowCanonicalLabeling(!showCanonicalLabeling),
+      description: "Toggle Canonical Labeling",
+    },
+    {
+      key: "q",
+      modifiers: ["alt"],
+      handler: () => setShowDataQuality(!showDataQuality),
+      description: "Toggle Data Quality",
     },
     {
       key: "Escape",
@@ -190,10 +243,12 @@ function AppContent() {
     switch (currentStage) {
       case "data":
         return <SheetBuilder />;
-      case "curate":
-        return <CuratePage />;
       case "label":
-        return <LabelingWorkflow />;
+        return <CuratePage />;
+      case "curate":
+        // Disabled - CuratedDatasetsPage depends on Lakebase which isn't set up
+        // return <CuratedDatasetsPage />;
+        return <CuratePage />; // Redirect to CuratePage instead
       case "train":
         return <TrainPage />;
       case "deploy":
@@ -222,6 +277,10 @@ function AppContent() {
       onToggleExamples={() => setShowExampleStore(!showExampleStore)}
       showDSPyOptimizer={showDSPyOptimizer}
       onToggleDSPyOptimizer={() => setShowDSPyOptimizer(!showDSPyOptimizer)}
+      showCanonicalLabeling={showCanonicalLabeling}
+      onToggleCanonicalLabeling={() => setShowCanonicalLabeling(!showCanonicalLabeling)}
+      showDataQuality={showDataQuality}
+      onToggleDataQuality={() => setShowDataQuality(!showDataQuality)}
     >
       <ErrorBoundary>
         <Suspense
@@ -239,10 +298,15 @@ function AppContent() {
       {showEditor && (
         <TemplateEditor
           template={editingTemplate}
-          onClose={() => setShowEditor(false)}
+          datasetContext={datasetContext}
+          onClose={() => {
+            setShowEditor(false);
+            setDatasetContext(null);
+          }}
           onSaved={() => {
             setShowEditor(false);
             setEditingTemplate(null);
+            setDatasetContext(null);
           }}
         />
       )}
@@ -324,6 +388,40 @@ function AppContent() {
                 </div>
               </div>
             </div>
+          </Suspense>
+        </div>
+      )}
+
+      {/* Canonical Labeling Tool (overlays entire view) */}
+      {showCanonicalLabeling && (
+        <div className="fixed inset-0 z-50 bg-db-gray-50 dark:bg-gray-950">
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-screen">
+                <Loader2 className="w-10 h-10 animate-spin text-db-orange" />
+              </div>
+            }
+          >
+            <CanonicalLabelingTool
+              onClose={() => setShowCanonicalLabeling(false)}
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {/* Data Quality Tool (overlays entire view) */}
+      {showDataQuality && (
+        <div className="fixed inset-0 z-50 bg-db-gray-50 dark:bg-gray-950">
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-screen">
+                <Loader2 className="w-10 h-10 animate-spin text-db-orange" />
+              </div>
+            }
+          >
+            <DataQualityPage
+              onClose={() => setShowDataQuality(false)}
+            />
           </Suspense>
         </div>
       )}

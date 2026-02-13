@@ -5,15 +5,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type {
-  CanonicalLabel,
-  CanonicalLabelCreateRequest,
-  CanonicalLabelListResponse,
-  CanonicalLabelStats,
-  CanonicalLabelUpdateRequest,
-  ItemLabelsets,
-  UsageConstraintCheckResponse,
-} from "../types";
+import type { CanonicalLabelUpdateRequest } from "../types";
 import {
   bulkLookupCanonicalLabels,
   checkUsageConstraints,

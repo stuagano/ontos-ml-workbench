@@ -2,6 +2,18 @@
 
 Templates define reusable prompt configurations that can be applied to Sheets.
 The label_type field links templates to canonical labels for automatic label reuse.
+
+IMPORTANT - FIELD MAPPING:
+    API Field               Database Column
+    ------------------     ---------------------
+    prompt_template    →   user_prompt_template
+    base_model         →   (not stored - defaults used)
+    temperature        →   (not stored - defaults used)
+    max_tokens         →   (not stored - defaults used)
+    examples           →   few_shot_examples (ARRAY<STRING>)
+    output_schema      →   output_schema (JSON STRING)
+
+See schemas/SCHEMA_REFERENCE.md for complete mapping.
 """
 
 from datetime import datetime
@@ -14,6 +26,7 @@ class TemplateStatus(str, Enum):
     """Template lifecycle status."""
 
     DRAFT = "draft"
+    ACTIVE = "active"
     PUBLISHED = "published"
     ARCHIVED = "archived"
 
@@ -47,6 +60,16 @@ class TemplateCreate(BaseModel):
         description="Label type (e.g., entity_extraction, classification, localization) for canonical label matching",
     )
 
+    # ML column configuration (CRITICAL for supervised learning)
+    feature_columns: list[str] | None = Field(
+        default=None,
+        description="Independent variables (input features) - columns used to make predictions",
+    )
+    target_column: str | None = Field(
+        default=None,
+        description="Dependent variable (output/target) - the column we're trying to predict",
+    )
+
     # Schema
     input_schema: list[SchemaField] | None = None
     output_schema: list[SchemaField] | None = None
@@ -76,6 +99,11 @@ class TemplateUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
     label_type: str | None = None  # PRD v2.3
+
+    # ML column configuration
+    feature_columns: list[str] | None = None
+    target_column: str | None = None
+
     input_schema: list[SchemaField] | None = None
     output_schema: list[SchemaField] | None = None
     prompt_template: str | None = None
@@ -102,6 +130,14 @@ class TemplateResponse(BaseModel):
     # PRD v2.3: Label type for canonical label matching
     label_type: str | None = Field(
         default=None, description="Label type for canonical label matching"
+    )
+
+    # ML column configuration
+    feature_columns: list[str] | None = Field(
+        default=None, description="Independent variables (input features)"
+    )
+    target_column: str | None = Field(
+        default=None, description="Dependent variable (output/target)"
     )
 
     input_schema: list[SchemaField] | None = None

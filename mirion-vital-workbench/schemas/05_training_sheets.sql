@@ -16,6 +16,10 @@ CREATE TABLE IF NOT EXISTS home_stuart_gano.mirion_vital_workbench.training_shee
   template_id STRING NOT NULL COMMENT 'Reference to templates.id',
   template_version INT COMMENT 'Version of template used',
 
+  -- ML Configuration (copied from template at generation time)
+  feature_columns ARRAY<STRING> COMMENT 'Independent variables (input features) used',
+  target_column STRING COMMENT 'Dependent variable (output/target) being predicted',
+
   -- Generation configuration
   generation_mode STRING NOT NULL DEFAULT 'ai_generated' COMMENT 'Mode: ai_generated, manual, hybrid',
   model_used STRING COMMENT 'Foundation Model used for generation',

@@ -134,86 +134,101 @@ function DatasetBrowseView({
   const markInUseMutation = useMarkDatasetInUse();
   const computeMetricsMutation = useComputeDatasetMetrics();
   const exportMutation = useExportDataset();
-  const { showToast } = useToast();
+  const { success: successToast, error: errorToast } = useToast();
 
   const columns: Column<CuratedDataset>[] = [
     {
       key: 'status',
-      label: 'Status',
-      render: (dataset) => <StatusBadge status={dataset.status} />,
+      header: 'Status',
+      render: (dataset: CuratedDataset) => <StatusBadge status={dataset.status} />,
     },
-    { key: 'name', label: 'Name' },
-    { key: 'use_case', label: 'Use Case' },
-    { key: 'example_count', label: 'Examples', align: 'right' },
+    {
+      key: 'name',
+      header: 'Name',
+      render: (dataset: CuratedDataset) => dataset.name,
+    },
+    {
+      key: 'use_case',
+      header: 'Use Case',
+      render: (dataset: CuratedDataset) => dataset.use_case || '-',
+    },
+    {
+      key: 'example_count',
+      header: 'Examples',
+      render: (dataset: CuratedDataset) => dataset.example_count,
+    },
     {
       key: 'quality_metrics',
-      label: 'Avg Confidence',
-      render: (dataset) => {
+      header: 'Avg Confidence',
+      render: (dataset: CuratedDataset) => {
         const conf = dataset.quality_metrics?.avg_confidence;
         return conf !== undefined ? `${(conf * 100).toFixed(1)}%` : '-';
       },
-      align: 'right',
     },
-    { key: 'version', label: 'Version' },
+    {
+      key: 'version',
+      header: 'Version',
+      render: (dataset: CuratedDataset) => dataset.version,
+    },
   ];
 
   const rowActions: RowAction<CuratedDataset>[] = [
     {
       label: 'View Details',
       icon: Eye,
-      onClick: (dataset) => onSelectDataset(dataset, 'detail'),
+      onClick: (dataset: CuratedDataset) => onSelectDataset(dataset, 'detail'),
     },
     {
       label: 'Edit',
       icon: Edit,
-      onClick: (dataset) => onSelectDataset(dataset, 'edit'),
-      condition: (dataset) => dataset.status === 'draft',
+      onClick: (dataset: CuratedDataset) => onSelectDataset(dataset, 'edit'),
+      show: (dataset: CuratedDataset) => dataset.status === 'draft',
     },
     {
       label: 'Compute Metrics',
       icon: RefreshCw,
-      onClick: async (dataset) => {
+      onClick: async (dataset: CuratedDataset) => {
         try {
           await computeMetricsMutation.mutateAsync(dataset.id);
-          showToast('Metrics computed successfully', 'success');
-        } catch (error) {
-          showToast('Failed to compute metrics', 'error');
+          successToast('Metrics computed successfully');
+        } catch {
+          errorToast('Failed to compute metrics');
         }
       },
     },
     {
       label: 'Approve',
       icon: CheckCircle,
-      onClick: async (dataset) => {
+      onClick: async (dataset: CuratedDataset) => {
         try {
           await approveMutation.mutateAsync({
             id: dataset.id,
             approval: { approved_by: 'current-user' },
           });
-          showToast('Dataset approved', 'success');
-        } catch (error) {
-          showToast('Failed to approve dataset', 'error');
+          successToast('Dataset approved');
+        } catch {
+          errorToast('Failed to approve dataset');
         }
       },
-      condition: (dataset) => dataset.status === 'draft',
+      show: (dataset: CuratedDataset) => dataset.status === 'draft',
     },
     {
       label: 'Mark In Use',
       icon: Play,
-      onClick: async (dataset) => {
+      onClick: async (dataset: CuratedDataset) => {
         try {
           await markInUseMutation.mutateAsync(dataset.id);
-          showToast('Dataset marked as in-use', 'success');
-        } catch (error) {
-          showToast('Failed to mark dataset in-use', 'error');
+          successToast('Dataset marked as in-use');
+        } catch {
+          errorToast('Failed to mark dataset in-use');
         }
       },
-      condition: (dataset) => dataset.status === 'approved',
+      show: (dataset: CuratedDataset) => dataset.status === 'approved',
     },
     {
       label: 'Export',
       icon: Download,
-      onClick: async (dataset) => {
+      onClick: async (dataset: CuratedDataset) => {
         try {
           const result = await exportMutation.mutateAsync({
             id: dataset.id,
@@ -229,30 +244,30 @@ function DatasetBrowseView({
           a.download = `${dataset.name}-${dataset.version}.jsonl`;
           a.click();
           URL.revokeObjectURL(url);
-          showToast('Dataset exported', 'success');
-        } catch (error) {
-          showToast('Failed to export dataset', 'error');
+          successToast('Dataset exported');
+        } catch {
+          errorToast('Failed to export dataset');
         }
       },
-      condition: (dataset) =>
+      show: (dataset: CuratedDataset) =>
         dataset.status === 'approved' || dataset.status === 'in_use',
     },
     {
       label: 'Archive',
       icon: Archive,
-      onClick: async (dataset) => {
+      onClick: async (dataset: CuratedDataset) => {
         try {
           await archiveMutation.mutateAsync(dataset.id);
-          showToast('Dataset archived', 'success');
-        } catch (error) {
-          showToast('Failed to archive dataset', 'error');
+          successToast('Dataset archived');
+        } catch {
+          errorToast('Failed to archive dataset');
         }
       },
     },
     {
       label: 'Delete',
       icon: Trash2,
-      onClick: async (dataset) => {
+      onClick: async (dataset: CuratedDataset) => {
         if (
           confirm(
             `Delete dataset "${dataset.name}"? This cannot be undone.`
@@ -260,13 +275,13 @@ function DatasetBrowseView({
         ) {
           try {
             await deleteMutation.mutateAsync(dataset.id);
-            showToast('Dataset deleted', 'success');
-          } catch (error) {
-            showToast('Failed to delete dataset', 'error');
+            successToast('Dataset deleted');
+          } catch {
+            errorToast('Failed to delete dataset');
           }
         }
       },
-      condition: (dataset) =>
+      show: (dataset: CuratedDataset) =>
         dataset.status === 'draft' || dataset.status === 'archived',
     },
   ];
@@ -341,8 +356,13 @@ function DatasetBrowseView({
             <DataTable
               columns={columns}
               data={data.datasets}
+              rowKey={(dataset: CuratedDataset) => dataset.id}
               rowActions={rowActions}
-              emptyMessage="No curated datasets found. Create your first dataset to get started."
+              emptyState={
+                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                  No curated datasets found. Create your first dataset to get started.
+                </div>
+              }
             />
           </>
         )}

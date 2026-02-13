@@ -133,20 +133,20 @@ async def diagnose_data_flow():
         issues.append("No sheets have templates attached")
         recommendations.append("Attach templates to sheets before assembling")
 
-    # Count assemblies
-    assemblies_table = settings.get_table("assemblies")
+    # Count training sheets (formerly assemblies)
+    training_sheets_table = settings.get_table("training_sheets")
     try:
-        assemblies_result = sql_service.execute(f"SELECT COUNT(*) as cnt FROM {assemblies_table}")
+        assemblies_result = sql_service.execute(f"SELECT COUNT(*) as cnt FROM {training_sheets_table}")
         assemblies_count = int(assemblies_result[0]["cnt"]) if assemblies_result else 0
     except Exception as e:
         assemblies_count = 0
-        issues.append(f"Cannot query assemblies table: {e}")
+        issues.append(f"Cannot query training_sheets table: {e}")
 
-    # Assemblies by status
+    # Training sheets by status
     assemblies_by_status = {}
     try:
         status_result = sql_service.execute(
-            f"SELECT status, COUNT(*) as cnt FROM {assemblies_table} GROUP BY status"
+            f"SELECT status, COUNT(*) as cnt FROM {training_sheets_table} GROUP BY status"
         )
         for row in status_result:
             assemblies_by_status[row["status"]] = int(row["cnt"])
@@ -161,35 +161,33 @@ async def diagnose_data_flow():
         issues.append("Sheets have templates but no assemblies created")
         recommendations.append("Run assemble on sheets to create training datasets")
 
-    # Assembly rows by response source
-    assembly_rows_table = settings.get_table("assembly_rows")
+    # Q&A pairs by review status (formerly assembly_rows by response_source)
+    qa_pairs_table = settings.get_table("qa_pairs")
     assembly_rows_by_source = {}
     try:
         source_result = sql_service.execute(
-            f"SELECT response_source, COUNT(*) as cnt FROM {assembly_rows_table} GROUP BY response_source"
+            f"SELECT review_status, COUNT(*) as cnt FROM {qa_pairs_table} GROUP BY review_status"
         )
         for row in source_result:
-            assembly_rows_by_source[row["response_source"]] = int(row["cnt"])
+            assembly_rows_by_source[row["review_status"]] = int(row["cnt"])
     except Exception:
         pass
 
-    empty_count = assembly_rows_by_source.get("empty", 0)
-    labeled_count = (
-        assembly_rows_by_source.get("human_labeled", 0)
-        + assembly_rows_by_source.get("human_verified", 0)
-    )
+    # Map new status names to old for compatibility
+    pending_count = assembly_rows_by_source.get("pending", 0)
+    approved_count = assembly_rows_by_source.get("approved", 0)
     total_rows = sum(assembly_rows_by_source.values())
 
-    if total_rows > 0 and empty_count == total_rows:
-        issues.append("All assembly rows are empty - no responses yet")
-        recommendations.append("Generate AI responses or label manually in Curate stage")
+    if total_rows > 0 and pending_count == total_rows:
+        issues.append("All Q&A pairs are pending review - no approved responses yet")
+        recommendations.append("Review and approve Q&A pairs in the Label stage")
 
-    if total_rows > 0 and labeled_count < 10:
-        issues.append(f"Only {labeled_count} labeled rows - need 10+ for training")
-        recommendations.append("Label more rows in Curate stage before training")
+    if total_rows > 0 and approved_count < 10:
+        issues.append(f"Only {approved_count} approved Q&A pairs - need 10+ for training")
+        recommendations.append("Approve more Q&A pairs in Label stage before training")
 
     # Check if training can proceed
-    if assemblies_by_status.get("ready", 0) > 0 and labeled_count >= 10:
+    if assemblies_by_status.get("review", 0) > 0 and approved_count >= 10:
         recommendations.append("Ready to train! Go to Train stage to configure fine-tuning")
 
     return DataFlowDiagnostic(
@@ -310,6 +308,249 @@ async def trace_assembly(assembly_id: str):
             >= 10,
         },
     }
+
+
+class SeedTestDataResponse(BaseModel):
+    """Response from seeding test data."""
+
+    success: bool = True
+    sheets_created: int = 1
+    templates_created: int = 1
+    assemblies_created: int = 1
+    message: str = "Test data seeded successfully!"
+    errors: list[str] = []
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "success": True,
+                "sheets_created": 1,
+                "templates_created": 1,
+                "assemblies_created": 1,
+                "message": "Test data seeded successfully!",
+                "errors": []
+            }
+        }
+    }
+
+
+@router.post("/debug/seed-test-data", response_model=SeedTestDataResponse)
+async def seed_test_data():
+    """Seed sample data for testing the full workflow.
+
+    Creates:
+    - 1 sample sheet pointing to a synthetic defect detection table
+    - 1 sample template for defect classification
+    - 1 sample assembly (training sheet) with Q&A pairs
+
+    Use this to quickly test the DATA → GENERATE → LABEL workflow.
+    """
+    import uuid
+    from datetime import datetime
+    from app.core.databricks import get_current_user
+
+    sql_service = get_sql_service()
+    settings = get_settings()
+    user = get_current_user()
+    errors = []
+
+    sheets_created = 0
+    templates_created = 0
+    assemblies_created = 0
+
+    # 1. Create sample sheet
+    sheet_id = f"sheet-test-{uuid.uuid4().hex[:8]}"
+    sheets_table = settings.get_table("sheets")
+
+    try:
+        sheet_sql = f"""
+        INSERT INTO {sheets_table} (
+            id, name, description, source_type, source_table,
+            text_columns, image_columns, metadata_columns, item_id_column,
+            status, created_by, created_at, updated_by, updated_at
+        ) VALUES (
+            '{sheet_id}',
+            'Test Defect Detection Sheet',
+            'Sample sheet for testing - created by debug endpoint',
+            'uc_table',
+            '{settings.databricks_catalog}.{settings.databricks_schema}.defect_detections',
+            ARRAY('defect_type', 'severity', 'description'),
+            ARRAY('image_path'),
+            ARRAY('component_id', 'inspection_date'),
+            'component_id',
+            'active',
+            '{user}',
+            CURRENT_TIMESTAMP(),
+            '{user}',
+            CURRENT_TIMESTAMP()
+        )
+        """
+        sql_service.execute_update(sheet_sql)
+        sheets_created = 1
+        logger.info(f"✓ Created test sheet: {sheet_id}")
+    except Exception as e:
+        errors.append(f"Sheet creation failed: {str(e)}")
+        logger.error(f"Failed to create test sheet: {e}")
+
+    # 2. Create sample template (matching actual schema)
+    template_id = f"tmpl-test-{uuid.uuid4().hex[:8]}"
+    templates_table = settings.get_table("templates")
+
+    try:
+        user_prompt = "Analyze this component inspection:\\n\\nComponent: {{component_id}}\\nDefect Type: {{defect_type}}\\nSeverity: {{severity}}\\nDescription: {{description}}\\n\\nProvide a classification and recommended action."
+        user_prompt_escaped = user_prompt.replace("'", "''")
+        system_prompt = "You are a quality control expert specializing in radiation safety equipment inspection."
+
+        template_sql = f"""
+        INSERT INTO {templates_table} (
+            id, name, description, system_prompt, user_prompt_template,
+            output_schema, label_type, few_shot_examples, version, status,
+            parent_template_id, created_by, created_at, updated_by, updated_at,
+            feature_columns, target_column
+        ) VALUES (
+            '{template_id}',
+            'Test Defect Classification Template',
+            'Sample template for defect classification testing',
+            '{system_prompt}',
+            '{user_prompt_escaped}',
+            NULL,
+            'defect_classification',
+            NULL,
+            '1',
+            'active',
+            NULL,
+            '{user}',
+            CURRENT_TIMESTAMP(),
+            '{user}',
+            CURRENT_TIMESTAMP(),
+            ARRAY('defect_type', 'severity', 'description'),
+            'classification'
+        )
+        """
+        sql_service.execute_update(template_sql)
+        templates_created = 1
+        logger.info(f"✓ Created test template: {template_id}")
+    except Exception as e:
+        errors.append(f"Template creation failed: {str(e)}")
+        logger.error(f"Failed to create test template: {e}")
+
+    # 3. Create sample training sheet (assembly) - matching actual schema
+    training_sheet_id = f"ts-test-{uuid.uuid4().hex[:8]}"
+    training_sheets_table = settings.get_table("training_sheets")
+    qa_pairs_table = settings.get_table("qa_pairs")
+
+    try:
+        ts_sql = f"""
+        INSERT INTO {training_sheets_table} (
+            id, name, description, sheet_id, template_id, template_version,
+            generation_mode, model_used, generation_params, status,
+            generation_started_at, generation_completed_at, generation_error,
+            total_items, generated_count, approved_count, rejected_count, auto_approved_count,
+            reviewed_by, reviewed_at, approval_rate,
+            exported_at, exported_by, export_path, export_format,
+            created_by, created_at, updated_by, updated_at,
+            feature_columns, target_column
+        ) VALUES (
+            '{training_sheet_id}',
+            'Test Training Dataset',
+            'Sample training sheet for workflow testing',
+            '{sheet_id}',
+            '{template_id}',
+            1,
+            'template_based',
+            NULL,
+            NULL,
+            'review',
+            CURRENT_TIMESTAMP(),
+            NULL,
+            NULL,
+            3,
+            3,
+            0,
+            0,
+            0,
+            NULL,
+            NULL,
+            NULL,
+            NULL,
+            NULL,
+            NULL,
+            NULL,
+            '{user}',
+            CURRENT_TIMESTAMP(),
+            '{user}',
+            CURRENT_TIMESTAMP(),
+            ARRAY('defect_type', 'severity', 'description'),
+            'classification'
+        )
+        """
+        sql_service.execute_update(ts_sql)
+
+        # Create sample Q&A pairs
+        sample_qa = [
+            {
+                "item_ref": "COMP-001",
+                "user_msg": "Analyze this component inspection:\\n\\nComponent: COMP-001\\nDefect Type: Scratch\\nSeverity: Minor\\nDescription: Surface scratch on casing\\n\\nProvide a classification and recommended action.",
+                "assistant_msg": ""
+            },
+            {
+                "item_ref": "COMP-002",
+                "user_msg": "Analyze this component inspection:\\n\\nComponent: COMP-002\\nDefect Type: Crack\\nSeverity: Critical\\nDescription: Hairline crack in sensor housing\\n\\nProvide a classification and recommended action.",
+                "assistant_msg": ""
+            },
+            {
+                "item_ref": "COMP-003",
+                "user_msg": "Analyze this component inspection:\\n\\nComponent: COMP-003\\nDefect Type: None\\nSeverity: None\\nDescription: No defects found\\n\\nProvide a classification and recommended action.",
+                "assistant_msg": ""
+            },
+        ]
+
+        for idx, qa in enumerate(sample_qa):
+            qa_id = f"{training_sheet_id}-{idx}"
+            messages = json.dumps([
+                {"role": "user", "content": qa["user_msg"]},
+                {"role": "assistant", "content": qa["assistant_msg"]}
+            ]).replace("'", "''")
+
+            qa_sql = f"""
+            INSERT INTO {qa_pairs_table} (
+                id, training_sheet_id, sheet_id, item_ref, messages,
+                review_status, sequence_number,
+                created_by, created_at, updated_by, updated_at
+            ) VALUES (
+                '{qa_id}',
+                '{training_sheet_id}',
+                '{sheet_id}',
+                '{qa["item_ref"]}',
+                '{messages}',
+                'pending',
+                {idx},
+                '{user}',
+                CURRENT_TIMESTAMP(),
+                '{user}',
+                CURRENT_TIMESTAMP()
+            )
+            """
+            sql_service.execute_update(qa_sql)
+
+        assemblies_created = 1
+        logger.info(f"✓ Created test training sheet with 3 Q&A pairs: {training_sheet_id}")
+
+    except Exception as e:
+        errors.append(f"Training sheet creation failed: {str(e)}")
+        logger.error(f"Failed to create test training sheet: {e}")
+
+    success = len(errors) == 0
+    message = "Test data seeded successfully!" if success else f"Partial success with {len(errors)} errors"
+
+    return SeedTestDataResponse(
+        success=success,
+        sheets_created=sheets_created,
+        templates_created=templates_created,
+        assemblies_created=assemblies_created,
+        message=message,
+        errors=errors,
+    )
 
 
 class InferenceTestRequest(BaseModel):

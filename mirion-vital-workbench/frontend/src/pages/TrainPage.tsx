@@ -58,7 +58,7 @@ export function TrainPage({ mode = "browse", onModeChange }: TrainPageProps) {
   const [statusFilter, setStatusFilter] = useState<AssemblyStatus | "">("");
 
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const { success: successToast } = useToast();
   const {
     openModule,
     activeModule,
@@ -91,10 +91,7 @@ export function TrainPage({ mode = "browse", onModeChange }: TrainPageProps) {
   const handleJobCreated = (jobId: string) => {
     setSelectedJobId(jobId);
     setView("detail");
-    toast({
-      title: "Training Job Created",
-      description: "Job has been submitted successfully",
-    });
+    successToast("Training Job Created", "Job has been submitted successfully");
   };
 
   const handleCancelCreate = () => {
@@ -203,7 +200,7 @@ export function TrainPage({ mode = "browse", onModeChange }: TrainPageProps) {
             <Layers className="w-4 h-4 text-green-600 flex-shrink-0" />
             <div className="min-w-0">
               <div className="font-medium text-db-gray-900">
-                {assembly.sheet_name || `Assembly ${assembly.id.slice(0, 8)}`}
+                {assembly.sheet_name || `Training Data ${assembly.id.slice(0, 8)}`}
               </div>
               <div className="text-sm text-db-gray-500 truncate">
                 {assembly.template_config?.name || "Custom template"}

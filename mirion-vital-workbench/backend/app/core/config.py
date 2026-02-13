@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     app_name: str = "Databits Workbench"
     app_version: str = "0.1.0"
     debug: bool = False
+    port: int = 5000
 
     # Databricks configuration
     databricks_host: str = ""
@@ -21,11 +22,15 @@ class Settings(BaseSettings):
     databricks_schema: str = "databits"
     databricks_warehouse_id: str = ""
 
+    # SQL execution settings
+    sql_query_timeout_seconds: int = 30  # Default query timeout
+    use_serverless_sql: bool = False  # If True, don't specify warehouse_id (use serverless)
+
     # API configuration
     api_prefix: str = "/api/v1"
 
     # CORS (for local development)
-    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:5000", "http://localhost:3000"]
 
     # Lakebase schema name (uses same SQL Warehouse as main schema)
     # The Lakebase schema has engine='postgres' for optimized OLTP workloads

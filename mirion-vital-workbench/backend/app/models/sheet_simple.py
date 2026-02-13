@@ -16,7 +16,7 @@ class SheetBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200, description="Sheet name")
     description: Optional[str] = Field(None, max_length=1000, description="Sheet description")
     source_type: Literal["uc_table", "uc_volume", "external"] = Field(
-        ..., description="Source type: Unity Catalog table, volume, or external"
+        default="uc_table", description="Source type: Unity Catalog table, volume, or external"
     )
     source_table: Optional[str] = Field(None, description="Unity Catalog table reference (catalog.schema.table)")
     source_volume: Optional[str] = Field(None, description="Unity Catalog volume path")
@@ -27,11 +27,11 @@ class SheetBase(BaseModel):
     image_columns: List[str] = Field(default_factory=list, description="Column names with image paths")
     metadata_columns: List[str] = Field(default_factory=list, description="Additional columns for context")
 
-    sampling_strategy: str = Field(default="all", description="Sampling strategy: all, random, stratified")
+    sampling_strategy: Optional[str] = Field(default="all", description="Sampling strategy: all, random, stratified")
     sample_size: Optional[int] = Field(None, ge=1, description="Number of items to sample (null = all)")
     filter_expression: Optional[str] = Field(None, description="SQL WHERE clause to filter items")
 
-    status: str = Field(default="active", description="Status: active, archived, deleted")
+    status: Optional[str] = Field(default="active", description="Status: active, archived, deleted")
 
     @field_validator("source_type")
     @classmethod
@@ -41,18 +41,22 @@ class SheetBase(BaseModel):
             raise ValueError("source_type must be one of: uc_table, uc_volume, external")
         return v
 
-    @field_validator("sampling_strategy")
+    @field_validator("sampling_strategy", mode="before")
     @classmethod
-    def validate_sampling_strategy(cls, v: str) -> str:
-        """Ensure sampling_strategy is valid"""
+    def validate_sampling_strategy(cls, v: Optional[str]) -> str:
+        """Ensure sampling_strategy is valid, default to 'all' if None"""
+        if v is None:
+            return "all"
         if v not in ["all", "random", "stratified"]:
             raise ValueError("sampling_strategy must be one of: all, random, stratified")
         return v
 
-    @field_validator("status")
+    @field_validator("status", mode="before")
     @classmethod
-    def validate_status(cls, v: str) -> str:
-        """Ensure status is valid"""
+    def validate_status(cls, v: Optional[str]) -> str:
+        """Ensure status is valid, default to 'active' if None"""
+        if v is None:
+            return "active"
         if v not in ["active", "archived", "deleted"]:
             raise ValueError("status must be one of: active, archived, deleted")
         return v
@@ -87,6 +91,7 @@ class SheetUpdateRequest(BaseModel):
 class SheetResponse(SheetBase):
     """Response model for Sheet with all fields including system-generated"""
     id: str = Field(..., description="Unique identifier")
+    template_config: Optional[str] = Field(None, description="Attached template configuration (JSON string)")
     item_count: Optional[int] = Field(None, description="Cached count of items in dataset")
     last_validated_at: Optional[datetime] = Field(None, description="Last time source was validated")
     created_at: datetime = Field(..., description="Creation timestamp")

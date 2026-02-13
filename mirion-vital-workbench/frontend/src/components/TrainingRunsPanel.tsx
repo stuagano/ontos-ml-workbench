@@ -4,21 +4,18 @@
 
 import { useQuery } from '@tanstack/react-query';
 import {
-  Loader2,
-  CheckCircle,
-  XCircle,
-  Clock,
   ExternalLink,
   Play,
-  AlertCircle,
   Timer,
   Cpu,
-  TrendingUp
+  TrendingUp,
+  Loader2
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { listJobRuns, getJobRun } from '../services/api';
 import { databricksLinks } from '../services/databricksLinks';
-import type { JobRun, JobStatus } from '../types';
+import type { JobRun } from '../types';
+import { JOB_STATUS_CONFIG, getStatusConfig } from '../constants/statusConfig';
 
 interface TrainingRunCardProps {
   run: JobRun;
@@ -48,17 +45,7 @@ function formatTimeAgo(dateStr?: string): string {
   return `${diffDays}d ago`;
 }
 
-const STATUS_CONFIG: Record<JobStatus, { icon: typeof Loader2; color: string; bgColor: string; label: string }> = {
-  pending: { icon: Clock, color: 'text-amber-600', bgColor: 'bg-amber-50', label: 'Pending' },
-  running: { icon: Loader2, color: 'text-blue-600', bgColor: 'bg-blue-50', label: 'Running' },
-  succeeded: { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-50', label: 'Completed' },
-  failed: { icon: XCircle, color: 'text-red-600', bgColor: 'bg-red-50', label: 'Failed' },
-  cancelled: { icon: AlertCircle, color: 'text-db-gray-500', bgColor: 'bg-db-gray-50', label: 'Cancelled' },
-};
-
 function TrainingRunCard({ run }: TrainingRunCardProps) {
-  const config = STATUS_CONFIG[run.status] || STATUS_CONFIG.pending;
-
   // Poll for status if running
   const { data: liveRun } = useQuery({
     queryKey: ['jobRun', run.id],
@@ -68,7 +55,7 @@ function TrainingRunCard({ run }: TrainingRunCardProps) {
   });
 
   const currentRun = liveRun || run;
-  const currentConfig = STATUS_CONFIG[currentRun.status] || config;
+  const currentConfig = getStatusConfig(currentRun.status, JOB_STATUS_CONFIG, 'pending');
   const CurrentIcon = currentConfig.icon;
 
   // Extract training config

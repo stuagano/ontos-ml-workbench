@@ -1,0 +1,7 @@
+# E2E Test Artifacts
+screenshots/
+test-results/
+playwright-report/
+trace.zip
+*.mp4
+*.webm

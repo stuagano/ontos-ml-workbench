@@ -2,9 +2,18 @@
 
 This directory contains all Delta Lake table schemas for the VITAL Platform Workbench in Unity Catalog.
 
-**Schema Location:** `main.mirion_vital_workbench` (using main catalog instead of creating new catalog)
+**Current Schema Location:** `serverless_dxukih_catalog.mirion` (FEVM workspace)
+**Warehouse:** `387bcda0f2ece20c`
+**Profile:** `fe-vm-serverless-dxukih`
 
-## Execution Order
+For complete migration history and schema evolution, see:
+- `MIGRATION_HISTORY.md` - Complete migration tracking
+- `SCHEMA_REFERENCE.md` - Current field reference
+- `archive/` - Superseded and historical files
+
+## Quick Start
+
+### Initial Schema Setup
 
 Run these SQL files in order:
 
@@ -20,11 +29,29 @@ databricks sql --file 05_training_sheets.sql
 databricks sql --file 06_qa_pairs.sql
 databricks sql --file 07_model_training_lineage.sql
 databricks sql --file 08_example_store.sql
+
+# 3. Validate setup
+databricks sql --file 99_validate_and_seed.sql
 ```
 
 Or run all at once:
 ```bash
-for f in schemas/*.sql; do databricks sql --file "$f"; done
+./execute_all.sh
+```
+
+### Apply Migrations
+
+After initial setup, apply these migrations in order:
+
+```bash
+# 1. Add ML columns to templates (v1.1)
+databricks sql --file add_ml_columns_to_templates.sql
+
+# 2. Add ML columns to training_sheets (v1.1)
+databricks sql --file add_ml_columns_to_training_sheets.sql
+
+# 3. Add Monitor stage support (v1.2)
+databricks sql --file fix_monitor_schema.sql
 ```
 
 ## Table Relationships
@@ -264,9 +291,70 @@ GRANT ALL PRIVILEGES ON SCHEMA main.mirion_vital_workbench TO platform_admins;
 4. Implement service layer for CRUD operations
 5. Seed with sample data for testing
 
+## File Organization
+
+### Core Schema Files
+- `01_create_catalog.sql` - Catalog and schema creation
+- `02_sheets.sql` - Dataset definitions
+- `03_templates.sql` - Prompt templates
+- `04_canonical_labels.sql` - Ground truth labels
+- `05_training_sheets.sql` - Q&A datasets
+- `06_qa_pairs.sql` - Individual Q&A pairs
+- `07_model_training_lineage.sql` - Model tracking
+- `08_example_store.sql` - Few-shot examples
+- `99_validate_and_seed.sql` - Validation queries
+
+### Active Migrations
+- `add_ml_columns_to_templates.sql` - Add feature/target columns to templates (v1.1)
+- `add_ml_columns_to_training_sheets.sql` - Add feature/target columns to training sheets (v1.1)
+- `fix_monitor_schema.sql` - Add Monitor stage tables and columns (v1.2)
+
+### Seed Data Scripts
+- `seed_sheets.sql` - Sample sheets data
+- `seed_simple.sql` - Minimal seed data
+- `seed_templates.sql` - Sample templates
+- `seed_pcb_data.sql` - PCB demo data
+- `seed_canonical_labels.sql` - Canonical labels seed data
+
+### Documentation
+- `README.md` - This file
+- `MIGRATION_HISTORY.md` - Complete migration tracking and version history
+- `SCHEMA_REFERENCE.md` - Current field reference and common mistakes
+- `COMPLETION_SUMMARY.md` - Historical record of initial setup
+- `MONITOR_SCHEMA_FIX_INSTRUCTIONS.md` - Monitor fix guide
+- `CLEANUP_PLAN.md` - Schema cleanup documentation
+
+### Python Utilities
+- `execute_schemas.py` - Execute SQL via Databricks SDK
+- `create_tables_simple.py` - Simple table creation
+- `verify_schema.py` - Schema verification
+- `check_and_seed.py` - Check and seed data
+- `quick_setup.py` - Quick setup utility
+- `run_sql.py` - SQL runner utility
+- `seed_data.py` - Comprehensive seed script
+
+### Specialized Scripts
+- `create_canonical_labels_table.py` - Canonical labels table creation
+- `seed_canonical_labels.py` - Seed canonical labels
+- `verify_canonical_labels.py` - Verify canonical labels
+- `create_sheets_table.py` - Sheets table creation
+- `migrate_sheets_schema.py` - Schema migration utility
+- `seed_sheets_production.py` - Production seed data
+- `verify_sheets.py` - Verify sheets data
+
+### Shell Scripts
+- `execute_all.sh` - Execute all schemas in order
+
+### Archive
+- `archive/superseded/` - Migrations consolidated into other files
+- `archive/workspace-specific/` - Scripts for old/different workspaces
+- `archive/test-scripts/` - Temporary test and optimization scripts
+- `archive/README.md` - Documentation of archived files
+
 ## Support
 
 For schema questions or modifications, see:
+- `MIGRATION_HISTORY.md` - Migration tracking and patterns
+- `SCHEMA_REFERENCE.md` - Field reference and common mistakes
 - PRD: `.claude/prds/vital-workbench.md`
 - Epic: `.claude/epics/vital-workbench/epic.md`
-- Task: `.claude/epics/vital-workbench/2.md`

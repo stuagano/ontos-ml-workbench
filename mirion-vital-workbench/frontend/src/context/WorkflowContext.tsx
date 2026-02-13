@@ -14,6 +14,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
   type ReactNode,
 } from "react";
 import type { UCItem } from "../components/UCBrowser";
@@ -22,21 +23,15 @@ import type {
   DataSourceConfig,
   JoinKeyMapping,
   SourceColumn,
+  PipelineStage,
 } from "../types";
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export type WorkflowStage =
-  | "data"
-  | "template"
-  | "curate"
-  | "label"
-  | "train"
-  | "deploy"
-  | "monitor"
-  | "improve";
+// Backward compatibility alias - use PipelineStage directly
+export type WorkflowStage = PipelineStage;
 
 export interface Template {
   id: string;
@@ -52,7 +47,7 @@ export type { SourceColumn } from "../types";
 
 export interface WorkflowState {
   // Current stage
-  currentStage: WorkflowStage;
+  currentStage: PipelineStage;
 
   // Stage 1: DATA selections (Multi-dataset support)
   // Legacy single-source (for backwards compatibility)
@@ -62,10 +57,11 @@ export interface WorkflowState {
   // New multi-dataset configuration
   datasetConfig: MultiDatasetConfig | null;
 
-  // Stage 2: TEMPLATE selections
+  // Stage 2: GENERATE selections (template + assembly)
   selectedTemplate: Template | null;
+  selectedAssemblyId: string | null;
 
-  // Stage 3: CURATE config
+  // Stage 3: LABEL config
   curationConfig: {
     batchSize?: number;
     qualityThreshold?: number;
@@ -93,7 +89,7 @@ interface WorkflowContextType {
   state: WorkflowState;
 
   // Stage navigation
-  setCurrentStage: (stage: WorkflowStage) => void;
+  setCurrentStage: (stage: PipelineStage) => void;
   goToNextStage: () => void;
   goToPreviousStage: () => void;
   canGoToNextStage: () => boolean;
@@ -115,10 +111,11 @@ interface WorkflowContextType {
   // Helper to get all columns from all sources (for template schema building)
   getAllSourceColumns: () => SourceColumn[];
 
-  // Stage 2: TEMPLATE
+  // Stage 2: GENERATE (template selection)
   setSelectedTemplate: (template: Template | null) => void;
+  setSelectedAssemblyId: (assemblyId: string | null) => void;
 
-  // Stage 3: CURATE
+  // Stage 3: LABEL
   setCurationConfig: (config: Partial<WorkflowState["curationConfig"]>) => void;
 
   // Stage 4: TRAIN
@@ -138,22 +135,20 @@ interface WorkflowContextType {
 // Stage Helpers
 // ============================================================================
 
-const STAGE_ORDER: WorkflowStage[] = [
+const STAGE_ORDER: PipelineStage[] = [
   "data",
-  "template",
-  "curate",
   "label",
+  "curate",
   "train",
   "deploy",
   "monitor",
   "improve",
 ];
 
-const STAGE_LABELS: Record<WorkflowStage, string> = {
+const STAGE_LABELS: Record<PipelineStage, string> = {
   data: "DATA",
-  template: "TEMPLATE",
-  curate: "CURATE",
   label: "LABEL",
+  curate: "CURATE",
   train: "TRAIN",
   deploy: "DEPLOY",
   monitor: "MONITOR",
@@ -172,6 +167,7 @@ const initialState: WorkflowState = {
   sourceColumns: [],
   datasetConfig: null,
   selectedTemplate: null,
+  selectedAssemblyId: null,
   curationConfig: {},
   trainingConfig: {},
   deploymentConfig: {},
@@ -199,17 +195,24 @@ export function WorkflowProvider({ children }: WorkflowProviderProps) {
     startedAt: new Date(),
   });
 
+  // Migrate old stage names from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('vitalWorkbenchStage');
+    if (saved === 'template' || saved === 'curate' || saved === 'generate') {
+      const newStage: PipelineStage = saved === 'template' || saved === 'generate' ? 'data' : 'label';
+      setState(prev => ({ ...prev, currentStage: newStage }));
+      localStorage.setItem('vitalWorkbenchStage', newStage);
+    }
+  }, []);
+
   // Stage navigation
-  const setCurrentStage = useCallback((stage: WorkflowStage) => {
-    console.log("[WorkflowContext] setCurrentStage called with:", stage);
+  const setCurrentStage = useCallback((stage: PipelineStage) => {
     setState((prev) => {
-      console.log("[WorkflowContext] Previous state:", prev);
       const newState = {
         ...prev,
         currentStage: stage,
         lastUpdatedAt: new Date(),
       };
-      console.log("[WorkflowContext] New state:", newState);
       return newState;
     });
   }, []);
@@ -247,10 +250,8 @@ export function WorkflowProvider({ children }: WorkflowProviderProps) {
     switch (state.currentStage) {
       case "data":
         return state.selectedSource !== null;
-      case "template":
-        return state.selectedTemplate !== null;
-      case "curate":
-        return true; // Can always proceed from curate
+      case "label":
+        return true; // Can always proceed from label
       case "train":
         return true;
       case "deploy":
@@ -404,7 +405,7 @@ export function WorkflowProvider({ children }: WorkflowProviderProps) {
     return [];
   }, [state.sourceColumns, state.datasetConfig]);
 
-  // Stage 2: TEMPLATE
+  // Stage 2: GENERATE (template selection)
   const setSelectedTemplate = useCallback((template: Template | null) => {
     setState((prev) => ({
       ...prev,
@@ -413,7 +414,15 @@ export function WorkflowProvider({ children }: WorkflowProviderProps) {
     }));
   }, []);
 
-  // Stage 3: CURATE
+  const setSelectedAssemblyId = useCallback((assemblyId: string | null) => {
+    setState((prev) => ({
+      ...prev,
+      selectedAssemblyId: assemblyId,
+      lastUpdatedAt: new Date(),
+    }));
+  }, []);
+
+  // Stage 3: LABEL
   const setCurationConfig = useCallback(
     (config: Partial<WorkflowState["curationConfig"]>) => {
       setState((prev) => ({
@@ -489,6 +498,7 @@ export function WorkflowProvider({ children }: WorkflowProviderProps) {
     getAllSourceColumns,
     // Other stages
     setSelectedTemplate,
+    setSelectedAssemblyId,
     setCurationConfig,
     setTrainingConfig,
     setDeploymentConfig,

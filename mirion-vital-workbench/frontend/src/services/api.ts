@@ -2,6 +2,16 @@
  * API service for Databits Workbench
  */
 
+// Re-export types for convenience
+export type {
+  PerformanceMetrics,
+  RealtimeMetrics,
+  Alert,
+  CreateAlertRequest,
+  DriftDetection,
+  HealthStatus,
+} from "../types";
+
 import type {
   AppConfig,
   Template,
@@ -77,55 +87,69 @@ import type {
   TrainingJobMetrics,
   TrainingJobEventsResponse,
   TrainingJobLineage,
+  // Canonical Label types
+  CanonicalLabel,
+  CanonicalLabelCreateRequest,
+  CanonicalLabelUpdateRequest,
+  CanonicalLabelLookup,
+  CanonicalLabelBulkLookup,
+  CanonicalLabelBulkLookupResponse,
+  CanonicalLabelStats,
+  ItemLabelsets,
+  UsageConstraintCheck,
+  UsageConstraintCheckResponse,
+  CanonicalLabelVersion,
+  CanonicalLabelListResponse,
+  LabelConfidence,
+  DataClassification,
+  // Monitoring types
+  PerformanceMetrics,
+  RealtimeMetrics,
+  Alert,
+  CreateAlertRequest,
+  DriftDetection,
+  HealthStatus,
 } from "../types";
 
 const API_BASE = "/api/v1";
+const DEFAULT_TIMEOUT = 30000; // 30 seconds
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
-  console.log("🌐 API Call:", {
-    url,
-    method: options?.method || "GET",
-    baseURL: API_BASE,
-    fullURL: url,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
 
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ detail: "Unknown error" }));
-    console.error("❌ API Error:", {
-      url,
-      status: response.status,
-      statusText: response.statusText,
-      error,
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+      signal: controller.signal,
     });
-    throw new Error(error.detail || `HTTP ${response.status}`);
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ detail: "Unknown error" }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timeout - please try again');
+    }
+    throw error;
   }
-
-  if (response.status === 204) {
-    console.log("✅ API Response (204 No Content):", { url });
-    return undefined as T;
-  }
-
-  const data = await response.json();
-  console.log("✅ API Response:", {
-    url,
-    status: response.status,
-    data:
-      typeof data === "object" && data !== null
-        ? { ...data, _preview: JSON.stringify(data).substring(0, 200) + "..." }
-        : data,
-  });
-
-  return data;
 }
 
 // ============================================================================
@@ -768,29 +792,23 @@ export async function queryServingEndpoint(
 }
 
 // ============================================================================
-// AI Sheets
+// AI Sheets (PRD v2.3 - Unity Catalog Pointers)
 // ============================================================================
 
 /**
  * List all sheets with optional filtering
+ * Uses /sheets endpoint for PRD v2.3 simplified sheets
  */
 export async function listSheets(params?: {
   status?: string;
-  search?: string;
-  page?: number;
-  page_size?: number;
+  limit?: number;
 }): Promise<{
   sheets: Sheet[];
   total: number;
-  page: number;
-  page_size: number;
 }> {
   const searchParams = new URLSearchParams();
-  if (params?.status) searchParams.set("status", params.status);
-  if (params?.search) searchParams.set("search", params.search);
-  if (params?.page) searchParams.set("page", String(params.page));
-  if (params?.page_size)
-    searchParams.set("page_size", String(params.page_size));
+  if (params?.status) searchParams.set("status_filter", params.status);
+  if (params?.limit) searchParams.set("limit", String(params.limit));
 
   const query = searchParams.toString();
   return fetchJson(`${API_BASE}/sheets${query ? `?${query}` : ""}`);
@@ -798,6 +816,7 @@ export async function listSheets(params?: {
 
 /**
  * Get a sheet by ID
+ * Uses /sheets endpoint for PRD v2.3 simplified sheets
  */
 export async function getSheet(id: string): Promise<Sheet> {
   return fetchJson(`${API_BASE}/sheets/${id}`);
@@ -805,6 +824,7 @@ export async function getSheet(id: string): Promise<Sheet> {
 
 /**
  * Create a new sheet
+ * Uses /sheets endpoint for PRD v2.3 simplified sheets
  */
 export async function createSheet(data: SheetCreateRequest): Promise<Sheet> {
   return fetchJson(`${API_BASE}/sheets`, {
@@ -815,6 +835,7 @@ export async function createSheet(data: SheetCreateRequest): Promise<Sheet> {
 
 /**
  * Update a sheet's metadata
+ * Uses /sheets endpoint for PRD v2.3 simplified sheets
  */
 export async function updateSheet(
   id: string,
@@ -828,6 +849,7 @@ export async function updateSheet(
 
 /**
  * Delete a draft sheet
+ * Uses /sheets endpoint for PRD v2.3 simplified sheets
  */
 export async function deleteSheet(id: string): Promise<void> {
   return fetchJson(`${API_BASE}/sheets/${id}`, { method: "DELETE" });
@@ -2124,4 +2146,137 @@ export async function incrementCanonicalLabelReuse(
   return fetchJson(`${API_BASE}/canonical-labels/${labelId}/increment-reuse`, {
     method: "POST",
   });
+}
+
+// ============================================================================
+// Monitoring API (MONITOR Stage)
+// ============================================================================
+
+/**
+ * Get performance metrics for endpoints
+ */
+export async function getPerformanceMetrics(params?: {
+  endpoint_id?: string;
+  hours?: number;
+}): Promise<PerformanceMetrics[]> {
+  const query = new URLSearchParams();
+  if (params?.endpoint_id) query.set("endpoint_id", params.endpoint_id);
+  if (params?.hours) query.set("hours", params.hours.toString());
+
+  const queryString = query.toString();
+  return fetchJson(
+    `${API_BASE}/monitoring/metrics/performance${queryString ? `?${queryString}` : ""}`,
+  );
+}
+
+/**
+ * Get real-time metrics for an endpoint
+ */
+export async function getRealtimeMetrics(
+  endpointId: string,
+  window_minutes?: number,
+): Promise<RealtimeMetrics> {
+  const query = new URLSearchParams();
+  if (window_minutes) query.set("minutes", window_minutes.toString());
+
+  const queryString = query.toString();
+  return fetchJson(
+    `${API_BASE}/monitoring/metrics/realtime/${endpointId}${queryString ? `?${queryString}` : ""}`,
+  );
+}
+
+/**
+ * List monitoring alerts with optional filters
+ */
+export async function listAlerts(params?: {
+  endpoint_id?: string;
+  status?: "active" | "acknowledged" | "resolved";
+  alert_type?: "drift" | "latency" | "error_rate" | "quality";
+}): Promise<Alert[]> {
+  const query = new URLSearchParams();
+  if (params?.endpoint_id) query.set("endpoint_id", params.endpoint_id);
+  if (params?.status) query.set("status", params.status);
+  if (params?.alert_type) query.set("alert_type", params.alert_type);
+
+  const queryString = query.toString();
+  return fetchJson(
+    `${API_BASE}/monitoring/alerts${queryString ? `?${queryString}` : ""}`,
+  );
+}
+
+/**
+ * Get alert details by ID
+ */
+export async function getAlert(alertId: string): Promise<Alert> {
+  return fetchJson(`${API_BASE}/monitoring/alerts/${alertId}`);
+}
+
+/**
+ * Create a new monitoring alert
+ */
+export async function createAlert(
+  alert: CreateAlertRequest,
+): Promise<Alert> {
+  return fetchJson(`${API_BASE}/monitoring/alerts`, {
+    method: "POST",
+    body: JSON.stringify(alert),
+  });
+}
+
+/**
+ * Acknowledge an alert
+ */
+export async function acknowledgeAlert(alertId: string): Promise<Alert> {
+  return fetchJson(`${API_BASE}/monitoring/alerts/${alertId}/acknowledge`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Resolve an alert
+ */
+export async function resolveAlert(alertId: string): Promise<Alert> {
+  return fetchJson(`${API_BASE}/monitoring/alerts/${alertId}/resolve`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Delete an alert configuration
+ */
+export async function deleteAlert(alertId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/monitoring/alerts/${alertId}`, {
+    method: "DELETE",
+  });
+}
+
+/**
+ * Detect data drift for an endpoint
+ */
+export async function getDriftDetection(
+  endpointId: string,
+  params?: {
+    baseline_days?: number;
+    comparison_hours?: number;
+  },
+): Promise<DriftDetection> {
+  const query = new URLSearchParams();
+  if (params?.baseline_days)
+    query.set("baseline_days", params.baseline_days.toString());
+  if (params?.comparison_hours)
+    query.set("comparison_hours", params.comparison_hours.toString());
+
+  const queryString = query.toString();
+  return fetchJson(
+    `${API_BASE}/monitoring/drift/${endpointId}${queryString ? `?${queryString}` : ""}`,
+  );
+}
+
+/**
+ * Check overall health of an endpoint
+ */
+export async function getEndpointHealth(
+  endpointId: string,
+): Promise<HealthStatus> {
+  return fetchJson(`${API_BASE}/monitoring/health/${endpointId}`);
 }

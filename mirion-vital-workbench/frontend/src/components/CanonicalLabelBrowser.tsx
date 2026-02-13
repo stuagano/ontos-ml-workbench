@@ -4,7 +4,7 @@
  * Browse, filter, and search canonical labels with pagination.
  */
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useCanonicalLabels } from "../hooks/useCanonicalLabels";
 import { CanonicalLabelCard, CanonicalLabelCardSkeleton } from "./CanonicalLabelCard";
 import type { CanonicalLabel, LabelConfidence } from "../types";

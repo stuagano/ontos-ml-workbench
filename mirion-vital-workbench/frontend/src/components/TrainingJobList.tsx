@@ -20,7 +20,7 @@ import {
   StopCircle,
 } from "lucide-react";
 import { listTrainingJobs } from "../services/api";
-import type { TrainingJob } from "../types";
+import type { TrainingJob, TrainingJobStatus } from "../types";
 
 interface TrainingJobListProps {
   onSelectJob: (jobId: string) => void;
@@ -31,7 +31,7 @@ export function TrainingJobList({
   onSelectJob,
   trainingSheetId,
 }: TrainingJobListProps) {
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<TrainingJobStatus | "all">("all");
 
   // Fetch jobs from backend
   const {
@@ -45,7 +45,7 @@ export function TrainingJobList({
       const response = await listTrainingJobs({
         training_sheet_id: trainingSheetId,
         status: statusFilter === "all" ? undefined : statusFilter,
-        limit: 100,
+        page_size: 100,
       });
       return response.jobs;
     },
@@ -152,12 +152,14 @@ export function TrainingJobList({
     <div className="space-y-4">
       {/* Filter Tabs */}
       <div className="flex items-center gap-2 border-b border-db-gray-200">
-        {[
-          { id: "all", label: "All Jobs" },
-          { id: "running", label: "Running" },
-          { id: "succeeded", label: "Succeeded" },
-          { id: "failed", label: "Failed" },
-        ].map((tab) => (
+        {(
+          [
+            { id: "all", label: "All Jobs" },
+            { id: "running", label: "Running" },
+            { id: "succeeded", label: "Succeeded" },
+            { id: "failed", label: "Failed" },
+          ] as const
+        ).map((tab) => (
           <button
             key={tab.id}
             onClick={() => setStatusFilter(tab.id)}
@@ -272,13 +274,13 @@ export function TrainingJobList({
 
                   <td className="px-4 py-3">
                     <span className="text-sm text-db-gray-600">
-                      {formatDuration(job.duration_seconds)}
+                      {formatDuration(job.duration_seconds ?? null)}
                     </span>
                   </td>
 
                   <td className="px-4 py-3">
                     <span className="text-sm text-db-gray-600">
-                      {formatTime(job.created_at)}
+                      {formatTime(job.created_at ?? "")}
                     </span>
                   </td>
 

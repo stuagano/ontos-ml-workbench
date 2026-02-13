@@ -51,12 +51,36 @@ else
     ((total++))
 
     task_status=$(grep "^status:" "$task_file" | head -1 | sed 's/^status: *//')
-    deps=$(grep "^depends_on:" "$task_file" | head -1 | sed 's/^depends_on: *\[//' | sed 's/\]//')
+    deps_line=$(grep "^depends_on:" "$task_file" | head -1)
+    deps=$(echo "$deps_line" | sed 's/^depends_on: *\[//' | sed 's/\]//' | sed 's/,/ /g')
 
     if [ "$task_status" = "closed" ] || [ "$task_status" = "completed" ]; then
       ((closed++))
-    elif [ -n "$deps" ] && [ "$deps" != "depends_on:" ]; then
-      ((blocked++))
+    elif [ -n "$deps" ] && [ "$deps" != "depends_on:" ] && [ -n "$deps_line" ]; then
+      # Check if any dependency is not completed
+      is_blocked=false
+      for dep_num in $deps; do
+        dep_num=$(echo "$dep_num" | tr -d '[:space:]')
+        [ -z "$dep_num" ] && continue
+        dep_file="$epic_dir/$dep_num.md"
+        if [ -f "$dep_file" ]; then
+          dep_status=$(grep "^status:" "$dep_file" | head -1 | sed 's/^status: *//')
+          if [ "$dep_status" != "closed" ] && [ "$dep_status" != "completed" ]; then
+            is_blocked=true
+            break
+          fi
+        else
+          # Dependency file doesn't exist - consider blocked
+          is_blocked=true
+          break
+        fi
+      done
+
+      if [ "$is_blocked" = true ]; then
+        ((blocked++))
+      else
+        ((open++))
+      fi
     else
       ((open++))
     fi
