@@ -1,1 +1,0 @@
-command: ["uvicorn", "mirion_test_.backend.app:app", "--workers", "2"]

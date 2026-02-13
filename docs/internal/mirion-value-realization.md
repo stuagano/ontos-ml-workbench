@@ -1,8 +1,10 @@
 # Mirion Value Realization Tracker
 ## ROI & Business Value Delivered
 
+> **Status: TEMPLATE** - Scaffolded but never populated with real value metrics.
+
 **Account:** Mirion Technologies
-**Last Updated:** January 26, 2025
+**Last Updated:** January 26, 2026
 
 ---
 

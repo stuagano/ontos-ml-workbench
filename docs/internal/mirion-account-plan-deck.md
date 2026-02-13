@@ -1,7 +1,9 @@
 # Mirion Account Plan Deck
 ## Slide Content (Internal + External Versions)
 
-**Last Updated:** January 26, 2025
+> **Status: TEMPLATE** - Scaffolded but needs review with current slide content.
+
+**Last Updated:** January 26, 2026
 **Use For:** QBRs, Steering Committees, Internal Reviews
 
 ---
@@ -15,7 +17,7 @@ Mirion Technologies × Databricks
 
 *Transforming Radiation Safety Through Data & AI*
 
-January 2025
+January 2026
 
 ---
 

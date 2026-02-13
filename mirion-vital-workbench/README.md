@@ -29,8 +29,9 @@ Profile:   fe-vm-serverless-dxukih
 **Important**: All local development and deployment uses FEVM workspace. Configuration is in `backend/.env`.
 
 **Recent Updates**:
-- Schema consolidation completed - see `RESTORATION_COMPLETE.md` for details
-- ⚠️ **Schema Management**: See `SCHEMA_MANAGEMENT.md` for preventing schema mismatches between database and code
+- DQX data quality integration (Feb 2026)
+- Schema consolidation completed
+- Canonical Labeling Tool integrated
 
 ## Overview
 
@@ -161,12 +162,10 @@ npm run dev
 
 ### Production Deployment
 
-For production deployments, follow the complete workflow:
+For production deployments:
 
-1. **Pre-deployment**: [PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md)
-2. **Deployment**: [DEPLOYMENT.md](DEPLOYMENT.md)
-3. **Monitoring**: [MONITORING_SETUP.md](MONITORING_SETUP.md)
-4. **Operations**: [RUNBOOK.md](RUNBOOK.md)
+1. **Deployment**: [DEPLOYMENT.md](DEPLOYMENT.md)
+2. **Operations**: [RUNBOOK.md](RUNBOOK.md)
 
 ## Architecture
 
@@ -338,18 +337,11 @@ The app uses these Unity Catalog tables in `mirion_vital.workbench`:
 
 ## Deployment & Operations
 
-**📚 [DEPLOYMENT_INDEX.md](DEPLOYMENT_INDEX.md)** - Complete index of all deployment documentation
-
-### Quick Links
-
 | Document | Purpose |
 |----------|---------|
-| **[DEPLOYMENT_INDEX.md](DEPLOYMENT_INDEX.md)** | Master index - start here for all deployment needs |
 | **[DEPLOYMENT.md](DEPLOYMENT.md)** | Complete deployment guide (prerequisites, setup, backend, frontend, verification) |
-| **[PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md)** | Pre-deployment checklist, deployment steps, smoke tests, rollback procedures |
-| **[MONITORING_SETUP.md](MONITORING_SETUP.md)** | Monitoring configuration, dashboards, alerts, log aggregation |
 | **[RUNBOOK.md](RUNBOOK.md)** | Operations runbook with common issues, troubleshooting, performance tuning |
-| **[WORKFLOWS.md](WORKFLOWS.md)** | Development workflows, deployment pipeline, database migrations, release process |
+| **[QUICKSTART.md](QUICKSTART.md)** | Get started in 10 minutes |
 
 ### Deployment Workflow
 
@@ -372,7 +364,6 @@ Development → Staging → Production
    └─ Verify with product team
 
 4. Deploy to Production
-   ├─ Follow PRODUCTION_CHECKLIST.md
    ├─ Run: databricks bundle deploy -t production
    ├─ Monitor for 1 hour
    └─ Verify with smoke tests

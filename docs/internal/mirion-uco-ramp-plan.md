@@ -1,8 +1,10 @@
 # Mirion UCO Ramp Plan & Internal Alignment
 ## Databricks Internal Only
 
+> **Status: TEMPLATE** - Scaffolded but needs review with current UCO forecasts.
+
 **Account:** Mirion Technologies
-**Last Updated:** January 26, 2025
+**Last Updated:** January 26, 2026
 **Owner:** Stuart Gano (SA)
 
 ---
@@ -474,5 +476,5 @@ Year 5: $5.0M
 
 *Document: UCO Ramp Plan & Internal Alignment*
 *Version: 1.0*
-*Last Updated: January 26, 2025*
+*Last Updated: January 26, 2026*
 *Author: Stuart Gano, Solution Architect*

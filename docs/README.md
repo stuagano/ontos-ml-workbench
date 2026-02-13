@@ -70,11 +70,10 @@ docs/
 
 ## Quick Reference
 
-### Current Priority: Sievo/Procurement Project
-- **Deadline:** March 2025
-- **Stakeholder:** Sarah Pacer (Supply Chain)
-- **Next Meeting:** Jan 27
-- **Doc:** `customer-facing/03-mirion-data-ai-project-plan.md` → Phase 2
+### Current Priority: VITAL Platform Workbench
+- **Focus:** AI lifecycle platform for radiation safety
+- **Status:** Active development (see `../mirion-vital-workbench/`)
+- **Key Areas:** DQX data quality, Canonical Labeling, Ontos integration
 
 ### Platform Layers
 | Layer | Owner | Description |
@@ -131,4 +130,4 @@ The `internal/` folder contains:
 
 ---
 
-*Last updated: January 26, 2025*
+*Last updated: February 13, 2026*

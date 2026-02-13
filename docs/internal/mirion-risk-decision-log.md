@@ -1,8 +1,10 @@
 # Mirion Risk & Decision Log
 ## Tracking Key Decisions, Risks, and Escalations
 
+> **Status: TEMPLATE** - Scaffolded with placeholder risks. Update with current risk status before use.
+
 **Account:** Mirion Technologies
-**Last Updated:** January 26, 2025
+**Last Updated:** January 26, 2026
 
 ---
 
@@ -57,7 +59,7 @@
 | Test GEANT4 on Databricks | Stuart/Kyle | TBD | ⬜ Open |
 | Assess GovCloud requirements | Stuart/Craig | TBD | ⬜ Open |
 
-**Last Updated:** January 26, 2025
+**Last Updated:** January 26, 2026
 
 ---
 
@@ -93,7 +95,7 @@
 | Workspace provisioning | Neha | Feb 7 | ⬜ Open |
 | DQ rules complete | Neha + SMEs | Feb 14 | ⬜ Open |
 
-**Last Updated:** January 26, 2025
+**Last Updated:** January 26, 2026
 
 ---
 
@@ -127,7 +129,7 @@
 | Develop customer ROI calculator | Konner/Stuart | Q2 | ⬜ Open |
 | Create reference customer program | Konner | Q3 | ⬜ Open |
 
-**Last Updated:** January 26, 2025
+**Last Updated:** January 26, 2026
 
 ---
 
@@ -161,7 +163,7 @@
 | Build relationship with James Cocks (CTO) | Stuart | Q1 | ⬜ Open |
 | Regular engagement with Ben & Kyle | Hector | Ongoing | 🟡 In Progress |
 
-**Last Updated:** January 26, 2025
+**Last Updated:** January 26, 2026
 
 ---
 
@@ -194,7 +196,7 @@
 | Escalate to Shahmeer if needed | Konner | Feb 1 | ⬜ Contingent |
 | Prepare synthetic data backup | Neha | Feb 1 | ⬜ Open |
 
-**Last Updated:** January 26, 2025
+**Last Updated:** January 26, 2026
 
 ---
 
@@ -227,7 +229,7 @@
 | Clarify V4c scope and handoff | Konner | This week | ⬜ Open |
 | Identify PS augmentation options | Konner | If needed | ⬜ Contingent |
 
-**Last Updated:** January 26, 2025
+**Last Updated:** January 26, 2026
 
 ---
 
@@ -260,7 +262,7 @@
 | Prepare security documentation | Stuart | Before meeting | ⬜ Open |
 | Research GovCloud requirements | Stuart | Feb 2025 | ⬜ Open |
 
-**Last Updated:** January 26, 2025
+**Last Updated:** January 26, 2026
 
 ---
 
@@ -293,7 +295,7 @@
 | Coordinate with V4c technical team | Hector | After scope clear | ⬜ Open |
 | Document handoff plan | Hector | Feb 2025 | ⬜ Open |
 
-**Last Updated:** January 26, 2025
+**Last Updated:** January 26, 2026
 
 ---
 
@@ -321,7 +323,7 @@
 
 | Attribute | Details |
 |-----------|---------|
-| **Date** | January 2025 |
+| **Date** | January 2026 |
 | **Decision** | Recommend hybrid approach: GEANT4 on Databricks for R&D, MCNP on-prem for production |
 | **Context** | MCNP is export-controlled and may not be deployable in commercial cloud |
 | **Options Considered** | 1) MCNP only (on-prem), 2) GEANT4 only (cloud), 3) Hybrid |
@@ -336,7 +338,7 @@
 
 | Attribute | Details |
 |-----------|---------|
-| **Date** | January 2025 |
+| **Date** | January 2026 |
 | **Decision** | Use Sievo/Procurement project as the proof point for MEDIAN foundation |
 | **Context** | Need to validate platform with real business value before VITAL expansion |
 | **Options Considered** | 1) Finance Golden Record, 2) Sievo/Procurement, 3) Customer 360 |
@@ -351,7 +353,7 @@
 
 | Attribute | Details |
 |-----------|---------|
-| **Date** | January 2025 |
+| **Date** | January 2026 |
 | **Decision** | Maintain separate customer-facing and internal documentation |
 | **Context** | Need to share some content with customer while keeping competitive intel internal |
 | **Options Considered** | 1) Single document with redaction, 2) Separate documents |
@@ -413,7 +415,7 @@
 
 ## Weekly Risk Review
 
-### Week of January 27, 2025
+### Week of January 27, 2026
 
 **New Risks:** None
 

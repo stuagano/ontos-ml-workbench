@@ -1,7 +1,9 @@
 # Mirion Technologies Account Plan
 ## Prepared for Konner
 
-**Date:** January 2025  
+> **Status: TEMPLATE** - Scaffolded but needs review and population with current account data.
+
+**Date:** January 2026  
 **Account:** Mirion Technologies  
 **Industry:** Radiation Safety / Nuclear / Medical  
 **Deal Size:** $10.7M over 5 years (consumption-based)
@@ -707,6 +709,6 @@ See `../customer-facing/03-mirion-data-ai-project-plan.md` for detailed executio
 
 ---
 
-*Last Updated: January 26, 2025*
+*Last Updated: January 26, 2026*
 *Author: Stuart Gano, Solution Architect*
 *Version: 3.0 - Added UCO ramp plan, internal team alignment, comprehensive stakeholders*

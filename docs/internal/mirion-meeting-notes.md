@@ -1,8 +1,10 @@
 # Mirion Meeting Notes Log
 ## All Customer Meetings & Key Discussions
 
+> **Status: TEMPLATE** - Scaffolded but never populated with real meeting notes.
+
 **Account:** Mirion Technologies
-**Last Updated:** January 26, 2025
+**Last Updated:** January 26, 2026
 
 ---
 
@@ -19,11 +21,11 @@
 
 ## Upcoming Meetings
 
-### January 27, 2025 - Sarah Pacer: Sievo Requirements
+### January 27, 2026 - Sarah Pacer: Sievo Requirements
 
 | Attribute | Details |
 |-----------|---------|
-| **Date/Time** | January 27, 2025 |
+| **Date/Time** | January 27, 2026 |
 | **Attendees** | Stuart Gano, Sarah Pacer |
 | **Purpose** | Sievo/Procurement project kickoff, DQ requirements |
 | **Location** | Virtual |
@@ -90,7 +92,7 @@
 
 ## Historical Meeting Notes
 
-### January 2025
+### January 2026
 
 *No meetings recorded yet - account in planning phase*
 

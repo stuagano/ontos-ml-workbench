@@ -7,7 +7,7 @@ DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
 ```
 
 **PRD Version:** v2.3 (Validated - Ready for Implementation)  
-**See:** `docs/PRD.md`, `VALIDATION_SUMMARY.md`
+**See:** `docs/PRD.md`
 
 ## Project Overview
 
@@ -71,7 +71,7 @@ apx dev start
 
 **Benefits**: Single command, instant hot reload for Python and React changes, unified logging.
 
-See [APX_SETUP.md](frontend/APX_SETUP.md) for complete integration guide.
+See [MODULE_DEV_WITH_APX.md](frontend/MODULE_DEV_WITH_APX.md) for APX development workflow.
 
 ### Alternative: Manual Setup (Traditional)
 ```bash
