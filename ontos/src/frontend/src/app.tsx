@@ -33,7 +33,6 @@ import DataAssetReviews from './views/data-asset-reviews';
 import DataAssetReviewDetails from './views/data-asset-review-details';
 import DataCatalog from './views/data-catalog';
 import DataCatalogDetails from './views/data-catalog-details';
-import CatalogCommander from './views/catalog-commander';
 import Settings from './views/settings';
 import About from './views/about';
 import UserGuide from './views/user-guide';
@@ -97,7 +96,6 @@ export default function App() {
               <Route path="/workflows" element={<Workflows />} />
               <Route path="/workflows/new" element={<WorkflowDesignerView />} />
               <Route path="/workflows/:workflowId" element={<WorkflowDesignerView />} />
-              <Route path="/catalog-commander" element={<CatalogCommander />} />
               <Route path="/create-uc" element={<CreateUcObject />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/settings/:tab" element={<Settings />} />

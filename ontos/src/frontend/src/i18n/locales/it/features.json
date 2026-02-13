@@ -43,10 +43,6 @@
     "name": "Gestione dati master",
     "description": "Costruisci un record d'oro dei tuoi dati."
   },
-  "catalog-commander": {
-    "name": "Catalog Commander",
-    "description": "Esploratore catalogo affiancato per la gestione delle risorse."
-  },
   "security": {
     "name": "Funzionalità di sicurezza",
     "description": "Abilita sicurezza avanzata come la privacy differenziale."

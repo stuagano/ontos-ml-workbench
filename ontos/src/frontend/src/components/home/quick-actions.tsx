@@ -24,7 +24,7 @@ export default function QuickActions() {
     // Steward/Security/Admin
     if (hasPermission('data-asset-reviews', FeatureAccessLevel.READ_ONLY)) list.push({ name: t('quickActions.actions.reviewAssets'), path: '/data-asset-reviews' });
     if (hasPermission('entitlements', FeatureAccessLevel.READ_ONLY)) list.push({ name: t('quickActions.actions.manageEntitlements'), path: '/entitlements' });
-    if (hasPermission('catalog-commander', FeatureAccessLevel.READ_ONLY)) list.push({ name: t('quickActions.actions.catalogCommander'), path: '/catalog-commander' });
+    if (hasPermission('data-catalog', FeatureAccessLevel.READ_ONLY)) list.push({ name: t('quickActions.actions.dataCatalog'), path: '/data-catalog' });
     if (hasPermission('settings', FeatureAccessLevel.ADMIN)) list.push({ name: t('quickActions.actions.settings'), path: '/settings' });
     return list;
   }, [permissionsLoading, hasPermission, t]);

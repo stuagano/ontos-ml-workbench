@@ -29,7 +29,7 @@ roles:
       data-products: Admin
       data-contracts: Admin
       datasets: Admin
-      data-catalog: Admin
+      data-catalog: Full
       teams: Read-only
       projects: Read-only
       business-glossary: Admin
@@ -40,7 +40,6 @@ roles:
       entitlements: Admin
       entitlements-sync: Admin
       data-asset-reviews: Admin
-      catalog-commander: Full
       comments: Read/Write
     home_sections:
       - REQUIRED_ACTIONS
@@ -73,7 +72,6 @@ roles:
       business-glossary: Read/Write
       compliance: Read-only
       data-asset-reviews: Read/Write
-      catalog-commander: Read-only
       comments: Read/Write
     home_sections:
       - REQUIRED_ACTIONS
@@ -104,7 +102,6 @@ roles:
       teams: Read-only
       projects: Read-only
       business-glossary: Read-only
-      catalog-commander: Read-only
       comments: Read/Write
     home_sections:
       - DISCOVERY
@@ -120,7 +117,6 @@ roles:
       teams: Read/Write
       projects: Read/Write
       business-glossary: Read-only
-      catalog-commander: Read-only
       comments: Read/Write
     home_sections:
       - DATA_CURATION

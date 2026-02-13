@@ -7,21 +7,22 @@
   "noTablesAccessible": "Geen tabellen toegankelijk in Unity Catalog",
   "showingColumns": "Toont {{count}} kolommen",
   "matchingSearch": "overeenkomend",
-  
+
   "columns": {
     "label": "Label",
     "description": "Beschrijving",
     "columnName": "Kolomnaam",
     "type": "Type",
-    "tableName": "Tabel"
+    "tableName": "Tabel",
+    "businessTerms": "Zakelijke Termen"
   },
-  
+
   "tabs": {
     "overview": "Overzicht",
     "dataDetails": "Data Details",
     "lineage": "Lineage"
   },
-  
+
   "overview": {
     "basicInfo": "Basis Informatie",
     "catalog": "Catalogus",
@@ -39,16 +40,15 @@
     "description": "Beschrijving",
     "tags": "Tags"
   },
-  
+
   "dataDetails": {
     "title": "Kolommen",
     "description": "Kolomdefinities en metadata",
     "columnName": "Kolomnaam",
     "type": "Type",
-    "nullable": "Nullable",
-    "description": "Beschrijving"
+    "nullable": "Nullable"
   },
-  
+
   "lineage": {
     "title": "Data Lineage",
     "description": "Visualiseer upstream en downstream afhankelijkheden",
@@ -62,10 +62,82 @@
     "impactWarning": "Wijzigingen aan deze tabel kunnen beïnvloeden:",
     "notifyOwners": "Te informeren eigenaren"
   },
-  
+
   "errors": {
+    "error": "Fout",
     "fetchFailed": "Kon data niet ophalen",
-    "tableNotFound": "Tabel niet gevonden"
+    "tableNotFound": "Tabel niet gevonden",
+    "failedToSendMessage": "Kon bericht niet verzenden"
+  },
+
+  "browser": {
+    "catalogBrowser": "Catalogus Browser",
+    "target": "Doel",
+    "objectInformation": "Object Informatie",
+    "basicInformation": "Basis Informatie",
+    "commentsAndActivity": "Opmerkingen & Activiteit",
+    "askOntos": "Vraag Ontos",
+    "dictionary": "Woordenboek",
+
+    "actions": {
+      "viewData": "Data Bekijken",
+      "move": "Verplaatsen",
+      "delete": "Verwijderen",
+      "rename": "Hernoemen",
+      "info": "Info",
+      "operations": "Bewerkingen",
+      "comments": "Opmerkingen",
+      "retry": "Opnieuw Proberen",
+      "newChat": "Nieuw Gesprek",
+      "cancel": "Annuleren",
+      "confirm": "Bevestigen"
+    },
+
+    "tooltips": {
+      "copyToTarget": "Kopiëren naar doel",
+      "moveToTarget": "Verplaatsen naar doel",
+      "moveFromTarget": "Verplaatsen van doel",
+      "refresh": "Vernieuwen (houd Shift ingedrukt voor geforceerd vernieuwen)",
+      "dragToResize": "Sleep om te verkleinen/vergroten"
+    },
+
+    "labels": {
+      "metastore": "Metastore",
+      "filterCatalogs": "Catalogussen filteren...",
+      "selectEstate": "Selecteer Estate",
+      "name": "Naam:",
+      "type": "Type:",
+      "fullPath": "Volledig Pad:",
+      "actions": "Acties:"
+    },
+
+    "messages": {
+      "selectObjectToViewInfo": "Selecteer een object om de informatie te bekijken",
+      "selectObjectToViewComments": "Selecteer een object om opmerkingen te bekijken",
+      "loadingDetails": "Details laden...",
+      "noDataAvailable": "Geen data beschikbaar",
+      "datasetView": "Dataset Weergave: {{name}}",
+      "confirmOperation": "Bevestig Bewerking",
+      "selectedItems": "Geselecteerde items: {{items}}",
+      "noItemsSelected": "Geen items geselecteerd"
+    },
+
+    "askPanel": {
+      "title": "Vraag Ontos",
+      "askAboutItem": "Vraag over dit catalogus item",
+      "askQuestionsAbout": "Stel vragen over \"{{name}}\"",
+      "selectItemFirst": "Selecteer een item om er vragen over te stellen",
+      "askAboutPlaceholder": "Vraag over {{name}}...",
+      "selectItemPlaceholder": "Selecteer eerst een item...",
+      "askingAbout": "Vraagt over:",
+      "thinking": "Nadenken...",
+      "rerun": "Opnieuw uitvoeren",
+      "copyToInput": "Bewerken & opnieuw verzenden",
+      "exampleQuestions": {
+        "columns": "Welke kolommen heeft dit?",
+        "owner": "Wie is de eigenaar?",
+        "usage": "Hoe wordt dit gebruikt?"
+      }
+    }
   }
 }
-

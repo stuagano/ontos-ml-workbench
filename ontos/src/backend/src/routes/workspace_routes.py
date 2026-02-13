@@ -20,7 +20,7 @@ async def search_workspace_assets(
     search_term: Optional[str] = Query(None, description="Search term to filter asset names/identifiers"),
     limit: int = Query(25, description="Maximum number of results to return", ge=1, le=100),
     manager: WorkspaceManager = Depends(WorkspaceManagerDep),
-    _: bool = Depends(PermissionChecker('catalog-commander', FeatureAccessLevel.READ_ONLY))
+    _: bool = Depends(PermissionChecker('data-catalog', FeatureAccessLevel.READ_ONLY))
 ):
     """
     Search for Databricks workspace assets based on type and search term.

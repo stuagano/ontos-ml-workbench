@@ -43,10 +43,6 @@
     "name": "Master Data Management",
     "description": "Bouw een golden record van je data."
   },
-  "catalog-commander": {
-    "name": "Catalog Commander",
-    "description": "Zij-aan-zij catalogus verkenner voor asset beheer."
-  },
   "security": {
     "name": "Beveiligingsfuncties",
     "description": "Schakel geavanceerde beveiliging in zoals differential privacy."

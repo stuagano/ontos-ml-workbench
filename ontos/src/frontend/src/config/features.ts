@@ -7,7 +7,7 @@ import {
     Lock, // Using Lock icon from About for Security for now
     Shield,
     RefreshCw, // Using RefreshCw icon from About for Entitlements Sync for now
-    FolderKanban, // Icon for Catalog Commander
+    FolderKanban, // Icon for Data Catalog (was Catalog Commander)
     Settings,
     Info,
     ClipboardCheck, // Added icon for Data Asset Review
@@ -124,10 +124,10 @@ import {
       id: 'data-catalog',
       name: 'Data Catalog',
       path: '/data-catalog',
-      description: 'Browse Unity Catalog assets, search columns, and analyze lineage.',
-      icon: BookOpen,
+      description: 'Browse Unity Catalog assets, search columns, view data, and analyze lineage.',
+      icon: FolderKanban,
       group: 'Governance',
-      maturity: 'beta',
+      maturity: 'ga',
       showInLanding: true,
     },
     // Operations - Ongoing monitoring and technical management
@@ -169,16 +169,6 @@ import {
       icon: Users,
       group: 'Operations',
       maturity: 'beta',
-      showInLanding: true,
-    },
-    {
-      id: 'catalog-commander',
-      name: 'Catalog Commander',
-      path: '/catalog-commander',
-      description: 'Side-by-side catalog explorer for asset management.',
-      icon: FolderKanban,
-      group: 'Operations',
-      maturity: 'ga',
       showInLanding: true,
     },
     // Security

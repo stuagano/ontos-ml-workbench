@@ -1,0 +1,143 @@
+{
+  "title": "Data Catalog",
+  "subtitle": "Browse all columns across Unity Catalog tables and views",
+  "searchPlaceholder": "Search columns...",
+  "noResults": "No columns found",
+  "tryDifferentSearch": "Try a different search term",
+  "noTablesAccessible": "No tables accessible in Unity Catalog",
+  "showingColumns": "Showing {{count}} columns",
+  "matchingSearch": "matching",
+
+  "columns": {
+    "label": "Label",
+    "description": "Description",
+    "columnName": "Column Name",
+    "type": "Type",
+    "tableName": "Table",
+    "businessTerms": "Business Terms"
+  },
+
+  "tabs": {
+    "overview": "Overview",
+    "dataDetails": "Data Details",
+    "lineage": "Lineage"
+  },
+
+  "overview": {
+    "basicInfo": "Basic Information",
+    "catalog": "Catalog",
+    "schema": "Schema",
+    "owner": "Owner",
+    "type": "Type",
+    "created": "Created",
+    "updated": "Updated",
+    "storage": "Storage & Statistics",
+    "columns": "Columns",
+    "rows": "Rows",
+    "size": "Size",
+    "format": "Format",
+    "location": "Storage Location",
+    "description": "Description",
+    "tags": "Tags"
+  },
+
+  "dataDetails": {
+    "title": "Columns",
+    "description": "Column definitions and metadata",
+    "columnName": "Column Name",
+    "type": "Type",
+    "nullable": "Nullable"
+  },
+
+  "lineage": {
+    "title": "Data Lineage",
+    "description": "Visualize upstream and downstream dependencies",
+    "noLineage": "No lineage information available",
+    "noLineageHint": "This table may not have any upstream or downstream dependencies",
+    "both": "Both Directions",
+    "upstream": "Upstream Only",
+    "downstream": "Downstream Only",
+    "legend": "Legend",
+    "impactSummary": "Impact Summary",
+    "impactWarning": "Changes to this table may affect:",
+    "notifyOwners": "Owners to notify"
+  },
+
+  "errors": {
+    "error": "Errore",
+    "fetchFailed": "Failed to fetch data",
+    "tableNotFound": "Table not found",
+    "failedToSendMessage": "Invio messaggio fallito"
+  },
+
+  "browser": {
+    "catalogBrowser": "Browser Catalogo",
+    "target": "Destinazione",
+    "objectInformation": "Informazioni Oggetto",
+    "basicInformation": "Informazioni di Base",
+    "commentsAndActivity": "Commenti e Attività",
+    "askOntos": "Chiedi a Ontos",
+    "dictionary": "Dizionario",
+
+    "actions": {
+      "viewData": "Visualizza Dati",
+      "move": "Sposta",
+      "delete": "Elimina",
+      "rename": "Rinomina",
+      "info": "Info",
+      "operations": "Operazioni",
+      "comments": "Commenti",
+      "retry": "Riprova",
+      "newChat": "Nuova Chat",
+      "cancel": "Annulla",
+      "confirm": "Conferma"
+    },
+
+    "tooltips": {
+      "copyToTarget": "Copia alla destinazione",
+      "moveToTarget": "Sposta alla destinazione",
+      "moveFromTarget": "Sposta dalla destinazione",
+      "refresh": "Aggiorna (tieni Shift per forzare)",
+      "dragToResize": "Trascina per ridimensionare"
+    },
+
+    "labels": {
+      "metastore": "Metastore",
+      "filterCatalogs": "Filtra cataloghi...",
+      "selectEstate": "Seleziona Estate",
+      "name": "Nome:",
+      "type": "Tipo:",
+      "fullPath": "Percorso completo:",
+      "actions": "Azioni:"
+    },
+
+    "messages": {
+      "selectObjectToViewInfo": "Seleziona un oggetto per visualizzare le informazioni",
+      "selectObjectToViewComments": "Seleziona un oggetto per visualizzare i commenti",
+      "loadingDetails": "Caricamento dettagli...",
+      "noDataAvailable": "Nessun dato disponibile",
+      "datasetView": "Vista Dataset: {{name}}",
+      "confirmOperation": "Conferma Operazione",
+      "selectedItems": "Elementi selezionati: {{items}}",
+      "noItemsSelected": "Nessun elemento selezionato"
+    },
+
+    "askPanel": {
+      "title": "Chiedi a Ontos",
+      "askAboutItem": "Fai domande su questo elemento del catalogo",
+      "askQuestionsAbout": "Fai domande su \"{{name}}\"",
+      "selectItemFirst": "Seleziona un elemento per fare domande",
+      "askAboutPlaceholder": "Chiedi di {{name}}...",
+      "selectItemPlaceholder": "Seleziona prima un elemento...",
+      "askingAbout": "Domanda su:",
+      "thinking": "Sto pensando...",
+      "rerun": "Esegui di nuovo",
+      "copyToInput": "Modifica e reinvia",
+      "exampleQuestions": {
+        "columns": "Quali colonne ha?",
+        "owner": "Chi è il proprietario?",
+        "usage": "Come viene usato?"
+      }
+    }
+  }
+}

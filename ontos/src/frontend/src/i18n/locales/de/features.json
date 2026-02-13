@@ -43,10 +43,6 @@
     "name": "Stammdatenmanagement",
     "description": "Einen Golden Record Ihrer Daten aufbauen."
   },
-  "catalog-commander": {
-    "name": "Catalog Commander",
-    "description": "Nebeneinander angeordneter Katalog-Explorer für Asset-Management."
-  },
   "security": {
     "name": "Sicherheitsfunktionen",
     "description": "Erweiterte Sicherheit wie Differenzialprivacy aktivieren."

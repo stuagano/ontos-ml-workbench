@@ -17,7 +17,8 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api", tags=["Catalog Commander"])
 
 # Define the feature ID for permission checks
-CATALOG_COMMANDER_FEATURE_ID = 'catalog-commander'
+# Consolidated under data-catalog (previously catalog-commander)
+CATALOG_COMMANDER_FEATURE_ID = 'data-catalog'
 
 def get_catalog_manager(
     request: Request,

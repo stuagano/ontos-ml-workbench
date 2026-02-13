@@ -43,10 +43,6 @@
     "name": "Gestion des données de référence",
     "description": "Construisez un enregistrement d'or de vos données."
   },
-  "catalog-commander": {
-    "name": "Catalog Commander",
-    "description": "Explorateur de catalogue côte à côte pour la gestion des actifs."
-  },
   "security": {
     "name": "Fonctionnalités de sécurité",
     "description": "Activez la sécurité avancée comme la confidentialité différentielle."

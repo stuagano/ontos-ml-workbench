@@ -43,10 +43,6 @@
     "name": "Gestión de datos maestros",
     "description": "Construye un registro dorado de tus datos."
   },
-  "catalog-commander": {
-    "name": "Catalog Commander",
-    "description": "Explorador de catálogo lado a lado para gestión de activos."
-  },
   "security": {
     "name": "Características de seguridad",
     "description": "Habilita seguridad avanzada como privacidad diferencial."

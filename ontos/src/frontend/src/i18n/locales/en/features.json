@@ -43,10 +43,6 @@
     "name": "Master Data Management",
     "description": "Build a golden record of your data."
   },
-  "catalog-commander": {
-    "name": "Catalog Commander",
-    "description": "Side-by-side catalog explorer for asset management."
-  },
   "security": {
     "name": "Security Features",
     "description": "Enable advanced security like differential privacy."

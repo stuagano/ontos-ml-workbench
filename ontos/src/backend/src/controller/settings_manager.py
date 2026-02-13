@@ -54,7 +54,7 @@ DEFAULT_ROLE_PERMISSIONS = {
         'data-domains': FeatureAccessLevel.ADMIN,
         'data-products': FeatureAccessLevel.ADMIN,
         'data-contracts': FeatureAccessLevel.ADMIN,
-        'data-catalog': FeatureAccessLevel.ADMIN,
+        'data-catalog': FeatureAccessLevel.FULL,
         'teams': FeatureAccessLevel.READ_ONLY,
         'projects': FeatureAccessLevel.READ_ONLY,
         'business-glossary': FeatureAccessLevel.ADMIN,
@@ -66,7 +66,6 @@ DEFAULT_ROLE_PERMISSIONS = {
         'entitlements': FeatureAccessLevel.ADMIN,
         'entitlements-sync': FeatureAccessLevel.ADMIN,
         'data-asset-reviews': FeatureAccessLevel.ADMIN,
-        'catalog-commander': FeatureAccessLevel.FULL,
         'comments': FeatureAccessLevel.READ_WRITE,  # All users can comment
     },
     "Data Steward": {
@@ -80,7 +79,6 @@ DEFAULT_ROLE_PERMISSIONS = {
         'compliance': FeatureAccessLevel.READ_ONLY,
         'process-workflows': FeatureAccessLevel.READ_ONLY,  # View workflows, Admin manages
         'data-asset-reviews': FeatureAccessLevel.READ_WRITE,
-        'catalog-commander': FeatureAccessLevel.READ_ONLY,
         'comments': FeatureAccessLevel.READ_WRITE,  # All users can comment
     },
     "Data Consumer": {
@@ -92,7 +90,6 @@ DEFAULT_ROLE_PERMISSIONS = {
         'projects': FeatureAccessLevel.READ_ONLY,
         'business-glossary': FeatureAccessLevel.READ_ONLY,
         'process-workflows': FeatureAccessLevel.READ_ONLY,  # View workflows, Admin manages
-        'catalog-commander': FeatureAccessLevel.READ_ONLY,
         'comments': FeatureAccessLevel.READ_WRITE,  # All users can comment
     },
     "Data Producer": {
@@ -104,7 +101,6 @@ DEFAULT_ROLE_PERMISSIONS = {
         'projects': FeatureAccessLevel.READ_WRITE,
         'business-glossary': FeatureAccessLevel.READ_ONLY,
         'process-workflows': FeatureAccessLevel.READ_ONLY,  # View workflows, Admin manages
-        'catalog-commander': FeatureAccessLevel.READ_ONLY,
         'comments': FeatureAccessLevel.READ_WRITE,  # All users can comment
     },
     "Security Officer": {

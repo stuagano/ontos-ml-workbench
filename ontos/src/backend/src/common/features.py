@@ -110,7 +110,7 @@ APP_FEATURES: Dict[str, Dict[str, str | List[FeatureAccessLevel]]] = {
     },
     'data-catalog': {
         'name': 'Data Catalog',
-        'allowed_levels': READ_WRITE_ADMIN_LEVELS  # Browse catalog, view lineage
+        'allowed_levels': [FeatureAccessLevel.NONE, FeatureAccessLevel.READ_ONLY, FeatureAccessLevel.READ_WRITE, FeatureAccessLevel.FULL, FeatureAccessLevel.ADMIN]  # Browse catalog, view lineage, asset management
     },
     # Observability / Logs
     'audit': {
@@ -125,10 +125,6 @@ APP_FEATURES: Dict[str, Dict[str, str | List[FeatureAccessLevel]]] = {
         ]
     },
     # Tools
-    'catalog-commander': {
-        'name': 'Catalog Commander',
-        'allowed_levels': [FeatureAccessLevel.NONE, FeatureAccessLevel.READ_ONLY, FeatureAccessLevel.FULL, FeatureAccessLevel.ADMIN]
-    },
     # System (Settings is special, About is always visible)
     'settings': {
         'name': 'Settings',
