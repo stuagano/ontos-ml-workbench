@@ -1,0 +1,3 @@
+[submodule "ontos"]
+	path = ontos
+	url = https://github.com/stuagano/ontos.git
