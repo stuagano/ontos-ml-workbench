@@ -1,0 +1,13 @@
+# Databricks App Configuration
+command:
+  - "bash"
+  - "-c"
+  - "cd backend && python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+env:
+  - name: DATABRICKS_CATALOG
+    value: "${var.catalog}"
+  - name: DATABRICKS_SCHEMA
+    value: "${var.schema}"
+  - name: DATABRICKS_WAREHOUSE_ID
+    value: "${var.warehouse_id}"

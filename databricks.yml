@@ -1,0 +1,43 @@
+bundle:
+  name: ontos-ml-workbench
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for Ontos ML Workbench metadata
+    default: main
+  schema:
+    description: Schema within the catalog for workbench tables
+    default: ontos_ml
+  warehouse_id:
+    description: SQL Warehouse ID for query execution (required for Databricks Apps)
+    default: ""
+
+include:
+  - resources/*.yml
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      profile: your-profile
+      # host: https://your-workspace.cloud.databricks.com
+    variables:
+      catalog: your_catalog
+      schema: ontos_ml
+      # warehouse_id: "your-warehouse-id"
+
+  staging:
+    mode: development
+    workspace:
+      profile: your-staging-profile
+    variables:
+      catalog: your_staging_catalog
+      schema: ontos_ml
+
+  production:
+    workspace:
+      profile: your-production-profile
+    variables:
+      catalog: your_production_catalog
+      schema: ontos_ml
