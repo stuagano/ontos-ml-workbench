@@ -591,11 +591,9 @@ REVOKE MODIFY ON SCHEMA ontos_ml.workbench FROM `${SP_ID}`;
 
 After successful deployment:
 
-1. **Configure Monitoring** - See [MONITORING_SETUP.md](MONITORING_SETUP.md)
-2. **Review Runbook** - See [RUNBOOK.md](RUNBOOK.md)
-3. **Run Production Checklist** - See [PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md)
-4. **Set up Alerts** - Configure Databricks monitoring alerts
-5. **Enable Backups** - Set up regular Delta table snapshots
+1. **Review Runbook** - See [RUNBOOK.md](RUNBOOK.md) for monitoring, alerts, and operations
+2. **Set up Alerts** - Configure Databricks monitoring alerts (see Runbook)
+3. **Enable Backups** - Set up regular Delta table snapshots (see Runbook)
 
 ---
 

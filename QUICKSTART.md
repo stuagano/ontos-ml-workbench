@@ -26,7 +26,7 @@ DATABRICKS_TOKEN=your-token-here
 DATABRICKS_WAREHOUSE_ID=your-warehouse-id
 
 # Unity Catalog
-DATABRICKS_CATALOG=home_<username>
+DATABRICKS_CATALOG=your_catalog
 DATABRICKS_SCHEMA=ontos_ml_workbench
 
 # Optional: CLI profile name
@@ -56,11 +56,11 @@ This creates:
 
 ### Step 3: Start the Application (2 minutes)
 
-**Option A: Using the start script (recommended)**
+**Option A: Using APX (recommended — single command, hot reload)**
 
 ```bash
-# From project root
-./start-dev.sh
+pip install apx --index-url https://databricks-solutions.github.io/apx/simple
+apx dev start
 ```
 
 **Option B: Manual start**
@@ -157,7 +157,7 @@ Verify:
 
 Verify tables exist:
 ```sql
-USE CATALOG home_<username>;
+USE CATALOG your_catalog;
 USE SCHEMA ontos_ml_workbench;
 SHOW TABLES;
 ```
@@ -180,25 +180,15 @@ CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
 ## Configuration Reference
 
 Current configuration uses:
-- **Catalog**: `home_<username>` (personal development space)
+- **Catalog**: `your_catalog` (set in backend/.env)
 - **Schema**: `ontos_ml_workbench`
 - **Warehouse**: Your serverless or Pro warehouse
 
 For production deployment, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
-## Alternative Development Setup: APX
+## APX Development Details
 
-For unified hot-reload experience:
-
-```bash
-# Install APX
-uvx --index https://databricks-solutions.github.io/apx/simple apx init
-
-# Start dev server (auto-reloads both backend and frontend)
-apx dev start
-```
-
-See archived `docs/archive/development-notes/APX_SETUP.md` for details.
+APX provides unified hot-reload for both backend and frontend. See [frontend/MODULE_DEV_WITH_APX.md](frontend/MODULE_DEV_WITH_APX.md) for the full APX workflow.
 
 ## Next Steps
 

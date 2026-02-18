@@ -68,43 +68,7 @@ Located in `docs/`:
 
 ## Archived Documentation
 
-Historical development notes, testing reports, and cleanup documentation are archived in `docs/archive/`:
-
-### Archive Structure
-
-```
-docs/archive/
-├── cleanup-reports/        # Schema cleanup and consolidation
-├── development-notes/      # Point-in-time status updates
-└── testing-reports/        # Historical test results
-```
-
-### When to Archive
-
-Documentation is archived when it:
-- Describes completed one-time tasks
-- Contains point-in-time status (now outdated)
-- References old terminology or deprecated features
-- Is superseded by newer documentation
-
-### Key Archived Documents
-
-**Cleanup Reports** (`docs/archive/cleanup-reports/`)
-- Schema consolidation (Feb 10, 2026)
-- Documentation cleanup plans
-- Post-cleanup status reports
-
-**Development Notes** (`docs/archive/development-notes/`)
-- Feature implementation reports
-- Migration guides (completed)
-- Configuration fixes
-- APX setup guides
-
-**Testing Reports** (`docs/archive/testing-reports/`)
-- E2E test results
-- API test reports
-- Page-specific test reports
-- Test coverage summaries
+Historical development notes are excluded from distribution (via `.gitignore`). If you need them, check the original repository's git history.
 
 ## Documentation Standards
 
@@ -129,7 +93,7 @@ Always use current terminology:
 
 When updating docs:
 1. Update "Last Updated" date
-2. Archive superseded versions to `docs/archive/`
+2. Archive superseded versions when no longer needed
 3. Update this index if adding/removing major docs
 4. Ensure cross-references are valid
 
@@ -208,7 +172,7 @@ When adding new documentation:
    - Keep sections organized
 
 4. **Archive old versions**
-   - Move superseded docs to `docs/archive/`
+   - Move superseded docs out of active directories
    - Keep relevant historical context
    - Update cross-references
 
@@ -221,15 +185,7 @@ Create → Active Use → Update → Superseded → Archive
 
 **Active documents** are in their primary location and kept up-to-date.
 
-**Archived documents** are moved to `docs/archive/` when superseded or no longer actively maintained.
-
-## Version History
-
-| Date | Change | Author |
-|------|--------|--------|
-| 2026-02-11 | Created comprehensive documentation index | Claude |
-| 2026-02-11 | Consolidated QUICKSTART, archived development notes | Claude |
-| 2026-02-11 | Organized archive structure (cleanup, development, testing) | Claude |
+**Archived documents** are removed from active distribution when superseded or no longer actively maintained.
 
 ---
 
