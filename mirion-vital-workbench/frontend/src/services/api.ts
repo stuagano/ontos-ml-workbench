@@ -1,5 +1,5 @@
 /**
- * API service for Databits Workbench
+ * API service for Ontos ML Workbench
  */
 
 // Re-export types for convenience

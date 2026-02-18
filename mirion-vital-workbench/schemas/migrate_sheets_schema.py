@@ -8,7 +8,7 @@ from databricks.sdk import WorkspaceClient
 
 w = WorkspaceClient(profile="fe-vm-serverless-dxukih")
 warehouse_id = "387bcda0f2ece20c"
-schema = "`erp-demonstrations`.vital_workbench"
+schema = "`erp-demonstrations`.ontos_ml_workbench"
 
 print("🔄 Migrating sheets table to new schema...\n")
 

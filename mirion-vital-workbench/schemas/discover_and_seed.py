@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # VITAL Workbench - Discover Existing Data and Seed
+# MAGIC # Ontos ML Workbench - Discover Existing Data and Seed
 # MAGIC
 # MAGIC This notebook discovers what data already exists in your workspace and uses it to seed the application.
 
@@ -82,14 +82,14 @@ except Exception as e:
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## Step 3: Check VITAL Workbench Schema
+# MAGIC ## Step 3: Check Ontos ML Workbench Schema
 
 # COMMAND ----------
-print("🔍 Checking home_stuart_gano.mirion_vital_workbench schema...\n")
+print("🔍 Checking home_stuart_gano.ontos_ml_workbench schema...\n")
 
 # Check if schema exists
 try:
-    spark.sql("CREATE SCHEMA IF NOT EXISTS home_stuart_gano.mirion_vital_workbench")
+    spark.sql("CREATE SCHEMA IF NOT EXISTS home_stuart_gano.ontos_ml_workbench")
     print("✅ Schema exists or created\n")
 
     # Check which tables exist
@@ -103,13 +103,13 @@ try:
         "example_store"
     ]
 
-    existing_tables = spark.sql("SHOW TABLES IN home_stuart_gano.mirion_vital_workbench").collect()
+    existing_tables = spark.sql("SHOW TABLES IN home_stuart_gano.ontos_ml_workbench").collect()
     existing_table_names = [t.tableName for t in existing_tables]
 
     print("Table status:")
     for table in tables_needed:
         if table in existing_table_names:
-            count = spark.sql(f"SELECT COUNT(*) as cnt FROM home_stuart_gano.mirion_vital_workbench.{table}").collect()[0].cnt
+            count = spark.sql(f"SELECT COUNT(*) as cnt FROM home_stuart_gano.ontos_ml_workbench.{table}").collect()[0].cnt
             print(f"  ✅ {table}: {count} rows")
         else:
             print(f"  ❌ {table}: NOT CREATED")
@@ -148,7 +148,7 @@ print("Creating tables inline...\n")
 
 # Sheets table
 spark.sql("""
-CREATE TABLE IF NOT EXISTS home_stuart_gano.mirion_vital_workbench.sheets (
+CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.sheets (
   id STRING NOT NULL,
   name STRING NOT NULL,
   description STRING,
@@ -180,7 +180,7 @@ print("✅ sheets")
 
 # Templates table
 spark.sql("""
-CREATE TABLE IF NOT EXISTS home_stuart_gano.mirion_vital_workbench.templates (
+CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.templates (
   id STRING NOT NULL,
   name STRING NOT NULL,
   description STRING,
@@ -209,7 +209,7 @@ print("✅ templates")
 
 # Canonical Labels table
 spark.sql("""
-CREATE TABLE IF NOT EXISTS home_stuart_gano.mirion_vital_workbench.canonical_labels (
+CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.canonical_labels (
   id STRING NOT NULL,
   sheet_id STRING NOT NULL,
   item_ref STRING NOT NULL,
@@ -232,7 +232,7 @@ print("✅ canonical_labels")
 
 # Training Sheets table
 spark.sql("""
-CREATE TABLE IF NOT EXISTS home_stuart_gano.mirion_vital_workbench.training_sheets (
+CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.training_sheets (
   id STRING NOT NULL,
   name STRING NOT NULL,
   sheet_id STRING NOT NULL,
@@ -255,7 +255,7 @@ print("✅ training_sheets")
 
 # QA Pairs table
 spark.sql("""
-CREATE TABLE IF NOT EXISTS home_stuart_gano.mirion_vital_workbench.qa_pairs (
+CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.qa_pairs (
   id STRING NOT NULL,
   training_sheet_id STRING NOT NULL,
   sheet_id STRING NOT NULL,
@@ -280,7 +280,7 @@ print("✅ qa_pairs")
 
 # Model Training Lineage table
 spark.sql("""
-CREATE TABLE IF NOT EXISTS home_stuart_gano.mirion_vital_workbench.model_training_lineage (
+CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.model_training_lineage (
   id STRING NOT NULL,
   model_name STRING NOT NULL,
   training_sheet_ids ARRAY<STRING> NOT NULL,
@@ -302,7 +302,7 @@ print("✅ model_training_lineage")
 
 # Example Store table
 spark.sql("""
-CREATE TABLE IF NOT EXISTS home_stuart_gano.mirion_vital_workbench.example_store (
+CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.example_store (
   id STRING NOT NULL,
   template_id STRING NOT NULL,
   example_type STRING NOT NULL,
@@ -345,12 +345,12 @@ print(f"🌱 Seeding data as: {user_email}\n")
 # Let's create sheets that point to the data you already have
 sheets_data = [
     {
-        "id": "sheet-mirion-raw-001",
-        "name": "Mirion Raw Data Volume",
+        "id": "sheet-domain-raw-001",
+        "name": "Raw Data Volume",
         "description": "Existing data in raw_datak volume",
         "source_type": "uc_volume",
         "source_table": None,
-        "source_volume": "/Volumes/serverless_dxukih_catalog/mirion/raw_datak",
+        "source_volume": "/Volumes/serverless_dxukih_catalog/ontos_ml/raw_datak",
         "source_path": "",
         "item_id_column": "filename",
         "text_columns": [],
@@ -361,16 +361,16 @@ sheets_data = [
         "sample_seed": None,
         "status": "active",
         "item_count": None,  # Will be populated when we can access the volume
-        "notes": "Points to existing Mirion data in workspace"
+        "notes": "Points to existing domain data in workspace"
     }
 ]
 
-# Check if there are any tables in serverless_dxukih_catalog.mirion
+# Check if there are any tables in serverless_dxukih_catalog.ontos_ml
 try:
-    tables = spark.sql("SHOW TABLES IN serverless_dxukih_catalog.mirion").collect()
+    tables = spark.sql("SHOW TABLES IN serverless_dxukih_catalog.ontos_ml").collect()
     for table in tables:
         table_name = table.tableName
-        full_table_path = f"serverless_dxukih_catalog.mirion.{table_name}"
+        full_table_path = f"serverless_dxukih_catalog.ontos_ml.{table_name}"
 
         # Get row count
         try:
@@ -388,8 +388,8 @@ try:
                     text_cols.append(col)
 
             sheets_data.append({
-                "id": f"sheet-mirion-{table_name}",
-                "name": f"Mirion {table_name.replace('_', ' ').title()}",
+                "id": f"sheet-domain-{table_name}",
+                "name": f"{table_name.replace('_', ' ').title()}",
                 "description": f"Existing table: {full_table_path}",
                 "source_type": "uc_table",
                 "source_table": full_table_path,
@@ -434,7 +434,7 @@ sheets_df = spark.createDataFrame([
     "sample_seed", "status", "item_count", "notes",
     "created_at", "created_by", "updated_at", "updated_by"])
 
-sheets_df.write.mode("append").saveAsTable("home_stuart_gano.mirion_vital_workbench.sheets")
+sheets_df.write.mode("append").saveAsTable("home_stuart_gano.ontos_ml_workbench.sheets")
 print(f"✅ Created {len(sheets_data)} sheets")
 
 # COMMAND ----------
@@ -492,7 +492,7 @@ templates_df = spark.createDataFrame([
     "temperature", "status", "version", "use_case", "notes",
     "created_at", "created_by", "updated_at", "updated_by"])
 
-templates_df.write.mode("append").saveAsTable("home_stuart_gano.mirion_vital_workbench.templates")
+templates_df.write.mode("append").saveAsTable("home_stuart_gano.ontos_ml_workbench.templates")
 print(f"✅ Created {len(templates_data)} templates")
 
 # COMMAND ----------
@@ -504,10 +504,10 @@ print("📊 Final Status:\n")
 
 # Show sheets
 print("Sheets:")
-display(spark.sql("SELECT id, name, source_type, source_table, source_volume, item_count FROM home_stuart_gano.mirion_vital_workbench.sheets"))
+display(spark.sql("SELECT id, name, source_type, source_table, source_volume, item_count FROM home_stuart_gano.ontos_ml_workbench.sheets"))
 
 print("\nTemplates:")
-display(spark.sql("SELECT id, name, label_type, use_case FROM home_stuart_gano.mirion_vital_workbench.templates"))
+display(spark.sql("SELECT id, name, label_type, use_case FROM home_stuart_gano.ontos_ml_workbench.templates"))
 
 print("\n✅ Database seeded with your existing data!")
 print("\nNext: Start the application with ./start-dev.sh")

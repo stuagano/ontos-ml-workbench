@@ -197,11 +197,11 @@ export function WorkflowProvider({ children }: WorkflowProviderProps) {
 
   // Migrate old stage names from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('vitalWorkbenchStage');
+    const saved = localStorage.getItem('ontosMlWorkbenchStage');
     if (saved === 'template' || saved === 'curate' || saved === 'generate') {
       const newStage: PipelineStage = saved === 'template' || saved === 'generate' ? 'data' : 'label';
       setState(prev => ({ ...prev, currentStage: newStage }));
-      localStorage.setItem('vitalWorkbenchStage', newStage);
+      localStorage.setItem('ontosMlWorkbenchStage', newStage);
     }
   }, []);
 

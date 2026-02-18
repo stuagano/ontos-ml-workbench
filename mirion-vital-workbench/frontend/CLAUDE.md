@@ -1,6 +1,6 @@
-## Frontend - VITAL Workbench React
+## Frontend - Ontos ML Workbench React
 
-React + TypeScript interface for Mirion's radiation safety AI workbench.
+React + TypeScript interface for Acme Instruments' radiation safety AI workbench.
 
 ## Stack
 - React 18, TypeScript, Vite

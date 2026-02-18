@@ -1,19 +1,19 @@
 # Database Schema Migration History
 
-**Project:** VITAL Platform Workbench
-**Database:** `serverless_dxukih_catalog.mirion` (FEVM workspace)
+**Project:** Ontos ML Workbench
+**Database:** `serverless_dxukih_catalog.ontos_ml` (FEVM workspace)
 **Last Updated:** 2026-02-11
 
 ## Overview
 
-This document tracks all database schema changes for the VITAL Platform Workbench. Migrations are organized chronologically with clear documentation of purpose, execution status, and dependencies.
+This document tracks all database schema changes for the Ontos ML Workbench. Migrations are organized chronologically with clear documentation of purpose, execution status, and dependencies.
 
 ## Schema Version History
 
 ### Version 1.0 - Initial Schema (2026-02-06)
 
 **Status:** Completed
-**Catalog:** `home_stuart_gano.mirion_vital_workbench`
+**Catalog:** `home_stuart_gano.ontos_ml_workbench`
 **Migration Files:**
 - `01_create_catalog.sql` - Create catalog and schema
 - `02_sheets.sql` - Dataset definitions
@@ -60,17 +60,17 @@ Enable supervised learning workflows with explicit feature/target definitions fo
 **Execution:**
 ```sql
 -- templates
-ALTER TABLE home_stuart_gano.mirion_vital_workbench.templates
+ALTER TABLE home_stuart_gano.ontos_ml_workbench.templates
 ADD COLUMN feature_columns ARRAY<STRING>;
 
-ALTER TABLE home_stuart_gano.mirion_vital_workbench.templates
+ALTER TABLE home_stuart_gano.ontos_ml_workbench.templates
 ADD COLUMN target_column STRING;
 
 -- training_sheets
-ALTER TABLE home_stuart_gano.mirion_vital_workbench.training_sheets
+ALTER TABLE home_stuart_gano.ontos_ml_workbench.training_sheets
 ADD COLUMN feature_columns ARRAY<STRING>;
 
-ALTER TABLE home_stuart_gano.mirion_vital_workbench.training_sheets
+ALTER TABLE home_stuart_gano.ontos_ml_workbench.training_sheets
 ADD COLUMN target_column STRING;
 ```
 
@@ -165,7 +165,7 @@ For testing and demonstration:
 - Already incorporated in `07_model_training_lineage.sql`
 
 **Other Workspace-Specific Files:**
-- `fix_runtime_errors.sql` - Workspace: `erp-demonstrations.vital_workbench` (old demo)
+- `fix_runtime_errors.sql` - Workspace: `erp-demonstrations.ontos_ml_workbench` (old demo)
 
 ### Documentation Files (Keep)
 Essential reference documentation:
@@ -216,7 +216,7 @@ Automation scripts:
 
 ## Current Schema State (v1.3)
 
-**Location:** `serverless_dxukih_catalog.mirion`
+**Location:** `serverless_dxukih_catalog.ontos_ml`
 **Warehouse:** `387bcda0f2ece20c`
 **Profile:** `fe-vm-serverless-dxukih`
 
@@ -309,13 +309,13 @@ python3 verify_schema.py
 ### List All Tables
 ```sql
 USE CATALOG serverless_dxukih_catalog;
-USE SCHEMA mirion;
+USE SCHEMA ontos_ml;
 SHOW TABLES;
 ```
 
 ### Describe Specific Table
 ```sql
-DESCRIBE EXTENDED serverless_dxukih_catalog.mirion.templates;
+DESCRIBE EXTENDED serverless_dxukih_catalog.ontos_ml.templates;
 ```
 
 ### Check for Missing Columns
@@ -323,7 +323,7 @@ DESCRIBE EXTENDED serverless_dxukih_catalog.mirion.templates;
 SELECT column_name, data_type
 FROM information_schema.columns
 WHERE table_catalog = 'serverless_dxukih_catalog'
-  AND table_schema = 'mirion'
+  AND table_schema = 'ontos_ml'
   AND table_name = 'templates'
 ORDER BY ordinal_position;
 ```
@@ -333,19 +333,19 @@ ORDER BY ordinal_position;
 ### FEVM Workspace (Primary Development)
 - **URL:** https://fevm-serverless-dxukih.cloud.databricks.com
 - **Catalog:** `serverless_dxukih_catalog`
-- **Schema:** `mirion`
+- **Schema:** `ontos_ml`
 - **Warehouse:** `387bcda0f2ece20c`
 - **Profile:** `fe-vm-serverless-dxukih`
 
 ### ERP Demonstrations (Old Demo)
 - **URL:** erp-demonstrations workspace
 - **Catalog:** `erp-demonstrations`
-- **Schema:** `vital_workbench`
+- **Schema:** `ontos_ml_workbench`
 - **Status:** Legacy (not actively maintained)
 
 ### Home Catalog (Development)
 - **Catalog:** `home_stuart_gano`
-- **Schema:** `mirion_vital_workbench`
+- **Schema:** `ontos_ml_workbench`
 - **Status:** Initial development/testing
 
 ## Support

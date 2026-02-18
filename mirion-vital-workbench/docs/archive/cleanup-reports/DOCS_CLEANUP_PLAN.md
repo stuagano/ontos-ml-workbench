@@ -12,7 +12,7 @@
 
 ### Desired State
 ```
-mirion-vital-workbench/
+ontos-ml-workbench/
 ├── README.md                          # Main entry point
 ├── QUICKSTART.md                      # Getting started guide
 ├── docs/
@@ -39,7 +39,7 @@ mirion-vital-workbench/
 │       └── v2.3-implementation-status.md
 ├── .claude/
 │   └── epics/
-│       └── vital-workbench/
+│       └── ontos-ml-workbench/
 │           ├── epic.md               # Master epic doc
 │           ├── 2.md                  # Task 2: Sheet Management API
 │           ├── 3.md                  # Task 3: Template Library API
@@ -141,22 +141,22 @@ mkdir -p docs/{architecture,implementation,planning,validation,prd}
 
 ### Phase 5: Update Epic Structure
 
-**Git operations for .claude/epics/vital-workbench/:**
+**Git operations for .claude/epics/ontos-ml-workbench/:**
 ```bash
 # Stage the new numbered files
-git add .claude/epics/vital-workbench/{2..11}.md
-git add .claude/epics/vital-workbench/github-mapping.md
+git add .claude/epics/ontos-ml-workbench/{2..11}.md
+git add .claude/epics/ontos-ml-workbench/github-mapping.md
 
 # Commit the deletions of old numbered files
-git rm .claude/epics/vital-workbench/00{1..9}.md
-git rm .claude/epics/vital-workbench/010.md
+git rm .claude/epics/ontos-ml-workbench/00{1..9}.md
+git rm .claude/epics/ontos-ml-workbench/010.md
 ```
 
 ### Phase 6: Create Master README
 
 Update root README.md with clear structure:
 ```markdown
-# VITAL Workbench
+# Ontos ML Workbench
 
 [Brief description]
 
@@ -164,7 +164,7 @@ Update root README.md with clear structure:
 - [Getting Started](QUICKSTART.md) - Set up and run locally
 - [Architecture](docs/architecture/) - Design decisions
 - [Implementation Status](STATUS.md) - Current progress
-- [Task Breakdown](.claude/epics/vital-workbench/epic.md) - Epic and tasks
+- [Task Breakdown](.claude/epics/ontos-ml-workbench/epic.md) - Epic and tasks
 
 ## Documentation Structure
 - `docs/architecture/` - Design patterns and decisions

@@ -1,10 +1,10 @@
 -- Quick Start: Seed Demo Templates
 -- Run this in Databricks SQL Editor
 -- Warehouse: 387bcda0f2ece20c
--- Schema: erp-demonstrations.vital_workbench (ID: 8c866643-2b1e-4b8d-8497-8a009badfae3)
+-- Schema: erp-demonstrations.ontos_ml_workbench (ID: 8c866643-2b1e-4b8d-8497-8a009badfae3)
 
 -- Template 1: Document Classifier
-INSERT INTO erp_demonstrations.vital_workbench.templates (
+INSERT INTO erp_demonstrations.ontos_ml_workbench.templates (
   id, name, description, version, status,
   prompt_template, system_prompt,
   input_schema, output_schema, examples,
@@ -30,7 +30,7 @@ INSERT INTO erp_demonstrations.vital_workbench.templates (
 );
 
 -- Template 2: Sentiment Analyzer
-INSERT INTO erp_demonstrations.vital_workbench.templates (
+INSERT INTO erp_demonstrations.ontos_ml_workbench.templates (
   id, name, description, version, status,
   prompt_template, system_prompt,
   input_schema, output_schema, examples,
@@ -56,7 +56,7 @@ INSERT INTO erp_demonstrations.vital_workbench.templates (
 );
 
 -- Template 3: Entity Extractor
-INSERT INTO erp_demonstrations.vital_workbench.templates (
+INSERT INTO erp_demonstrations.ontos_ml_workbench.templates (
   id, name, description, version, status,
   prompt_template, system_prompt,
   input_schema, output_schema, examples,
@@ -81,8 +81,8 @@ INSERT INTO erp_demonstrations.vital_workbench.templates (
   current_timestamp()
 );
 
--- Template 4: Radiation Equipment Defect Classifier (Mirion-specific)
-INSERT INTO erp_demonstrations.vital_workbench.templates (
+-- Template 4: Radiation Equipment Defect Classifier
+INSERT INTO erp_demonstrations.ontos_ml_workbench.templates (
   id, name, description, version, status,
   prompt_template, system_prompt,
   input_schema, output_schema, examples,
@@ -109,5 +109,5 @@ INSERT INTO erp_demonstrations.vital_workbench.templates (
 
 -- Verify templates were created
 SELECT id, name, status, base_model, created_at
-FROM erp_demonstrations.vital_workbench.templates
+FROM erp_demonstrations.ontos_ml_workbench.templates
 ORDER BY created_at DESC;

@@ -1,4 +1,4 @@
-# VITAL Workbench API - Quick Reference
+# Ontos ML Workbench API - Quick Reference
 
 ## DEPLOY Stage (`/api/v1/deployment`)
 

@@ -2,7 +2,7 @@
 from databricks.sdk import WorkspaceClient
 
 w = WorkspaceClient(profile="fe-vm-serverless-dxukih")
-sql = "SELECT name, source_type, item_count, status FROM `erp-demonstrations`.vital_workbench.sheets ORDER BY name"
+sql = "SELECT name, source_type, item_count, status FROM `erp-demonstrations`.ontos_ml_workbench.sheets ORDER BY name"
 result = w.statement_execution.execute_statement(
     statement=sql, warehouse_id="387bcda0f2ece20c", wait_timeout="30s"
 )

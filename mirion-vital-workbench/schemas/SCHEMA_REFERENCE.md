@@ -1,7 +1,7 @@
-# VITAL Platform Workbench - Database Schema Reference
+# Ontos ML Workbench - Database Schema Reference
 
 **Last Verified:** 2026-02-11
-**Database:** `serverless_dxukih_catalog.mirion`
+**Database:** `serverless_dxukih_catalog.ontos_ml`
 
 This document reflects the **ACTUAL** database schema. All code must align with this reference.
 

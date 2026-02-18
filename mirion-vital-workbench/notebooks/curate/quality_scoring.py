@@ -17,7 +17,7 @@ print(f"Processing template: {template_id}")
 from pyspark.sql import functions as F
 
 catalog = "home_stuart_gano"
-schema = "databits_dev"
+schema = "ontos_ml_dev"
 
 # Load items for this template
 items = spark.table(f"{catalog}.{schema}.curation_items").filter(

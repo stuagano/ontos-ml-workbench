@@ -8,6 +8,6 @@ env:
   - name: DATABRICKS_CATALOG
     value: serverless_dxukih_catalog
   - name: DATABRICKS_SCHEMA
-    value: mirion
+    value: ontos_ml
   - name: DATABRICKS_WAREHOUSE_ID
     value: "387bcda0f2ece20c"

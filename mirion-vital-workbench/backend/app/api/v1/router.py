@@ -79,7 +79,7 @@ router.include_router(settings.router)
 # Data Quality - DQX-powered quality checks for Sheets
 router.include_router(data_quality.router)
 
-# Quality Proxy - VITAL → Ontos DQX quality gate bridge
+# Quality Proxy - Ontos ML → Ontos DQX quality gate bridge
 router.include_router(quality_proxy.router)
 
 # Admin - Cache management and system health

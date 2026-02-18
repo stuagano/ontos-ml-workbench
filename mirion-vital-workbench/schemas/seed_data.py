@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Seed data for VITAL Platform Workbench
+Seed data for Ontos ML Workbench
 Creates sample data for testing and validation
 """
 from databricks.sdk import WorkspaceClient
@@ -10,10 +10,10 @@ import uuid
 
 w = WorkspaceClient()
 warehouse_id = '071969b1ec9a91ca'
-schema = 'home_stuart_gano.mirion_vital_workbench'
+schema = 'home_stuart_gano.ontos_ml_workbench'
 user = 'stuart.gano@databricks.com'
 
-print('🌱 Seeding VITAL Platform Workbench with sample data...\n')
+print('🌱 Seeding Ontos ML Workbench with sample data...\n')
 
 # =============================================================================
 # 1. SHEETS - Dataset Definitions
@@ -34,7 +34,7 @@ INSERT INTO {schema}.sheets (
     'PCB Defect Detection Dataset',
     'Microscope images of PCBs with labeled defects',
     'uc_volume',
-    '/Volumes/home_stuart_gano/mirion_vital_workbench/pcb_images',
+    '/Volumes/home_stuart_gano/ontos_ml_workbench/pcb_images',
     'defect_images/',
     'image_filename',
     ARRAY(),
@@ -65,7 +65,7 @@ INSERT INTO {schema}.sheets (
     'Radiation Sensor Telemetry',
     'Time-series sensor data from radiation detectors',
     'uc_table',
-    'home_stuart_gano.mirion_vital_workbench.sensor_readings',
+    'home_stuart_gano.ontos_ml_workbench.sensor_readings',
     'reading_id',
     ARRAY('notes', 'alert_message'),
     ARRAY('sensor_id', 'location', 'timestamp'),

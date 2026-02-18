@@ -168,9 +168,9 @@ A **Sheet** is a named pointer to data sources in Unity Catalog. Sheets are ligh
   "sheet_id": "sheet-invoices-001",
   "name": "Medical Invoices - January 2026",
   "description": "Medical billing invoices with structured fields and PDF documents",
-  "primary_table": "mirion_vital.raw.parsed_invoices",
+  "primary_table": "ontos_ml.raw.parsed_invoices",
   "secondary_sources": [
-    {"type": "volume", "path": "/Volumes/mirion_vital/raw/medical_invoices", "join_key": "invoice_id"}
+    {"type": "volume", "path": "/Volumes/ontos_ml/raw/medical_invoices", "join_key": "invoice_id"}
   ],
   "join_keys": ["invoice_id"]
 }
@@ -178,7 +178,7 @@ A **Sheet** is a named pointer to data sources in Unity Catalog. Sheets are ligh
 
 **Source Data Structure (Unity Catalog Table):**
 ```sql
--- mirion_vital.raw.parsed_invoices
+-- ontos_ml.raw.parsed_invoices
 CREATE TABLE parsed_invoices (
   invoice_id STRING,                   -- Primary key / join key
   pdf_path STRING,                     -- /Volumes/.../invoice_042.pdf
@@ -564,7 +564,7 @@ All Workbench operations are tracked as MLflow experiments, providing complete a
 **Query 1: "Which models were trained on Training Sheet X?"**
 ```sql
 SELECT model_id, model_name, model_version, trained_at, train_pair_count
-FROM mirion_vital.workbench.model_training_lineage
+FROM ontos_ml.workbench.model_training_lineage
 WHERE training_sheet_id = 'training-sheet-123'
 ORDER BY trained_at DESC;
 ```
@@ -572,17 +572,17 @@ ORDER BY trained_at DESC;
 **Query 2: "Which Training Sheet was used to train Model Y?"**
 ```sql
 SELECT ts.id, ts.name, ts.labeled_pairs, ts.labeling_mode, mtl.trained_at
-FROM mirion_vital.workbench.model_training_lineage mtl
-JOIN mirion_vital.workbench.training_sheets ts ON ts.id = mtl.training_sheet_id
+FROM ontos_ml.workbench.model_training_lineage mtl
+JOIN ontos_ml.workbench.training_sheets ts ON ts.id = mtl.training_sheet_id
 WHERE mtl.model_id = 'model-456';
 ```
 
 **Query 3: "Show me the actual Q&A pairs used to train Model Y"**
 ```sql
 SELECT qa.messages, qa.status, qa.quality_score
-FROM mirion_vital.workbench.model_training_lineage mtl
+FROM ontos_ml.workbench.model_training_lineage mtl
 LATERAL VIEW EXPLODE(mtl.qa_pair_ids) AS qa_pair_id
-JOIN mirion_vital.workbench.qa_pairs qa ON qa.id = qa_pair_id
+JOIN ontos_ml.workbench.qa_pairs qa ON qa.id = qa_pair_id
 WHERE mtl.model_id = 'model-456';
 ```
 
@@ -595,7 +595,7 @@ SELECT
   mtl.training_config['temperature'] AS temperature,
   -- Join to evaluation metrics
   eval.accuracy, eval.f1_score
-FROM mirion_vital.workbench.model_training_lineage mtl
+FROM ontos_ml.workbench.model_training_lineage mtl
 LEFT JOIN model_evaluations eval ON eval.model_id = mtl.model_id
 WHERE mtl.training_sheet_id = 'training-sheet-123'
 ORDER BY eval.accuracy DESC;
@@ -1086,7 +1086,7 @@ Usage constraints can be **inherited** from Unity Catalog table tags:
 
 ```python
 # Check source table for PII/PHI tags
-source_table = catalog.get_table('mirion_vital.raw.patient_scans')
+source_table = catalog.get_table('ontos_ml.raw.patient_scans')
 tags = source_table.tags
 
 # Auto-populate usage constraints based on tags
@@ -1106,7 +1106,7 @@ if 'CONFIDENTIAL' in tags:
 All usage constraint modifications are logged:
 
 ```sql
-mirion_vital.workbench.usage_constraint_audit (
+ontos_ml.workbench.usage_constraint_audit (
   id, qa_pair_id,
   old_allowed_uses, new_allowed_uses,
   old_prohibited_uses, new_prohibited_uses,
@@ -1460,7 +1460,7 @@ February: Generate Training Sheet v2 → ALL 500 items pre-approved automaticall
 
 ```sql
 -- Sheets (dataset definitions)
-mirion_vital.workbench.sheets (
+ontos_ml.workbench.sheets (
   id, name, description,
   primary_table, secondary_sources,
   join_keys, filter_condition, sample_size,
@@ -1468,7 +1468,7 @@ mirion_vital.workbench.sheets (
 )
 
 -- Prompt Templates
-mirion_vital.workbench.templates (
+ontos_ml.workbench.templates (
   id, name, description, version, status,
   label_type,        -- 'entity_extraction', 'classification', 'qa', 'generation', 'summarization'
   system_prompt, user_prompt_template,
@@ -1480,7 +1480,7 @@ mirion_vital.workbench.templates (
 
 -- Canonical Labels (ground truth layer - label once, reuse everywhere)
 -- Multiple labels per item supported (different label_type for different purposes)
-mirion_vital.workbench.canonical_labels (
+ontos_ml.workbench.canonical_labels (
   id,
   sheet_id,              -- Source Sheet (dataset)
   item_ref,              -- Specific item (e.g., "invoice_042.pdf", "row_123")
@@ -1508,7 +1508,7 @@ mirion_vital.workbench.canonical_labels (
 )
 
 -- Training Sheets (Q&A datasets)
-mirion_vital.workbench.training_sheets (
+ontos_ml.workbench.training_sheets (
   id, name, sheet_id, template_id, status,
   total_pairs, approved_pairs, rejected_pairs,
   generation_config, generation_started_at, generation_completed_at,
@@ -1516,7 +1516,7 @@ mirion_vital.workbench.training_sheets (
 )
 
 -- Q&A Pairs (individual training examples)
-mirion_vital.workbench.qa_pairs (
+ontos_ml.workbench.qa_pairs (
   id, training_sheet_id, item_ref,
   messages, -- JSON array of {role, content}
   
@@ -1543,7 +1543,7 @@ mirion_vital.workbench.qa_pairs (
 )
 
 -- Example Store
-mirion_vital.workbench.example_store (
+ontos_ml.workbench.example_store (
   example_id, input, expected_output, explanation,
   search_keys, embedding, embedding_model,
   function_name, domain, quality_score,
@@ -1552,7 +1552,7 @@ mirion_vital.workbench.example_store (
 )
 
 -- Model Training Lineage (tracks which models used which Training Sheets)
-mirion_vital.workbench.model_training_lineage (
+ontos_ml.workbench.model_training_lineage (
   id,
   model_id, -- Unity Catalog model ID
   model_name, -- Model name in UC
@@ -1570,7 +1570,7 @@ mirion_vital.workbench.model_training_lineage (
 )
 
 -- DSPy Optimization Runs
-mirion_vital.workbench.dspy_runs (
+ontos_ml.workbench.dspy_runs (
   run_id, training_sheet_id, template_id,
   optimizer_type, metric_function,
   status, best_metric_value, results,
@@ -1579,14 +1579,14 @@ mirion_vital.workbench.dspy_runs (
 )
 
 -- Job runs
-mirion_vital.workbench.job_runs (
+ontos_ml.workbench.job_runs (
   id, job_type, training_sheet_id,
   status, progress, result,
   started_at, completed_at
 )
 
 -- Feedback (links production feedback to models and training data)
-mirion_vital.workbench.feedback (
+ontos_ml.workbench.feedback (
   id, 
   model_id, -- Which model produced the prediction
   endpoint_name, -- Serving endpoint
@@ -1599,7 +1599,7 @@ mirion_vital.workbench.feedback (
 )
 
 -- Usage Constraint Audit (tracks changes to allowed_uses/prohibited_uses)
-mirion_vital.workbench.usage_constraint_audit (
+ontos_ml.workbench.usage_constraint_audit (
   id, 
   qa_pair_id,
   old_allowed_uses ARRAY<STRING>,
@@ -1693,9 +1693,9 @@ Databricks acquired the company behind DSPy in early 2024, making it a strategic
 
 ---
 
-## Appendix C: Mirion VITAL Platform Context
+## Appendix C: Acme Instruments Ontos ML Platform Context
 
-This Workbench instance is configured for Mirion's VITAL (AI-powered radiation safety) platform. Key use cases include:
+This Workbench instance is configured for Acme Instruments' Ontos ML (AI-powered radiation safety) platform. Key use cases include:
 
 - **Defect Detection:** Image + sensor context → defect classification
 - **Predictive Maintenance:** Telemetry → failure probability
@@ -1704,4 +1704,4 @@ This Workbench instance is configured for Mirion's VITAL (AI-powered radiation s
 - **Document Extraction:** Compliance docs → structured data
 - **Remaining Useful Life:** Equipment history → RUL estimate
 
-The platform leverages Mirion's 60+ years of radiation safety expertise encoded as reusable DataBits and examples.
+The platform leverages Acme Instruments' 60+ years of radiation safety expertise encoded as reusable DataBits and examples.

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================================
-# VITAL Workbench Development Session
+# Ontos ML Workbench Development Session
 # Automated tmux session with all services ready
 # ============================================================================
 
@@ -17,7 +17,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 SESSION_NAME="vital"
-PROJECT_ROOT="/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench"
+PROJECT_ROOT="/Users/stuart.gano/Documents/Customers/Mirion/mirion-ontos-ml-workbench"
 
 # Helper function for colored output
 log() {
@@ -68,7 +68,7 @@ if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
     esac
 fi
 
-log "Creating VITAL Workbench development session..."
+log "Creating Ontos ML Workbench development session..."
 echo ""
 
 # Verify project directory exists
@@ -97,7 +97,7 @@ tmux rename-window -t "$SESSION_NAME:0" "Claude"
 
 # Main pane for Claude Code (already exists as pane 0)
 tmux send-keys -t "$SESSION_NAME:0.0" "cd $PROJECT_ROOT" Enter
-tmux send-keys -t "$SESSION_NAME:0.0" "# Welcome to VITAL Workbench Development!" Enter
+tmux send-keys -t "$SESSION_NAME:0.0" "# Welcome to Ontos ML Workbench Development!" Enter
 tmux send-keys -t "$SESSION_NAME:0.0" "# This is your Claude Code pane" Enter
 tmux send-keys -t "$SESSION_NAME:0.0" "# " Enter
 tmux send-keys -t "$SESSION_NAME:0.0" "# Quick Commands:" Enter
@@ -240,7 +240,7 @@ tmux select-pane -t "$SESSION_NAME:0.0"
 
 # Display success message
 echo ""
-success "VITAL Workbench session created successfully!"
+success "Ontos ML Workbench session created successfully!"
 echo ""
 echo -e "${PURPLE}Session layout:${NC}"
 echo "  Window 0 (Claude):   Claude Code + Git Status"

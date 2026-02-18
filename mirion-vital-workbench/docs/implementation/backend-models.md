@@ -66,7 +66,7 @@ class CanonicalLabelBase(BaseModel):
 **Changes to `SheetResponse`:**
 ```python
 # PRD v2.3: Unity Catalog source references (multimodal)
-primary_table: str | None  # e.g., 'mirion_vital.raw.pcb_inspections'
+primary_table: str | None  # e.g., 'ontos_ml.raw.pcb_inspections'
 secondary_sources: list[dict[str, Any]] | None  # [{type, path, join_key}, ...]
 join_keys: list[str] | None
 filter_condition: str | None

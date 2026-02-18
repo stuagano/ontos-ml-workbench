@@ -1,4 +1,4 @@
-# VITAL Platform Workbench - Final Status
+# Ontos ML Workbench - Final Status
 
 **Date**: February 10, 2026
 **Time**: ~1 hour total
@@ -8,7 +8,7 @@
 
 ## 🎉 Mission Accomplished
 
-Your VITAL Platform Workbench has been **completely restored** from a broken state to fully operational.
+Your Ontos ML Workbench has been **completely restored** from a broken state to fully operational.
 
 ---
 
@@ -67,7 +67,7 @@ Your VITAL Platform Workbench has been **completely restored** from a broken sta
 ### Database
 **Workspace**: FEVM (https://fevm-serverless-dxukih.cloud.databricks.com)
 **Catalog**: serverless_dxukih_catalog
-**Schema**: mirion
+**Schema**: ontos_ml
 **Warehouse**: 387bcda0f2ece20c (RUNNING)
 **Tables**: 15 (all required tables exist)
 
@@ -308,7 +308,7 @@ databricks bundle deploy -t fevm
 
 **Status**: **FULLY OPERATIONAL** ✅
 
-Your VITAL Platform Workbench is:
+Your Ontos ML Workbench is:
 - ✅ Restored from broken state
 - ✅ Connected to correct workspace (FEVM)
 - ✅ Backend tested and working
@@ -337,7 +337,7 @@ Your VITAL Platform Workbench is:
 **Frontend URL**: http://localhost:5173 (when started)
 **Workspace**: FEVM (fevm-serverless-dxukih)
 **Catalog**: serverless_dxukih_catalog
-**Schema**: mirion
+**Schema**: ontos_ml
 **Warehouse**: 387bcda0f2ece20c
 
 **Status**: ✅ **ALL SYSTEMS GO!**

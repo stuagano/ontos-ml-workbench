@@ -1,6 +1,6 @@
-# VITAL Platform Workbench - Deployment Guide
+# Ontos ML Workbench - Deployment Guide
 
-Complete deployment guide for the VITAL Platform Workbench, covering everything from prerequisites to production deployment.
+Complete deployment guide for the Ontos ML Workbench, covering everything from prerequisites to production deployment.
 
 ## Table of Contents
 
@@ -42,7 +42,7 @@ uvx --index https://databricks-solutions.github.io/apx/simple apx init
 
 **For Production:**
 - Production Databricks workspace on AWS or Azure
-- Unity Catalog with dedicated catalog (e.g., `mirion_vital`)
+- Unity Catalog with dedicated catalog (e.g., `ontos_ml`)
 - SQL Warehouse (Pro or Serverless recommended)
 - Service Principal for app authentication
 
@@ -63,7 +63,7 @@ uvx --index https://databricks-solutions.github.io/apx/simple apx init
 
 ```bash
 git clone <repository-url>
-cd mirion-vital-workbench
+cd ontos-ml-workbench
 ```
 
 ### 2. Create Environment Files
@@ -79,7 +79,7 @@ Edit `backend/.env` with your configuration:
 
 ```bash
 # App Configuration
-APP_NAME=vital-workbench
+APP_NAME=ontos-ml-workbench
 APP_VERSION=0.1.0
 DEBUG=false
 
@@ -89,7 +89,7 @@ DATABRICKS_TOKEN=your-personal-access-token
 DATABRICKS_CONFIG_PROFILE=your-cli-profile
 
 # Unity Catalog
-DATABRICKS_CATALOG=mirion_vital
+DATABRICKS_CATALOG=ontos_ml
 DATABRICKS_SCHEMA=workbench
 
 # SQL Warehouse
@@ -100,7 +100,7 @@ API_PREFIX=/api/v1
 CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
 
 # Lakebase Configuration (optional)
-LAKEBASE_SCHEMA=vital_lakebase
+LAKEBASE_SCHEMA=ontos_ml_lakebase
 ```
 
 #### Frontend Environment
@@ -146,7 +146,7 @@ targets:
     workspace:
       profile: your-production-profile
     variables:
-      catalog: mirion_vital
+      catalog: ontos_ml
       schema: workbench
       warehouse_id: "your-prod-warehouse-id"
 ```
@@ -183,15 +183,15 @@ If you need to set up the database manually:
 
 ```bash
 # Via Databricks CLI
-databricks catalogs create mirion_vital --profile=your-profile
-databricks schemas create workbench mirion_vital --profile=your-profile
+databricks catalogs create ontos_ml --profile=your-profile
+databricks schemas create workbench ontos_ml --profile=your-profile
 ```
 
 Or via SQL:
 
 ```sql
-CREATE CATALOG IF NOT EXISTS mirion_vital;
-USE CATALOG mirion_vital;
+CREATE CATALOG IF NOT EXISTS ontos_ml;
+USE CATALOG ontos_ml;
 CREATE SCHEMA IF NOT EXISTS workbench;
 ```
 
@@ -233,11 +233,11 @@ databricks sql exec --file=seed_templates.sql --warehouse-id=$WAREHOUSE_ID --pro
 
 ```sql
 -- Check tables were created
-SHOW TABLES IN mirion_vital.workbench;
+SHOW TABLES IN ontos_ml.workbench;
 
 -- Verify sample data
-SELECT COUNT(*) FROM mirion_vital.workbench.sheets;
-SELECT COUNT(*) FROM mirion_vital.workbench.templates;
+SELECT COUNT(*) FROM ontos_ml.workbench.sheets;
+SELECT COUNT(*) FROM ontos_ml.workbench.templates;
 ```
 
 ---
@@ -281,21 +281,21 @@ npm run build
 cd ..
 
 # Sync to workspace
-databricks sync . /Workspace/Users/<your-email>/Apps/vital-workbench --profile=your-profile
+databricks sync . /Workspace/Users/<your-email>/Apps/ontos-ml-workbench --profile=your-profile
 
 # Create app (first time only)
-databricks apps create vital-workbench --profile=your-profile
+databricks apps create ontos-ml-workbench --profile=your-profile
 
 # Wait for compute to start (may take 2-3 minutes)
-databricks apps get vital-workbench --profile=your-profile
+databricks apps get ontos-ml-workbench --profile=your-profile
 
 # Deploy
-databricks apps deploy vital-workbench \
-  --source-code-path /Workspace/Users/<your-email>/Apps/vital-workbench \
+databricks apps deploy ontos-ml-workbench \
+  --source-code-path /Workspace/Users/<your-email>/Apps/ontos-ml-workbench \
   --profile=your-profile
 
 # IMPORTANT: Poll for deployment completion (DO NOT SKIP!)
-./.claude/scripts/poll-databricks-app.sh vital-workbench your-profile
+./.claude/scripts/poll-databricks-app.sh ontos-ml-workbench your-profile
 ```
 
 **Note:** Always wait for deployment completion before testing. The polling script will automatically check deployment status every 5 seconds and exit when ready (typically 30-90 seconds).
@@ -314,11 +314,11 @@ databricks bundle deploy -t production
 
 ```sql
 -- Replace ${SP_ID} with your service principal ID
--- Get SP ID from: databricks apps get vital-workbench -o json | jq -r '.service_principal_id'
+-- Get SP ID from: databricks apps get ontos-ml-workbench -o json | jq -r '.service_principal_id'
 
-GRANT USE CATALOG ON CATALOG mirion_vital TO `${SP_ID}`;
-GRANT USE SCHEMA ON SCHEMA mirion_vital.workbench TO `${SP_ID}`;
-GRANT SELECT, MODIFY ON SCHEMA mirion_vital.workbench TO `${SP_ID}`;
+GRANT USE CATALOG ON CATALOG ontos_ml TO `${SP_ID}`;
+GRANT USE SCHEMA ON SCHEMA ontos_ml.workbench TO `${SP_ID}`;
+GRANT SELECT, MODIFY ON SCHEMA ontos_ml.workbench TO `${SP_ID}`;
 ```
 
 ---
@@ -369,12 +369,12 @@ The frontend is automatically deployed as part of the backend deployment:
 cd frontend && npm run build && cd ..
 
 # Deploy entire app
-databricks apps deploy vital-workbench \
-  --source-code-path /Workspace/Users/<your-email>/Apps/vital-workbench \
+databricks apps deploy ontos-ml-workbench \
+  --source-code-path /Workspace/Users/<your-email>/Apps/ontos-ml-workbench \
   --profile=your-profile
 
 # IMPORTANT: Poll for deployment completion (DO NOT SKIP!)
-./.claude/scripts/poll-databricks-app.sh vital-workbench your-profile
+./.claude/scripts/poll-databricks-app.sh ontos-ml-workbench your-profile
 ```
 
 **Note:** Always wait for deployment completion before testing. The polling script will automatically check deployment status every 5 seconds and exit when ready (typically 30-90 seconds).
@@ -391,20 +391,20 @@ The FastAPI backend serves the frontend static files from `frontend/dist/`.
 
 ```bash
 # Get app details
-databricks apps get vital-workbench --profile=your-profile -o json
+databricks apps get ontos-ml-workbench --profile=your-profile -o json
 
 # Get app URL
-databricks apps get vital-workbench --profile=your-profile -o json | jq -r '.url'
+databricks apps get ontos-ml-workbench --profile=your-profile -o json | jq -r '.url'
 ```
 
 ### 2. Verify Compute Status (Manual Verification)
 
 ```bash
 # Check compute is ACTIVE
-databricks apps get vital-workbench --profile=your-profile -o json | jq -r '.compute_status'
+databricks apps get ontos-ml-workbench --profile=your-profile -o json | jq -r '.compute_status'
 
 # Verify no pending deployment
-databricks apps get vital-workbench --profile=your-profile -o json | jq -r '.pending_deployment'
+databricks apps get ontos-ml-workbench --profile=your-profile -o json | jq -r '.pending_deployment'
 ```
 
 Expected output:
@@ -415,7 +415,7 @@ Expected output:
 
 ```bash
 # Get app URL
-APP_URL=$(databricks apps get vital-workbench --profile=your-profile -o json | jq -r '.url')
+APP_URL=$(databricks apps get ontos-ml-workbench --profile=your-profile -o json | jq -r '.url')
 
 # Test health endpoint
 curl $APP_URL/api/health
@@ -457,7 +457,7 @@ For debugging and API exploration, access the Swagger UI:
 
 ```bash
 # Get app URL
-APP_URL=$(databricks apps get vital-workbench --profile=your-profile -o json | jq -r '.url')
+APP_URL=$(databricks apps get ontos-ml-workbench --profile=your-profile -o json | jq -r '.url')
 
 # Open Swagger UI
 open "${APP_URL}/docs"
@@ -490,10 +490,10 @@ python scripts/e2e_test.py
 
 ```bash
 # View app logs
-databricks apps logs vital-workbench --profile=your-profile
+databricks apps logs ontos-ml-workbench --profile=your-profile
 
 # View recent logs
-databricks apps logs vital-workbench --profile=your-profile --tail 100
+databricks apps logs ontos-ml-workbench --profile=your-profile --tail 100
 ```
 
 ---
@@ -504,34 +504,34 @@ databricks apps logs vital-workbench --profile=your-profile --tail 100
 
 ```bash
 # Stop current app
-databricks apps stop vital-workbench --profile=your-profile
+databricks apps stop ontos-ml-workbench --profile=your-profile
 
 # Redeploy from previous workspace path
-databricks apps deploy vital-workbench \
-  --source-code-path /Workspace/Users/<your-email>/Apps/vital-workbench-backup \
+databricks apps deploy ontos-ml-workbench \
+  --source-code-path /Workspace/Users/<your-email>/Apps/ontos-ml-workbench-backup \
   --profile=your-profile
 
 # Or restart app if issue is transient
-databricks apps start vital-workbench --profile=your-profile
+databricks apps start ontos-ml-workbench --profile=your-profile
 ```
 
 ### Rollback Database Changes
 
 ```sql
 -- Restore from Delta table time travel
-RESTORE TABLE mirion_vital.workbench.sheets TO VERSION AS OF <version_number>;
-RESTORE TABLE mirion_vital.workbench.templates TO VERSION AS OF <version_number>;
+RESTORE TABLE ontos_ml.workbench.sheets TO VERSION AS OF <version_number>;
+RESTORE TABLE ontos_ml.workbench.templates TO VERSION AS OF <version_number>;
 
 -- Or use timestamp
-RESTORE TABLE mirion_vital.workbench.sheets TO TIMESTAMP AS OF '2026-02-07 10:00:00';
+RESTORE TABLE ontos_ml.workbench.sheets TO TIMESTAMP AS OF '2026-02-07 10:00:00';
 ```
 
 ### Rollback Unity Catalog Permissions
 
 ```sql
 -- Revoke permissions if needed
-REVOKE SELECT ON SCHEMA mirion_vital.workbench FROM `${SP_ID}`;
-REVOKE MODIFY ON SCHEMA mirion_vital.workbench FROM `${SP_ID}`;
+REVOKE SELECT ON SCHEMA ontos_ml.workbench FROM `${SP_ID}`;
+REVOKE MODIFY ON SCHEMA ontos_ml.workbench FROM `${SP_ID}`;
 ```
 
 ---
@@ -543,10 +543,10 @@ REVOKE MODIFY ON SCHEMA mirion_vital.workbench FROM `${SP_ID}`;
 **Symptoms:** App status is `STOPPED` or `ERROR`
 
 **Solutions:**
-1. Check logs: `databricks apps logs vital-workbench --profile=your-profile`
+1. Check logs: `databricks apps logs ontos-ml-workbench --profile=your-profile`
 2. Verify app.yaml configuration
 3. Check warehouse is running: `databricks warehouses get $WAREHOUSE_ID --profile=your-profile`
-4. Restart app: `databricks apps start vital-workbench --profile=your-profile`
+4. Restart app: `databricks apps start ontos-ml-workbench --profile=your-profile`
 
 ### Database Connection Errors
 
@@ -607,4 +607,4 @@ For issues or questions:
 
 - Check [RUNBOOK.md](RUNBOOK.md) for common issues
 - Review Databricks Apps documentation: https://docs.databricks.com/apps/
-- Contact: Mirion Data Engineering Team
+- Contact: Acme Instruments Data Engineering Team

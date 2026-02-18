@@ -18,11 +18,11 @@ success() { echo -e "${GREEN}[✓]${NC} $1"; }
 error() { echo -e "${RED}[✗]${NC} $1"; }
 warning() { echo -e "${YELLOW}[!]${NC} $1"; }
 
-PROJECT_ROOT="/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench"
+PROJECT_ROOT="/Users/stuart.gano/Documents/Customers/Mirion/mirion-ontos-ml-workbench"
 cd "$PROJECT_ROOT"
 
 echo ""
-log "Schema Cleanup - Consolidating to home_stuart_gano.mirion_vital_workbench"
+log "Schema Cleanup - Consolidating to home_stuart_gano.ontos_ml_workbench"
 echo ""
 warning "This script will:"
 echo "  1. Update backend/.env to use home catalog"
@@ -68,7 +68,7 @@ cat > backend/.env << EOF
 # Databricks Configuration - Local Development
 # Uses home catalog (no metastore admin required)
 DATABRICKS_CATALOG=home_stuart_gano
-DATABRICKS_SCHEMA=mirion_vital_workbench
+DATABRICKS_SCHEMA=ontos_ml_workbench
 DATABRICKS_WAREHOUSE_ID=${WAREHOUSE_ID}
 ${PROFILE:+DATABRICKS_CONFIG_PROFILE=$PROFILE}
 
@@ -80,7 +80,7 @@ PROJECT_NAME=VITAL Platform Workbench
 LOG_LEVEL=INFO
 EOF
 
-success "Updated backend/.env to use home_stuart_gano.mirion_vital_workbench"
+success "Updated backend/.env to use home_stuart_gano.ontos_ml_workbench"
 echo ""
 
 # ============================================================================
@@ -162,7 +162,7 @@ echo -e "${BLUE}╚════════════════════�
 echo ""
 echo -e "${GREEN}Primary Development Location:${NC}"
 echo "  Catalog: home_stuart_gano"
-echo "  Schema:  mirion_vital_workbench"
+echo "  Schema:  ontos_ml_workbench"
 echo ""
 echo -e "${GREEN}Files Kept:${NC}"
 echo "  • schemas/01-08*.sql (canonical schema)"
@@ -177,7 +177,7 @@ echo -e "${YELLOW}Next Steps:${NC}"
 echo "  1. Restart backend: cd backend && uvicorn app.main:app --reload"
 echo "  2. Verify connection: curl http://localhost:8000/api/v1/sheets"
 echo "  3. Check tables exist:"
-echo "     databricks sql -e 'SHOW TABLES IN home_stuart_gano.mirion_vital_workbench;'"
+echo "     databricks sql -e 'SHOW TABLES IN home_stuart_gano.ontos_ml_workbench;'"
 echo "  4. If tables missing, run: cd schemas && databricks sql --file 01_create_catalog.sql"
 echo "  5. Apply fixes: databricks sql --file fix_runtime_errors.sql"
 echo ""

@@ -20,7 +20,7 @@ Each stage follows this pattern:
 
 ### ✅ TEMPLATE Stage - TemplatePage.tsx
 - **Modal**: TemplateBrowserModal
-- **Items**: Templates (Databits)
+- **Items**: Templates (Ontos ML Workbench)
 - **Tabs**: "Your Templates" / "Create New"
 - **Status**: COMPLETE
 

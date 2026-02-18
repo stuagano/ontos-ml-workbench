@@ -730,7 +730,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
     mutationFn: () =>
       exportAssembly(assemblyId!, {
         format: "openai_chat",
-        volume_path: `/Volumes/main/vital_workbench/exports/assembly_${assemblyId}.jsonl`,
+        volume_path: `/Volumes/main/ontos_ml_workbench/exports/assembly_${assemblyId}.jsonl`,
         include_only_verified: true,
         include_system_instruction: true,
       }),

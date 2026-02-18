@@ -106,7 +106,7 @@ curl http://localhost:8000/api/v1/sheets-v2
 **Via SQL:**
 ```sql
 SELECT name, source_type, item_count, status
-FROM home_stuart_gano.mirion_vital_workbench.sheets;
+FROM home_stuart_gano.ontos_ml_workbench.sheets;
 ```
 
 **Via UI:**

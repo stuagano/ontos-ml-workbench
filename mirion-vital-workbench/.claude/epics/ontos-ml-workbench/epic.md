@@ -1,17 +1,17 @@
 ---
-name: vital-workbench
+name: ontos-ml-workbench
 status: backlog
 created: 2026-02-06T16:22:58Z
 progress: 0%
-prd: .claude/prds/vital-workbench.md
+prd: .claude/prds/ontos-ml-workbench.md
 github: https://github.com/databricks-field-eng/mirion-workspace/issues/1
 ---
 
-# Epic: VITAL Platform Workbench
+# Epic: Ontos ML Workbench
 
 ## Overview
 
-Build a no-code, multimodal training data curation platform for Mirion's AI-powered radiation safety systems. The workbench enables domain experts (physicists, data stewards) to create, label, and govern AI training datasets through a 7-stage workflow without writing code. Core innovation: **Canonical Labels** enable "label once, reuse everywhere" - expert-validated ground truth that persists independently of Q&A pairs and gets automatically reused across all Training Sheets.
+Build a no-code, multimodal training data curation platform for Acme Instruments' AI-powered radiation safety systems. The workbench enables domain experts (physicists, data stewards) to create, label, and govern AI training datasets through a 7-stage workflow without writing code. Core innovation: **Canonical Labels** enable "label once, reuse everywhere" - expert-validated ground truth that persists independently of Q&A pairs and gets automatically reused across all Training Sheets.
 
 **Validated Use Cases:**
 - Medical invoice entity extraction (Document AI)
@@ -107,7 +107,7 @@ DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
 
 ### Infrastructure
 
-**Delta Tables (mirion_vital.workbench catalog):**
+**Delta Tables (ontos_ml.workbench catalog):**
 ```sql
 sheets                    -- Dataset definitions
 templates                 -- Prompt templates with label_type
@@ -121,7 +121,7 @@ example_store             -- Few-shot examples (P1)
 **Databricks App Deployment:**
 - APX dev mode: `apx dev start` (hot reload)
 - Production: `databricks bundle deploy`
-- App URL: `/apps/vital-workbench`
+- App URL: `/apps/ontos-ml-workbench`
 
 ## Implementation Strategy
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Test Data Seeding Script for VITAL Workbench
+Test Data Seeding Script for Ontos ML Workbench
 
-Seeds the database with realistic test data for Mirion use cases.
+Seeds the database with realistic test data for radiation safety use cases.
 
 Usage:
-    python scripts/seed_test_data.py --catalog home_stuart_gano --schema mirion_vital_workbench
-    python scripts/seed_test_data.py --profile dev --catalog home_stuart_gano --schema mirion_vital_workbench
+    python scripts/seed_test_data.py --catalog home_stuart_gano --schema ontos_ml_workbench
+    python scripts/seed_test_data.py --profile dev --catalog home_stuart_gano --schema ontos_ml_workbench
 """
 
 import argparse
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 class DataSeeder:
-    """Seeds test data for VITAL Workbench"""
+    """Seeds test data for Ontos ML Workbench"""
 
     def __init__(self, catalog: str, schema: str, warehouse_id: Optional[str] = None, profile: Optional[str] = None):
         self.catalog = catalog
@@ -87,7 +87,7 @@ class DataSeeder:
             return {'status': 'error', 'error': str(e)}
 
     def seed_sheets(self) -> bool:
-        """Seed sample sheets for Mirion use cases"""
+        """Seed sample sheets for radiation safety use cases"""
         logger.info("=" * 80)
         logger.info("Seeding Sheets")
         logger.info("=" * 80)
@@ -535,7 +535,7 @@ class DataSeeder:
     def run(self) -> bool:
         """Run complete data seeding"""
         logger.info("=" * 80)
-        logger.info("VITAL Workbench Test Data Seeding")
+        logger.info("Ontos ML Workbench Test Data Seeding")
         logger.info("=" * 80)
         logger.info(f"Catalog: {self.catalog}")
         logger.info(f"Schema: {self.schema}")
@@ -569,7 +569,7 @@ class DataSeeder:
         logger.info("SEEDING COMPLETE ✓")
         logger.info("=" * 80)
         logger.info("Sample data created:")
-        logger.info("  • 3 Sheets (Mirion use cases)")
+        logger.info("  • 3 Sheets (radiation safety use cases)")
         logger.info("  • 3 Templates (Defect, Maintenance, Calibration)")
         logger.info("  • 3 Endpoints (Production + Staging)")
         logger.info("  • 4 Feedback items")
@@ -583,7 +583,7 @@ class DataSeeder:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Seed VITAL Workbench with test data',
+        description='Seed Ontos ML Workbench with test data',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 

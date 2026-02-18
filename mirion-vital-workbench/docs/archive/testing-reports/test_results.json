@@ -53,7 +53,7 @@
       "name": "List Tables",
       "status": "PASS",
       "method": "GET",
-      "endpoint": "/api/v1/unity-catalog/catalogs/erp-demonstrations/schemas/vital_workbench/tables",
+      "endpoint": "/api/v1/unity-catalog/catalogs/erp-demonstrations/schemas/ontos_ml_workbench/tables",
       "response_code": 200
     },
     {

@@ -491,7 +491,7 @@ def generate_databricks_job_config(
         Job configuration dict for Databricks Jobs API
     """
     config = {
-        "name": "Databits Gap Analysis - Scheduled",
+        "name": "Ontos ML Gap Analysis - Scheduled",
         "schedule": {
             "quartz_cron_expression": schedule,
             "timezone_id": "UTC",
@@ -500,13 +500,13 @@ def generate_databricks_job_config(
             {
                 "task_key": "gap_analysis",
                 "notebook_task": {
-                    "notebook_path": "/Repos/databits/notebooks/scheduled_gap_analysis",
+                    "notebook_path": "/Repos/ontos-ml/notebooks/scheduled_gap_analysis",
                     "base_parameters": {"models": json.dumps(models_to_watch)},
                 },
             }
         ],
         "email_notifications": {"on_failure": []},
-        "tags": {"team": "ml-platform", "system": "databits"},
+        "tags": {"team": "ml-platform", "system": "ontos-ml"},
     }
 
     if cluster_id:

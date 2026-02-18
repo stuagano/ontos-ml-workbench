@@ -270,7 +270,7 @@ All queries properly handle loading states:
 
 ## Files Modified
 
-1. `/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/frontend/src/pages/MonitorPage.tsx`
+1. `/Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/frontend/src/pages/MonitorPage.tsx`
    - Added 4 new useQuery hooks for real data
    - Updated metrics calculation logic
    - Enhanced DriftPanel component

@@ -96,7 +96,7 @@ jobs:
 variables:
   vector_search_endpoint:
     description: Name of the Vector Search endpoint to use
-    default: vital-workbench-vs-endpoint
+    default: ontos-ml-workbench-vs-endpoint
 
   embedding_model:
     description: Model to use for generating embeddings

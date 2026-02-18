@@ -1,4 +1,4 @@
-# VITAL Workbench - Progress Report (Feb 6, 2026)
+# Ontos ML Workbench - Progress Report (Feb 6, 2026)
 
 **Session Focus:** Complete training job UI + unblock DATA stage + assess remaining work
 

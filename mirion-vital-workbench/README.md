@@ -1,6 +1,6 @@
-# VITAL Platform Workbench
+# Ontos ML Workbench
 
-**Mission control for Mirion's AI-powered radiation safety platform** - from raw sensor data to production ML models with full governance.
+**Mission control for Acme Instruments' AI-powered radiation safety platform** - from raw sensor data to production ML models with full governance.
 
 ```
 DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
@@ -11,12 +11,12 @@ DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
 
 ## Database Configuration
 
-**Primary Workspace**: FEVM (`serverless_dxukih_catalog.mirion`)
+**Primary Workspace**: FEVM (`serverless_dxukih_catalog.ontos_ml`)
 
 ```bash
 Workspace: https://fevm-serverless-dxukih.cloud.databricks.com
 Catalog:   serverless_dxukih_catalog
-Schema:    mirion
+Schema:    ontos_ml
 Warehouse: 387bcda0f2ece20c
 Profile:   fe-vm-serverless-dxukih
 ```
@@ -35,18 +35,18 @@ Profile:   fe-vm-serverless-dxukih
 
 ## Overview
 
-VITAL Platform Workbench is a Databricks App that provides a unified workflow for building, governing, and improving AI systems for radiation safety applications. It enables Mirion's domain experts, physicists, and data stewards to participate in AI development without writing code.
+Ontos ML Workbench is a Databricks App that provides a unified workflow for building, governing, and improving AI systems for radiation safety applications. It enables Acme Instruments' domain experts, physicists, and data stewards to participate in AI development without writing code.
 
 ### Core Concepts
 
 **Sheets** → Lightweight pointers to Unity Catalog data sources (multimodal fusion)  
 **Canonical Labels** → Ground truth labels enabling "label once, reuse everywhere"  
 **Training Sheets** → Materialized Q&A datasets with automatic label reuse  
-**Templates** → Reusable prompt IP encoding Mirion's 60+ years of expertise
+**Templates** → Reusable prompt IP encoding Acme Instruments' 60+ years of expertise
 
 ### The Prompt Template Paradigm
 
-**Key Insight:** With LLMs, data modality no longer matters. Images, sensor telemetry, documents, and structured data all converge through **prompt templates** - reusable IP assets that encode Mirion's domain expertise.
+**Key Insight:** With LLMs, data modality no longer matters. Images, sensor telemetry, documents, and structured data all converge through **prompt templates** - reusable IP assets that encode Acme Instruments' domain expertise.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -74,11 +74,11 @@ Both use cases support multiple labelsets per source item and governance constra
 
 - **7-Stage Lifecycle**: Complete coverage from data extraction to continuous improvement
 - **Templates as IP**: Prompt templates as first-class, versioned Unity Catalog assets
-- **AI-Assisted Labeling**: Pre-label with AI, verify with Mirion domain experts
+- **AI-Assisted Labeling**: Pre-label with AI, verify with Acme Instruments domain experts
 - **ACE-Ready**: Supports Airgap, Cloud, and Edge deployment patterns
 - **Day 2 Operations**: Monitoring, drift detection, and feedback loops built in
 
-## Mirion Use Cases
+## Acme Instruments Use Cases
 
 ### Priority 0 - Year 1
 | Use Case | Template Type | Business Value |
@@ -170,7 +170,7 @@ For production deployments:
 ## Architecture
 
 ```
-vital-workbench/
+ontos-ml-workbench/
 ├── backend/                 # FastAPI backend
 │   ├── app/
 │   │   ├── api/v1/         # REST endpoints
@@ -188,7 +188,7 @@ vital-workbench/
 │   └── package.json
 ├── schemas/                # Delta table schemas
 ├── resources/              # DAB resource configs
-├── synthetic_data/         # Mirion-specific sample data
+├── synthetic_data/         # Acme Instruments-specific sample data
 ├── databricks.yml          # DAB bundle config
 └── app.yaml               # Databricks App config
 ```
@@ -253,7 +253,7 @@ Continuous feedback loops:
 
 ## Sample Data
 
-The `synthetic_data/` directory contains Mirion-specific sample data:
+The `synthetic_data/` directory contains Acme Instruments-specific sample data:
 
 ```
 synthetic_data/
@@ -284,7 +284,7 @@ DATABRICKS_HOST=https://your-workspace.cloud.databricks.com
 DATABRICKS_TOKEN=your-pat-token
 
 # Unity Catalog
-DATABRICKS_CATALOG=mirion_vital
+DATABRICKS_CATALOG=ontos_ml
 DATABRICKS_SCHEMA=workbench
 
 # SQL Warehouse
@@ -305,7 +305,7 @@ See `backend/.env.example` and `frontend/.env.example` for complete configuratio
 
 ## Delta Tables (PRD v2.3)
 
-The app uses these Unity Catalog tables in `mirion_vital.workbench`:
+The app uses these Unity Catalog tables in `ontos_ml.workbench`:
 
 **Core Data Model:**
 
@@ -379,7 +379,7 @@ databricks sql exec --file=<migration>.sql \
   --profile=production
 
 # Verify migration
-databricks sql exec "DESCRIBE TABLE mirion_vital.workbench.<table>" \
+databricks sql exec "DESCRIBE TABLE ontos_ml.workbench.<table>" \
   --warehouse-id=$WAREHOUSE_ID \
   --profile=production
 ```
@@ -388,9 +388,9 @@ databricks sql exec "DESCRIBE TABLE mirion_vital.workbench.<table>" \
 
 After deployment, monitor the application:
 
-- **App Status**: `databricks apps get vital-workbench --profile=prod`
-- **App Logs**: `databricks apps logs vital-workbench --profile=prod --tail 100`
-- **SQL Dashboard**: Databricks SQL > Dashboards > VITAL Workbench Health
+- **App Status**: `databricks apps get ontos-ml-workbench --profile=prod`
+- **App Logs**: `databricks apps logs ontos-ml-workbench --profile=prod --tail 100`
+- **SQL Dashboard**: Databricks SQL > Dashboards > Ontos ML Workbench Health
 - **System Tables**: Query `system.query.history` for performance metrics
 
 ### Troubleshooting
@@ -409,11 +409,11 @@ For detailed troubleshooting, see **[RUNBOOK.md](RUNBOOK.md)**.
 ### Emergency Contacts
 
 - **On-Call Engineer**: [PagerDuty rotation]
-- **Team Slack**: #vital-workbench-ops
+- **Team Slack**: #ontos-ml-workbench-ops
 - **Databricks Support**: https://help.databricks.com
 
 ---
 
 ## License
 
-Mirion Technologies - Confidential
+Acme Instruments - Confidential

@@ -1,6 +1,6 @@
 # Synthetic Data
 
-Sample data for Mirion AI use cases. Used for demos, testing, and development.
+Sample data for AI use cases. Used for demos, testing, and development.
 
 ## Use Cases
 
@@ -45,7 +45,7 @@ python scripts/seed_via_api.py
 
 ## Data Format
 
-All data uses Mirion-specific terminology:
+All data uses domain-specific terminology:
 - **Detector types**: NaI, HPGe, LaBr3, CZT
 - **Facilities**: Manufacturing sites, field deployments
 - **Metrics**: Count rates, energy resolution, efficiency curves

@@ -1,6 +1,6 @@
-"""Pydantic models for the VITAL → Ontos DQX quality proxy.
+"""Pydantic models for the Ontos ML → Ontos DQX quality proxy.
 
-Mirrors Ontos's CheckResult / DQXResultImport models so VITAL can construct
+Mirrors Ontos's CheckResult / DQXResultImport models so Ontos ML can construct
 payloads without importing from the Ontos package (keeps the two backends
 decoupled).
 """
@@ -37,7 +37,7 @@ class CheckResult(BaseModel):
 class DQXResultImport(BaseModel):
     """Payload sent to Ontos import-dqx-results endpoint."""
     check_results: list[CheckResult]
-    source: str = "vital-dqx-proxy"
+    source: str = "ontos-ml-dqx-proxy"
     dqx_run_id: str | None = None
 
 

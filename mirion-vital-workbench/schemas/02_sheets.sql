@@ -5,7 +5,7 @@
 -- Sheets are the source data that gets labeled and turned into Training Sheets
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS home_stuart_gano.mirion_vital_workbench.sheets (
+CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.sheets (
   -- Identity
   id STRING NOT NULL,
   name STRING NOT NULL,
@@ -52,5 +52,5 @@ TBLPROPERTIES (
 );
 
 -- Create indexes for common queries
-CREATE INDEX IF NOT EXISTS idx_sheets_status ON home_stuart_gano.mirion_vital_workbench.sheets(status);
-CREATE INDEX IF NOT EXISTS idx_sheets_source_type ON home_stuart_gano.mirion_vital_workbench.sheets(source_type);
+CREATE INDEX IF NOT EXISTS idx_sheets_status ON home_stuart_gano.ontos_ml_workbench.sheets(status);
+CREATE INDEX IF NOT EXISTS idx_sheets_source_type ON home_stuart_gano.ontos_ml_workbench.sheets(source_type);

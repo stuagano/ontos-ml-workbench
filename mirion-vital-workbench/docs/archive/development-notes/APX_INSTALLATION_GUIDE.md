@@ -1,6 +1,6 @@
 # APX Installation and Configuration Guide
 
-**Status**: APX is ALREADY INSTALLED and configured for the VITAL Workbench project.
+**Status**: APX is ALREADY INSTALLED and configured for the Ontos ML Workbench project.
 
 This guide provides the exact steps to verify APX is working and how to use it for the demo.
 
@@ -25,13 +25,13 @@ frontend = "frontend"
 python-version = "3.11"
 
 [tool.apx.metadata]
-name = "mirion-vital-workbench"
-app-name = "VITAL Workbench"
-app-slug = "vital-workbench"
+name = "ontos-ml-workbench"
+app-name = "Ontos ML Workbench"
+app-slug = "ontos-ml-workbench"
 app-entrypoint = "app.main:app"
 metadata-path = "app.yaml"
 version = "0.1.0"
-description = "VITAL Platform Workbench for Mirion"
+description = "Ontos ML Workbench for Acme Instruments"
 working-dir = "backend"
 ```
 
@@ -39,9 +39,9 @@ working-dir = "backend"
 ```python
 from pathlib import Path
 
-app_name = "VITAL Workbench"
+app_name = "Ontos ML Workbench"
 app_entrypoint = "app.main:app"
-app_slug = "vital-workbench"
+app_slug = "ontos-ml-workbench"
 api_prefix = "/api"
 dist_dir = Path(__file__).parent / "__dist__"
 ```
@@ -91,7 +91,7 @@ cat backend/.env | grep DATABRICKS
 ```
 DATABRICKS_HOST=https://fevm-serverless-dxukih.cloud.databricks.com
 DATABRICKS_CATALOG=erp-demonstrations
-DATABRICKS_SCHEMA=vital_workbench
+DATABRICKS_SCHEMA=ontos_ml_workbench
 DATABRICKS_WAREHOUSE_ID=387bcda0f2ece20c
 DATABRICKS_CONFIG_PROFILE=fe-vm-serverless-dxukih
 ```
@@ -116,7 +116,7 @@ lsof -ti:8000,5173 | xargs kill -9
 
 ```bash
 # From project root
-cd /Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench
+cd /Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench
 
 # Start APX in detached mode
 apx dev start
@@ -187,7 +187,7 @@ code frontend/src/pages/DataPage.tsx
 #### Scenario 1: Show Data Page Working
 1. Navigate to: http://localhost:8000/data
 2. Verify Sheets list loads from Unity Catalog
-3. Show table: `erp-demonstrations.vital_workbench.sheets`
+3. Show table: `erp-demonstrations.ontos_ml_workbench.sheets`
 
 #### Scenario 2: Show Canonical Labeling Tool
 1. Click "TOOLS" in sidebar
@@ -308,7 +308,7 @@ pkill -f apx
 
 ### Start Everything
 ```bash
-cd /Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench
+cd /Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench
 apx dev start
 ```
 
@@ -420,7 +420,7 @@ apx dev --help     # Show dev commands
 
 ### Project Structure
 ```
-mirion-vital-workbench/
+ontos-ml-workbench/
 ├── backend/
 │   ├── app/
 │   │   └── main.py         # FastAPI app (APX entry point)
@@ -444,7 +444,7 @@ mirion-vital-workbench/
 
 **To start for demo**:
 ```bash
-cd /Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench
+cd /Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench
 apx dev start
 ```
 

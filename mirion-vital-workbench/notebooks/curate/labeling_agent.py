@@ -46,7 +46,7 @@ print(f"Batch size: {batch_size}")
 
 # Configuration
 CATALOG = "home_stuart_gano"
-SCHEMA = "databits_dev"
+SCHEMA = "ontos_ml_dev"
 
 # COMMAND ----------
 
@@ -120,7 +120,7 @@ from openai import OpenAI
 
 # Use Databricks Foundation Model API
 client = OpenAI(
-    api_key=dbutils.secrets.get(scope="databits", key="fmapi-token")
+    api_key=dbutils.secrets.get(scope="ontos_ml", key="fmapi-token")
     if dbutils.secrets.listScopes()
     else os.environ.get("DATABRICKS_TOKEN", ""),
     base_url=f"{spark.conf.get('spark.databricks.workspaceUrl')}/serving-endpoints",

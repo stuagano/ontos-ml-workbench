@@ -25,7 +25,7 @@ After deployment verification on localhost, we found:
 3. Execute:
 
 ```sql
-CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`vital_workbench`.monitor_alerts (
+CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`ontos_ml_workbench`.monitor_alerts (
   id STRING NOT NULL,
   endpoint_id STRING NOT NULL,
   alert_type STRING NOT NULL,
@@ -85,14 +85,14 @@ kill <PID>
 pkill -f "uvicorn app.main:app"
 
 # Start fresh backend
-cd /Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/backend
+cd /Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/backend
 uvicorn app.main:app --reload
 ```
 
 **Option B: If using APX:**
 
 ```bash
-cd /Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench
+cd /Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench
 apx dev stop
 apx dev start
 ```
@@ -120,7 +120,7 @@ curl -s "http://localhost:8000/api/v1/feedback/stats"
 3. Execute:
 
 ```sql
-ALTER TABLE `erp-demonstrations`.`vital_workbench`.feedback_items
+ALTER TABLE `erp-demonstrations`.`ontos_ml_workbench`.feedback_items
 ADD COLUMN IF NOT EXISTS flagged BOOLEAN DEFAULT FALSE;
 ```
 
@@ -129,9 +129,9 @@ ADD COLUMN IF NOT EXISTS flagged BOOLEAN DEFAULT FALSE;
 **WARNING:** This will delete all existing feedback data!
 
 ```sql
-DROP TABLE IF EXISTS `erp-demonstrations`.`vital_workbench`.feedback_items;
+DROP TABLE IF EXISTS `erp-demonstrations`.`ontos_ml_workbench`.feedback_items;
 
-CREATE TABLE `erp-demonstrations`.`vital_workbench`.feedback_items (
+CREATE TABLE `erp-demonstrations`.`ontos_ml_workbench`.feedback_items (
   id STRING NOT NULL,
   endpoint_id STRING NOT NULL,
   request_id STRING,
@@ -165,7 +165,7 @@ Execute all fixes at once via Databricks SQL Editor:
 
 ```sql
 -- Fix 1: Create monitor_alerts table
-CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`vital_workbench`.monitor_alerts (
+CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`ontos_ml_workbench`.monitor_alerts (
   id STRING NOT NULL,
   endpoint_id STRING NOT NULL,
   alert_type STRING NOT NULL,
@@ -183,14 +183,14 @@ CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`vital_workbench`.monitor_alerts
 ) USING DELTA;
 
 -- Fix 3: Add flagged column to feedback_items
-ALTER TABLE `erp-demonstrations`.`vital_workbench`.feedback_items
+ALTER TABLE `erp-demonstrations`.`ontos_ml_workbench`.feedback_items
 ADD COLUMN IF NOT EXISTS flagged BOOLEAN DEFAULT FALSE;
 
 -- Verify tables exist
-SHOW TABLES IN `erp-demonstrations`.`vital_workbench`;
+SHOW TABLES IN `erp-demonstrations`.`ontos_ml_workbench`;
 
 -- Verify feedback_items schema
-DESCRIBE TABLE `erp-demonstrations`.`vital_workbench`.feedback_items;
+DESCRIBE TABLE `erp-demonstrations`.`ontos_ml_workbench`.feedback_items;
 ```
 
 Then restart the backend (Fix 2).
@@ -301,7 +301,7 @@ cd backend && uvicorn app.main:app --reload
 **Error:** "Column already exists" or "ALTER TABLE failed"
 **Solution:** Column might already exist but with different type. Check schema:
 ```sql
-DESCRIBE TABLE `erp-demonstrations`.`vital_workbench`.feedback_items;
+DESCRIBE TABLE `erp-demonstrations`.`ontos_ml_workbench`.feedback_items;
 ```
 
 ### If still seeing errors after fixes
@@ -312,7 +312,7 @@ DESCRIBE TABLE `erp-demonstrations`.`vital_workbench`.feedback_items;
 4. **Verify all tables exist:**
 ```sql
 SELECT table_name
-FROM `erp-demonstrations`.`vital_workbench`.information_schema.tables
+FROM `erp-demonstrations`.`ontos_ml_workbench`.information_schema.tables
 WHERE table_name IN ('monitor_alerts', 'feedback_items');
 ```
 
@@ -323,10 +323,10 @@ WHERE table_name IN ('monitor_alerts', 'feedback_items');
 After fixing all issues, optionally seed test data for demo purposes:
 
 ```bash
-cd /Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench
+cd /Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench
 python3 scripts/seed_test_data.py \
   --catalog erp-demonstrations \
-  --schema vital_workbench
+  --schema ontos_ml_workbench
 ```
 
 This will create sample:

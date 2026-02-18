@@ -8,7 +8,7 @@ from databricks.sdk.service.sql import StatementState
 
 WAREHOUSE_ID = "387bcda0f2ece20c"
 CATALOG = "erp-demonstrations"
-SCHEMA = "vital_workbench"
+SCHEMA = "ontos_ml_workbench"
 
 def execute_query(w, sql, description):
     """Execute SQL and return results"""
@@ -55,7 +55,7 @@ def main():
     profile = os.getenv("DATABRICKS_CONFIG_PROFILE", "fe-vm-serverless-dxukih")
     w = WorkspaceClient(profile=profile)
 
-    print("VITAL Workbench - Sheets Data Verification")
+    print("Ontos ML Workbench - Sheets Data Verification")
     print("=" * 70)
     print(f"Workspace: {w.config.host}")
     print(f"Catalog: {CATALOG}")

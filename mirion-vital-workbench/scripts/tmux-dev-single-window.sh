@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================================
-# VITAL Workbench Development Session - Single Window View
+# Ontos ML Workbench Development Session - Single Window View
 # See everything at once in a beautiful grid layout
 # ============================================================================
 
@@ -17,7 +17,7 @@ NC='\033[0m'
 
 # Configuration
 SESSION_NAME="vital"
-PROJECT_ROOT="/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench"
+PROJECT_ROOT="/Users/stuart.gano/Documents/Customers/Mirion/mirion-ontos-ml-workbench"
 
 log() { echo -e "${BLUE}[VITAL]${NC} $1"; }
 success() { echo -e "${GREEN}[✓]${NC} $1"; }
@@ -56,7 +56,7 @@ if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
     esac
 fi
 
-log "Creating VITAL Workbench single-window session..."
+log "Creating Ontos ML Workbench single-window session..."
 echo ""
 
 # Verify project directory
@@ -88,7 +88,7 @@ tmux new-session -d -s "$SESSION_NAME" -c "$PROJECT_ROOT" -n "VITAL"
 # Start with main pane (Claude Code)
 tmux send-keys -t "$SESSION_NAME:0.0" "cd $PROJECT_ROOT" Enter
 tmux send-keys -t "$SESSION_NAME:0.0" "clear" Enter
-tmux send-keys -t "$SESSION_NAME:0.0" "echo '🤖 Claude Code - VITAL Workbench Development'" Enter
+tmux send-keys -t "$SESSION_NAME:0.0" "echo '🤖 Claude Code - Ontos ML Workbench Development'" Enter
 tmux send-keys -t "$SESSION_NAME:0.0" "echo ''" Enter
 tmux send-keys -t "$SESSION_NAME:0.0" "echo 'Pane Layout:'" Enter
 tmux send-keys -t "$SESSION_NAME:0.0" "echo '  Top-Left:     Claude Code (this pane)'" Enter
@@ -150,7 +150,7 @@ tmux select-pane -t "$SESSION_NAME:0.0"
 
 # Display success message
 echo ""
-success "VITAL Workbench single-window session created!"
+success "Ontos ML Workbench single-window session created!"
 echo ""
 echo -e "${PURPLE}Layout:${NC}"
 echo "  ┌─────────────────┬─────────────────┐"

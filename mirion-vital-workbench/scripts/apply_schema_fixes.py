@@ -15,7 +15,7 @@ sys.path.append(str(Path(__file__).parent.parent / "backend"))
 
 def main():
     print("=" * 70)
-    print("VITAL Platform Workbench - Schema Fixes")
+    print("Ontos ML Workbench - Schema Fixes")
     print("=" * 70)
     print()
 
@@ -36,7 +36,7 @@ def main():
     # Get configuration from environment
     warehouse_id = os.getenv("DATABRICKS_WAREHOUSE_ID", "0024da9c9e9a4dc2")
     catalog = os.getenv("DATABRICKS_CATALOG", "home_stuart_gano")
-    schema = os.getenv("DATABRICKS_SCHEMA", "mirion_vital_workbench")
+    schema = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
 
     print(f"🔧 Configuration:")
     print(f"   Warehouse: {warehouse_id}")

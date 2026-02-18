@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Database Verification Script for VITAL Workbench
+Database Verification Script for Ontos ML Workbench
 
 Verifies all required tables exist, checks schemas, and reports status.
 
 Usage:
-    python scripts/verify_database.py --catalog home_stuart_gano --schema mirion_vital_workbench
-    python scripts/verify_database.py --profile dev --catalog home_stuart_gano --schema mirion_vital_workbench
+    python scripts/verify_database.py --catalog home_stuart_gano --schema ontos_ml_workbench
+    python scripts/verify_database.py --profile dev --catalog home_stuart_gano --schema ontos_ml_workbench
 """
 
 import argparse
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class DatabaseVerifier:
-    """Verifies VITAL Workbench database setup"""
+    """Verifies Ontos ML Workbench database setup"""
 
     # Required tables with their expected key columns
     REQUIRED_TABLES = {
@@ -266,7 +266,7 @@ class DatabaseVerifier:
     def run(self) -> bool:
         """Run complete verification"""
         logger.info("=" * 80)
-        logger.info("VITAL Workbench Database Verification")
+        logger.info("Ontos ML Workbench Database Verification")
         logger.info("=" * 80)
         logger.info(f"Catalog: {self.catalog}")
         logger.info(f"Schema: {self.schema}")
@@ -334,7 +334,7 @@ class DatabaseVerifier:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Verify VITAL Workbench database setup',
+        description='Verify Ontos ML Workbench database setup',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 

@@ -1,4 +1,4 @@
-# VITAL Workbench Development Status
+# Ontos ML Workbench Development Status
 
 **Last Updated**: 2026-02-04
 

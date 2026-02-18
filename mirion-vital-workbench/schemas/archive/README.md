@@ -73,7 +73,7 @@ Use `../fix_monitor_schema.sql` instead.
 **Status:** Superseded by `05_training_sheets.sql` and `06_qa_pairs.sql`
 **Date Created:** Unknown
 **Purpose:** Create training_sheets and qa_pairs tables for PRD v2.3
-**Target:** `serverless_dxukih_catalog.mirion`
+**Target:** `serverless_dxukih_catalog.ontos_ml`
 
 **Why Archived:**
 The training_sheets and qa_pairs table definitions are now part of the numbered schema files (05 and 06), which are the authoritative source for table schemas.
@@ -86,12 +86,12 @@ Use `../05_training_sheets.sql` and `../06_qa_pairs.sql` instead.
 These scripts target old or different Databricks workspaces and are not applicable to the current development environment.
 
 ### check_sheets.sql
-**Status:** Workspace-specific (erp-demonstrations.vital_workbench)
+**Status:** Workspace-specific (erp-demonstrations.ontos_ml_workbench)
 **Date Created:** Unknown
 **Purpose:** Query sheets table to verify data
 
 **Why Archived:**
-This script targets the `erp-demonstrations.vital_workbench` schema, which was used for an older demo. Current development uses `serverless_dxukih_catalog.mirion`.
+This script targets the `erp-demonstrations.ontos_ml_workbench` schema, which was used for an older demo. Current development uses `serverless_dxukih_catalog.ontos_ml`.
 
 **If You Need This:**
 Update the catalog/schema references to match your target workspace.
@@ -99,12 +99,12 @@ Update the catalog/schema references to match your target workspace.
 ---
 
 ### fix_runtime_errors.sql
-**Status:** Workspace-specific (erp-demonstrations.vital_workbench)
+**Status:** Workspace-specific (erp-demonstrations.ontos_ml_workbench)
 **Date Created:** Unknown
 **Purpose:** Fix runtime errors in erp-demonstrations workspace
 
 **Why Archived:**
-This script targets the `erp-demonstrations.vital_workbench` schema. The fixes have been incorporated into the main schema migrations for the current workspace.
+This script targets the `erp-demonstrations.ontos_ml_workbench` schema. The fixes have been incorporated into the main schema migrations for the current workspace.
 
 **If You Need This:**
 Use `../fix_monitor_schema.sql` with updated catalog/schema references.
@@ -117,7 +117,7 @@ These are temporary test and optimization scripts used during development.
 **Status:** Test script (no longer needed)
 **Date Created:** Unknown
 **Purpose:** Test query optimization for sheets queries
-**Target:** `home_stuart_gano.mirion_vital_workbench`
+**Target:** `home_stuart_gano.ontos_ml_workbench`
 
 **Why Archived:**
 This was a temporary test script to verify query performance improvements. The optimizations have been implemented in the backend service layer.

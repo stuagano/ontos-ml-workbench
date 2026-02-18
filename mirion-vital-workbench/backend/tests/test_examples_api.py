@@ -62,7 +62,7 @@ def sample_example():
         effectiveness_score=0.85,
         source="human_authored",
         attribution_notes="Created by domain expert",
-        created_by="expert@mirion.com",
+        created_by="expert@example.com",
         created_at=datetime(2024, 1, 15, 10, 30),
         updated_at=datetime(2024, 1, 15, 10, 30),
     )

@@ -2,7 +2,7 @@
 
 ## ✅ Implementation Complete
 
-All canonical label features from PRD v2.3 have been successfully implemented and integrated into the VITAL Workbench.
+All canonical label features from PRD v2.3 have been successfully implemented and integrated into the Ontos ML Workbench.
 
 ---
 

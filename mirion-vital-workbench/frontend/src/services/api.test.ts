@@ -25,9 +25,9 @@ describe('API Service', () => {
   describe('Config', () => {
     it('should fetch app config', async () => {
       const mockConfig = {
-        app_name: 'VITAL Workbench',
+        app_name: 'Ontos ML Workbench',
         catalog: 'main',
-        schema: 'mirion_vital_workbench',
+        schema: 'ontos_ml_workbench',
       };
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -143,7 +143,7 @@ describe('API Service', () => {
         item_ref: 'item_001',
         label_type: 'defect_type',
         label_data: { defect: 'crack' },
-        labeled_by: 'expert@mirion.com',
+        labeled_by: 'expert@example.com',
       };
       const mockResponse = { id: 'label-1', ...payload };
 

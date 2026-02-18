@@ -3,7 +3,7 @@
 
 -- Use the correct catalog/schema
 USE CATALOG `erp-demonstrations`;
-USE SCHEMA vital_workbench;
+USE SCHEMA ontos_ml_workbench;
 
 -- Insert sample sheets
 INSERT INTO sheets (
@@ -36,7 +36,7 @@ INSERT INTO sheets (
   'Microscope images of PCBs with labeled defects for computer vision training',
   'uc_volume',
   NULL,
-  '/Volumes/home_stuart_gano/mirion_vital_workbench/pcb_images',
+  '/Volumes/home_stuart_gano/ontos_ml_workbench/pcb_images',
   'defect_images/',
   'image_filename',
   ARRAY(),
@@ -60,7 +60,7 @@ INSERT INTO sheets (
   'Radiation Sensor Telemetry',
   'Time-series sensor data from radiation detectors for anomaly detection',
   'uc_table',
-  'home_stuart_gano.mirion_vital_workbench.sensor_readings',
+  'home_stuart_gano.ontos_ml_workbench.sensor_readings',
   NULL,
   NULL,
   'reading_id',
@@ -85,7 +85,7 @@ INSERT INTO sheets (
   'Medical Invoice Entity Extraction',
   'Healthcare billing invoices (PDFs + structured data) for entity extraction',
   'uc_table',
-  'home_stuart_gano.mirion_vital_workbench.parsed_invoices',
+  'home_stuart_gano.ontos_ml_workbench.parsed_invoices',
   NULL,
   NULL,
   'invoice_id',
@@ -110,7 +110,7 @@ INSERT INTO sheets (
   'Equipment Maintenance Logs',
   'Service records and maintenance notes for predictive maintenance',
   'uc_table',
-  'home_stuart_gano.mirion_vital_workbench.maintenance_logs',
+  'home_stuart_gano.ontos_ml_workbench.maintenance_logs',
   NULL,
   NULL,
   'log_id',
@@ -136,7 +136,7 @@ INSERT INTO sheets (
   'Final product inspection images from manufacturing line',
   'uc_volume',
   NULL,
-  '/Volumes/home_stuart_gano/mirion_vital_workbench/qc_images',
+  '/Volumes/home_stuart_gano/ontos_ml_workbench/qc_images',
   'inspections/',
   'inspection_id',
   ARRAY(),

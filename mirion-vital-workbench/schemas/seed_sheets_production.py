@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Seed sheets data for VITAL Workbench
-Uses the production schema: erp-demonstrations.vital_workbench
+Seed sheets data for Ontos ML Workbench
+Uses the production schema: erp-demonstrations.ontos_ml_workbench
 """
 
 import uuid
@@ -12,7 +12,7 @@ from databricks.sdk import WorkspaceClient
 # Initialize Databricks client with profile from .env
 w = WorkspaceClient(profile="fe-vm-serverless-dxukih")
 warehouse_id = "387bcda0f2ece20c"
-schema = "`erp-demonstrations`.vital_workbench"
+schema = "`erp-demonstrations`.ontos_ml_workbench"
 user = "stuart.gano@databricks.com"
 
 print("🌱 Seeding sheets table with sample data...\n")
@@ -26,7 +26,7 @@ sheets_data = [
         "name": "PCB Defect Detection Dataset",
         "description": "Microscope images of printed circuit boards with labeled defects (shorts, opens, missing components)",
         "source_type": "uc_volume",
-        "source_volume": "/Volumes/erp-demonstrations/vital_workbench/pcb_images",
+        "source_volume": "/Volumes/erp-demonstrations/ontos_ml_workbench/pcb_images",
         "source_path": "defects/",
         "item_id_column": "pcb_serial",
         "text_columns": [],
@@ -47,7 +47,7 @@ sheets_data = [
         "description": "Time-series sensor data from manufacturing equipment with anomaly labels",
         "source_type": "uc_table",
         "source_volume": None,
-        "source_path": "`erp-demonstrations`.vital_workbench.sensor_readings",
+        "source_path": "`erp-demonstrations`.ontos_ml_workbench.sensor_readings",
         "item_id_column": "reading_id",
         "text_columns": ["sensor_type", "location", "status_message"],
         "image_columns": [],
@@ -61,7 +61,7 @@ sheets_data = [
         "name": "Medical Invoice Extraction",
         "description": "Healthcare invoices requiring entity extraction (patient ID, procedures, amounts, dates)",
         "source_type": "uc_volume",
-        "source_volume": "/Volumes/erp-demonstrations/vital_workbench/invoices",
+        "source_volume": "/Volumes/erp-demonstrations/ontos_ml_workbench/invoices",
         "source_path": "healthcare/",
         "item_id_column": "invoice_number",
         "text_columns": ["invoice_text"],
@@ -77,7 +77,7 @@ sheets_data = [
         "description": "Free-text maintenance reports requiring classification (routine, repair, emergency)",
         "source_type": "uc_table",
         "source_volume": None,
-        "source_path": "`erp-demonstrations`.vital_workbench.maintenance_logs",
+        "source_path": "`erp-demonstrations`.ontos_ml_workbench.maintenance_logs",
         "item_id_column": "log_id",
         "text_columns": ["description", "technician_notes"],
         "image_columns": [],
@@ -91,7 +91,7 @@ sheets_data = [
         "name": "Quality Control Photos",
         "description": "Product inspection photos requiring defect localization (bounding boxes)",
         "source_type": "uc_volume",
-        "source_volume": "/Volumes/erp-demonstrations/vital_workbench/qc_photos",
+        "source_volume": "/Volumes/erp-demonstrations/ontos_ml_workbench/qc_photos",
         "source_path": "inspections/",
         "item_id_column": "photo_id",
         "text_columns": [],

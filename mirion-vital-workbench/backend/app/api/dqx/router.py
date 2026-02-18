@@ -1,7 +1,7 @@
 """DQX API router — proxies DQX endpoints at /api/dqx/*.
 
 Re-exposes DQX's core endpoints (version, config, checks, AI generation)
-through VITAL's FastAPI app so the DQX React UI can talk to them.
+through the Workbench FastAPI app so the DQX React UI can talk to them.
 """
 
 import logging

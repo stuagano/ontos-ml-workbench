@@ -18,7 +18,7 @@
 - **Status**: ✅ Exists
 
 ### 3. Schema
-- **Name**: serverless_dxukih_catalog.mirion
+- **Name**: serverless_dxukih_catalog.ontos_ml
 - **Owner**: stuart.gano@databricks.com
 - **Status**: ✅ Exists
 
@@ -56,7 +56,7 @@
 ```bash
 DATABRICKS_HOST=https://fevm-serverless-dxukih.cloud.databricks.com
 DATABRICKS_CATALOG=serverless_dxukih_catalog
-DATABRICKS_SCHEMA=mirion
+DATABRICKS_SCHEMA=ontos_ml
 DATABRICKS_WAREHOUSE_ID=387bcda0f2ece20c
 DATABRICKS_CONFIG_PROFILE=fe-vm-serverless-dxukih
 ```
@@ -73,7 +73,7 @@ targets:
       host: https://fevm-serverless-dxukih.cloud.databricks.com
     variables:
       catalog: serverless_dxukih_catalog
-      schema: mirion
+      schema: ontos_ml
       warehouse_id: "387bcda0f2ece20c"
 ```
 **Status**: ✅ Correct - FEVM is default target
@@ -81,7 +81,7 @@ targets:
 ### CLAUDE.md
 - ✅ Updated to reference FEVM workspace
 - ✅ Catalog: serverless_dxukih_catalog
-- ✅ Schema: mirion
+- ✅ Schema: ontos_ml
 
 ### README.md
 - ✅ Updated to reference FEVM workspace
@@ -95,7 +95,7 @@ targets:
 - [x] Workspace URL correct
 - [x] Profile configured (fe-vm-serverless-dxukih)
 - [x] Catalog exists (serverless_dxukih_catalog)
-- [x] Schema exists (mirion)
+- [x] Schema exists (ontos_ml)
 - [x] Warehouse running (387bcda0f2ece20c)
 - [x] All 9 required tables exist
 - [x] monitor_alerts table created
@@ -151,7 +151,7 @@ Navigate to http://localhost:5173
 **Workspace**: FEVM
 - ✅ URL: https://fevm-serverless-dxukih.cloud.databricks.com
 - ✅ Catalog: serverless_dxukih_catalog
-- ✅ Schema: mirion
+- ✅ Schema: ontos_ml
 - ✅ Warehouse: 387bcda0f2ece20c (RUNNING)
 - ✅ Tables: 15 (9 required + 6 domain)
 - ✅ Configuration: Correct in all files

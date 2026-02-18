@@ -19,7 +19,7 @@
 -- Replace these variables with your actual catalog and schema names
 -- Example:
 --   catalog: erp-demonstrations (or home_stuart_gano for dev)
---   schema: vital_workbench (or mirion_vital_workbench for dev)
+--   schema: ontos_ml_workbench (or ontos_ml_workbench for dev)
 
 CREATE TABLE IF NOT EXISTS `${catalog}`.`${schema}`.model_training_lineage (
   -- Identity

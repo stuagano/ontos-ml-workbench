@@ -1,7 +1,7 @@
 /**
  * APX-style App Layout
  *
- * Main application shell with collapsible sidebar navigation.
+ * Main application shell for Ontos ML Workbench with collapsible sidebar navigation.
  * Replaces Header + PipelineBreadcrumb pattern with a unified sidebar.
  */
 
@@ -160,7 +160,7 @@ function Logo() {
       <Database className="w-7 h-7 text-db-orange flex-shrink-0" />
       {open && (
         <span className="font-semibold text-db-gray-800 dark:text-white truncate">
-          Databits Workbench
+          Ontos ML Workbench
         </span>
       )}
     </div>

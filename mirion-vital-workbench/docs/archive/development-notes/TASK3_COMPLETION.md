@@ -21,7 +21,7 @@ Created models matching the Task 2 schema exactly:
 - Field validation (source_type, sampling_strategy, status enums)
 - Array fields for multimodal columns (text_columns, image_columns, metadata_columns)
 - Unity Catalog path validation
-- Matches `home_stuart_gano.mirion_vital_workbench.sheets` schema
+- Matches `home_stuart_gano.ontos_ml_workbench.sheets` schema
 
 ### 2. Service Layer (`app/services/sheet_service.py`)
 
@@ -125,7 +125,7 @@ curl -X POST http://localhost:8000/api/v1/sheets-v2 \
     "name": "Test Sheet",
     "description": "Test description",
     "source_type": "uc_table",
-    "source_table": "home_stuart_gano.mirion_vital_workbench.sheets",
+    "source_table": "home_stuart_gano.ontos_ml_workbench.sheets",
     "item_id_column": "id",
     "text_columns": ["name", "description"],
     "status": "active"
@@ -167,12 +167,12 @@ Once backend is running:
 
 ```sql
 -- In Databricks workspace SQL editor
-INSERT INTO home_stuart_gano.mirion_vital_workbench.sheets VALUES (
+INSERT INTO home_stuart_gano.ontos_ml_workbench.sheets VALUES (
   'sheet-test-001',
   'Test Sheet',
   'Test description',
   'uc_table',
-  'home_stuart_gano.mirion_vital_workbench.sheets',
+  'home_stuart_gano.ontos_ml_workbench.sheets',
   NULL,
   NULL,
   'id',
@@ -219,7 +219,7 @@ sheet = {
     "name": "PCB Defect Images",
     "description": "Microscope images of PCBs",
     "source_type": "uc_volume",
-    "source_volume": "/Volumes/home_stuart_gano/mirion_vital_workbench/pcb_images",
+    "source_volume": "/Volumes/home_stuart_gano/ontos_ml_workbench/pcb_images",
     "source_path": "defects/",
     "item_id_column": "filename",
     "image_columns": ["image_path"],

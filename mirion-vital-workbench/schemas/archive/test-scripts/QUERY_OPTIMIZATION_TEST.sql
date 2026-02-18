@@ -12,7 +12,7 @@
 
 -- Change this to your catalog and schema
 USE CATALOG home_stuart_gano;
-USE SCHEMA mirion_vital_workbench;
+USE SCHEMA ontos_ml_workbench;
 
 -- ============================================================================
 -- Test 1: OLD query (SLOW) - SELECT * without column filtering

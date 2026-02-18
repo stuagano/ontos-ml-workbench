@@ -1,6 +1,6 @@
-# VITAL Platform Workbench - Demo Guide
+# Ontos ML Workbench - Demo Guide
 
-**For Mirion's AI-Powered Radiation Safety Platform**
+**For Acme Instruments' AI-Powered Radiation Safety Platform**
 
 This guide will help you deliver a confident, impressive demo that resonates with both technical teams and executives. You know the product—this gives you the structure and talking points to make it shine.
 
@@ -67,13 +67,13 @@ Choose the right flow based on your audience and time constraints.
 
 ### Opening (30 seconds)
 
-"VITAL Platform Workbench is Mirion's mission control for AI-powered radiation safety. It transforms 60+ years of radiation physics expertise into reusable AI assets that work across all 86 facilities—whether they're connected to the cloud or completely air-gapped."
+"Ontos ML Workbench is Acme Instruments' mission control for AI-powered radiation safety. It transforms 60+ years of radiation physics expertise into reusable AI assets that work across all 86 facilities—whether they're connected to the cloud or completely air-gapped."
 
 **Navigate to: Home (DATA stage)**
 
 ### The Problem (1 minute)
 
-"Traditional ML requires separate pipelines for images, sensors, and documents. With LLMs, everything converges through **prompt templates**—reusable IP that encodes Mirion's expertise."
+"Traditional ML requires separate pipelines for images, sensors, and documents. With LLMs, everything converges through **prompt templates**—reusable IP that encodes Acme Instruments' expertise."
 
 **Show: Pipeline Breadcrumb**
 - Point to the 7 stages: DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
@@ -107,7 +107,7 @@ Choose the right flow based on your audience and time constraints.
 
 "With LLMs, the same platform handles images, sensor data, PDFs, and telemetry. One template, deployed across Airgap, Cloud, and Edge."
 
-**Key Talking Point:** "This isn't just a productivity tool—it's how we scale Mirion's expertise across every facility without hiring 86 separate teams."
+**Key Talking Point:** "This isn't just a productivity tool—it's how we scale Acme Instruments' expertise across every facility without hiring 86 separate teams."
 
 ### Closing (30 seconds)
 
@@ -127,7 +127,7 @@ Choose the right flow based on your audience and time constraints.
 
 ### Opening (1 minute)
 
-"Today I'll show you how VITAL Workbench takes you from raw radiation detector data to production models—all within the Databricks lakehouse. We'll focus on a real use case: **defect detection for radiation detectors**."
+"Today I'll show you how Ontos ML Workbench takes you from raw radiation detector data to production models—all within the Databricks lakehouse. We'll focus on a real use case: **defect detection for radiation detectors**."
 
 **Navigate to: DATA stage**
 
@@ -170,7 +170,7 @@ Choose the right flow based on your audience and time constraints.
 **Talking Points:**
 - "Templates encode 60 years of radiation physics expertise—crystal formation patterns, common defect types, inspection criteria."
 - "They're versioned Unity Catalog assets—we can track who changed what and why."
-- "This template references Mirion's internal defect taxonomy: inclusions, cracks, delamination, surface contamination."
+- "This template references Acme Instruments' internal defect taxonomy: inclusions, cracks, delamination, surface contamination."
 
 **Show:** Click "Generate Training Sheet"
 - Configure generation:
@@ -238,7 +238,7 @@ Choose the right flow based on your audience and time constraints.
 
 **Value Proposition:**
 - "Traditional tools: Label → Train → Improve prompt → **Re-label everything**"
-- "VITAL Workbench: Label → Train → Improve prompt → **Reuse labels**"
+- "Ontos ML Workbench: Label → Train → Improve prompt → **Reuse labels**"
 - "Expert time reduced by 90% for iterative prompt engineering."
 
 **Expected Question:** "What if the label changes?"
@@ -288,7 +288,7 @@ Choose the right flow based on your audience and time constraints.
 3. Configure deployment (ACE architecture)
 
 **Talking Points:**
-- "Mirion operates in 86 facilities with varying connectivity: Cloud-connected, edge gateways, and fully air-gapped."
+- "Acme Instruments operates in 86 facilities with varying connectivity: Cloud-connected, edge gateways, and fully air-gapped."
 - "Same model, three deployment modes—ACE architecture (Airgap, Cloud, Edge)."
 - "Unity Catalog handles model registry and versioning across all environments."
 
@@ -429,11 +429,11 @@ CREATE TABLE canonical_labels (
 ```json
 {
   "name": "Defect Detection - Scintillator Crystals",
-  "primary_table": "mirion_vital.raw.inspection_records",
+  "primary_table": "ontos_ml.raw.inspection_records",
   "secondary_sources": [
     {
       "type": "volume",
-      "path": "/Volumes/mirion_vital/raw/crystal_images",
+      "path": "/Volumes/ontos_ml/raw/crystal_images",
       "join_key": "inspection_id"
     }
   ],
@@ -632,7 +632,7 @@ A: "Yes—use Unity Catalog External Locations to mount S3, ADLS, or GCS. Then c
 2. **Select a Template**
    - Click "Defect Classification - Visual Inspection"
    - Show details:
-     - System prompt: "You are a Mirion radiation safety expert..."
+     - System prompt: "You are a Acme Instruments radiation safety expert..."
      - User prompt template: "Classify the defect in this crystal: {{image_path}}"
      - Input schema: `image_path`, `temperature`, `batch_id`
      - Output schema: `defect_type`, `severity`, `confidence`
@@ -657,10 +657,10 @@ A: "Yes—use Unity Catalog External Locations to mount S3, ADLS, or GCS. Then c
 - Save as draft → Publish when ready
 
 **Key Talking Points:**
-- "Templates encode Mirion's domain expertise—60 years of radiation physics knowledge."
+- "Templates encode Acme Instruments' domain expertise—60 years of radiation physics knowledge."
 - "They're **versioned Unity Catalog assets**—track who changed what and roll back if needed."
 - "Reusable: Same template works across all 86 facilities, all detector types."
-- "The prompt references Mirion's internal taxonomy: inclusion, crack, delamination, surface contamination."
+- "The prompt references Acme Instruments' internal taxonomy: inclusion, crack, delamination, surface contamination."
 
 **The Canonical Label Magic:**
 - "When we generate Q&A pairs, we check: Does a canonical label exist for this item?"
@@ -909,7 +909,7 @@ A: "Yes—concatenate Training Sheets before export. Lineage tracks all source T
 
 **Key Talking Points:**
 - "ACE architecture: Airgap, Cloud, Edge—same model, three deployment modes."
-- "Mirion operates in 86 facilities with varying connectivity:"
+- "Acme Instruments operates in 86 facilities with varying connectivity:"
   - Cloud-connected: Real-time inference via Model Serving
   - Edge gateways: Local inference with periodic sync
   - Airgap facilities: Fully offline, manual bundle updates
@@ -1077,8 +1077,8 @@ These are the differentiators—make sure to emphasize them in every demo.
 
 **Talking Points:**
 - "Traditional tools: Improve prompt → Re-label everything"
-- "VITAL Workbench: Improve prompt → Labels reused automatically"
-- "Expert time is Mirion's most valuable resource—we make it go 10x further."
+- "Ontos ML Workbench: Improve prompt → Labels reused automatically"
+- "Expert time is Acme Instruments' most valuable resource—we make it go 10x further."
 
 **Wow Moment:**
 - Label an image in Canonical Labeling Tool
@@ -1394,7 +1394,7 @@ Conflict resolution: If two experts label the same item, flag for review (consen
 
 ### Executive Audience
 
-"To summarize: VITAL Workbench transforms Mirion's 60 years of expertise into reusable AI assets—templates, labels, and models that scale across 86 facilities. We reduce expert time by 90% through label reuse, ensure compliance with built-in governance, and provide complete audit trails from production predictions back to source data.
+"To summarize: Ontos ML Workbench transforms Acme Instruments' 60 years of expertise into reusable AI assets—templates, labels, and models that scale across 86 facilities. We reduce expert time by 90% through label reuse, ensure compliance with built-in governance, and provide complete audit trails from production predictions back to source data.
 
 Next steps:
 1. Schedule a technical deep dive with your data platform team
@@ -1432,7 +1432,7 @@ apx dev start
 cd scripts && python verify_sheets.py
 
 # Check database
-databricks sql --statement "SELECT COUNT(*) FROM mirion_vital.workbench.sheets"
+databricks sql --statement "SELECT COUNT(*) FROM ontos_ml.workbench.sheets"
 
 # View logs
 tail -f backend/logs/app.log

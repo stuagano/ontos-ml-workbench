@@ -8,7 +8,7 @@
 
 1. **Deploy the app**
    ```bash
-   databricks apps deploy vital-workbench --source-code-path <path> --profile=<profile>
+   databricks apps deploy ontos-ml-workbench --source-code-path <path> --profile=<profile>
    ```
 
 2. **Automatically poll for deployment completion**
@@ -27,7 +27,7 @@
 
 ```bash
 # After deploying, ALWAYS run:
-./.claude/scripts/poll-databricks-app.sh vital-workbench <profile>
+./.claude/scripts/poll-databricks-app.sh ontos-ml-workbench <profile>
 
 # The script will:
 # 1. Check deployment status every 5 seconds
@@ -42,15 +42,15 @@
 cd frontend && npm run build && cd ..
 
 # 2. Deploy
-databricks apps deploy vital-workbench \
-  --source-code-path /Workspace/Users/user@example.com/Apps/vital-workbench \
+databricks apps deploy ontos-ml-workbench \
+  --source-code-path /Workspace/Users/user@example.com/Apps/ontos-ml-workbench \
   --profile=fe-vm-serverless-dxukih
 
 # 3. AUTOMATICALLY poll for completion (DO NOT SKIP THIS!)
-./.claude/scripts/poll-databricks-app.sh vital-workbench fe-vm-serverless-dxukih
+./.claude/scripts/poll-databricks-app.sh ontos-ml-workbench fe-vm-serverless-dxukih
 
 # 4. Verify endpoint
-APP_URL=$(databricks apps get vital-workbench --profile=fe-vm-serverless-dxukih -o json | jq -r '.url')
+APP_URL=$(databricks apps get ontos-ml-workbench --profile=fe-vm-serverless-dxukih -o json | jq -r '.url')
 curl $APP_URL/health
 
 # 5. NOW ask user to test
@@ -73,9 +73,9 @@ Use this workflow for:
 ## Error Handling
 
 If polling times out:
-1. Check app logs: `databricks apps logs vital-workbench --profile=<profile>`
-2. Check compute status: `databricks apps get vital-workbench --profile=<profile> -o json | jq -r '.compute_status'`
-3. Check for deployment errors: `databricks apps get vital-workbench --profile=<profile> -o json | jq -r '.status_message'`
+1. Check app logs: `databricks apps logs ontos-ml-workbench --profile=<profile>`
+2. Check compute status: `databricks apps get ontos-ml-workbench --profile=<profile> -o json | jq -r '.compute_status'`
+3. Check for deployment errors: `databricks apps get ontos-ml-workbench --profile=<profile> -o json | jq -r '.status_message'`
 4. Inform user of the issue and show relevant logs
 
 ## Key Points

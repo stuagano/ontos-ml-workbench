@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================================
-# VITAL Workbench - Agent Debug Session with Live Output
+# Ontos ML Workbench - Agent Debug Session with Live Output
 # Shows agent outputs in split panes for real-time debugging
 # ============================================================================
 
@@ -16,7 +16,7 @@ PURPLE='\033[0;35m'
 NC='\033[0m'
 
 SESSION_NAME="vital-debug"
-PROJECT_ROOT="/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench"
+PROJECT_ROOT="/Users/stuart.gano/Documents/Customers/Mirion/mirion-ontos-ml-workbench"
 
 log() { echo -e "${BLUE}[VITAL]${NC} $1"; }
 success() { echo -e "${GREEN}[✓]${NC} $1"; }

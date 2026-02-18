@@ -15,8 +15,8 @@ These have been consolidated into other files:
 
 #### Workspace-Specific Scripts (archive/workspace-specific/)
 These target old/different workspaces:
-- Root: `check_sheets.sql` → Uses `erp-demonstrations.vital_workbench` (old workspace)
-- Root: `fix_runtime_errors.sql` → Uses `erp-demonstrations.vital_workbench` (old workspace)
+- Root: `check_sheets.sql` → Uses `erp-demonstrations.ontos_ml_workbench` (old workspace)
+- Root: `fix_runtime_errors.sql` → Uses `erp-demonstrations.ontos_ml_workbench` (old workspace)
 
 **Note:** These should be moved from project root to schemas/archive/
 
@@ -88,7 +88,7 @@ Move to schemas/ directory with updated catalog/schema:
 - `/seed_pcb_data.sql` → `schemas/seed_pcb_data.sql`
 - `/seed_canonical_labels.sql` → `schemas/seed_canonical_labels.sql`
 
-Update to use `serverless_dxukih_catalog.mirion` instead of old catalogs.
+Update to use `serverless_dxukih_catalog.ontos_ml` instead of old catalogs.
 
 #### Backend SQL Files
 Review and potentially consolidate:
@@ -116,7 +116,7 @@ mkdir -p schemas/archive/{superseded,workspace-specific,test-scripts}
 
 ### Step 2: Move Superseded Files
 ```bash
-cd /Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench
+cd /Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench
 
 # Superseded migrations
 mv schemas/create_monitor_alerts.sql schemas/archive/superseded/
@@ -143,7 +143,7 @@ mv backend/QUERY_OPTIMIZATION_TEST.sql schemas/archive/test-scripts/
 mv seed_pcb_data.sql schemas/
 mv seed_canonical_labels.sql schemas/
 
-# Update these files to use serverless_dxukih_catalog.mirion
+# Update these files to use serverless_dxukih_catalog.ontos_ml
 ```
 
 ### Step 6: Review Backend SQL Files

@@ -92,7 +92,7 @@ curl http://localhost:8000/api/v1/monitoring/health/test-endpoint-id
 **SQL**:
 ```sql
 -- Create sample endpoint
-INSERT INTO home_stuart_gano.mirion_vital_workbench.endpoints_registry
+INSERT INTO home_stuart_gano.ontos_ml_workbench.endpoints_registry
 (id, name, description, endpoint_name, endpoint_type, status, created_at)
 VALUES (
   'demo-defect-detection-v1',
@@ -117,7 +117,7 @@ VALUES (
 **SQL**:
 ```sql
 -- Create sample feedback items
-INSERT INTO home_stuart_gano.mirion_vital_workbench.feedback_items
+INSERT INTO home_stuart_gano.ontos_ml_workbench.feedback_items
 (id, endpoint_id, request_id, rating, feedback_text, flagged, created_at)
 VALUES
   ('fb-1', 'demo-defect-detection-v1', 'req-1', 5, 'Perfect detection', FALSE, current_timestamp()),
@@ -139,7 +139,7 @@ VALUES
 **SQL**:
 ```sql
 -- Create sample alert
-INSERT INTO home_stuart_gano.mirion_vital_workbench.monitor_alerts
+INSERT INTO home_stuart_gano.ontos_ml_workbench.monitor_alerts
 (id, endpoint_id, alert_type, threshold, condition, status, message, created_at)
 VALUES (
   'alert-1',
@@ -189,7 +189,7 @@ If something goes wrong during demo prep:
 ### Rollback Database Changes
 ```sql
 -- Remove monitor_alerts table
-DROP TABLE IF EXISTS home_stuart_gano.mirion_vital_workbench.monitor_alerts;
+DROP TABLE IF EXISTS home_stuart_gano.ontos_ml_workbench.monitor_alerts;
 
 -- Note: Cannot remove flagged column easily in Delta Lake
 -- Best approach: Keep the column (it's harmless)

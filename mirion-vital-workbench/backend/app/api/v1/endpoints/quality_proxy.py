@@ -1,4 +1,4 @@
-"""VITAL → Ontos DQX Quality Proxy endpoint.
+"""Ontos ML → Ontos DQX Quality Proxy endpoint.
 
 Triggers the full proxy flow: fetch QA pairs from Ontos, run heuristic
 quality checks locally, push results back to Ontos's quality gate.

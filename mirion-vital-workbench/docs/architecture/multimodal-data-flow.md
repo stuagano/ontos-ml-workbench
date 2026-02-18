@@ -21,7 +21,7 @@ This is exactly right. Source data isn't just a PDF - it's a **rich multimodal r
 
 ### Step 1: Source Data in Unity Catalog
 
-**Table:** `mirion_vital.raw.parsed_invoices`
+**Table:** `ontos_ml.raw.parsed_invoices`
 
 ```sql
 -- Single invoice record (multimodal)
@@ -30,7 +30,7 @@ SELECT * FROM parsed_invoices WHERE invoice_id = 'inv-042';
 Result:
 {
   "invoice_id": "inv-042",
-  "pdf_path": "/Volumes/mirion_vital/raw/medical_invoices/invoice_042.pdf",
+  "pdf_path": "/Volumes/ontos_ml/raw/medical_invoices/invoice_042.pdf",
   
   -- Structured fields (pre-extracted or from metadata)
   "invoice_number": "INV-2024-001",
@@ -65,11 +65,11 @@ Result:
 {
   "sheet_id": "sheet-invoices-001",
   "name": "Medical Invoices - January 2026",
-  "primary_table": "mirion_vital.raw.parsed_invoices",
+  "primary_table": "ontos_ml.raw.parsed_invoices",
   "secondary_sources": [
     {
       "type": "volume",
-      "path": "/Volumes/mirion_vital/raw/medical_invoices",
+      "path": "/Volumes/ontos_ml/raw/medical_invoices",
       "join_key": "invoice_id"
     }
   ],
@@ -317,7 +317,7 @@ def generate_qa_pair(sheet, template, item):
       "attachments": [
         {
           "type": "pdf",
-          "path": "/Volumes/mirion_vital/raw/medical_invoices/invoice_042.pdf",
+          "path": "/Volumes/ontos_ml/raw/medical_invoices/invoice_042.pdf",
           "pages": [1, 2]
         }
       ],

@@ -1,6 +1,6 @@
 # Database Setup Guide
 
-Complete guide for initializing and managing the VITAL Workbench database on Databricks.
+Complete guide for initializing and managing the Ontos ML Workbench database on Databricks.
 
 ## Quick Start
 
@@ -8,17 +8,17 @@ Complete guide for initializing and managing the VITAL Workbench database on Dat
 # 1. Setup database (creates all tables)
 python scripts/setup_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # 2. Seed test data (adds sample data)
 python scripts/seed_test_data.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # 3. Verify setup (checks everything)
 python scripts/verify_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 ```
 
 ## Prerequisites
@@ -48,7 +48,7 @@ Scripts auto-detect the first available SQL warehouse. To specify a particular w
 python scripts/setup_database.py \
   --warehouse-id abc123def456 \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 ```
 
 To find your warehouse ID:
@@ -81,30 +81,30 @@ pip install databricks-sdk
 # Basic setup
 python scripts/setup_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # With specific warehouse
 python scripts/setup_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench \
+  --schema ontos_ml_workbench \
   --warehouse-id abc123
 
 # With CLI profile
 python scripts/setup_database.py \
   --profile dev \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # Reset mode (⚠️  DESTRUCTIVE - drops all tables)
 python scripts/setup_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench \
+  --schema ontos_ml_workbench \
   --reset
 
 # Debug mode
 python scripts/setup_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench \
+  --schema ontos_ml_workbench \
   --debug
 ```
 
@@ -123,7 +123,7 @@ python scripts/setup_database.py \
 
 ### seed_test_data.py
 
-**Purpose:** Populate database with realistic test data for Mirion use cases.
+**Purpose:** Populate database with realistic test data for Acme Instruments use cases.
 
 **Features:**
 - Adds 3 sample sheets (defect detection, predictive maintenance, calibration)
@@ -137,18 +137,18 @@ python scripts/setup_database.py \
 # Basic seeding
 python scripts/seed_test_data.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # With CLI profile
 python scripts/seed_test_data.py \
   --profile dev \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # Debug mode
 python scripts/seed_test_data.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench \
+  --schema ontos_ml_workbench \
   --debug
 ```
 
@@ -186,18 +186,18 @@ python scripts/seed_test_data.py \
 # Basic verification
 python scripts/verify_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # With CLI profile
 python scripts/verify_database.py \
   --profile dev \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # Debug mode
 python scripts/verify_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench \
+  --schema ontos_ml_workbench \
   --debug
 ```
 
@@ -217,17 +217,17 @@ python scripts/verify_database.py \
 # Step 1: Create all tables
 python scripts/setup_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # Step 2: Add sample data
 python scripts/seed_test_data.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # Step 3: Verify everything works
 python scripts/verify_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 ```
 
 ### Reset Database (⚠️  DESTRUCTIVE)
@@ -238,13 +238,13 @@ Use this to start fresh (deletes all data):
 # Reset will drop and recreate all tables
 python scripts/setup_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench \
+  --schema ontos_ml_workbench \
   --reset
 
 # Reseed test data
 python scripts/seed_test_data.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 ```
 
 ### Production Setup
@@ -255,18 +255,18 @@ For production environments:
 # 1. Setup with production catalog
 python scripts/setup_database.py \
   --catalog erp-demonstrations \
-  --schema vital_workbench \
+  --schema ontos_ml_workbench \
   --warehouse-id <prod-warehouse-id>
 
 # 2. Verify (skip seeding in production)
 python scripts/verify_database.py \
   --catalog erp-demonstrations \
-  --schema vital_workbench
+  --schema ontos_ml_workbench
 
 # 3. Setup application environment
 cat > backend/.env <<EOF
 DATABRICKS_CATALOG=erp-demonstrations
-DATABRICKS_SCHEMA=vital_workbench
+DATABRICKS_SCHEMA=ontos_ml_workbench
 DATABRICKS_WAREHOUSE_ID=<prod-warehouse-id>
 EOF
 ```
@@ -279,17 +279,17 @@ For local development:
 # 1. Setup with home catalog
 python scripts/setup_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # 2. Seed test data
 python scripts/seed_test_data.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # 3. Configure application
 cat > backend/.env <<EOF
 DATABRICKS_CATALOG=home_stuart_gano
-DATABRICKS_SCHEMA=mirion_vital_workbench
+DATABRICKS_SCHEMA=ontos_ml_workbench
 DATABRICKS_CONFIG_PROFILE=DEFAULT
 EOF
 ```
@@ -305,7 +305,7 @@ EOF
 python scripts/setup_database.py \
   --warehouse-id abc123 \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 ```
 
 Find warehouse ID:
@@ -359,7 +359,7 @@ python scripts/verify_database.py --debug
 ```bash
 python scripts/verify_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench \
+  --schema ontos_ml_workbench \
   --debug
 ```
 
@@ -369,7 +369,7 @@ python scripts/verify_database.py \
    ```bash
    python scripts/setup_database.py \
      --catalog home_stuart_gano \
-     --schema mirion_vital_workbench
+     --schema ontos_ml_workbench
    ```
 
 2. **Schema issues:** Check SQL files in `schemas/` directory match expected structure

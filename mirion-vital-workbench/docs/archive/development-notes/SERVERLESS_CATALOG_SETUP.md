@@ -2,9 +2,9 @@
 
 ## Quick Setup for Demo
 
-Your VITAL Workbench is configured to use:
+Your Ontos ML Workbench is configured to use:
 - **Catalog**: `serverless_dxukih_catalog`
-- **Schema**: `mirion`
+- **Schema**: `ontos_ml`
 
 ## Step 1: Create Database Tables (5 minutes)
 
@@ -19,13 +19,13 @@ Your VITAL Workbench is configured to use:
 7. Wait ~2-3 minutes for all tables to create
 8. Verify success - you should see:
    ```
-   SUCCESS: All VITAL Workbench tables created in serverless_dxukih_catalog.mirion
+   SUCCESS: All Ontos ML Workbench tables created in serverless_dxukih_catalog.ontos_ml
    ```
 
 ### Option B: Databricks CLI
 
 ```bash
-cd /Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench
+cd /Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench
 
 databricks sql execute \
   --warehouse-id 387bcda0f2ece20c \
@@ -38,7 +38,7 @@ Run this in SQL Editor to confirm all tables exist:
 
 ```sql
 USE CATALOG serverless_dxukih_catalog;
-USE SCHEMA mirion;
+USE SCHEMA ontos_ml;
 
 SHOW TABLES;
 ```
@@ -62,36 +62,36 @@ If you want demo data, you have two options:
 ### Option A: Quick Sample Data
 
 ```bash
-cd /Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench
+cd /Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench
 
 # Update the catalog in the seed script first
 python3 scripts/seed_test_data.py \
   --catalog serverless_dxukih_catalog \
-  --schema mirion
+  --schema ontos_ml
 ```
 
 ### Option B: Use Existing Data
 
-If you already have data in `serverless_dxukih_catalog.mirion.customers`, you can:
+If you already have data in `serverless_dxukih_catalog.ontos_ml.customers`, you can:
 
 1. Query your existing tables:
    ```sql
-   SELECT * FROM serverless_dxukih_catalog.mirion.customers LIMIT 10;
+   SELECT * FROM serverless_dxukih_catalog.ontos_ml.customers LIMIT 10;
    ```
 
 2. Create sheets pointing to your data:
    ```sql
-   INSERT INTO serverless_dxukih_catalog.mirion.sheets (
+   INSERT INTO serverless_dxukih_catalog.ontos_ml.sheets (
      id, name, description,
      source_type, source_table,
      item_id_column, status,
      created_by, updated_by
    ) VALUES (
      'customer-data-001',
-     'Mirion Customer Data',
+     'Acme Instruments Customer Data',
      'Customer records from customers table',
      'uc_table',
-     'serverless_dxukih_catalog.mirion.customers',
+     'serverless_dxukih_catalog.ontos_ml.customers',
      'id',
      'active',
      'setup',
@@ -108,7 +108,7 @@ Your backend is already configured to use the new catalog. Just verify it's runn
 lsof -ti:8000 && echo "✓ Backend running" || echo "✗ Backend not running"
 
 # If not running, start it:
-cd /Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/backend
+cd /Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/backend
 python3 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
 ```
 
@@ -123,7 +123,7 @@ Navigate to:
 
 ## Verification Checklist
 
-- [ ] All 11 tables created in `serverless_dxukih_catalog.mirion`
+- [ ] All 11 tables created in `serverless_dxukih_catalog.ontos_ml`
 - [ ] Backend `.env` file points to correct catalog
 - [ ] Backend running on port 8000
 - [ ] Frontend running on port 5173
@@ -140,7 +140,7 @@ databricks catalogs list | grep serverless_dxukih_catalog
 ```
 
 ### Issue: "Permission denied"
-You need `USE CATALOG` and `CREATE TABLE` permissions on `serverless_dxukih_catalog.mirion`
+You need `USE CATALOG` and `CREATE TABLE` permissions on `serverless_dxukih_catalog.ontos_ml`
 
 ### Issue: "Tables already exist"
 The script uses `CREATE TABLE IF NOT EXISTS` - safe to run multiple times

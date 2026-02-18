@@ -17,7 +17,7 @@ result = w.statement_execution.execute_statement(
             WHEN label_confidence = 'verified' THEN 4
             ELSE 0
         END) as avg_confidence
-    FROM `erp-demonstrations`.vital_workbench.canonical_labels
+    FROM `erp-demonstrations`.ontos_ml_workbench.canonical_labels
     GROUP BY label_type
     ORDER BY count DESC
     """,
@@ -56,7 +56,7 @@ if (
             label_confidence,
             data_classification,
             SIZE(allowed_uses) as num_uses
-        FROM `erp-demonstrations`.vital_workbench.canonical_labels
+        FROM `erp-demonstrations`.ontos_ml_workbench.canonical_labels
         LIMIT 5
         """,
         warehouse_id="387bcda0f2ece20c",

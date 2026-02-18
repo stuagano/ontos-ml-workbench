@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Execute all VITAL Platform Workbench schemas in Unity Catalog
+Execute all Ontos ML Workbench schemas in Unity Catalog
 Uses Databricks SDK to run SQL files in order
 """
 import sys
@@ -57,7 +57,7 @@ def execute_sql_file(w: WorkspaceClient, warehouse_id: str, sql_file: Path) -> N
 
 
 def main():
-    print("🚀 Creating VITAL Platform Workbench schema in Unity Catalog...\n")
+    print("🚀 Creating Ontos ML Workbench schema in Unity Catalog...\n")
 
     # Initialize Databricks client
     try:
@@ -103,11 +103,11 @@ def main():
     print("🔍 Verifying tables...")
     try:
         # Check if schema exists
-        schema = w.schemas.get("home_stuart_gano.mirion_vital_workbench")
+        schema = w.schemas.get("home_stuart_gano.ontos_ml_workbench")
         print(f"   ✅ Schema: {schema.full_name}")
 
         # List tables
-        tables = list(w.tables.list("home_stuart_gano", "mirion_vital_workbench"))
+        tables = list(w.tables.list("home_stuart_gano", "ontos_ml_workbench"))
         print(f"   ✅ Tables created: {len(tables)}")
         for table in tables:
             print(f"      - {table.name}")

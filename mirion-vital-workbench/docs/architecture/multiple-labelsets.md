@@ -37,7 +37,7 @@ Each of these is a **different task** requiring **different ground truth labels*
 
 **Canonical Labels Table:**
 ```sql
-mirion_vital.workbench.canonical_labels (
+ontos_ml.workbench.canonical_labels (
   id UUID PRIMARY KEY,
   sheet_id UUID,              -- Which dataset
   item_ref STRING,            -- Which specific item (e.g., "invoice_042.pdf")

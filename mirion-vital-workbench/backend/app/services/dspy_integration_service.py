@@ -1,7 +1,7 @@
 """
 DSPy Integration Service
 
-Handles export of Databits to DSPy format, optimization run management,
+Handles export of Q&A pairs to DSPy format, optimization run management,
 and the feedback loop between Example Store and DSPy optimization.
 """
 
@@ -39,7 +39,7 @@ class DSPyIntegrationService:
     Service for DSPy integration.
 
     Responsibilities:
-    - Convert Databits to DSPy Signatures and Programs
+    - Convert Q&A pairs to DSPy Signatures and Programs
     - Export DSPy-compatible Python code
     - Manage optimization runs (via Databricks Jobs + MLflow)
     - Sync optimization results back to Example Store

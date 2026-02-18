@@ -347,7 +347,7 @@ grep -r "Assembly\|DataBit" *.md --exclude-dir=archive --exclude-dir=node_module
 
 ## Summary
 
-Successfully consolidated and organized VITAL Workbench documentation:
+Successfully consolidated and organized Ontos ML Workbench documentation:
 - ✅ 55 files archived to organized structure
 - ✅ 19 active docs remain (clear purpose)
 - ✅ 3 quick start guides → 1 comprehensive guide

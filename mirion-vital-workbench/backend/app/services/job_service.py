@@ -13,25 +13,25 @@ from app.services.sql_service import get_sql_service
 # Job type to DAB job name mapping
 JOB_TYPE_MAP = {
     # DATA stage - extraction and ingestion
-    "ocr_extraction": "[Databits] OCR Extraction",
-    "audio_transcription": "[Databits] Audio Transcription",
-    "image_captioning": "[Databits] Image Captioning",
-    "embedding_generation": "[Databits] Embedding Generation",
+    "ocr_extraction": "[Ontos ML] OCR Extraction",
+    "audio_transcription": "[Ontos ML] Audio Transcription",
+    "image_captioning": "[Ontos ML] Image Captioning",
+    "embedding_generation": "[Ontos ML] Embedding Generation",
     # DATA stage - AI functions
-    "ai_classify": "[Databits] AI Classify",
-    "ai_extract": "[Databits] AI Extract",
-    "ai_summarize": "[Databits] AI Summarize",
-    "ai_mask": "[Databits] AI Mask",
+    "ai_classify": "[Ontos ML] AI Classify",
+    "ai_extract": "[Ontos ML] AI Extract",
+    "ai_summarize": "[Ontos ML] AI Summarize",
+    "ai_mask": "[Ontos ML] AI Mask",
     # CURATE stage
-    "labeling_agent": "[Databits] Labeling Agent",
-    "quality_scoring": "[Databits] Quality Scoring",
+    "labeling_agent": "[Ontos ML] Labeling Agent",
+    "quality_scoring": "[Ontos ML] Quality Scoring",
     # TRAIN stage
-    "data_assembly": "[Databits] Data Assembly",
-    "finetune_fmapi": "[Databits] Fine-tune (FMAPI)",
-    "model_evaluation": "[Databits] Model Evaluation",
+    "data_assembly": "[Ontos ML] Data Assembly",
+    "finetune_fmapi": "[Ontos ML] Fine-tune (FMAPI)",
+    "model_evaluation": "[Ontos ML] Model Evaluation",
     # MONITOR stage
-    "drift_detection": "[Databits] Drift Detection",
-    "feedback_analysis": "[Databits] Feedback Analysis",
+    "drift_detection": "[Ontos ML] Drift Detection",
+    "feedback_analysis": "[Ontos ML] Feedback Analysis",
 }
 
 

@@ -1,4 +1,4 @@
-# E2E Testing Guide for VITAL Platform Workbench
+# E2E Testing Guide for Ontos ML Workbench
 
 Complete guide for running and maintaining the E2E test suite.
 

@@ -1,11 +1,11 @@
-# Databits Workbench - Development Status
+# Ontos ML Workbench - Development Status
 
 ## Current State (January 2026)
 
 ### ✅ Completed
 
 **Infrastructure**
-- 9 Delta tables in `home_stuart_gano.databits_dev`
+- 9 Delta tables in `home_stuart_gano.ontos_ml_dev`
 - 11 Databricks jobs deployed via DAB
 - CI/CD pipeline (backend, frontend, E2E tests)
 

@@ -65,7 +65,7 @@ Total: 20 hours (vs. 60 hours without canonical labels)
 ### New Table: `canonical_labels`
 
 ```sql
-mirion_vital.workbench.canonical_labels (
+ontos_ml.workbench.canonical_labels (
   id UUID PRIMARY KEY,
   
   -- Links to source data
@@ -100,7 +100,7 @@ mirion_vital.workbench.canonical_labels (
 ### Updated Table: `qa_pairs`
 
 ```sql
-mirion_vital.workbench.qa_pairs (
+ontos_ml.workbench.qa_pairs (
   id UUID PRIMARY KEY,
   training_sheet_id UUID,
   item_ref STRING,

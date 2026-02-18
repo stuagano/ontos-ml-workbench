@@ -1,7 +1,7 @@
 [project]
-name = "mirion-vital-workbench"
+name = "ontos-ml-workbench"
 version = "0.1.0"
-description = "VITAL Platform Workbench - Mission control for Mirion's AI-powered radiation safety platform"
+description = "Ontos ML Workbench - Mission control for AI-powered radiation safety platform"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.109.0",
@@ -40,11 +40,11 @@ frontend = "frontend"
 python-version = "3.11"
 
 [tool.apx.metadata]
-name = "mirion-vital-workbench"
-app-name = "VITAL Workbench"
-app-slug = "vital-workbench"
+name = "ontos-ml-workbench"
+app-name = "Ontos ML Workbench"
+app-slug = "ontos-ml-workbench"
 app-entrypoint = "app.main:app"
 metadata-path = "app.yaml"
 version = "0.1.0"
-description = "VITAL Platform Workbench for Mirion"
+description = "Ontos ML Workbench"
 working-dir = "backend"

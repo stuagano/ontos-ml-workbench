@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Create sheets table with PRD v2.3 schema in erp-demonstrations.vital_workbench
+Create sheets table with PRD v2.3 schema in erp-demonstrations.ontos_ml_workbench
 """
 
 from databricks.sdk import WorkspaceClient
@@ -12,7 +12,7 @@ print("📝 Creating sheets table with PRD v2.3 schema...\n")
 
 # Use identifier escaping for catalog with hyphen
 create_table_sql = """
-CREATE TABLE IF NOT EXISTS `erp-demonstrations`.vital_workbench.sheets (
+CREATE TABLE IF NOT EXISTS `erp-demonstrations`.ontos_ml_workbench.sheets (
   id STRING NOT NULL,
   name STRING NOT NULL,
   description STRING,
@@ -56,7 +56,7 @@ except Exception as e:
 # Verify
 print("\n🔍 Verifying table exists...")
 result = w.statement_execution.execute_statement(
-    statement="SHOW TABLES IN `erp-demonstrations`.vital_workbench LIKE 'sheets'",
+    statement="SHOW TABLES IN `erp-demonstrations`.ontos_ml_workbench LIKE 'sheets'",
     warehouse_id=warehouse_id,
     wait_timeout="30s",
 )

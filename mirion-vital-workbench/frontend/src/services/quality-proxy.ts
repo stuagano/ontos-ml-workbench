@@ -1,5 +1,5 @@
 /**
- * API client for the VITAL → Ontos DQX quality proxy endpoint.
+ * API client for the Ontos ML DQX quality proxy endpoint.
  */
 
 import type { QualityProxyRunResponse } from "../types/quality-proxy";

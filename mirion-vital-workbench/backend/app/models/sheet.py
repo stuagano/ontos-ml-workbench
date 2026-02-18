@@ -328,7 +328,7 @@ class SheetResponse(BaseModel):
     # PRD v2.3: Unity Catalog source references (multimodal)
     primary_table: str | None = Field(
         default=None,
-        description="Primary Unity Catalog table (e.g., 'mirion_vital.raw.pcb_inspections')",
+        description="Primary Unity Catalog table (e.g., 'ontos_ml.raw.pcb_inspections')",
     )
     secondary_sources: list[dict[str, Any]] | None = Field(
         default=None, description="Additional sources: [{type, path, join_key}, ...]"

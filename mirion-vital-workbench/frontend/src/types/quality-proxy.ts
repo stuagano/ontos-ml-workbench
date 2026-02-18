@@ -1,5 +1,5 @@
 /**
- * TypeScript types for the VITAL → Ontos DQX quality proxy.
+ * TypeScript types for the Ontos ML DQX quality proxy.
  *
  * Mirrors backend models in dqx_quality_proxy.py.
  */

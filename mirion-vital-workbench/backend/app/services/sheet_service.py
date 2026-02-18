@@ -1,6 +1,6 @@
 """
 Sheet Service - Manages sheets (dataset definitions) with Unity Catalog integration
-Matches schema from home_stuart_gano.mirion_vital_workbench.sheets
+Matches schema from home_stuart_gano.ontos_ml_workbench.sheets
 """
 import logging
 from datetime import datetime

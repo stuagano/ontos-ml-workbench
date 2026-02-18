@@ -1,6 +1,6 @@
 # Chart Components
 
-Reusable Recharts-based visualization components for the VITAL Platform Workbench monitoring dashboard.
+Reusable Recharts-based visualization components for the Ontos ML Workbench monitoring dashboard.
 
 ## Overview
 

@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # App info
-    app_name: str = "Databits Workbench"
+    app_name: str = "Ontos ML Workbench"
     app_version: str = "0.1.0"
     debug: bool = False
     port: int = 5000
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     databricks_token: str = ""  # Only for local dev, use app auth in production
     databricks_config_profile: str = ""  # CLI profile for local dev
     databricks_catalog: str = "main"
-    databricks_schema: str = "databits"
+    databricks_schema: str = "ontos_ml"
     databricks_warehouse_id: str = ""
 
     # SQL execution settings
@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     # Lakebase schema name (uses same SQL Warehouse as main schema)
     # The Lakebase schema has engine='postgres' for optimized OLTP workloads
-    lakebase_schema: str = "vital_lakebase"
+    lakebase_schema: str = "ontos_ml_lakebase"
 
     # Ontos backend URL (for DQX quality proxy)
     ontos_base_url: str = "http://localhost:8000"

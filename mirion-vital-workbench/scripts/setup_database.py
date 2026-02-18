@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Database Setup Script for VITAL Workbench
+Database Setup Script for Ontos ML Workbench
 
 Initializes all required Delta tables in Unity Catalog with proper error handling
 and idempotent execution.
 
 Usage:
-    python scripts/setup_database.py --catalog home_stuart_gano --schema mirion_vital_workbench
-    python scripts/setup_database.py --catalog erp-demonstrations --schema vital_workbench --warehouse-id abc123
+    python scripts/setup_database.py --catalog home_stuart_gano --schema ontos_ml_workbench
+    python scripts/setup_database.py --catalog erp-demonstrations --schema ontos_ml_workbench --warehouse-id abc123
     python scripts/setup_database.py --profile dev --reset  # Reset all tables
 """
 
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 class DatabaseSetup:
-    """Handles database initialization for VITAL Workbench"""
+    """Handles database initialization for Ontos ML Workbench"""
 
     def __init__(self, catalog: str, schema: str, warehouse_id: Optional[str] = None, profile: Optional[str] = None):
         """
@@ -168,7 +168,7 @@ class DatabaseSetup:
         """
         # Replace catalog/schema placeholders
         sql_content = sql_content.replace(
-            'home_stuart_gano.mirion_vital_workbench',
+            'home_stuart_gano.ontos_ml_workbench',
             f'`{self.catalog}`.`{self.schema}`'
         )
         sql_content = sql_content.replace('${catalog}', f'`{self.catalog}`')
@@ -403,7 +403,7 @@ class DatabaseSetup:
             True if setup was successful
         """
         logger.info("=" * 80)
-        logger.info("VITAL Workbench Database Setup")
+        logger.info("Ontos ML Workbench Database Setup")
         logger.info("=" * 80)
         logger.info(f"Catalog: {self.catalog}")
         logger.info(f"Schema: {self.schema}")
@@ -451,21 +451,21 @@ class DatabaseSetup:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Initialize VITAL Workbench database',
+        description='Initialize Ontos ML Workbench database',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Setup with auto-detected warehouse
-  python scripts/setup_database.py --catalog home_stuart_gano --schema mirion_vital_workbench
+  python scripts/setup_database.py --catalog home_stuart_gano --schema ontos_ml_workbench
 
   # Setup with specific warehouse
-  python scripts/setup_database.py --catalog erp-demonstrations --schema vital_workbench --warehouse-id abc123
+  python scripts/setup_database.py --catalog erp-demonstrations --schema ontos_ml_workbench --warehouse-id abc123
 
   # Setup using CLI profile
-  python scripts/setup_database.py --profile dev --catalog home_stuart_gano --schema mirion_vital_workbench
+  python scripts/setup_database.py --profile dev --catalog home_stuart_gano --schema ontos_ml_workbench
 
   # Reset and recreate all tables (⚠️  DESTRUCTIVE)
-  python scripts/setup_database.py --catalog home_stuart_gano --schema mirion_vital_workbench --reset
+  python scripts/setup_database.py --catalog home_stuart_gano --schema ontos_ml_workbench --reset
         """
     )
 

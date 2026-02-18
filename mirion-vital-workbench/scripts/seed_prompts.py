@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Seed MLflow Prompt Registry with sample prompt templates.
 
-This script registers sample prompts for the VITAL Workbench demo.
+This script registers sample prompts for the Ontos ML Workbench demo.
 Run after bootstrap.sh has set up the workspace.
 
 Usage:
@@ -58,7 +58,7 @@ Provide your analysis in this JSON format:
         ],
         commit_message="Initial sensor anomaly detection template",
         tags={
-            "app": "vital-workbench",
+            "app": "ontos-ml-workbench",
             "use_case": "anomaly_detection",
             "status": "published",
             "author": "bootstrap",
@@ -116,7 +116,7 @@ Provide classification in this JSON format:
         ],
         commit_message="Initial defect classification template",
         tags={
-            "app": "vital-workbench",
+            "app": "ontos-ml-workbench",
             "use_case": "defect_detection",
             "status": "published",
             "author": "bootstrap",
@@ -174,7 +174,7 @@ Provide your maintenance prediction:
         ],
         commit_message="Initial predictive maintenance template",
         tags={
-            "app": "vital-workbench",
+            "app": "ontos-ml-workbench",
             "use_case": "predictive_maintenance",
             "status": "draft",
             "author": "bootstrap",
@@ -233,7 +233,7 @@ Provide calibration analysis:
         ],
         commit_message="Initial calibration insights template",
         tags={
-            "app": "vital-workbench",
+            "app": "ontos-ml-workbench",
             "use_case": "calibration",
             "status": "draft",
             "author": "bootstrap",

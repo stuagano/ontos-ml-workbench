@@ -1,6 +1,6 @@
 """Lakebase service for OLTP operations with optimized read latency.
 
-Uses a separate Databricks schema (vital_lakebase) for operational application state.
+Uses a separate Databricks schema (ontos_ml_lakebase) for operational application state.
 This schema has the 'postgres' engine property for optimized OLTP workloads.
 """
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class LakebaseService:
     """Service for Lakebase operations using Databricks SQL.
 
-    Uses the vital_lakebase schema with postgres engine for optimized OLTP reads.
+    Uses the ontos_ml_lakebase schema with postgres engine for optimized OLTP reads.
     Falls back to the main schema if Lakebase tables don't exist.
     """
 
@@ -41,7 +41,7 @@ class LakebaseService:
                 f"SELECT 1 FROM {self._table('label_classes')} LIMIT 1"
             )
             self._available = True
-            logger.info("Lakebase service initialized - using vital_lakebase schema")
+            logger.info("Lakebase service initialized - using ontos_ml_lakebase schema")
         except Exception as e:
             logger.warning(f"Lakebase schema not available, using fallback: {e}")
             self._available = False
@@ -51,7 +51,7 @@ class LakebaseService:
     def _table(self, name: str) -> str:
         """Get fully qualified Lakebase table name."""
         catalog = self.settings.databricks_catalog
-        return f"`{catalog}`.`vital_lakebase`.`{name}`"
+        return f"`{catalog}`.`ontos_ml_lakebase`.`{name}`"
 
     def _delta_table(self, name: str) -> str:
         """Get fully qualified Delta table name (fallback)."""

@@ -151,12 +151,12 @@ Individual training example within an Assembly. Structured as OpenAI messages fo
 ### Updated Tables
 
 **Renamed:**
-- `databits.databits` → `mirion_vital.workbench.sheets` (dataset pointers)
-- (kept) `mirion_vital.workbench.templates` (prompt templates)
-- (implicit) → `mirion_vital.workbench.assemblies` (Q&A datasets)
+- `ontos_ml.ontos_ml` → `ontos_ml.workbench.sheets` (dataset pointers)
+- (kept) `ontos_ml.workbench.templates` (prompt templates)
+- (implicit) → `ontos_ml.workbench.assemblies` (Q&A datasets)
 
 **New:**
-- `mirion_vital.workbench.qa_pairs` - Individual Q&A pairs within assemblies
+- `ontos_ml.workbench.qa_pairs` - Individual Q&A pairs within assemblies
 
 **Updated:**
 - `curation_items` → merged into `qa_pairs` table
@@ -166,14 +166,14 @@ Individual training example within an Assembly. Structured as OpenAI messages fo
 
 ```sql
 -- OLD (v2.0)
-databits.databits (databit_id, version, content, modality, ...)
-databits.curation_items (databit_id, item_ref, agent_label, ...)
+ontos_ml.ontos_ml (databit_id, version, content, modality, ...)
+ontos_ml.curation_items (databit_id, item_ref, agent_label, ...)
 
 -- NEW (v2.1)
-mirion_vital.workbench.sheets (id, name, primary_table, secondary_sources, ...)
-mirion_vital.workbench.templates (id, name, system_prompt, user_prompt_template, ...)
-mirion_vital.workbench.assemblies (id, sheet_id, template_id, status, ...)
-mirion_vital.workbench.qa_pairs (id, assembly_id, messages, status, ...)
+ontos_ml.workbench.sheets (id, name, primary_table, secondary_sources, ...)
+ontos_ml.workbench.templates (id, name, system_prompt, user_prompt_template, ...)
+ontos_ml.workbench.assemblies (id, sheet_id, template_id, status, ...)
+ontos_ml.workbench.qa_pairs (id, assembly_id, messages, status, ...)
 ```
 
 ---
@@ -316,14 +316,14 @@ The existing Sprint Plan (docs/SPRINT_PLAN.md) references old terminology:
 - Clear documentation
 
 **Option B: Maintain compatibility**
-- Alias old endpoints (`/databits` → `/sheets`)
+- Alias old endpoints (`/ontos_ml` → `/sheets`)
 - Deprecation warnings
 - Remove in v3.0
 
 ### Data Migration
 
 **Required:**
-- Rename tables: `databits.databits` → `mirion_vital.workbench.sheets`
+- Rename tables: `ontos_ml.ontos_ml` → `ontos_ml.workbench.sheets`
 - Update foreign keys: `databit_id` → `assembly_id` / `sheet_id` / `template_id`
 - Migrate `curation_items` → `qa_pairs` with new schema
 

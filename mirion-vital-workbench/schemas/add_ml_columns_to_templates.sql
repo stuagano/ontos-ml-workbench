@@ -9,8 +9,8 @@
 --   "Predict [target_column] based on [feature_columns]"
 -- ============================================================================
 
-ALTER TABLE home_stuart_gano.mirion_vital_workbench.templates
+ALTER TABLE home_stuart_gano.ontos_ml_workbench.templates
 ADD COLUMN feature_columns ARRAY<STRING> COMMENT 'Independent variables (input features) - columns used to make predictions';
 
-ALTER TABLE home_stuart_gano.mirion_vital_workbench.templates
+ALTER TABLE home_stuart_gano.ontos_ml_workbench.templates
 ADD COLUMN target_column STRING COMMENT 'Dependent variable (output/target) - the column we are trying to predict';

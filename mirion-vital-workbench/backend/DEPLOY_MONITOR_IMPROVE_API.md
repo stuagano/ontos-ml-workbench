@@ -1,6 +1,6 @@
 # DEPLOY/MONITOR/IMPROVE Stage API Endpoints
 
-Complete backend API implementation for the final three stages of the VITAL Workbench AI lifecycle.
+Complete backend API implementation for the final three stages of the Ontos ML Workbench AI lifecycle.
 
 ## Overview
 

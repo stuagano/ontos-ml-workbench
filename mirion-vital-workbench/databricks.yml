@@ -1,13 +1,13 @@
 bundle:
-  name: vital-workbench
+  name: ontos-ml-workbench
 
 variables:
   catalog:
-    description: Unity Catalog catalog for VITAL Platform metadata
+    description: Unity Catalog catalog for Ontos ML Workbench metadata
     default: main
   schema:
     description: Schema within the catalog for workbench tables
-    default: vital_workbench
+    default: ontos_ml_workbench
   warehouse_id:
     description: SQL Warehouse ID for query execution (required for Databricks Apps)
     default: ""
@@ -25,7 +25,7 @@ targets:
       host: https://fevm-serverless-dxukih.cloud.databricks.com
     variables:
       catalog: serverless_dxukih_catalog
-      schema: mirion
+      schema: ontos_ml
       warehouse_id: "387bcda0f2ece20c"
 
   # Alternative development targets (optional)
@@ -35,7 +35,7 @@ targets:
       profile: e2-demo-west
     variables:
       catalog: main
-      schema: vital_workbench_dev
+      schema: ontos_ml_workbench_dev
 
   logfood:
     mode: development
@@ -43,4 +43,4 @@ targets:
       profile: logfood
     variables:
       catalog: home_stuart_gano
-      schema: vital_workbench
+      schema: ontos_ml_workbench

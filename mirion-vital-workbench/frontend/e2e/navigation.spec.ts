@@ -9,7 +9,7 @@ test.describe('Navigation', () => {
     await page.goto('/');
 
     // Should show the app title or logo
-    await expect(page.locator('text=Databits')).toBeVisible();
+    await expect(page.locator('text=Ontos ML')).toBeVisible();
   });
 
   test('should navigate to Templates page', async ({ page }) => {

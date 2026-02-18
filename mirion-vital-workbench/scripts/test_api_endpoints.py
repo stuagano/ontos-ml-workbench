@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Comprehensive API endpoint testing for VITAL Workbench."""
+"""Comprehensive API endpoint testing for Ontos ML Workbench."""
 
 import requests
 import json
@@ -116,7 +116,7 @@ def main():
     tester = APITester()
 
     print("=" * 80)
-    print("VITAL Workbench - API Endpoint Testing")
+    print("Ontos ML Workbench - API Endpoint Testing")
     print(f"Started: {datetime.now().isoformat()}")
     print("=" * 80)
 
@@ -168,7 +168,7 @@ def main():
             "name": "Test Sheet - API Test",
             "description": "Created by automated test",
             "source_type": "uc_table",
-            "source_table": "erp-demonstrations.vital_workbench.test_data",
+            "source_table": "erp-demonstrations.ontos_ml_workbench.test_data",
             "item_id_column": "id",
             "text_columns": ["description"],
             "image_columns": [],
@@ -201,8 +201,8 @@ def main():
 
     tester.test(
         "List Tables",
-        "GET", "/api/v1/unity-catalog/catalogs/erp-demonstrations/schemas/vital_workbench/tables",
-        description="List tables in vital_workbench schema"
+        "GET", "/api/v1/unity-catalog/catalogs/erp-demonstrations/schemas/ontos_ml_workbench/tables",
+        description="List tables in ontos_ml_workbench schema"
     )
 
     # ========================================================================

@@ -1,20 +1,20 @@
-# VITAL Platform Workbench - Demo Data Setup Guide
+# Ontos ML Workbench - Demo Data Setup Guide
 
-**Mission**: Prepare impressive demo-quality data that showcases the canonical labeling workflow and Mirion's radiation safety AI use cases.
+**Mission**: Prepare impressive demo-quality data that showcases the canonical labeling workflow and Acme Instruments' radiation safety AI use cases.
 
 ## Overview
 
-This guide explains how to seed VITAL Workbench with demo data that demonstrates:
+This guide explains how to seed Ontos ML Workbench with demo data that demonstrates:
 1. **"Label once, reuse everywhere"** - The core innovation of canonical labeling
 2. **Multimodal data fusion** - Images + sensor data + metadata
-3. **Mirion-specific use cases** - Radiation safety domain expertise
+3. **Acme Instruments-specific use cases** - Radiation safety domain expertise
 4. **Complete workflow** - DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
 
 ## What Sample Data Exists
 
 ### 1. Synthetic Data (`synthetic_data/`)
 
-High-quality synthetic data for Mirion use cases:
+High-quality synthetic data for Acme Instruments use cases:
 
 #### Defect Detection (`defect_detection/`)
 - **File**: `labels.json`
@@ -45,7 +45,7 @@ High-quality synthetic data for Mirion use cases:
 #### Prompt Templates (`templates/`)
 - **Files**: 4 JSON templates (defect detection, predictive maintenance, anomaly detection, calibration)
 - **Content**: Complete prompt definitions with system instructions, few-shot examples, input/output schemas
-- **Demo Value**: Reusable prompt IP, Mirion domain knowledge
+- **Demo Value**: Reusable prompt IP, Acme Instruments domain knowledge
 
 ### 2. Database Seed Scripts
 
@@ -57,16 +57,16 @@ Seeds 5 sample Sheets:
 - Equipment Maintenance Logs (text classification)
 - Quality Control Inspection Photos (vision AI)
 
-**Status**: Generic examples - needs Mirion-specific replacement
+**Status**: Generic examples - needs Acme Instruments-specific replacement
 
 #### `schemas/seed_templates.sql`
 Seeds 4 prompt templates:
 - Document Classifier
 - Sentiment Analyzer
 - Entity Extractor
-- Radiation Equipment Defect Classifier (Mirion-specific!)
+- Radiation Equipment Defect Classifier (Acme Instruments-specific!)
 
-**Status**: Mix of generic + Mirion examples
+**Status**: Mix of generic + Acme Instruments examples
 
 #### `schemas/99_validate_and_seed.sql`
 Complete validation + seed script demonstrating:
@@ -81,11 +81,11 @@ Complete validation + seed script demonstrating:
 #### `scripts/seed_sheets_data.py`
 - Uses Databricks SDK to execute SQL
 - Reads `schemas/seed_sheets.sql`
-- Targets: `erp-demonstrations.vital_workbench`
+- Targets: `erp-demonstrations.ontos_ml_workbench`
 - **Warehouse**: `387bcda0f2ece20c`
 
 #### `scripts/seed_test_data.py`
-Comprehensive seeding for Mirion use cases:
+Comprehensive seeding for Acme Instruments use cases:
 - 3 Sheets (Defect Detection, Predictive Maintenance, Calibration)
 - 3 Templates with JSON schemas
 - 3 Endpoints (prod + staging)
@@ -151,19 +151,19 @@ Alternative approach using Statement Execution API:
 # Using PRD v2.3 schema on home catalog
 python scripts/seed_test_data.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench \
+  --schema ontos_ml_workbench \
   --profile fe-vm-serverless-dxukih
 
 # Optional: Specify warehouse
 python scripts/seed_test_data.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench \
+  --schema ontos_ml_workbench \
   --warehouse-id 387bcda0f2ece20c \
   --profile fe-vm-serverless-dxukih
 ```
 
 **What you get**:
-- 3 Mirion-specific Sheets
+- 3 Acme Instruments-specific Sheets
 - 3 Templates with full JSON schemas
 - 3 Endpoints (defect classifier, maintenance predictor, calibration advisor)
 - 4 Feedback items
@@ -301,7 +301,7 @@ databricks sql exec --warehouse-id <warehouse-id> < 99_validate_and_seed.sql
 1. Physicist labels simulation SIM-2024-001 with calibration_factor=1.05
 2. Canonical label: `(sheet-calibration-001, SIM-2024-001, calibration_recommendation)`
 3. When creating new Training Sheets for calibration, this expert label is reused
-4. Preserves 60+ years of Mirion physics expertise
+4. Preserves 60+ years of Acme Instruments physics expertise
 
 ## Impressive Demo Flow
 
@@ -309,7 +309,7 @@ databricks sql exec --warehouse-id <warehouse-id> < 99_validate_and_seed.sql
 
 **Act 1: The Problem (2 min)**
 - Show synthetic data: Real detector images, sensor telemetry, Monte Carlo results
-- "Mirion has 60+ years of radiation expertise locked in expert heads"
+- "Acme Instruments has 60+ years of radiation expertise locked in expert heads"
 - "Need to democratize this knowledge, enable domain experts to build AI"
 
 **Act 2: The Innovation (3 min)**
@@ -341,7 +341,7 @@ databricks sql exec --warehouse-id <warehouse-id> < 99_validate_and_seed.sql
 - Navigate to IMPROVE stage: Show feedback loop closing the circle
 
 **The Punchline**:
-"VITAL Workbench turns Mirion's physicists, engineers, and domain experts into AI builders. No coding required. Label once, reuse everywhere. 60+ years of expertise, now encoded as reusable prompt templates and canonical labels."
+"Ontos ML Workbench turns Acme Instruments' physicists, engineers, and domain experts into AI builders. No coding required. Label once, reuse everywhere. 60+ years of expertise, now encoded as reusable prompt templates and canonical labels."
 
 ## Verification Commands
 
@@ -351,15 +351,15 @@ After seeding, verify data:
 # Check table counts
 databricks sql exec --warehouse-id <warehouse-id> --statement "
 SELECT
-  'sheets' as table_name, COUNT(*) as count FROM home_stuart_gano.mirion_vital_workbench.sheets
+  'sheets' as table_name, COUNT(*) as count FROM home_stuart_gano.ontos_ml_workbench.sheets
 UNION ALL
-SELECT 'templates', COUNT(*) FROM home_stuart_gano.mirion_vital_workbench.templates
+SELECT 'templates', COUNT(*) FROM home_stuart_gano.ontos_ml_workbench.templates
 UNION ALL
-SELECT 'canonical_labels', COUNT(*) FROM home_stuart_gano.mirion_vital_workbench.canonical_labels
+SELECT 'canonical_labels', COUNT(*) FROM home_stuart_gano.ontos_ml_workbench.canonical_labels
 UNION ALL
-SELECT 'training_sheets', COUNT(*) FROM home_stuart_gano.mirion_vital_workbench.training_sheets
+SELECT 'training_sheets', COUNT(*) FROM home_stuart_gano.ontos_ml_workbench.training_sheets
 UNION ALL
-SELECT 'qa_pairs', COUNT(*) FROM home_stuart_gano.mirion_vital_workbench.qa_pairs
+SELECT 'qa_pairs', COUNT(*) FROM home_stuart_gano.ontos_ml_workbench.qa_pairs
 ORDER BY table_name
 "
 
@@ -370,8 +370,8 @@ SELECT
   cl.label_type,
   cl.reuse_count,
   COUNT(qa.id) as qa_pairs_using_this_label
-FROM home_stuart_gano.mirion_vital_workbench.canonical_labels cl
-LEFT JOIN home_stuart_gano.mirion_vital_workbench.qa_pairs qa
+FROM home_stuart_gano.ontos_ml_workbench.canonical_labels cl
+LEFT JOIN home_stuart_gano.ontos_ml_workbench.qa_pairs qa
   ON qa.canonical_label_id = cl.id
 GROUP BY cl.item_ref, cl.label_type, cl.reuse_count
 ORDER BY reuse_count DESC
@@ -384,7 +384,7 @@ SELECT
   COUNT(*) as total_pairs,
   SUM(CASE WHEN was_auto_approved THEN 1 ELSE 0 END) as auto_approved,
   ROUND(100.0 * SUM(CASE WHEN was_auto_approved THEN 1 ELSE 0 END) / COUNT(*), 1) as auto_approval_rate_pct
-FROM home_stuart_gano.mirion_vital_workbench.qa_pairs
+FROM home_stuart_gano.ontos_ml_workbench.qa_pairs
 GROUP BY training_sheet_id
 "
 ```
@@ -400,22 +400,22 @@ GROUP BY training_sheet_id
 ## Files Reference
 
 **Seed Scripts**:
-- `/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/scripts/bootstrap.sh` - Complete bootstrap
-- `/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/scripts/seed_test_data.py` - Mirion use cases
-- `/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/scripts/seed_sheets_data.py` - Generic sheets
-- `/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/scripts/seed_via_api.py` - API-based seeding
+- `/Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/scripts/bootstrap.sh` - Complete bootstrap
+- `/Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/scripts/seed_test_data.py` - Acme Instruments use cases
+- `/Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/scripts/seed_sheets_data.py` - Generic sheets
+- `/Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/scripts/seed_via_api.py` - API-based seeding
 
 **Schema Scripts**:
-- `/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/schemas/99_validate_and_seed.sql` - Best example
-- `/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/schemas/seed_sheets.sql` - Sheet samples
-- `/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/schemas/seed_templates.sql` - Template samples
+- `/Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/schemas/99_validate_and_seed.sql` - Best example
+- `/Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/schemas/seed_sheets.sql` - Sheet samples
+- `/Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/schemas/seed_templates.sql` - Template samples
 
 **Synthetic Data**:
-- `/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/synthetic_data/defect_detection/labels.json`
-- `/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/synthetic_data/predictive_maintenance/equipment.json`
-- `/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/synthetic_data/anomaly_detection/anomalies.json`
-- `/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/synthetic_data/calibration/mc_simulations.csv`
-- `/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/synthetic_data/templates/*.json`
+- `/Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/synthetic_data/defect_detection/labels.json`
+- `/Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/synthetic_data/predictive_maintenance/equipment.json`
+- `/Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/synthetic_data/anomaly_detection/anomalies.json`
+- `/Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/synthetic_data/calibration/mc_simulations.csv`
+- `/Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/synthetic_data/templates/*.json`
 
 ## Pro Tips
 

@@ -1,5 +1,5 @@
 -- Create monitor_alerts table
-CREATE TABLE IF NOT EXISTS home_stuart_gano.mirion_vital_workbench.monitor_alerts (
+CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.monitor_alerts (
   id STRING NOT NULL,
   endpoint_id STRING NOT NULL,
   alert_type STRING NOT NULL,

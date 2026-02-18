@@ -1,6 +1,6 @@
-# VITAL Workbench - Quick Start
+# Ontos ML Workbench - Quick Start
 
-Get the VITAL Platform Workbench running in 10 minutes.
+Get the Ontos ML Workbench running in 10 minutes.
 
 ## Prerequisites
 
@@ -27,7 +27,7 @@ DATABRICKS_WAREHOUSE_ID=your-warehouse-id
 
 # Unity Catalog
 DATABRICKS_CATALOG=home_<username>
-DATABRICKS_SCHEMA=mirion_vital_workbench
+DATABRICKS_SCHEMA=ontos_ml_workbench
 
 # Optional: CLI profile name
 DATABRICKS_CONFIG_PROFILE=your-profile-name
@@ -158,7 +158,7 @@ Verify:
 Verify tables exist:
 ```sql
 USE CATALOG home_<username>;
-USE SCHEMA mirion_vital_workbench;
+USE SCHEMA ontos_ml_workbench;
 SHOW TABLES;
 ```
 
@@ -181,7 +181,7 @@ CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
 
 Current configuration uses:
 - **Catalog**: `home_<username>` (personal development space)
-- **Schema**: `mirion_vital_workbench`
+- **Schema**: `ontos_ml_workbench`
 - **Warehouse**: Your serverless or Pro warehouse
 
 For production deployment, see [DEPLOYMENT.md](DEPLOYMENT.md).
@@ -241,4 +241,4 @@ For issues:
 
 ---
 
-**Ready?** Run through Steps 1-4 above and you'll have VITAL Workbench running locally in under 10 minutes.
+**Ready?** Run through Steps 1-4 above and you'll have Ontos ML Workbench running locally in under 10 minutes.

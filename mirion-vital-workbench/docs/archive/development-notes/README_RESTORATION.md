@@ -1,4 +1,4 @@
-# VITAL Platform Workbench - Restoration Summary
+# Ontos ML Workbench - Restoration Summary
 
 **Date**: February 10, 2026  
 **Status**: ✅ **COMPLETE - System Operational**  
@@ -9,7 +9,7 @@
 ## Quick Status
 
 ✅ **Backend**: Running on http://localhost:8000  
-✅ **Database**: Connected to FEVM (`serverless_dxukih_catalog.mirion`)  
+✅ **Database**: Connected to FEVM (`serverless_dxukih_catalog.ontos_ml`)  
 ✅ **Configuration**: All files aligned to FEVM workspace  
 ✅ **APIs**: Tested and working  
 ✅ **Documentation**: 8 comprehensive guides created
@@ -38,7 +38,7 @@
 ```bash
 Workspace:  https://fevm-serverless-dxukih.cloud.databricks.com
 Catalog:    serverless_dxukih_catalog
-Schema:     mirion
+Schema:     ontos_ml
 Warehouse:  387bcda0f2ece20c
 Profile:    fe-vm-serverless-dxukih
 ```
@@ -195,4 +195,4 @@ Read `FINAL_STATUS.md` for complete details.
 
 ---
 
-**Well done! Your VITAL Platform Workbench is ready to use.** 🚀
+**Well done! Your Ontos ML Workbench is ready to use.** 🚀

@@ -10,7 +10,7 @@ from databricks.sdk.service.sql import StatementState
 # Configuration
 WAREHOUSE_ID = "387bcda0f2ece20c"
 CATALOG = "erp-demonstrations"
-SCHEMA = "vital_workbench"
+SCHEMA = "ontos_ml_workbench"
 
 def main():
     # Initialize Databricks client using profile from environment

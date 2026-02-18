@@ -50,6 +50,6 @@ done
 echo "🎉 All schemas created successfully!"
 echo ""
 echo "Next steps:"
-echo "  1. Verify tables: databricks sql -e 'SHOW TABLES IN mirion_vital.workbench'"
-echo "  2. Check seed data: databricks sql -e 'SELECT * FROM mirion_vital.workbench.sheets'"
+echo "  1. Verify tables: databricks sql -e 'SHOW TABLES IN ontos_ml.workbench'"
+echo "  2. Check seed data: databricks sql -e 'SELECT * FROM ontos_ml.workbench.sheets'"
 echo "  3. Start Task #3: Sheet Management API"

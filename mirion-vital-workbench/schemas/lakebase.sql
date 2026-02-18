@@ -323,7 +323,7 @@ CREATE TABLE IF NOT EXISTS sheets (
     status VARCHAR(50) DEFAULT 'draft',  -- draft, published, archived
 
     -- Unity Catalog source references (multimodal)
-    primary_table VARCHAR(500),  -- e.g., 'mirion_vital.raw.pcb_inspections'
+    primary_table VARCHAR(500),  -- e.g., 'ontos_ml.raw.pcb_inspections'
     secondary_sources JSONB DEFAULT '[]',  -- Array of {type, path, join_key}
     join_keys TEXT[] DEFAULT '{}',
     filter_condition TEXT,

@@ -2,7 +2,7 @@
 DSPy Integration API Endpoints
 
 Provides REST API for:
-- Exporting Databits to DSPy format
+- Exporting Q&A pairs to DSPy format
 - Managing optimization runs
 - Syncing results back to Example Store
 """

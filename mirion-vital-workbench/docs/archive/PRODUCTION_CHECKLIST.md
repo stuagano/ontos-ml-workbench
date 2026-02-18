@@ -1,6 +1,6 @@
-# VITAL Platform Workbench - Production Deployment Checklist
+# Ontos ML Workbench - Production Deployment Checklist
 
-Complete checklist for deploying VITAL Platform Workbench to production.
+Complete checklist for deploying Ontos ML Workbench to production.
 
 ## Pre-Deployment Checklist
 
@@ -13,11 +13,11 @@ Complete checklist for deploying VITAL Platform Workbench to production.
   - [ ] Network security configured (private link, IP access lists)
 
 - [ ] **Unity Catalog**
-  - [ ] Production catalog created: `mirion_vital`
-  - [ ] Schema created: `mirion_vital.workbench`
+  - [ ] Production catalog created: `ontos_ml`
+  - [ ] Schema created: `ontos_ml.workbench`
   - [ ] Service principal created for app authentication
   - [ ] Permissions granted to service principal
-  - [ ] Backup catalog created: `mirion_vital_backups`
+  - [ ] Backup catalog created: `ontos_ml_backups`
 
 - [ ] **SQL Warehouse**
   - [ ] Production warehouse provisioned
@@ -145,8 +145,8 @@ Complete checklist for deploying VITAL Platform Workbench to production.
 - [ ] **Backup Current State**
   ```sql
   -- Backup all tables
-  CREATE TABLE mirion_vital_backups.sheets_backup_$(date +%Y%m%d)
-  AS SELECT * FROM mirion_vital.workbench.sheets;
+  CREATE TABLE ontos_ml_backups.sheets_backup_$(date +%Y%m%d)
+  AS SELECT * FROM ontos_ml.workbench.sheets;
 
   -- Repeat for all tables
   ```
@@ -176,19 +176,19 @@ Complete checklist for deploying VITAL Platform Workbench to production.
 - [ ] **Verify Schema**
   ```sql
   -- Check all tables exist
-  SHOW TABLES IN mirion_vital.workbench;
+  SHOW TABLES IN ontos_ml.workbench;
 
   -- Verify table structures
-  DESCRIBE mirion_vital.workbench.sheets;
-  DESCRIBE mirion_vital.workbench.qa_pairs;
+  DESCRIBE ontos_ml.workbench.sheets;
+  DESCRIBE ontos_ml.workbench.qa_pairs;
   ```
 
 - [ ] **Grant Permissions**
   ```sql
   -- Grant permissions to service principal
-  GRANT USE CATALOG ON CATALOG mirion_vital TO `${SP_ID}`;
-  GRANT USE SCHEMA ON SCHEMA mirion_vital.workbench TO `${SP_ID}`;
-  GRANT SELECT, MODIFY ON SCHEMA mirion_vital.workbench TO `${SP_ID}`;
+  GRANT USE CATALOG ON CATALOG ontos_ml TO `${SP_ID}`;
+  GRANT USE SCHEMA ON SCHEMA ontos_ml.workbench TO `${SP_ID}`;
+  GRANT SELECT, MODIFY ON SCHEMA ontos_ml.workbench TO `${SP_ID}`;
   ```
 
 - [ ] **Seed Initial Data (if needed)**
@@ -207,7 +207,7 @@ Complete checklist for deploying VITAL Platform Workbench to production.
 
 - [ ] **Sync to Workspace**
   ```bash
-  databricks sync . /Workspace/Users/deploy/Apps/vital-workbench --profile=prod --watch=false
+  databricks sync . /Workspace/Users/deploy/Apps/ontos-ml-workbench --profile=prod --watch=false
   ```
 
 - [ ] **Configure App**
@@ -218,18 +218,18 @@ Complete checklist for deploying VITAL Platform Workbench to production.
 - [ ] **Deploy App**
   ```bash
   # Create app (first time only)
-  databricks apps create vital-workbench --profile=prod
+  databricks apps create ontos-ml-workbench --profile=prod
 
   # Deploy app
-  databricks apps deploy vital-workbench \
-    --source-code-path /Workspace/Users/deploy/Apps/vital-workbench \
+  databricks apps deploy ontos-ml-workbench \
+    --source-code-path /Workspace/Users/deploy/Apps/ontos-ml-workbench \
     --profile=prod
   ```
 
 - [ ] **Wait for App to Start**
   ```bash
   # Monitor app status
-  watch -n 5 "databricks apps get vital-workbench --profile=prod -o json | jq -r '.compute_status'"
+  watch -n 5 "databricks apps get ontos-ml-workbench --profile=prod -o json | jq -r '.compute_status'"
   ```
 
 ### 4. Frontend Deployment
@@ -258,7 +258,7 @@ See [Post-Deployment Verification](#post-deployment-verification) section below.
 
 - [ ] **Health Check**
   ```bash
-  APP_URL=$(databricks apps get vital-workbench --profile=prod -o json | jq -r '.url')
+  APP_URL=$(databricks apps get ontos-ml-workbench --profile=prod -o json | jq -r '.url')
   curl $APP_URL/health
   # Expected: {"status": "healthy", ...}
   ```
@@ -457,19 +457,19 @@ If critical issues are discovered:
 
 1. **Stop Current App**
    ```bash
-   databricks apps stop vital-workbench --profile=prod
+   databricks apps stop ontos-ml-workbench --profile=prod
    ```
 
 2. **Restore Previous App Version**
    ```bash
-   databricks apps deploy vital-workbench \
-     --source-code-path /Workspace/Users/deploy/Apps/vital-workbench-backup \
+   databricks apps deploy ontos-ml-workbench \
+     --source-code-path /Workspace/Users/deploy/Apps/ontos-ml-workbench-backup \
      --profile=prod
    ```
 
 3. **Verify App Restarted**
    ```bash
-   databricks apps get vital-workbench --profile=prod
+   databricks apps get ontos-ml-workbench --profile=prod
    ```
 
 ### Database Rollback (if schema changed)
@@ -477,17 +477,17 @@ If critical issues are discovered:
 1. **Restore Tables from Backup**
    ```sql
    -- Drop current tables
-   DROP TABLE IF EXISTS mirion_vital.workbench.sheets;
+   DROP TABLE IF EXISTS ontos_ml.workbench.sheets;
 
    -- Restore from backup
-   CREATE TABLE mirion_vital.workbench.sheets
-   AS SELECT * FROM mirion_vital_backups.sheets_backup_$(date +%Y%m%d);
+   CREATE TABLE ontos_ml.workbench.sheets
+   AS SELECT * FROM ontos_ml_backups.sheets_backup_$(date +%Y%m%d);
    ```
 
 2. **Or Use Time Travel**
    ```sql
    -- Restore to version before deployment
-   RESTORE TABLE mirion_vital.workbench.sheets TO VERSION AS OF 42;
+   RESTORE TABLE ontos_ml.workbench.sheets TO VERSION AS OF 42;
    ```
 
 ### Notification

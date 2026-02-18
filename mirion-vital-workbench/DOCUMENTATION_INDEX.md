@@ -1,4 +1,4 @@
-# VITAL Workbench - Documentation Index
+# Ontos ML Workbench - Documentation Index
 
 **Last Updated**: February 11, 2026
 

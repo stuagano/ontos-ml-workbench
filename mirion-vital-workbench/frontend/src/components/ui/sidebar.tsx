@@ -36,7 +36,7 @@ export function useSidebar() {
 // Provider
 // ============================================================================
 
-const SIDEBAR_STORAGE_KEY = "databits-sidebar-state";
+const SIDEBAR_STORAGE_KEY = "ontos-ml-sidebar-state";
 
 interface SidebarProviderProps {
   children: React.ReactNode;

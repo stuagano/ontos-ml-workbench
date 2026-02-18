@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-The VITAL Workbench codebase had **6+ different catalog/schema configurations** scattered across:
+The Ontos ML Workbench codebase had **6+ different catalog/schema configurations** scattered across:
 - Backend `.env` files
 - Schema SQL files
 - DAB bundle configs
@@ -21,7 +21,7 @@ This caused:
 - ❌ Confusion about which warehouse to use
 - ❌ Multiple stale setup scripts
 
-**Result**: Backend was pointing to `serverless_dxukih_catalog.mirion` but tables were in `home_stuart_gano.mirion_vital_workbench`.
+**Result**: Backend was pointing to `serverless_dxukih_catalog.ontos_ml` but tables were in `home_stuart_gano.ontos_ml_workbench`.
 
 ---
 
@@ -32,7 +32,7 @@ This caused:
 **Before** (`backend/.env`):
 ```bash
 DATABRICKS_CATALOG=serverless_dxukih_catalog
-DATABRICKS_SCHEMA=mirion
+DATABRICKS_SCHEMA=ontos_ml
 DATABRICKS_WAREHOUSE_ID=387bcda0f2ece20c
 DATABRICKS_CONFIG_PROFILE=fe-vm-serverless-dxukih
 ```
@@ -40,7 +40,7 @@ DATABRICKS_CONFIG_PROFILE=fe-vm-serverless-dxukih
 **After** (`backend/.env`):
 ```bash
 DATABRICKS_CATALOG=home_stuart_gano
-DATABRICKS_SCHEMA=mirion_vital_workbench
+DATABRICKS_SCHEMA=ontos_ml_workbench
 DATABRICKS_WAREHOUSE_ID=
 # Profile will use default from ~/.databrickscfg
 ```
@@ -108,7 +108,7 @@ Moved **19 point-in-time docs** to `docs/archive/`:
 
 ```
 Catalog: home_stuart_gano
-Schema:  mirion_vital_workbench
+Schema:  ontos_ml_workbench
 ```
 
 **Why this location?**
@@ -128,7 +128,7 @@ fevm:
     profile: fe-vm-serverless-dxukih
   variables:
     catalog: serverless_dxukih_catalog
-    schema: mirion
+    schema: ontos_ml
     warehouse_id: "387bcda0f2ece20c"
 ```
 
@@ -137,7 +137,7 @@ fevm:
 production:
   variables:
     catalog: main
-    schema: vital_workbench
+    schema: ontos_ml_workbench
 ```
 
 ---
@@ -187,7 +187,7 @@ docs/
 Run this to verify tables are in the correct location:
 
 ```bash
-databricks sql -e "SHOW TABLES IN home_stuart_gano.mirion_vital_workbench;"
+databricks sql -e "SHOW TABLES IN home_stuart_gano.ontos_ml_workbench;"
 ```
 
 **Expected tables**:
@@ -339,7 +339,7 @@ Test report files (can be archived):
 
 2. **Verify tables exist**:
    ```bash
-   databricks sql -e "SHOW TABLES IN home_stuart_gano.mirion_vital_workbench;"
+   databricks sql -e "SHOW TABLES IN home_stuart_gano.ontos_ml_workbench;"
    ```
 
 3. **Apply schema fixes** (if tables exist):
@@ -410,7 +410,7 @@ Test report files (can be archived):
 If anything breaks, restore the original configuration:
 
 ```bash
-cd /Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench
+cd /Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench
 cp backend/.env.backup backend/.env
 ```
 

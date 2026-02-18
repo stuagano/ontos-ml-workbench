@@ -25,7 +25,7 @@
 **Solution:** Updated `backend/.env` to use correct catalog:
 ```bash
 DATABRICKS_CATALOG=erp-demonstrations
-DATABRICKS_SCHEMA=vital_workbench
+DATABRICKS_SCHEMA=ontos_ml_workbench
 ```
 **Result:** Backend now connects to correct database location
 
@@ -33,7 +33,7 @@ DATABRICKS_SCHEMA=vital_workbench
 **Problem:** Table didn't exist, causing monitoring endpoints to fail
 **Solution:** Created table using Databricks SDK:
 ```sql
-CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`vital_workbench`.monitor_alerts (
+CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`ontos_ml_workbench`.monitor_alerts (
   id STRING NOT NULL,
   endpoint_id STRING NOT NULL,
   alert_type STRING NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`vital_workbench`.monitor_alerts
 **Problem:** `feedback_items` table missing `flagged` column
 **Solution:** Added column using ALTER TABLE:
 ```sql
-ALTER TABLE `erp-demonstrations`.`vital_workbench`.feedback_items
+ALTER TABLE `erp-demonstrations`.`ontos_ml_workbench`.feedback_items
 ADD COLUMN flagged BOOLEAN
 ```
 **Result:** All feedback endpoints now work correctly
@@ -102,7 +102,7 @@ positive = int(row["positive_count"] or 0)
 ### Backend Logs
 ```
 ✓ Cache warmed: 10 catalogs
-✓ Cache warmed: 17 tables in erp-demonstrations.vital_workbench
+✓ Cache warmed: 17 tables in erp-demonstrations.ontos_ml_workbench
 INFO: 127.0.0.1 - "GET /api/v1/feedback/stats HTTP/1.1" 200 OK
 INFO: 127.0.0.1 - "GET /api/v1/monitoring/alerts?status=active HTTP/1.1" 200 OK
 INFO: 127.0.0.1 - "GET /api/v1/monitoring/metrics/performance?hours=24 HTTP/1.1" 200 OK
@@ -135,14 +135,14 @@ INFO: 127.0.0.1 - "GET /api/v1/monitoring/metrics/performance?hours=24 HTTP/1.1"
 ## 🔧 Fixes Applied
 
 ### Database Schema Fixes
-1. Created `monitor_alerts` table in `erp-demonstrations.vital_workbench`
+1. Created `monitor_alerts` table in `erp-demonstrations.ontos_ml_workbench`
 2. Added `flagged` column to `feedback_items` table
 3. Verified all 17 tables exist in correct catalog/schema
 
 ### Configuration Fixes
 1. Updated `backend/.env`:
    - `DATABRICKS_CATALOG=erp-demonstrations`
-   - `DATABRICKS_SCHEMA=vital_workbench`
+   - `DATABRICKS_SCHEMA=ontos_ml_workbench`
 2. Restarted backend with cleared Python cache
 3. Verified backend connects to correct workspace
 
@@ -195,7 +195,7 @@ The application is now **fully operational** on localhost:
 
 ### Database
 - **Catalog:** `erp-demonstrations`
-- **Schema:** `vital_workbench`
+- **Schema:** `ontos_ml_workbench`
 - **Tables:** 17 tables (all required tables present)
 - **Warehouse:** `387bcda0f2ece20c` (Shared SQL Endpoint)
 
@@ -260,7 +260,7 @@ The application is now **fully operational** on localhost:
 
 **Status:** ✅ **FULLY OPERATIONAL**
 
-The VITAL Workbench application is now running perfectly on localhost:
+The Ontos ML Workbench application is now running perfectly on localhost:
 - ✅ Frontend: Zero errors, all pages functional
 - ✅ Backend: All endpoints working, zero errors in logs
 - ✅ Database: All tables and columns present

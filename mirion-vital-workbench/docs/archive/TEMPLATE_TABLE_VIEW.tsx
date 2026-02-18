@@ -143,7 +143,7 @@
             <div>
               <h1 className="text-2xl font-bold text-db-gray-900">Templates</h1>
               <p className="text-db-gray-600 mt-1">
-                Manage prompt templates (Databits) for your AI workflows
+                Manage prompt templates for your AI workflows
               </p>
             </div>
             <div className="flex items-center gap-3">

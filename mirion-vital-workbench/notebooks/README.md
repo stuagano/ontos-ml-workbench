@@ -1,4 +1,4 @@
-# VITAL Platform Notebooks
+# Ontos ML Platform Notebooks
 
 Databricks notebooks implementing the 7-stage AI lifecycle pipeline.
 

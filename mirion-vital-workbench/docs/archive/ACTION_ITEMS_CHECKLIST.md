@@ -1,4 +1,4 @@
-# Action Items Checklist - VITAL Platform Workbench
+# Action Items Checklist - Ontos ML Workbench
 
 **Last Updated:** February 7, 2026
 **Status:** 🔴 CRITICAL ISSUES BLOCKING DEPLOYMENT
@@ -14,7 +14,7 @@
 - [ ] **Fix SQL Warehouse Timeout** (4-6 hours)
   - Verify `.env` has correct Databricks credentials
   - Check SQL Warehouse `387bcda0f2ece20c` is running
-  - Test query: `SELECT * FROM erp-demonstrations.vital_workbench.sheets LIMIT 10`
+  - Test query: `SELECT * FROM erp-demonstrations.ontos_ml_workbench.sheets LIMIT 10`
   - Add health check endpoint: `GET /api/health/db`
   - Consider local SQLite fallback for development
   - **Blocker Impact:** Prevents DATA stage from loading
@@ -22,7 +22,7 @@
 - [ ] **Create monitor_alerts Table** (30 minutes)
   ```sql
   -- Execute lines 393-420 from schemas/init.sql
-  CREATE TABLE IF NOT EXISTS erp-demonstrations.vital_workbench.monitor_alerts (
+  CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.monitor_alerts (
     alert_id STRING NOT NULL,
     endpoint_name STRING NOT NULL,
     alert_type STRING NOT NULL,
@@ -38,7 +38,7 @@
     notes STRING
   ) USING DELTA;
   ```
-  - Verify table created: `DESCRIBE TABLE erp-demonstrations.vital_workbench.monitor_alerts;`
+  - Verify table created: `DESCRIBE TABLE erp-demonstrations.ontos_ml_workbench.monitor_alerts;`
   - Seed sample data: `INSERT INTO ... VALUES (...);`
   - **Blocker Impact:** Prevents Monitor alerts from loading
 
@@ -52,7 +52,7 @@
   - Run: `python scripts/initialize_database.py`
   - Or manually create table from `schemas/init.sql` lines 1-50
   - Seed data: `python scripts/seed_sheets_data.py`
-  - Verify: `SELECT COUNT(*) FROM erp-demonstrations.vital_workbench.sheets;`
+  - Verify: `SELECT COUNT(*) FROM erp-demonstrations.ontos_ml_workbench.sheets;`
   - **Blocker Impact:** No data for DATA stage to display
 
 ### Frontend Team

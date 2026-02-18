@@ -2,7 +2,7 @@ resources:
   jobs:
     # DATA Stage Jobs
     ocr_extraction:
-      name: "[VITAL] OCR Extraction"
+      name: "[Ontos ML] OCR Extraction"
       description: "Extract text from images and documents using OCR"
       tasks:
         - task_key: ocr_extraction
@@ -15,7 +15,7 @@ resources:
             client: "1"
 
     audio_transcription:
-      name: "[VITAL] Audio Transcription"
+      name: "[Ontos ML] Audio Transcription"
       description: "Transcribe audio files to text"
       tasks:
         - task_key: audio_transcription
@@ -28,7 +28,7 @@ resources:
             client: "1"
 
     embedding_generation:
-      name: "[VITAL] Embedding Generation"
+      name: "[Ontos ML] Embedding Generation"
       description: "Generate vector embeddings for text and images"
       tasks:
         - task_key: embedding_generation
@@ -41,7 +41,7 @@ resources:
             client: "1"
 
     ai_functions:
-      name: "[VITAL] AI Functions"
+      name: "[Ontos ML] AI Functions"
       description: "Run AI functions (classify, extract, summarize, etc.)"
       tasks:
         - task_key: ai_functions
@@ -55,7 +55,7 @@ resources:
 
     # CURATE Stage Jobs
     labeling_agent:
-      name: "[VITAL] Labeling Agent"
+      name: "[Ontos ML] Labeling Agent"
       description: "AI-assisted pre-labeling of curation items"
       tasks:
         - task_key: labeling_agent
@@ -68,7 +68,7 @@ resources:
             client: "1"
 
     quality_scoring:
-      name: "[VITAL] Quality Scoring"
+      name: "[Ontos ML] Quality Scoring"
       description: "Score item quality and detect duplicates"
       tasks:
         - task_key: quality_scoring
@@ -82,7 +82,7 @@ resources:
 
     # TRAIN Stage Jobs
     data_assembly:
-      name: "[VITAL] Data Assembly"
+      name: "[Ontos ML] Data Assembly"
       description: "Assemble approved items into training dataset"
       tasks:
         - task_key: data_assembly
@@ -95,7 +95,7 @@ resources:
             client: "1"
 
     finetune_fmapi:
-      name: "[VITAL] Fine-tune (FMAPI)"
+      name: "[Ontos ML] Fine-tune (FMAPI)"
       description: "Fine-tune model using Foundation Model APIs"
       tasks:
         - task_key: finetune_fmapi
@@ -108,7 +108,7 @@ resources:
             client: "1"
 
     model_evaluation:
-      name: "[VITAL] Model Evaluation"
+      name: "[Ontos ML] Model Evaluation"
       description: "Evaluate model performance on test set"
       tasks:
         - task_key: model_evaluation
@@ -122,7 +122,7 @@ resources:
 
     # MONITOR Stage Jobs
     drift_detection:
-      name: "[VITAL] Drift Detection"
+      name: "[Ontos ML] Drift Detection"
       description: "Detect input/output distribution drift"
       schedule:
         quartz_cron_expression: "0 0 * * * ?"
@@ -138,7 +138,7 @@ resources:
             client: "1"
 
     feedback_analysis:
-      name: "[VITAL] Feedback Analysis"
+      name: "[Ontos ML] Feedback Analysis"
       description: "Analyze user feedback and identify patterns"
       schedule:
         quartz_cron_expression: "0 0 6 * * ?"

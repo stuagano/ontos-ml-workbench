@@ -9,15 +9,15 @@
 cd frontend && npm run build && cd ..
 
 # 2. Deploy to Databricks
-databricks apps deploy vital-workbench \
-  --source-code-path /Workspace/Users/<user>/Apps/vital-workbench \
+databricks apps deploy ontos-ml-workbench \
+  --source-code-path /Workspace/Users/<user>/Apps/ontos-ml-workbench \
   --profile=fe-vm-serverless-dxukih
 
 # 3. ALWAYS poll for completion (MANDATORY!)
-./.claude/scripts/poll-databricks-app.sh vital-workbench fe-vm-serverless-dxukih
+./.claude/scripts/poll-databricks-app.sh ontos-ml-workbench fe-vm-serverless-dxukih
 
 # 4. Get app URL for user
-APP_URL=$(databricks apps get vital-workbench --profile=fe-vm-serverless-dxukih -o json | jq -r '.url')
+APP_URL=$(databricks apps get ontos-ml-workbench --profile=fe-vm-serverless-dxukih -o json | jq -r '.url')
 
 # 5. Verify health endpoint
 curl -s "$APP_URL/health"
@@ -57,40 +57,40 @@ echo "✓ Deployment complete at: $APP_URL"
 ```bash
 # Profile: fe-vm-serverless-dxukih
 # Catalog: serverless_dxukih_catalog
-# Schema: mirion
+# Schema: ontos_ml
 # Warehouse: 387bcda0f2ece20c
 
 # Deploy
-databricks apps deploy vital-workbench \
-  --source-code-path /Workspace/Users/stuart.gano@databricks.com/Apps/vital-workbench \
+databricks apps deploy ontos-ml-workbench \
+  --source-code-path /Workspace/Users/stuart.gano@databricks.com/Apps/ontos-ml-workbench \
   --profile=fe-vm-serverless-dxukih
 
 # Poll
-./.claude/scripts/poll-databricks-app.sh vital-workbench fe-vm-serverless-dxukih
+./.claude/scripts/poll-databricks-app.sh ontos-ml-workbench fe-vm-serverless-dxukih
 ```
 
 ### Check Status Manually
 ```bash
 # Full status
-databricks apps get vital-workbench --profile=fe-vm-serverless-dxukih -o json
+databricks apps get ontos-ml-workbench --profile=fe-vm-serverless-dxukih -o json
 
 # Just compute status
-databricks apps get vital-workbench --profile=fe-vm-serverless-dxukih -o json | jq -r '.compute_status'
+databricks apps get ontos-ml-workbench --profile=fe-vm-serverless-dxukih -o json | jq -r '.compute_status'
 
 # Just URL
-databricks apps get vital-workbench --profile=fe-vm-serverless-dxukih -o json | jq -r '.url'
+databricks apps get ontos-ml-workbench --profile=fe-vm-serverless-dxukih -o json | jq -r '.url'
 
 # Check pending deployment
-databricks apps get vital-workbench --profile=fe-vm-serverless-dxukih -o json | jq -r '.pending_deployment'
+databricks apps get ontos-ml-workbench --profile=fe-vm-serverless-dxukih -o json | jq -r '.pending_deployment'
 ```
 
 ### View Logs
 ```bash
 # Tail logs
-databricks apps logs vital-workbench --profile=fe-vm-serverless-dxukih --tail 100
+databricks apps logs ontos-ml-workbench --profile=fe-vm-serverless-dxukih --tail 100
 
 # Follow logs
-databricks apps logs vital-workbench --profile=fe-vm-serverless-dxukih --follow
+databricks apps logs ontos-ml-workbench --profile=fe-vm-serverless-dxukih --follow
 ```
 
 ## Troubleshooting
@@ -98,10 +98,10 @@ databricks apps logs vital-workbench --profile=fe-vm-serverless-dxukih --follow
 ### Deployment Stuck
 ```bash
 # Check compute status
-databricks apps get vital-workbench --profile=fe-vm-serverless-dxukih -o json | jq '.compute_status, .status_message'
+databricks apps get ontos-ml-workbench --profile=fe-vm-serverless-dxukih -o json | jq '.compute_status, .status_message'
 
 # Check logs for errors
-databricks apps logs vital-workbench --profile=fe-vm-serverless-dxukih --tail 50
+databricks apps logs ontos-ml-workbench --profile=fe-vm-serverless-dxukih --tail 50
 ```
 
 ### Health Endpoint Not Responding
@@ -110,14 +110,14 @@ databricks apps logs vital-workbench --profile=fe-vm-serverless-dxukih --tail 50
 sleep 30
 
 # Try again
-APP_URL=$(databricks apps get vital-workbench --profile=fe-vm-serverless-dxukih -o json | jq -r '.url')
+APP_URL=$(databricks apps get ontos-ml-workbench --profile=fe-vm-serverless-dxukih -o json | jq -r '.url')
 curl -v "$APP_URL/health"
 ```
 
 ### Deployment Error
 ```bash
 # Get detailed status
-databricks apps get vital-workbench --profile=fe-vm-serverless-dxukih -o json | jq '{
+databricks apps get ontos-ml-workbench --profile=fe-vm-serverless-dxukih -o json | jq '{
   compute_status: .compute_status,
   status_message: .status_message,
   pending_deployment: .pending_deployment,
@@ -125,7 +125,7 @@ databricks apps get vital-workbench --profile=fe-vm-serverless-dxukih -o json | 
 }'
 
 # Check recent logs
-databricks apps logs vital-workbench --profile=fe-vm-serverless-dxukih --tail 100
+databricks apps logs ontos-ml-workbench --profile=fe-vm-serverless-dxukih --tail 100
 ```
 
 ## User Communication Template

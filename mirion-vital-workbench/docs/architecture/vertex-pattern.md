@@ -1,4 +1,4 @@
-# Vertex AI Multimodal Dataset Pattern for VITAL Workbench
+# Vertex AI Multimodal Dataset Pattern for Ontos ML Workbench
 
 ## The Core Pattern (Vertex AI)
 
@@ -49,7 +49,7 @@
 - Hyperparameters
 - Output: Fine-tuned model
 
-## VITAL Workbench Implementation
+## Ontos ML Workbench Implementation
 
 ### Current Data Model
 
@@ -202,7 +202,7 @@ Assembly (Materialized Q&A Pairs)
   "id": "sheet-defect-001",
   "name": "Radiation Equipment Defect Dataset",
   "primary_source": {
-    "catalog": "mirion_data",
+    "catalog": "ontos_ml_data",
     "schema": "inspection",
     "table": "equipment_logs",
     "columns": ["equipment_id", "inspection_date", "notes"]
@@ -210,13 +210,13 @@ Assembly (Materialized Q&A Pairs)
   "secondary_sources": [
     {
       "role": "images",
-      "path": "s3://mirion-images/inspections/",
+      "path": "s3://ontos-ml-images/inspections/",
       "join_key": "equipment_id",
       "format": "image/jpeg"
     },
     {
       "role": "telemetry",
-      "catalog": "mirion_data",
+      "catalog": "ontos_ml_data",
       "schema": "sensors",
       "table": "readings",
       "join_key": "equipment_id",
@@ -274,13 +274,13 @@ Assembly (Materialized Q&A Pairs)
     "equipment_id": "EQ-12345",
     "inspection_date": "2026-01-15",
     "notes": "Visual inspection shows corrosion",
-    "image_url": "s3://mirion-images/EQ-12345.jpg",
+    "image_url": "s3://ontos-ml-images/EQ-12345.jpg",
     "temperature": 85.3,
     "radiation_level": 2.1
   },
   "prompt": {
     "system": "You are an expert in radiation safety equipment...",
-    "user": "Analyze equipment EQ-12345 inspected on 2026-01-15.\nInspection notes: Visual inspection shows corrosion\nImage: s3://mirion-images/EQ-12345.jpg\nSensor readings: Temperature=85.3°C, Radiation=2.1 mSv\n\nIs there a defect?"
+    "user": "Analyze equipment EQ-12345 inspected on 2026-01-15.\nInspection notes: Visual inspection shows corrosion\nImage: s3://ontos-ml-images/EQ-12345.jpg\nSensor readings: Temperature=85.3°C, Radiation=2.1 mSv\n\nIs there a defect?"
   },
   "response": {
     "defect_present": true,
@@ -316,7 +316,7 @@ Result: Each assembly row has:
   - temperature, radiation_level (from sensors source)
 ```
 
-### Implementation in VITAL Workbench
+### Implementation in Ontos ML Workbench
 
 **Sheet Configuration:**
 ```typescript

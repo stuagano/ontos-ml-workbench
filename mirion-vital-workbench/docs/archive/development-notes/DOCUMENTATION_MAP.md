@@ -1,4 +1,4 @@
-# VITAL Workbench - Documentation Map
+# Ontos ML Workbench - Documentation Map
 
 **Last Updated:** 2026-02-06  
 **Status:** ✅ Organized structure complete
@@ -116,7 +116,7 @@ Located in `docs/prd/`:
 ## 📁 Directory Structure
 
 ```
-mirion-vital-workbench/
+ontos-ml-workbench/
 ├── README.md                          # Main entry point ⭐
 ├── QUICKSTART.md                      # 3-step setup ⭐
 ├── GETTING_STARTED.md                 # Detailed UI guide ⭐
@@ -133,7 +133,7 @@ mirion-vital-workbench/
 │   ├── validation/                    # Use case validations (3 docs)
 │   └── archive/                       # Old/obsolete docs (17 docs)
 │
-├── .claude/epics/vital-workbench/
+├── .claude/epics/ontos-ml-workbench/
 │   ├── epic.md                       # Master epic document
 │   ├── 2.md - 11.md                  # Individual task breakdown
 │   └── github-mapping.md             # GitHub issue tracking
@@ -268,7 +268,7 @@ Update this map when:
 | Set up backend | backend/README.md |
 | Set up frontend | frontend/README.md |
 | Understand database | schemas/README.md |
-| Track tasks | .claude/epics/vital-workbench/epic.md |
+| Track tasks | .claude/epics/ontos-ml-workbench/epic.md |
 | Find old docs | docs/archive/ |
 
 ---
@@ -308,4 +308,4 @@ Update this map when:
 
 **Last Updated:** 2026-02-06  
 **Maintained By:** Project contributors  
-**Location:** `/mirion-vital-workbench/DOCUMENTATION_MAP.md`
+**Location:** `/ontos-ml-workbench/DOCUMENTATION_MAP.md`

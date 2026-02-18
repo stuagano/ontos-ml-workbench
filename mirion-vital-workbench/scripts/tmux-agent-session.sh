@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================================
-# VITAL Workbench - Multi-Agent tmux Session
+# Ontos ML Workbench - Multi-Agent tmux Session
 # Run Claude Code in main pane, spawn agents in separate panes
 # ============================================================================
 
@@ -16,7 +16,7 @@ PURPLE='\033[0;35m'
 NC='\033[0m'
 
 SESSION_NAME="vital"
-PROJECT_ROOT="/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench"
+PROJECT_ROOT="/Users/stuart.gano/Documents/Customers/Mirion/mirion-ontos-ml-workbench"
 
 log() { echo -e "${BLUE}[VITAL]${NC} $1"; }
 success() { echo -e "${GREEN}[✓]${NC} $1"; }
@@ -67,7 +67,7 @@ tmux new-session -d -s "$SESSION_NAME" -c "$PROJECT_ROOT" -n "Agents"
 # Pane 0: Main Claude Code (orchestrator)
 tmux send-keys -t "$SESSION_NAME:0.0" "cd $PROJECT_ROOT" Enter
 tmux send-keys -t "$SESSION_NAME:0.0" "clear" Enter
-tmux send-keys -t "$SESSION_NAME:0.0" "echo '🤖 VITAL Workbench - Multi-Agent Session'" Enter
+tmux send-keys -t "$SESSION_NAME:0.0" "echo '🤖 Ontos ML Workbench - Multi-Agent Session'" Enter
 tmux send-keys -t "$SESSION_NAME:0.0" "echo ''" Enter
 tmux send-keys -t "$SESSION_NAME:0.0" "echo 'Starting Claude Code orchestrator...'" Enter
 tmux send-keys -t "$SESSION_NAME:0.0" "echo ''" Enter

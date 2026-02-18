@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Initialize VITAL Workbench database schema and seed data."""
+"""Initialize Ontos ML Workbench database schema and seed data."""
 
 import os
 import sys
@@ -56,7 +56,7 @@ def main():
     settings = get_settings()
 
     print("=" * 80)
-    print("VITAL Workbench - Database Initialization")
+    print("Ontos ML Workbench - Database Initialization")
     print("=" * 80)
     print(f"Workspace: {settings.databricks_host}")
     print(f"Catalog: {settings.databricks_catalog}")

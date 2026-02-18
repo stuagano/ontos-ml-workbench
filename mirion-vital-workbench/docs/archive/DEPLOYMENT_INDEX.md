@@ -1,4 +1,4 @@
-# VITAL Platform Workbench - Deployment Documentation Index
+# Ontos ML Workbench - Deployment Documentation Index
 
 Quick reference guide to all deployment and operations documentation.
 
@@ -135,7 +135,7 @@ uvx --index https://databricks-solutions.github.io/apx/simple apx init
 ```bash
 # Clone repository
 git clone <repository-url>
-cd mirion-vital-workbench
+cd ontos-ml-workbench
 
 # Option 1: APX (Recommended)
 apx dev start
@@ -368,9 +368,9 @@ This automated script:
 
 ```bash
 # App management
-databricks apps get vital-workbench --profile=prod
-databricks apps logs vital-workbench --profile=prod --tail 100
-databricks apps restart vital-workbench --profile=prod
+databricks apps get ontos-ml-workbench --profile=prod
+databricks apps logs ontos-ml-workbench --profile=prod --tail 100
+databricks apps restart ontos-ml-workbench --profile=prod
 
 # Deployment
 databricks bundle deploy -t dev
@@ -380,25 +380,25 @@ databricks bundle deploy -t production
 databricks sql exec --file=migration.sql --warehouse-id=$WAREHOUSE_ID --profile=prod
 
 # Workspace sync
-databricks sync . /Workspace/Users/deploy/Apps/vital-workbench --profile=prod
+databricks sync . /Workspace/Users/deploy/Apps/ontos-ml-workbench --profile=prod
 ```
 
 ### Quick Diagnostics
 
 ```bash
 # Check app status
-APP_URL=$(databricks apps get vital-workbench --profile=prod -o json | jq -r '.url')
+APP_URL=$(databricks apps get ontos-ml-workbench --profile=prod -o json | jq -r '.url')
 curl $APP_URL/health
 
 # Check warehouse status
 databricks warehouses get $WAREHOUSE_ID --profile=prod
 
 # View recent errors
-databricks apps logs vital-workbench --profile=prod --tail 100 | grep ERROR
+databricks apps logs ontos-ml-workbench --profile=prod --tail 100 | grep ERROR
 
 # Check table counts
 databricks sql exec --warehouse-id=$WAREHOUSE_ID \
-  "SELECT COUNT(*) FROM mirion_vital.workbench.sheets" \
+  "SELECT COUNT(*) FROM ontos_ml.workbench.sheets" \
   --profile=prod
 ```
 
@@ -406,7 +406,7 @@ databricks sql exec --warehouse-id=$WAREHOUSE_ID \
 
 ```sql
 -- Check recent errors
-SELECT * FROM mirion_vital.workbench.monitoring_error_rate
+SELECT * FROM ontos_ml.workbench.monitoring_error_rate
 ORDER BY time_bucket DESC LIMIT 10;
 
 -- Check slow queries
@@ -417,10 +417,10 @@ WHERE warehouse_id = '${WAREHOUSE_ID}'
 ORDER BY execution_duration DESC LIMIT 10;
 
 -- Check table sizes
-SELECT * FROM mirion_vital.workbench.monitoring_table_growth;
+SELECT * FROM ontos_ml.workbench.monitoring_table_growth;
 
 -- Check costs
-SELECT * FROM mirion_vital.workbench.monitoring_cost
+SELECT * FROM ontos_ml.workbench.monitoring_cost
 ORDER BY date DESC LIMIT 30;
 ```
 
@@ -430,7 +430,7 @@ ORDER BY date DESC LIMIT 30;
 
 ### Internal Resources
 
-- **Team Slack**: #vital-workbench-ops
+- **Team Slack**: #ontos-ml-workbench-ops
 - **On-Call**: PagerDuty rotation
 - **Documentation**: This repository
 

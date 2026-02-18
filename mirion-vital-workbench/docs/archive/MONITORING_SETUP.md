@@ -1,6 +1,6 @@
-# VITAL Platform Workbench - Monitoring Setup Guide
+# Ontos ML Workbench - Monitoring Setup Guide
 
-Complete guide for setting up monitoring, metrics, alerts, and dashboards for VITAL Platform Workbench.
+Complete guide for setting up monitoring, metrics, alerts, and dashboards for Ontos ML Workbench.
 
 ## Table of Contents
 
@@ -17,7 +17,7 @@ Complete guide for setting up monitoring, metrics, alerts, and dashboards for VI
 
 ## Overview
 
-VITAL Platform Workbench monitoring leverages:
+Ontos ML Workbench monitoring leverages:
 
 - **Databricks System Tables** - Built-in query history, audit logs, billing data
 - **SQL Dashboards** - Custom dashboards for key metrics
@@ -51,10 +51,10 @@ SELECT * FROM system.access.table_lineage LIMIT 10;
 
 ```sql
 -- Grant READ access to monitoring user/service principal
-GRANT SELECT ON CATALOG system TO `monitoring_user@mirion.com`;
-GRANT SELECT ON SCHEMA system.query TO `monitoring_user@mirion.com`;
-GRANT SELECT ON SCHEMA system.access TO `monitoring_user@mirion.com`;
-GRANT SELECT ON SCHEMA system.billing TO `monitoring_user@mirion.com`;
+GRANT SELECT ON CATALOG system TO `monitoring_user@example.com`;
+GRANT SELECT ON SCHEMA system.query TO `monitoring_user@example.com`;
+GRANT SELECT ON SCHEMA system.access TO `monitoring_user@example.com`;
+GRANT SELECT ON SCHEMA system.billing TO `monitoring_user@example.com`;
 ```
 
 ---
@@ -66,7 +66,7 @@ GRANT SELECT ON SCHEMA system.billing TO `monitoring_user@mirion.com`;
 #### 1. Request Rate and Latency
 
 ```sql
-CREATE OR REPLACE VIEW mirion_vital.workbench.monitoring_request_latency AS
+CREATE OR REPLACE VIEW ontos_ml.workbench.monitoring_request_latency AS
 SELECT
   DATE_TRUNC('minute', start_time) as time_bucket,
   user_email,
@@ -86,7 +86,7 @@ ORDER BY time_bucket DESC;
 #### 2. Error Rate
 
 ```sql
-CREATE OR REPLACE VIEW mirion_vital.workbench.monitoring_error_rate AS
+CREATE OR REPLACE VIEW ontos_ml.workbench.monitoring_error_rate AS
 SELECT
   DATE_TRUNC('hour', start_time) as time_bucket,
   COUNT(*) as total_queries,
@@ -103,7 +103,7 @@ ORDER BY time_bucket DESC;
 #### 3. Active Users
 
 ```sql
-CREATE OR REPLACE VIEW mirion_vital.workbench.monitoring_active_users AS
+CREATE OR REPLACE VIEW ontos_ml.workbench.monitoring_active_users AS
 SELECT
   DATE(start_time) as date,
   COUNT(DISTINCT user_email) as daily_active_users,
@@ -120,7 +120,7 @@ ORDER BY date DESC;
 #### 4. Table Growth
 
 ```sql
-CREATE OR REPLACE VIEW mirion_vital.workbench.monitoring_table_growth AS
+CREATE OR REPLACE VIEW ontos_ml.workbench.monitoring_table_growth AS
 SELECT
   table_name,
   COUNT(*) as row_count,
@@ -128,7 +128,7 @@ SELECT
   MAX(created_at) as latest_record,
   MIN(created_at) as earliest_record,
   DATEDIFF(NOW(), MIN(created_at)) as days_of_data
-FROM mirion_vital.workbench.sheets  -- Union with other tables
+FROM ontos_ml.workbench.sheets  -- Union with other tables
 GROUP BY table_name
 UNION ALL
 SELECT
@@ -138,7 +138,7 @@ SELECT
   MAX(created_at) as latest_record,
   MIN(created_at) as earliest_record,
   DATEDIFF(NOW(), MIN(created_at)) as days_of_data
-FROM mirion_vital.workbench.templates
+FROM ontos_ml.workbench.templates
 UNION ALL
 SELECT
   'qa_pairs' as table_name,
@@ -147,13 +147,13 @@ SELECT
   MAX(created_at) as latest_record,
   MIN(created_at) as earliest_record,
   DATEDIFF(NOW(), MIN(created_at)) as days_of_data
-FROM mirion_vital.workbench.qa_pairs;
+FROM ontos_ml.workbench.qa_pairs;
 ```
 
 #### 5. Data Quality Metrics
 
 ```sql
-CREATE OR REPLACE VIEW mirion_vital.workbench.monitoring_data_quality AS
+CREATE OR REPLACE VIEW ontos_ml.workbench.monitoring_data_quality AS
 SELECT
   'qa_pairs' as table_name,
   COUNT(*) as total_records,
@@ -161,7 +161,7 @@ SELECT
   SUM(CASE WHEN status = 'labeled' THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as labeled_pct,
   SUM(CASE WHEN canonical_label_id IS NOT NULL THEN 1 ELSE 0 END) as with_canonical_label,
   SUM(CASE WHEN canonical_label_id IS NOT NULL THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as canonical_label_pct
-FROM mirion_vital.workbench.qa_pairs
+FROM ontos_ml.workbench.qa_pairs
 UNION ALL
 SELECT
   'canonical_labels' as table_name,
@@ -169,7 +169,7 @@ SELECT
   COUNT(DISTINCT sheet_id) as distinct_sheets,
   COUNT(DISTINCT label_type) as distinct_label_types,
   AVG(LENGTH(label_value)) as avg_label_length
-FROM mirion_vital.workbench.canonical_labels;
+FROM ontos_ml.workbench.canonical_labels;
 ```
 
 ### Resource Metrics
@@ -177,7 +177,7 @@ FROM mirion_vital.workbench.canonical_labels;
 #### 6. Warehouse Utilization
 
 ```sql
-CREATE OR REPLACE VIEW mirion_vital.workbench.monitoring_warehouse_utilization AS
+CREATE OR REPLACE VIEW ontos_ml.workbench.monitoring_warehouse_utilization AS
 SELECT
   DATE_TRUNC('hour', start_time) as time_bucket,
   warehouse_id,
@@ -195,7 +195,7 @@ ORDER BY time_bucket DESC;
 #### 7. Cost Tracking
 
 ```sql
-CREATE OR REPLACE VIEW mirion_vital.workbench.monitoring_cost AS
+CREATE OR REPLACE VIEW ontos_ml.workbench.monitoring_cost AS
 SELECT
   DATE(usage_date) as date,
   workspace_id,
@@ -215,27 +215,27 @@ ORDER BY date DESC;
 #### 8. Stage Completion Tracking
 
 ```sql
-CREATE OR REPLACE VIEW mirion_vital.workbench.monitoring_workflow_progress AS
+CREATE OR REPLACE VIEW ontos_ml.workbench.monitoring_workflow_progress AS
 SELECT
   'Sheets' as stage,
   COUNT(*) as total_items,
   SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) as completed_items,
   SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as completion_pct
-FROM mirion_vital.workbench.sheets
+FROM ontos_ml.workbench.sheets
 UNION ALL
 SELECT
   'Training Sheets' as stage,
   COUNT(*) as total_items,
   SUM(CASE WHEN status = 'ready' THEN 1 ELSE 0 END) as completed_items,
   SUM(CASE WHEN status = 'ready' THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as completion_pct
-FROM mirion_vital.workbench.training_sheets
+FROM ontos_ml.workbench.training_sheets
 UNION ALL
 SELECT
   'Q&A Pairs' as stage,
   COUNT(*) as total_items,
   SUM(CASE WHEN status = 'labeled' THEN 1 ELSE 0 END) as completed_items,
   SUM(CASE WHEN status = 'labeled' THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as completion_pct
-FROM mirion_vital.workbench.qa_pairs;
+FROM ontos_ml.workbench.qa_pairs;
 ```
 
 ---
@@ -248,7 +248,7 @@ FROM mirion_vital.workbench.qa_pairs;
    - Go to SQL Personas in your workspace
    - Click "Dashboards" > "Create Dashboard"
 
-2. **Create Dashboard: VITAL Workbench Health**
+2. **Create Dashboard: Ontos ML Workbench Health**
 
 #### Widget 1: Request Rate (Time Series)
 
@@ -256,7 +256,7 @@ FROM mirion_vital.workbench.qa_pairs;
 SELECT
   time_bucket,
   SUM(request_count) as requests_per_minute
-FROM mirion_vital.workbench.monitoring_request_latency
+FROM ontos_ml.workbench.monitoring_request_latency
 WHERE time_bucket > NOW() - INTERVAL 24 HOURS
 GROUP BY time_bucket
 ORDER BY time_bucket;
@@ -272,7 +272,7 @@ ORDER BY time_bucket;
 SELECT
   time_bucket,
   error_rate_pct
-FROM mirion_vital.workbench.monitoring_error_rate
+FROM ontos_ml.workbench.monitoring_error_rate
 WHERE time_bucket > NOW() - INTERVAL 24 HOURS
 ORDER BY time_bucket;
 ```
@@ -289,7 +289,7 @@ SELECT
   AVG(p50_latency_seconds) as p50,
   AVG(p95_latency_seconds) as p95,
   AVG(p99_latency_seconds) as p99
-FROM mirion_vital.workbench.monitoring_request_latency
+FROM ontos_ml.workbench.monitoring_request_latency
 WHERE time_bucket > NOW() - INTERVAL 24 HOURS
 GROUP BY time_bucket
 ORDER BY time_bucket;
@@ -304,7 +304,7 @@ ORDER BY time_bucket;
 ```sql
 SELECT
   hourly_active_users as value
-FROM mirion_vital.workbench.monitoring_active_users
+FROM ontos_ml.workbench.monitoring_active_users
 WHERE date = CURRENT_DATE()
 LIMIT 1;
 ```
@@ -318,7 +318,7 @@ SELECT
   table_name,
   row_count,
   size_gb
-FROM mirion_vital.workbench.monitoring_table_growth
+FROM ontos_ml.workbench.monitoring_table_growth
 ORDER BY size_gb DESC;
 ```
 
@@ -332,7 +332,7 @@ ORDER BY size_gb DESC;
 SELECT
   status,
   COUNT(*) as count
-FROM mirion_vital.workbench.qa_pairs
+FROM ontos_ml.workbench.qa_pairs
 GROUP BY status;
 ```
 
@@ -344,7 +344,7 @@ GROUP BY status;
 SELECT
   date,
   estimated_cost_usd
-FROM mirion_vital.workbench.monitoring_cost
+FROM ontos_ml.workbench.monitoring_cost
 WHERE date > NOW() - INTERVAL 30 DAYS
 ORDER BY date;
 ```
@@ -359,7 +359,7 @@ ORDER BY date;
 SELECT
   stage,
   completion_pct
-FROM mirion_vital.workbench.monitoring_workflow_progress
+FROM ontos_ml.workbench.monitoring_workflow_progress
 ORDER BY
   CASE stage
     WHEN 'Sheets' THEN 1
@@ -392,7 +392,7 @@ SELECT
   error_count,
   total_queries,
   time_bucket
-FROM mirion_vital.workbench.monitoring_error_rate
+FROM ontos_ml.workbench.monitoring_error_rate
 WHERE time_bucket = DATE_TRUNC('hour', NOW())
 LIMIT 1;
 ```
@@ -423,7 +423,7 @@ SELECT
   p99_latency_seconds,
   request_count,
   time_bucket
-FROM mirion_vital.workbench.monitoring_request_latency
+FROM ontos_ml.workbench.monitoring_request_latency
 WHERE time_bucket > NOW() - INTERVAL 15 MINUTES
 ORDER BY time_bucket DESC
 LIMIT 1;
@@ -484,7 +484,7 @@ SELECT
   row_count,
   size_gb,
   (size_gb - LAG(size_gb, 1) OVER (PARTITION BY table_name ORDER BY date)) as growth_gb
-FROM mirion_vital.workbench.monitoring_table_growth
+FROM ontos_ml.workbench.monitoring_table_growth
 WHERE date > NOW() - INTERVAL 7 DAYS
 ORDER BY growth_gb DESC;
 ```
@@ -512,7 +512,7 @@ Action: Review data retention policies.
 ```sql
 SELECT
   labeled_pct
-FROM mirion_vital.workbench.monitoring_data_quality
+FROM ontos_ml.workbench.monitoring_data_quality
 WHERE table_name = 'qa_pairs';
 ```
 
@@ -538,13 +538,13 @@ Action: Review labeling backlog and assign reviewers.
 
 ```bash
 # Stream logs in real-time
-databricks apps logs vital-workbench --profile=prod --follow
+databricks apps logs ontos-ml-workbench --profile=prod --follow
 
 # View recent logs
-databricks apps logs vital-workbench --profile=prod --tail 500
+databricks apps logs ontos-ml-workbench --profile=prod --tail 500
 
 # Export logs to file
-databricks apps logs vital-workbench --profile=prod > logs_$(date +%Y%m%d).txt
+databricks apps logs ontos-ml-workbench --profile=prod > logs_$(date +%Y%m%d).txt
 ```
 
 ### Log Levels
@@ -589,7 +589,7 @@ SELECT
   event_time
 FROM system.access.audit
 WHERE workspace_id = '${WORKSPACE_ID}'
-  AND action_name LIKE 'vital-workbench%'
+  AND action_name LIKE 'ontos-ml-workbench%'
   AND event_time > NOW() - INTERVAL 24 HOURS
 ORDER BY event_time DESC;
 ```

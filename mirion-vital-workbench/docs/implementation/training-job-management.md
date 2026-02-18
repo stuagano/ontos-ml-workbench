@@ -136,7 +136,7 @@ Content-Type: application/json
   },
   "train_val_split": 0.8,
   "register_to_uc": true,
-  "uc_catalog": "mirion_vital",
+  "uc_catalog": "ontos_ml",
   "uc_schema": "models"
 }
 

@@ -42,7 +42,7 @@ print(f"Include only approved: {include_only_approved}")
 
 # Configuration
 CATALOG = "home_stuart_gano"
-SCHEMA = "databits_dev"
+SCHEMA = "ontos_ml_dev"
 DEFAULT_VOLUME = f"/Volumes/{CATALOG}/{SCHEMA}/training_data"
 
 if not output_path:

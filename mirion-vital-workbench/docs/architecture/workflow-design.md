@@ -1,4 +1,4 @@
-# VITAL Workbench - DATA → TEMPLATE Workflow Design
+# Ontos ML Workbench - DATA → TEMPLATE Workflow Design
 
 ## How It Should Work
 
@@ -124,7 +124,7 @@ curl http://127.0.0.1:8000/api/v1/templates
 
 **Desired Behavior:**
 - Show "Iris Flower Multimodal Dataset" (exists in assemblies)
-- Show other pre-curated Mirion datasets
+- Show other pre-curated Acme Instruments datasets
 - Hide raw Unity Catalog tables unless explicitly browsing
 
 **Implementation:**
@@ -139,7 +139,7 @@ curl http://127.0.0.1:8000/api/v1/templates
 {
   selectedSource: {
     catalog: "erp-demonstrations",
-    schema: "vital_workbench",
+    schema: "ontos_ml_workbench",
     table: "iris_flowers" // or assembly reference
   },
   sourceColumns: [...] // Detected columns

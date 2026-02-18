@@ -9,7 +9,7 @@ from pyspark.sql import functions as F
 from datetime import datetime, timedelta
 
 catalog = "home_stuart_gano"
-schema = "databits_dev"
+schema = "ontos_ml_dev"
 
 # COMMAND ----------
 

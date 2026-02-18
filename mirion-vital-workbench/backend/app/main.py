@@ -1,4 +1,4 @@
-"""Databits Workbench - FastAPI Application."""
+"""Ontos ML Workbench - FastAPI Application."""
 
 import logging
 import os
@@ -75,7 +75,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="Complete AI lifecycle platform for Databricks - VITAL Platform Workbench enables domain experts to build, govern, and deploy AI systems for radiation safety.",
+    description="Complete AI lifecycle platform for Databricks - Ontos ML Workbench enables domain experts to build, govern, and deploy AI systems.",
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
@@ -284,7 +284,7 @@ else:
     async def root():
         """Root endpoint when no frontend is available."""
         return {
-            "message": "Databits Workbench API",
+            "message": "Ontos ML Workbench API",
             "docs": "/docs",
             "health": "/api/health",
         }

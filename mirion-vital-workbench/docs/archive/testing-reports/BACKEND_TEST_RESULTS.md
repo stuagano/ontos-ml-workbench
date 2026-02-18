@@ -8,7 +8,7 @@
 ## Test Summary
 
 **Server**: ✅ Running on http://localhost:8000
-**Configuration**: ✅ FEVM workspace (serverless_dxukih_catalog.mirion)
+**Configuration**: ✅ FEVM workspace (serverless_dxukih_catalog.ontos_ml)
 **Startup**: ✅ No errors
 
 ---
@@ -86,7 +86,7 @@ GET /api/v1/health
 ### ✅ Database Connection
 - ✅ Connected to FEVM workspace
 - ✅ Catalog: `serverless_dxukih_catalog`
-- ✅ Schema: `mirion`
+- ✅ Schema: `ontos_ml`
 - ✅ Warehouse: `387bcda0f2ece20c` (running)
 
 ---

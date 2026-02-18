@@ -1,12 +1,12 @@
 -- ============================================================================
--- VITAL Workbench: Runtime Error Fixes
+-- Ontos ML Workbench: Runtime Error Fixes
 -- ============================================================================
 -- Execute this script in Databricks SQL Editor to fix all runtime errors
 -- Warehouse: Shared SQL Endpoint - Cutting Edge (071969b1ec9a91ca)
 -- ============================================================================
 
 -- Fix 1: Create monitor_alerts table (if not exists)
-CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`vital_workbench`.monitor_alerts (
+CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`ontos_ml_workbench`.monitor_alerts (
   id STRING NOT NULL,
   endpoint_id STRING NOT NULL,
   alert_type STRING NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`vital_workbench`.monitor_alerts
 COMMENT 'Monitoring alerts for deployed model endpoints';
 
 -- Fix 2: Add flagged column to feedback_items (if not exists)
-ALTER TABLE `erp-demonstrations`.`vital_workbench`.feedback_items
+ALTER TABLE `erp-demonstrations`.`ontos_ml_workbench`.feedback_items
 ADD COLUMN IF NOT EXISTS flagged BOOLEAN DEFAULT FALSE;
 
 -- ============================================================================
@@ -34,10 +34,10 @@ ADD COLUMN IF NOT EXISTS flagged BOOLEAN DEFAULT FALSE;
 
 -- Verify monitor_alerts table exists
 SELECT 'monitor_alerts table exists' as status, COUNT(*) as row_count
-FROM `erp-demonstrations`.`vital_workbench`.monitor_alerts;
+FROM `erp-demonstrations`.`ontos_ml_workbench`.monitor_alerts;
 
 -- Verify flagged column exists in feedback_items
-DESCRIBE TABLE `erp-demonstrations`.`vital_workbench`.feedback_items;
+DESCRIBE TABLE `erp-demonstrations`.`ontos_ml_workbench`.feedback_items;
 
 -- Show all tables in schema
-SHOW TABLES IN `erp-demonstrations`.`vital_workbench`;
+SHOW TABLES IN `erp-demonstrations`.`ontos_ml_workbench`;

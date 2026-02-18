@@ -5,7 +5,7 @@
 
 ## Overview
 
-Successfully integrated Recharts library and created three reusable chart components for the VITAL Platform Workbench monitoring dashboard. All components follow consistent design patterns with built-in loading states, empty states, and responsive design.
+Successfully integrated Recharts library and created three reusable chart components for the Ontos ML Workbench monitoring dashboard. All components follow consistent design patterns with built-in loading states, empty states, and responsive design.
 
 ## Completed Tasks
 

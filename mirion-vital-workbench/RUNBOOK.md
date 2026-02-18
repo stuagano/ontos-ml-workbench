@@ -1,6 +1,6 @@
-# VITAL Platform Workbench - Operations Runbook
+# Ontos ML Workbench - Operations Runbook
 
-Operational runbook for managing the VITAL Platform Workbench in production.
+Operational runbook for managing the Ontos ML Workbench in production.
 
 ## Table of Contents
 
@@ -26,19 +26,19 @@ Operational runbook for managing the VITAL Platform Workbench in production.
 **Diagnosis:**
 ```bash
 # Check app status
-databricks apps get vital-workbench --profile=prod -o json | jq -r '.compute_status'
+databricks apps get ontos-ml-workbench --profile=prod -o json | jq -r '.compute_status'
 
 # Check recent logs
-databricks apps logs vital-workbench --profile=prod --tail 100
+databricks apps logs ontos-ml-workbench --profile=prod --tail 100
 ```
 
 **Resolution:**
 ```bash
 # Restart the app
-databricks apps restart vital-workbench --profile=prod
+databricks apps restart ontos-ml-workbench --profile=prod
 
 # Monitor restart progress
-watch -n 5 "databricks apps get vital-workbench --profile=prod -o json | jq -r '.compute_status'"
+watch -n 5 "databricks apps get ontos-ml-workbench --profile=prod -o json | jq -r '.compute_status'"
 ```
 
 **Prevention:**
@@ -110,8 +110,8 @@ LIMIT 10;
 
 1. **Add indexes (if using Lakebase):**
 ```sql
-CREATE INDEX idx_sheets_status ON mirion_vital.workbench.sheets(status);
-CREATE INDEX idx_qa_pairs_status ON mirion_vital.workbench.qa_pairs(status);
+CREATE INDEX idx_sheets_status ON ontos_ml.workbench.sheets(status);
+CREATE INDEX idx_qa_pairs_status ON ontos_ml.workbench.qa_pairs(status);
 ```
 
 2. **Optimize queries:**
@@ -145,7 +145,7 @@ databricks warehouses update $WAREHOUSE_ID --enable-result-cache --profile=prod
 **Diagnosis:**
 ```bash
 # Check app resource usage
-databricks apps get vital-workbench --profile=prod -o json | jq '.resources'
+databricks apps get ontos-ml-workbench --profile=prod -o json | jq '.resources'
 ```
 
 **Resolution:**
@@ -159,8 +159,8 @@ resources:
 
 2. **Redeploy with new resources:**
 ```bash
-databricks apps deploy vital-workbench \
-  --source-code-path /Workspace/Users/<your-email>/Apps/vital-workbench \
+databricks apps deploy ontos-ml-workbench \
+  --source-code-path /Workspace/Users/<your-email>/Apps/ontos-ml-workbench \
   --profile=prod
 ```
 
@@ -191,23 +191,23 @@ data = spark.table("sheets").limit(100).collect()
 **Diagnosis:**
 ```sql
 -- Check service principal permissions
-SHOW GRANTS ON CATALOG mirion_vital;
-SHOW GRANTS ON SCHEMA mirion_vital.workbench;
+SHOW GRANTS ON CATALOG ontos_ml;
+SHOW GRANTS ON SCHEMA ontos_ml.workbench;
 ```
 
 **Resolution:**
 ```sql
 -- Get service principal ID
--- databricks apps get vital-workbench --profile=prod -o json | jq -r '.service_principal_id'
+-- databricks apps get ontos-ml-workbench --profile=prod -o json | jq -r '.service_principal_id'
 
 -- Grant necessary permissions
-GRANT USE CATALOG ON CATALOG mirion_vital TO `${SP_ID}`;
-GRANT USE SCHEMA ON SCHEMA mirion_vital.workbench TO `${SP_ID}`;
-GRANT SELECT, MODIFY ON SCHEMA mirion_vital.workbench TO `${SP_ID}`;
+GRANT USE CATALOG ON CATALOG ontos_ml TO `${SP_ID}`;
+GRANT USE SCHEMA ON SCHEMA ontos_ml.workbench TO `${SP_ID}`;
+GRANT SELECT, MODIFY ON SCHEMA ontos_ml.workbench TO `${SP_ID}`;
 
 -- For specific tables
-GRANT SELECT ON TABLE mirion_vital.workbench.sheets TO `${SP_ID}`;
-GRANT SELECT, MODIFY ON TABLE mirion_vital.workbench.qa_pairs TO `${SP_ID}`;
+GRANT SELECT ON TABLE ontos_ml.workbench.sheets TO `${SP_ID}`;
+GRANT SELECT, MODIFY ON TABLE ontos_ml.workbench.qa_pairs TO `${SP_ID}`;
 ```
 
 **Prevention:**
@@ -227,10 +227,10 @@ GRANT SELECT, MODIFY ON TABLE mirion_vital.workbench.qa_pairs TO `${SP_ID}`;
 **Diagnosis:**
 ```bash
 # Check if frontend files were deployed
-databricks workspace list /Workspace/Users/<your-email>/Apps/vital-workbench/frontend/dist --profile=prod
+databricks workspace list /Workspace/Users/<your-email>/Apps/ontos-ml-workbench/frontend/dist --profile=prod
 
 # Check app logs for static file errors
-databricks apps logs vital-workbench --profile=prod | grep "GET /assets"
+databricks apps logs ontos-ml-workbench --profile=prod | grep "GET /assets"
 ```
 
 **Resolution:**
@@ -241,11 +241,11 @@ npm run build
 
 # Sync to workspace
 cd ..
-databricks sync . /Workspace/Users/<your-email>/Apps/vital-workbench --profile=prod
+databricks sync . /Workspace/Users/<your-email>/Apps/ontos-ml-workbench --profile=prod
 
 # Redeploy app
-databricks apps deploy vital-workbench \
-  --source-code-path /Workspace/Users/<your-email>/Apps/vital-workbench \
+databricks apps deploy ontos-ml-workbench \
+  --source-code-path /Workspace/Users/<your-email>/Apps/ontos-ml-workbench \
   --profile=prod
 ```
 
@@ -284,7 +284,7 @@ databricks apps deploy vital-workbench \
 -- Create monitoring queries for System Tables
 
 -- Query 1: App Request Latency
-CREATE OR REPLACE VIEW mirion_vital.workbench.app_latency_monitoring AS
+CREATE OR REPLACE VIEW ontos_ml.workbench.app_latency_monitoring AS
 SELECT
   DATE_TRUNC('minute', start_time) as time_bucket,
   COUNT(*) as request_count,
@@ -296,7 +296,7 @@ GROUP BY time_bucket
 ORDER BY time_bucket DESC;
 
 -- Query 2: Error Rate
-CREATE OR REPLACE VIEW mirion_vital.workbench.app_error_monitoring AS
+CREATE OR REPLACE VIEW ontos_ml.workbench.app_error_monitoring AS
 SELECT
   DATE_TRUNC('hour', start_time) as time_bucket,
   COUNT(*) as total_queries,
@@ -308,7 +308,7 @@ GROUP BY time_bucket
 ORDER BY time_bucket DESC;
 
 -- Query 3: Table Growth
-CREATE OR REPLACE VIEW mirion_vital.workbench.table_growth_monitoring AS
+CREATE OR REPLACE VIEW ontos_ml.workbench.table_growth_monitoring AS
 SELECT
   table_name,
   COUNT(*) as row_count,
@@ -318,7 +318,7 @@ JOIN system.information_schema.table_storage_metrics s
   ON t.table_catalog = s.catalog_name
   AND t.table_schema = s.schema_name
   AND t.table_name = s.table_name
-WHERE t.table_catalog = 'mirion_vital'
+WHERE t.table_catalog = 'ontos_ml'
   AND t.table_schema = 'workbench'
 GROUP BY table_name;
 ```
@@ -333,7 +333,7 @@ SELECT
   error_rate_pct,
   error_count,
   total_queries
-FROM mirion_vital.workbench.app_error_monitoring
+FROM ontos_ml.workbench.app_error_monitoring
 WHERE time_bucket = DATE_TRUNC('hour', NOW())
   AND error_rate_pct > 5  -- Alert if error rate > 5%
 ```
@@ -344,7 +344,7 @@ SELECT
   avg_latency_seconds,
   p95_latency_seconds,
   request_count
-FROM mirion_vital.workbench.app_latency_monitoring
+FROM ontos_ml.workbench.app_latency_monitoring
 WHERE time_bucket = DATE_TRUNC('minute', NOW())
   AND p95_latency_seconds > 10  -- Alert if p95 latency > 10 seconds
 ```
@@ -373,15 +373,15 @@ fi
 ```bash
 # Create a weekly job to optimize tables
 cat > optimize_tables.sql <<EOF
-OPTIMIZE mirion_vital.workbench.sheets;
-OPTIMIZE mirion_vital.workbench.templates;
-OPTIMIZE mirion_vital.workbench.training_sheets;
-OPTIMIZE mirion_vital.workbench.qa_pairs;
-OPTIMIZE mirion_vital.workbench.canonical_labels;
+OPTIMIZE ontos_ml.workbench.sheets;
+OPTIMIZE ontos_ml.workbench.templates;
+OPTIMIZE ontos_ml.workbench.training_sheets;
+OPTIMIZE ontos_ml.workbench.qa_pairs;
+OPTIMIZE ontos_ml.workbench.canonical_labels;
 
 -- Z-ORDER by commonly filtered columns
-OPTIMIZE mirion_vital.workbench.sheets ZORDER BY (status, created_at);
-OPTIMIZE mirion_vital.workbench.qa_pairs ZORDER BY (training_sheet_id, status);
+OPTIMIZE ontos_ml.workbench.sheets ZORDER BY (status, created_at);
+OPTIMIZE ontos_ml.workbench.qa_pairs ZORDER BY (training_sheet_id, status);
 EOF
 
 # Run via SQL warehouse
@@ -392,16 +392,16 @@ databricks sql exec --file=optimize_tables.sql --warehouse-id=$WAREHOUSE_ID --pr
 
 ```sql
 -- Remove old file versions (keep 7 days)
-VACUUM mirion_vital.workbench.sheets RETAIN 168 HOURS;
-VACUUM mirion_vital.workbench.qa_pairs RETAIN 168 HOURS;
+VACUUM ontos_ml.workbench.sheets RETAIN 168 HOURS;
+VACUUM ontos_ml.workbench.qa_pairs RETAIN 168 HOURS;
 ```
 
 #### 3. Update Table Statistics
 
 ```sql
 -- Update statistics for query optimizer
-ANALYZE TABLE mirion_vital.workbench.sheets COMPUTE STATISTICS;
-ANALYZE TABLE mirion_vital.workbench.qa_pairs COMPUTE STATISTICS;
+ANALYZE TABLE ontos_ml.workbench.sheets COMPUTE STATISTICS;
+ANALYZE TABLE ontos_ml.workbench.qa_pairs COMPUTE STATISTICS;
 ```
 
 ### Application Optimization
@@ -468,7 +468,7 @@ async def list_sheets():
 ```bash
 # Create serverless warehouse
 databricks warehouses create \
-  --name "vital-workbench-prod" \
+  --name "ontos-ml-workbench-prod" \
   --cluster-size "Medium" \
   --warehouse-type "PRO" \
   --enable-serverless-compute \
@@ -496,24 +496,24 @@ Delta tables automatically maintain version history:
 
 ```sql
 -- View table history
-DESCRIBE HISTORY mirion_vital.workbench.sheets;
+DESCRIBE HISTORY ontos_ml.workbench.sheets;
 
 -- Restore to previous version
-RESTORE TABLE mirion_vital.workbench.sheets TO VERSION AS OF 42;
+RESTORE TABLE ontos_ml.workbench.sheets TO VERSION AS OF 42;
 
 -- Restore to timestamp
-RESTORE TABLE mirion_vital.workbench.sheets TO TIMESTAMP AS OF '2026-02-07 10:00:00';
+RESTORE TABLE ontos_ml.workbench.sheets TO TIMESTAMP AS OF '2026-02-07 10:00:00';
 ```
 
 #### Create Backup Snapshots
 
 ```sql
 -- Create weekly backup snapshots
-CREATE TABLE mirion_vital.workbench_backups.sheets_backup_20260207
-AS SELECT * FROM mirion_vital.workbench.sheets;
+CREATE TABLE ontos_ml.workbench_backups.sheets_backup_20260207
+AS SELECT * FROM ontos_ml.workbench.sheets;
 
-CREATE TABLE mirion_vital.workbench_backups.qa_pairs_backup_20260207
-AS SELECT * FROM mirion_vital.workbench.qa_pairs;
+CREATE TABLE ontos_ml.workbench_backups.qa_pairs_backup_20260207
+AS SELECT * FROM ontos_ml.workbench.qa_pairs;
 ```
 
 ### Recovery Procedures
@@ -522,24 +522,24 @@ AS SELECT * FROM mirion_vital.workbench.qa_pairs;
 
 ```sql
 -- Restore from Delta time travel
-RESTORE TABLE mirion_vital.workbench.sheets TO VERSION AS OF 10;
+RESTORE TABLE ontos_ml.workbench.sheets TO VERSION AS OF 10;
 
 -- Or restore from backup
-INSERT INTO mirion_vital.workbench.sheets
-SELECT * FROM mirion_vital.workbench_backups.sheets_backup_20260207
-WHERE id NOT IN (SELECT id FROM mirion_vital.workbench.sheets);
+INSERT INTO ontos_ml.workbench.sheets
+SELECT * FROM ontos_ml.workbench_backups.sheets_backup_20260207
+WHERE id NOT IN (SELECT id FROM ontos_ml.workbench.sheets);
 ```
 
 #### Scenario 2: Schema Migration Failure
 
 ```sql
 -- Rollback schema changes
-ALTER TABLE mirion_vital.workbench.sheets DROP COLUMN new_column;
+ALTER TABLE ontos_ml.workbench.sheets DROP COLUMN new_column;
 
 -- Restore from backup if needed
-DROP TABLE mirion_vital.workbench.sheets;
-CREATE TABLE mirion_vital.workbench.sheets
-AS SELECT * FROM mirion_vital.workbench_backups.sheets_backup_20260207;
+DROP TABLE ontos_ml.workbench.sheets;
+CREATE TABLE ontos_ml.workbench.sheets
+AS SELECT * FROM ontos_ml.workbench_backups.sheets_backup_20260207;
 ```
 
 #### Scenario 3: Complete Workspace Loss
@@ -556,7 +556,7 @@ databricks workspace import-dir /local/backup /path/to/new --profile=new
 databricks sql exec --file=schemas/create_tables.sql --warehouse-id=$WAREHOUSE_ID --profile=new
 
 # 4. Load backup data
-databricks sql exec "COPY INTO mirion_vital.workbench.sheets FROM '/backup/sheets'" --profile=new
+databricks sql exec "COPY INTO ontos_ml.workbench.sheets FROM '/backup/sheets'" --profile=new
 ```
 
 ---
@@ -608,17 +608,17 @@ For large tables (> 1M rows):
 
 ```sql
 -- Partition by date
-ALTER TABLE mirion_vital.workbench.qa_pairs
+ALTER TABLE ontos_ml.workbench.qa_pairs
 SET TBLPROPERTIES (
   'delta.autoOptimize.optimizeWrite' = 'true',
   'delta.autoOptimize.autoCompact' = 'true'
 );
 
 -- Create partitioned table
-CREATE TABLE mirion_vital.workbench.qa_pairs_partitioned
+CREATE TABLE ontos_ml.workbench.qa_pairs_partitioned
 PARTITIONED BY (created_date)
 AS SELECT *, DATE(created_at) as created_date
-FROM mirion_vital.workbench.qa_pairs;
+FROM ontos_ml.workbench.qa_pairs;
 ```
 
 ---
@@ -635,7 +635,7 @@ DEBUG=true
 LOG_LEVEL=DEBUG
 
 # Restart app to apply changes
-databricks apps restart vital-workbench --profile=prod
+databricks apps restart ontos-ml-workbench --profile=prod
 ```
 
 ### Collect Diagnostic Information
@@ -645,10 +645,10 @@ databricks apps restart vital-workbench --profile=prod
 # diagnostic_collector.sh - Collect diagnostic info
 
 echo "=== App Status ==="
-databricks apps get vital-workbench --profile=prod
+databricks apps get ontos-ml-workbench --profile=prod
 
 echo "=== App Logs (last 500 lines) ==="
-databricks apps logs vital-workbench --profile=prod --tail 500
+databricks apps logs ontos-ml-workbench --profile=prod --tail 500
 
 echo "=== Warehouse Status ==="
 databricks warehouses get $WAREHOUSE_ID --profile=prod
@@ -660,7 +660,7 @@ databricks sql exec --warehouse-id=$WAREHOUSE_ID \
 
 echo "=== Table Sizes ==="
 databricks sql exec --warehouse-id=$WAREHOUSE_ID \
-  "SHOW TABLES IN mirion_vital.workbench" \
+  "SHOW TABLES IN ontos_ml.workbench" \
   --profile=prod
 ```
 
@@ -740,7 +740,7 @@ Is the issue affecting > 50% of users?
 
 ## Contact Information
 
-- **Team:** Mirion Data Engineering
+- **Team:** Acme Instruments Data Engineering
 - **On-Call:** [PagerDuty rotation]
-- **Slack:** #vital-workbench-ops
-- **Email:** vital-workbench-team@mirion.com
+- **Slack:** #ontos-ml-workbench-ops
+- **Email:** ontos-ml-workbench-team@example.com

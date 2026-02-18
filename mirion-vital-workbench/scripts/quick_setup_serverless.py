@@ -41,7 +41,7 @@ def main():
     warehouse_id = "387bcda0f2ece20c"
 
     print("=" * 80)
-    print("VITAL Workbench Quick Setup - Serverless")
+    print("Ontos ML Workbench Quick Setup - Serverless")
     print("=" * 80)
     print(f"Catalog: serverless_dxukih_catalog")
     print(f"Schema: mirion")

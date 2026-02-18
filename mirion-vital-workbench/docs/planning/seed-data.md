@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS pcb_inspection.raw_images (
     "component": "resistor_R47"
   },
   "confidence": "high",
-  "labeled_by": "expert_inspector@mirion.com",
+  "labeled_by": "expert_inspector@example.com",
   "version": 1,
   "created_at": "2026-01-15T10:30:00Z"
 }
@@ -143,18 +143,18 @@ INSERT INTO pcb_inspection.raw_images VALUES
 INSERT INTO lakebase_db.canonical_labels VALUES
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-A-001', 'defect_detection', 
    '{"defect_type": "solder_bridge", "location": "U12", "severity": "high", "component": "resistor_R47"}',
-   'high', 'expert_inspector@mirion.com', '2026-01-15T10:30:00', '2026-01-15T10:30:00', 1, 0, 
+   'high', 'expert_inspector@example.com', '2026-01-15T10:30:00', '2026-01-15T10:30:00', 1, 0, 
    ARRAY('training', 'validation'), ARRAY('production_inference'), 'Standard solder bridge pattern on Type-A boards'),
    
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-A-015', 'defect_detection',
    '{"defect_type": "solder_bridge", "location": "U8", "severity": "high", "component": "capacitor_C23"}',
-   'high', 'expert_inspector@mirion.com', '2026-01-16T11:15:00', '2026-01-16T11:15:00', 1, 0,
+   'high', 'expert_inspector@example.com', '2026-01-16T11:15:00', '2026-01-16T11:15:00', 1, 0,
    ARRAY('training', 'validation'), ARRAY(), 'Recurring solder bridge on U8'),
 
   -- Cold joints on Type-B Control Boards
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-B-005', 'defect_detection',
    '{"defect_type": "cold_joint", "location": "J3", "severity": "medium", "component": "connector_J3"}',
-   'high', 'expert_inspector@mirion.com', '2026-01-17T09:00:00', '2026-01-17T09:00:00', 1, 0,
+   'high', 'expert_inspector@example.com', '2026-01-17T09:00:00', '2026-01-17T09:00:00', 1, 0,
    ARRAY('training', 'validation'), ARRAY(), 'Cold joint on connector pins'),
 
   -- ... continue for 30 canonical labels covering common defect patterns

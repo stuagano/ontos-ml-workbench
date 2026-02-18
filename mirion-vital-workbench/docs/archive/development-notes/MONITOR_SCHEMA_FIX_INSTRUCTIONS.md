@@ -35,7 +35,7 @@ Before running the fix:
 1. **Schema must exist**:
    ```sql
    USE CATALOG home_stuart_gano;
-   USE SCHEMA mirion_vital_workbench;
+   USE SCHEMA ontos_ml_workbench;
    ```
 
 2. **Permissions required**:
@@ -55,10 +55,10 @@ Check if the issues exist:
 
 ```sql
 -- Check if monitor_alerts table exists
-SHOW TABLES IN home_stuart_gano.mirion_vital_workbench LIKE 'monitor_alerts';
+SHOW TABLES IN home_stuart_gano.ontos_ml_workbench LIKE 'monitor_alerts';
 
 -- Check if feedback_items has flagged column
-DESCRIBE TABLE home_stuart_gano.mirion_vital_workbench.feedback_items;
+DESCRIBE TABLE home_stuart_gano.ontos_ml_workbench.feedback_items;
 ```
 
 **Expected Issues:**
@@ -196,7 +196,7 @@ If you need to rollback:
 
 ```sql
 -- Remove monitor_alerts table
-DROP TABLE IF EXISTS home_stuart_gano.mirion_vital_workbench.monitor_alerts;
+DROP TABLE IF EXISTS home_stuart_gano.ontos_ml_workbench.monitor_alerts;
 
 -- Remove flagged column (cannot be done directly in Delta Lake)
 -- You would need to recreate feedback_items without the column

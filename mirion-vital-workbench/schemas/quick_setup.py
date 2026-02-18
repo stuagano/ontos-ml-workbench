@@ -1,11 +1,11 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Quick Setup - Create Tables in erp-demonstrations.vital_workbench
+# MAGIC # Quick Setup - Create Tables in erp-demonstrations.ontos_ml_workbench
 
 # COMMAND ----------
 # Create schema
-spark.sql("CREATE SCHEMA IF NOT EXISTS erp-demonstrations.vital_workbench")
-print("✅ Schema created: erp-demonstrations.vital_workbench")
+spark.sql("CREATE SCHEMA IF NOT EXISTS erp-demonstrations.ontos_ml_workbench")
+print("✅ Schema created: erp-demonstrations.ontos_ml_workbench")
 
 # COMMAND ----------
 # Import datetime and user info
@@ -22,7 +22,7 @@ print(f"Setting up as: {user_email}")
 # COMMAND ----------
 # Sheets table
 spark.sql("""
-CREATE TABLE IF NOT EXISTS erp-demonstrations.vital_workbench.sheets (
+CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.sheets (
   id STRING NOT NULL,
   name STRING NOT NULL,
   description STRING,
@@ -50,7 +50,7 @@ TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
 spark.sql("""
-CREATE TABLE IF NOT EXISTS erp-demonstrations.vital_workbench.templates (
+CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.templates (
   id STRING NOT NULL,
   name STRING NOT NULL,
   description STRING,
@@ -75,7 +75,7 @@ TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
 spark.sql("""
-CREATE TABLE IF NOT EXISTS erp-demonstrations.vital_workbench.canonical_labels (
+CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.canonical_labels (
   id STRING NOT NULL,
   sheet_id STRING NOT NULL,
   item_ref STRING NOT NULL,
@@ -94,7 +94,7 @@ TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
 spark.sql("""
-CREATE TABLE IF NOT EXISTS erp-demonstrations.vital_workbench.training_sheets (
+CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.training_sheets (
   id STRING NOT NULL,
   name STRING NOT NULL,
   sheet_id STRING NOT NULL,
@@ -113,7 +113,7 @@ TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
 spark.sql("""
-CREATE TABLE IF NOT EXISTS erp-demonstrations.vital_workbench.qa_pairs (
+CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.qa_pairs (
   id STRING NOT NULL,
   training_sheet_id STRING NOT NULL,
   sheet_id STRING NOT NULL,
@@ -134,7 +134,7 @@ TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
 spark.sql("""
-CREATE TABLE IF NOT EXISTS erp-demonstrations.vital_workbench.model_training_lineage (
+CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.model_training_lineage (
   id STRING NOT NULL,
   model_name STRING NOT NULL,
   training_sheet_ids ARRAY<STRING> NOT NULL,
@@ -152,7 +152,7 @@ TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
 spark.sql("""
-CREATE TABLE IF NOT EXISTS erp-demonstrations.vital_workbench.example_store (
+CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.example_store (
   id STRING NOT NULL,
   template_id STRING NOT NULL,
   example_type STRING NOT NULL,
@@ -174,23 +174,23 @@ print("✅ All tables created!")
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## Seed Sample Data Pointing to Your Existing Mirion Tables
+# MAGIC ## Seed Sample Data Pointing to Your Existing Domain Tables
 
 # COMMAND ----------
-# Get list of existing tables in serverless_dxukih_catalog.mirion
-mirion_tables = spark.sql("SHOW TABLES IN serverless_dxukih_catalog.mirion").collect()
+# Get list of existing tables in serverless_dxukih_catalog.ontos_ml
+domain_tables = spark.sql("SHOW TABLES IN serverless_dxukih_catalog.ontos_ml").collect()
 
-print(f"Found {len(mirion_tables)} existing Mirion tables:")
-for table in mirion_tables:
+print(f"Found {len(domain_tables)} existing domain tables:")
+for table in domain_tables:
     print(f"  - {table.tableName}")
 
 # COMMAND ----------
 # Create sheets pointing to existing tables
 sheets_data = []
 
-for table in mirion_tables:
+for table in domain_tables:
     table_name = table.tableName
-    full_path = f"serverless_dxukih_catalog.mirion.{table_name}"
+    full_path = f"serverless_dxukih_catalog.ontos_ml.{table_name}"
 
     try:
         # Get row count
@@ -201,8 +201,8 @@ for table in mirion_tables:
         columns = [row.col_name for row in columns_df.collect() if not row.col_name.startswith('#')]
 
         sheets_data.append({
-            "id": f"sheet-mirion-{table_name}",
-            "name": f"Mirion {table_name.replace('_', ' ').title()}",
+            "id": f"sheet-domain-{table_name}",
+            "name": f"{table_name.replace('_', ' ').title()}",
             "description": f"Points to existing table: {full_path}",
             "source_type": "uc_table",
             "source_table": full_path,
@@ -217,7 +217,7 @@ for table in mirion_tables:
             "sample_seed": None,
             "status": "active",
             "item_count": count,
-            "notes": f"Auto-discovered from serverless_dxukih_catalog.mirion with {count} rows"
+            "notes": f"Auto-discovered from serverless_dxukih_catalog.ontos_ml with {count} rows"
         })
 
         print(f"✅ Will create sheet for: {table_name} ({count} rows)")
@@ -227,12 +227,12 @@ for table in mirion_tables:
 
 # Add volume sheet if it exists
 sheets_data.append({
-    "id": "sheet-mirion-raw-volume",
-    "name": "Mirion Raw Data Volume",
-    "description": "Points to /Volumes/serverless_dxukih_catalog/mirion/raw_datak",
+    "id": "sheet-domain-raw-volume",
+    "name": "Raw Data Volume",
+    "description": "Points to /Volumes/serverless_dxukih_catalog/ontos_ml/raw_datak",
     "source_type": "uc_volume",
     "source_table": None,
-    "source_volume": "/Volumes/serverless_dxukih_catalog/mirion/raw_datak",
+    "source_volume": "/Volumes/serverless_dxukih_catalog/ontos_ml/raw_datak",
     "source_path": "",
     "item_id_column": "filename",
     "text_columns": [],
@@ -264,7 +264,7 @@ if sheets_data:
         "sample_seed", "status", "item_count", "notes",
         "created_at", "created_by", "updated_at", "updated_by"])
 
-    sheets_df.write.mode("append").saveAsTable("erp-demonstrations.vital_workbench.sheets")
+    sheets_df.write.mode("append").saveAsTable("erp-demonstrations.ontos_ml_workbench.sheets")
     print(f"\n✅ Created {len(sheets_data)} sheets!")
 
 # COMMAND ----------
@@ -272,7 +272,7 @@ if sheets_data:
 templates_data = [{
     "id": "tmpl-generic-001",
     "name": "Generic Data Classification",
-    "description": "Classify and analyze data from Mirion tables",
+    "description": "Classify and analyze data from domain tables",
     "label_type": "classification",
     "prompt_template": "Analyze this data and provide classification:\n\n{data}\n\nProvide category and confidence.",
     "input_schema": {"type": "object", "properties": {"data": {"type": "string"}}},
@@ -300,7 +300,7 @@ templates_df = spark.createDataFrame([
     "temperature", "status", "version", "use_case", "notes",
     "created_at", "created_by", "updated_at", "updated_by"])
 
-templates_df.write.mode("append").saveAsTable("erp-demonstrations.vital_workbench.templates")
+templates_df.write.mode("append").saveAsTable("erp-demonstrations.ontos_ml_workbench.templates")
 print("✅ Created 1 template!")
 
 # COMMAND ----------
@@ -310,10 +310,10 @@ print("✅ Created 1 template!")
 # COMMAND ----------
 print("\n📊 Final Status:\n")
 print("Sheets:")
-display(spark.sql("SELECT id, name, source_type, source_table, item_count, status FROM erp-demonstrations.vital_workbench.sheets"))
+display(spark.sql("SELECT id, name, source_type, source_table, item_count, status FROM erp-demonstrations.ontos_ml_workbench.sheets"))
 
 print("\nTemplates:")
-display(spark.sql("SELECT id, name, label_type, status FROM erp-demonstrations.vital_workbench.templates"))
+display(spark.sql("SELECT id, name, label_type, status FROM erp-demonstrations.ontos_ml_workbench.templates"))
 
 print("\n✅ Setup complete! Your app is ready to run.")
 print("\nRun ./start-dev.sh to start the application")

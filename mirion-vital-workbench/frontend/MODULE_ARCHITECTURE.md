@@ -1,4 +1,4 @@
-# Module Architecture for VITAL Workbench
+# Module Architecture for Ontos ML Workbench
 
 ## Vision: Pluggable Capabilities
 

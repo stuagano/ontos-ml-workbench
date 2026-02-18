@@ -1,9 +1,9 @@
--- Seed Demo Data for VITAL Workbench
+-- Seed Demo Data for Ontos ML Workbench
 -- Run this notebook in the workspace to populate sample data
 
 -- Use the correct catalog/schema
 USE CATALOG `erp-demonstrations`;
-USE SCHEMA vital_workbench;
+USE SCHEMA ontos_ml_workbench;
 
 -- ============================================================================
 -- TEMPLATES

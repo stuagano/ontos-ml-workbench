@@ -1,4 +1,4 @@
-# APX Development Setup for VITAL Workbench
+# APX Development Setup for Ontos ML Workbench
 
 APX provides hot reload development for Databricks Apps, replacing the manual backend/frontend coordination with a unified dev server.
 
@@ -23,7 +23,7 @@ This will detect your existing FastAPI + React structure and add APX configurati
 ### Option 2: Manual Integration
 ```bash
 # Install APX into existing project
-cd mirion-vital-workbench
+cd ontos-ml-workbench
 uv add --index https://databricks-solutions.github.io/apx/simple apx
 ```
 
@@ -32,7 +32,7 @@ uv add --index https://databricks-solutions.github.io/apx/simple apx
 APX works with your existing structure. Key files it uses:
 
 ```
-mirion-vital-workbench/
+ontos-ml-workbench/
 ├── backend/
 │   ├── app/
 │   │   └── main.py              # FastAPI app (already compatible)

@@ -1,8 +1,8 @@
-# VITAL Workbench - Performance Optimization
+# Ontos ML Workbench - Performance Optimization
 
 **Date**: February 5, 2026
 **Status**: ✅ Deployed
-**App URL**: https://vital-workbench-fevm-v3-7474660127789418.aws.databricksapps.com
+**App URL**: https://ontos-ml-workbench-fevm-v3-7474660127789418.aws.databricksapps.com
 
 ## Problem
 
@@ -196,7 +196,7 @@ Use Chrome DevTools > Network tab to verify:
 
 The optimized build is deployed at:
 ```
-https://vital-workbench-fevm-v3-7474660127789418.aws.databricksapps.com
+https://ontos-ml-workbench-fevm-v3-7474660127789418.aws.databricksapps.com
 ```
 
 To verify the optimization is working:

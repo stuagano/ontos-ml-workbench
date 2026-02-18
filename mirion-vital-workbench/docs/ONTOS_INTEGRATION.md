@@ -1,4 +1,4 @@
-# VITAL Workbench + Ontos Integration Design
+# Ontos ML Workbench + Ontos Integration Design
 
 **Version:** 1.0
 **Date:** 2026-02-12
@@ -9,11 +9,11 @@
 
 ## Executive Summary
 
-This document describes the integration between **VITAL Workbench** (Mirion's AI-powered radiation safety platform) and **Ontos** (a data governance platform for Databricks Unity Catalog). The integration enables VITAL's domain-specific business metrics and terminology to serve as the core content for Ontos's governance capabilities, providing enterprise-grade data governance "for free" on top of the existing ML workflow.
+This document describes the integration between **Ontos ML Workbench** (Acme Instruments' AI-powered radiation safety platform) and **Ontos** (a data governance platform for Databricks Unity Catalog). The integration enables Ontos ML's domain-specific business metrics and terminology to serve as the core content for Ontos's governance capabilities, providing enterprise-grade data governance "for free" on top of the existing ML workflow.
 
 ### The Core Insight
 
-VITAL Workbench already defines rich business semantics through its canonical labels, defect classifications, quality metrics, and labeling workflows. Rather than building governance capabilities from scratch, we can leverage Ontos as a governance layer that consumes VITAL's domain knowledge and provides:
+Ontos ML Workbench already defines rich business semantics through its canonical labels, defect classifications, quality metrics, and labeling workflows. Rather than building governance capabilities from scratch, we can leverage Ontos as a governance layer that consumes Ontos ML's domain knowledge and provides:
 
 - Semantic search across business terms
 - Data contracts with SLO enforcement
@@ -34,11 +34,11 @@ Both applications share the same Unity Catalog namespace, with clear separation 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                        UNITY CATALOG                                    │
-│                   mirion_vital_workbench schema                         │
+│                   ontos_ml_workbench schema                         │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  OPERATIONAL TABLES              GOVERNANCE TABLES                      │
-│  (VITAL Workbench owns)          (Ontos owns)                          │
+│  (Ontos ML Workbench owns)          (Ontos owns)                          │
 │  ─────────────────────           ──────────────────                    │
 │  • sheets                        • glossary_terms                       │
 │  • canonical_labels              • data_contracts                       │
@@ -64,7 +64,7 @@ Both applications share the same Unity Catalog namespace, with clear separation 
 │                         USER INTERFACES                                 │
 ├──────────────────────────────┬──────────────────────────────────────────┤
 │                              │                                          │
-│   VITAL WORKBENCH            │   ONTOS                                  │
+│   Ontos ML WORKBENCH            │   ONTOS                                  │
 │   (ML Workflow)              │   (Governance)                           │
 │                              │                                          │
 │   ┌────────────────────┐     │   ┌────────────────────┐                │
@@ -95,12 +95,12 @@ Both applications share the same Unity Catalog namespace, with clear separation 
 
 ## Business Glossary: Your Domain Terms
 
-The following terms from VITAL Workbench's domain model become first-class glossary entries in Ontos. This enables semantic search, impact analysis, and compliance automation.
+The following terms from Ontos ML Workbench's domain model become first-class glossary entries in Ontos. This enables semantic search, impact analysis, and compliance automation.
 
 ### Domain Hierarchy
 
 ```
-Mirion VITAL Platform
+Acme Instruments Ontos ML Platform
 ├── Quality Control
 │   ├── Defect Classification
 │   │   ├── Solder Bridge
@@ -177,22 +177,22 @@ Mirion VITAL Platform
 
 ## Data Contracts
 
-Each data asset in VITAL Workbench has a corresponding Data Contract in Ontos following the Open Data Contract Standard (ODCS) v3.0.2.
+Each data asset in Ontos ML Workbench has a corresponding Data Contract in Ontos following the Open Data Contract Standard (ODCS) v3.0.2.
 
 ### Contract: Canonical Labels
 
 ```yaml
 # ODCS v3.0.2 Data Contract
 dataContractSpecification: 0.9.3
-id: mirion-canonical-labels-v1
+id: ontos-ml-canonical-labels-v1
 info:
   title: Canonical Labels Contract
   version: 1.0.0
   description: Expert-validated ground truth labels for ML training
   owner: QA Team
   contact:
-    name: Mirion QA Engineering
-    email: qa-engineering@mirion.com
+    name: Acme Instruments QA Engineering
+    email: qa-engineering@example.com
 
 dataset:
   - table: canonical_labels
@@ -271,7 +271,7 @@ terms:
 
 ```yaml
 dataContractSpecification: 0.9.3
-id: mirion-training-sheets-v1
+id: ontos-ml-training-sheets-v1
 info:
   title: Training Sheets Contract
   version: 1.0.0
@@ -318,7 +318,7 @@ sla:
 
 ## Compliance Rules
 
-Ontos enforces governance policies using declarative rules that automatically check VITAL Workbench data.
+Ontos enforces governance policies using declarative rules that automatically check Ontos ML Workbench data.
 
 ### Rule: High-Severity Review Requirement
 
@@ -485,10 +485,10 @@ SELECT * FROM term_usage ORDER BY affected_labels DESC
 
 ### Event-Driven Sync
 
-VITAL Workbench publishes events that Ontos consumes to keep governance metadata current.
+Ontos ML Workbench publishes events that Ontos consumes to keep governance metadata current.
 
 ```python
-# VITAL Workbench: Publish events on data changes
+# Ontos ML Workbench: Publish events on data changes
 class CanonicalLabelService:
     async def create_label(self, label: CanonicalLabelCreate) -> CanonicalLabel:
         # ... create label logic ...
@@ -539,10 +539,10 @@ class VitalWorkbenchSyncHandler:
 ### Batch Sync (Initial Load / Recovery)
 
 ```python
-# Ontos: Full sync from VITAL Workbench tables
+# Ontos: Full sync from Ontos ML Workbench tables
 class VitalWorkbenchAdapter:
     async def full_sync(self):
-        """Perform full synchronization from VITAL tables."""
+        """Perform full synchronization from Ontos ML tables."""
 
         # 1. Sync defect types to glossary terms
         defect_types = await self.sql_service.execute("""
@@ -560,7 +560,7 @@ class VitalWorkbenchAdapter:
                 domain="Quality Control",
                 usage_count=dt["usage_count"],
                 avg_confidence=dt["avg_confidence"],
-                source="vital_workbench"
+                source="ontos_ml_workbench"
             )
 
         # 2. Sync sheet → contract mappings
@@ -588,7 +588,7 @@ class VitalWorkbenchAdapter:
 
 **Goal:** Establish shared infrastructure and basic term synchronization.
 
-- [ ] Deploy Ontos to same Databricks workspace as VITAL Workbench
+- [ ] Deploy Ontos to same Databricks workspace as Ontos ML Workbench
 - [ ] Configure shared Unity Catalog access
 - [ ] Create glossary_terms table with initial domain hierarchy
 - [ ] Implement batch sync for defect types → glossary terms
@@ -633,7 +633,7 @@ class VitalWorkbenchAdapter:
 
 ## Benefits Summary
 
-### What VITAL Workbench Gets "For Free"
+### What Ontos ML Workbench Gets "For Free"
 
 | Capability | Before Integration | After Integration |
 |------------|-------------------|-------------------|
@@ -661,7 +661,7 @@ class VitalWorkbenchAdapter:
 ### Ontos Governance Tables (to be created)
 
 ```sql
--- Glossary terms (synced from VITAL concepts)
+-- Glossary terms (synced from Ontos ML concepts)
 CREATE TABLE glossary_terms (
     id STRING PRIMARY KEY,
     name STRING NOT NULL,
@@ -781,7 +781,7 @@ LEFT JOIN training_jobs tj ON tj.training_sheet_id = ts.id;
 ## Next Steps
 
 1. **Review this document** with stakeholders (ML Engineering, QA, Compliance)
-2. **Set up Ontos** in the FEVM Databricks workspace alongside VITAL Workbench
+2. **Set up Ontos** in the FEVM Databricks workspace alongside Ontos ML Workbench
 3. **Begin Phase 1** implementation with shared catalog access
 4. **Schedule weekly syncs** to track progress and adjust scope
 

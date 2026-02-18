@@ -1,8 +1,8 @@
-# VITAL Platform Workbench - Database Schema
+# Ontos ML Workbench - Database Schema
 
-This directory contains all Delta Lake table schemas for the VITAL Platform Workbench in Unity Catalog.
+This directory contains all Delta Lake table schemas for the Ontos ML Workbench in Unity Catalog.
 
-**Current Schema Location:** `serverless_dxukih_catalog.mirion` (FEVM workspace)
+**Current Schema Location:** `serverless_dxukih_catalog.ontos_ml` (FEVM workspace)
 **Warehouse:** `387bcda0f2ece20c`
 **Profile:** `fe-vm-serverless-dxukih`
 
@@ -229,7 +229,7 @@ The `example_store` table includes an `embedding` column for future vector searc
 ```sql
 -- P1: Create vector search index
 CREATE VECTOR SEARCH INDEX example_embeddings
-  ON main.mirion_vital_workbench.example_store(embedding)
+  ON main.ontos_ml_workbench.example_store(embedding)
   USING EMBEDDING_MODEL 'databricks-bge-large-en';
 ```
 
@@ -241,19 +241,19 @@ After creating tables, run these to verify:
 
 ```sql
 -- Show all tables
-SHOW TABLES IN main.mirion_vital_workbench;
+SHOW TABLES IN main.ontos_ml_workbench;
 
 -- Check table schemas
-DESCRIBE EXTENDED main.mirion_vital_workbench.canonical_labels;
+DESCRIBE EXTENDED main.ontos_ml_workbench.canonical_labels;
 
 -- Test composite key constraint
-INSERT INTO main.mirion_vital_workbench.canonical_labels
+INSERT INTO main.ontos_ml_workbench.canonical_labels
   (id, sheet_id, item_ref, label_type, label_data, created_by, updated_by)
 VALUES
   ('test-1', 'sheet-1', 'item-1', 'entities', '{"test": true}', 'system', 'system');
 
 -- This should fail with UNIQUE constraint violation
-INSERT INTO main.mirion_vital_workbench.canonical_labels
+INSERT INTO main.ontos_ml_workbench.canonical_labels
   (id, sheet_id, item_ref, label_type, label_data, created_by, updated_by)
 VALUES
   ('test-2', 'sheet-1', 'item-1', 'entities', '{"test": true}', 'system', 'system');
@@ -273,14 +273,14 @@ Recommended Unity Catalog permissions:
 
 ```sql
 -- Data Scientists (read-only)
-GRANT SELECT ON SCHEMA main.mirion_vital_workbench TO data_scientists;
+GRANT SELECT ON SCHEMA main.ontos_ml_workbench TO data_scientists;
 
 -- Domain Experts (read + label)
-GRANT SELECT, MODIFY ON TABLE main.mirion_vital_workbench.canonical_labels TO domain_experts;
-GRANT SELECT, MODIFY ON TABLE main.mirion_vital_workbench.qa_pairs TO domain_experts;
+GRANT SELECT, MODIFY ON TABLE main.ontos_ml_workbench.canonical_labels TO domain_experts;
+GRANT SELECT, MODIFY ON TABLE main.ontos_ml_workbench.qa_pairs TO domain_experts;
 
 -- Platform Admins (full access)
-GRANT ALL PRIVILEGES ON SCHEMA main.mirion_vital_workbench TO platform_admins;
+GRANT ALL PRIVILEGES ON SCHEMA main.ontos_ml_workbench TO platform_admins;
 ```
 
 ## Next Steps
@@ -356,5 +356,5 @@ GRANT ALL PRIVILEGES ON SCHEMA main.mirion_vital_workbench TO platform_admins;
 For schema questions or modifications, see:
 - `MIGRATION_HISTORY.md` - Migration tracking and patterns
 - `SCHEMA_REFERENCE.md` - Field reference and common mistakes
-- PRD: `.claude/prds/vital-workbench.md`
-- Epic: `.claude/epics/vital-workbench/epic.md`
+- PRD: `.claude/prds/ontos-ml-workbench.md`
+- Epic: `.claude/epics/ontos-ml-workbench/epic.md`

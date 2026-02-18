@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-End-to-End Test Script for VITAL Workbench.
+End-to-End Test Script for Ontos ML Workbench.
 
 Tests the complete workflow:
 DATA → GENERATE → LABEL → TRAIN
@@ -225,7 +225,7 @@ class E2ETest:
                 "location": "weld_joint"
             },
             "confidence": 1.0,
-            "labeled_by": "test_expert@mirion.com",
+            "labeled_by": "test_expert@example.com",
             "validation_method": "expert_review",
             "notes": "E2E test label"
         }
@@ -336,7 +336,7 @@ class E2ETest:
     def run(self, skip_cleanup: bool = False) -> bool:
         """Run all E2E tests."""
         self.log(f"\n{Colors.BOLD}{'='*60}{Colors.RESET}")
-        self.log(f"{Colors.BOLD}VITAL Workbench E2E Test Suite{Colors.RESET}")
+        self.log(f"{Colors.BOLD}Ontos ML Workbench E2E Test Suite{Colors.RESET}")
         self.log(f"{Colors.BOLD}{'='*60}{Colors.RESET}")
         self.log(f"Target: {self.base_url}")
 
@@ -380,7 +380,7 @@ class E2ETest:
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="End-to-end test suite for VITAL Workbench"
+        description="End-to-end test suite for Ontos ML Workbench"
     )
     parser.add_argument(
         "--url",

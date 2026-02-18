@@ -1,8 +1,8 @@
-# Databits Workbench - Business Case
+# Ontos ML Workbench - Business Case
 
 ## Executive Summary
 
-Databits Workbench is the **complete AI lifecycle platform** for Databricks - a single app that takes teams from raw data to production agents with full governance. It replaces fragmented Streamlit apps, siloed tools, and manual handoffs with a unified "mission control" that lets anyone participate in the AI development process. The result: **10x faster time-to-production** while ensuring complete auditability for every model, agent, and endpoint.
+Ontos ML Workbench is the **complete AI lifecycle platform** for Databricks - a single app that takes teams from raw data to production agents with full governance. It replaces fragmented Streamlit apps, siloed tools, and manual handoffs with a unified "mission control" that lets anyone participate in the AI development process. The result: **10x faster time-to-production** while ensuring complete auditability for every model, agent, and endpoint.
 
 ---
 
@@ -76,7 +76,7 @@ Teams build one-off Streamlit/Gradio apps:
 
 ## The Solution
 
-### Databits Workbench: Complete AI Lifecycle
+### Ontos ML Workbench: Complete AI Lifecycle
 
 **One app for the entire journey:**
 
@@ -96,22 +96,22 @@ DATA → TEMPLATE → CURATE → TRAIN → DEPLOY → MONITOR → IMPROVE
 
 | Before | After |
 |--------|-------|
-| Build labeling Streamlit app | Use Databits curation queue |
-| Build review dashboard | Use Databits pipeline view |
-| Build status tracker | Use Databits job panel |
+| Build labeling Streamlit app | Use Ontos ML Workbench curation queue |
+| Build review dashboard | Use Ontos ML Workbench pipeline view |
+| Build status tracker | Use Ontos ML Workbench job panel |
 | Build data preview tool | Deep link to UC Explorer |
-| Build model launcher | One-click training in Databits |
-| Build monitoring dashboard | Databits Monitor stage |
-| Build feedback collector | Databits Improve stage |
-| Track tools in spreadsheet | Databits Tools Registry |
-| Track agents in wiki | Databits Agents Registry |
+| Build model launcher | One-click training in Ontos ML Workbench |
+| Build monitoring dashboard | Ontos ML Workbench Monitor stage |
+| Build feedback collector | Ontos ML Workbench Improve stage |
+| Track tools in spreadsheet | Ontos ML Workbench Tools Registry |
+| Track agents in wiki | Ontos ML Workbench Agents Registry |
 | Maintain 10+ apps | Maintain zero (it's a Databricks App) |
 
 ### Why It Works
 
 1. **Native to Databricks** - Same auth, same governance, same workspace
 2. **Guided workflow** - Non-technical users know where they are
-3. **Databits as artifacts** - Prompt templates are versioned and traceable
+3. **Ontos ML Workbench as artifacts** - Prompt templates are versioned and traceable
 4. **AI-assisted** - Agents pre-label, humans verify
 5. **Full lineage** - Data → Template → Training → Model → Endpoint
 6. **Day 2 included** - Monitoring and improvement are first-class
@@ -163,7 +163,7 @@ DATA → TEMPLATE → CURATE → TRAIN → DEPLOY → MONITOR → IMPROVE
 | AI Functions | classify, extract, summarize, translate, mask |
 
 ### Stage 2: TEMPLATE
-**Databits as first-class artifacts**
+**Ontos ML Workbench as first-class artifacts**
 
 | Capability | Value |
 |------------|-------|
@@ -253,7 +253,7 @@ With registries:
 
 | Registry | Governance Provided |
 |----------|-------------------|
-| **Databits (Templates)** | Prompt version → training data → model |
+| **Ontos ML Workbench (Templates)** | Prompt version → training data → model |
 | **Tools** | Function → agent → endpoint |
 | **Agents** | Model + tools + prompt → endpoint |
 | **Endpoints** | Traffic config → metrics → feedback |
@@ -294,16 +294,16 @@ Databricks has:
 
 ## Competitive Landscape
 
-### Build vs Buy vs Databits
+### Build vs Buy vs Ontos ML Workbench
 
 | Option | Pros | Cons |
 |--------|------|------|
 | **Build (Streamlit)** | Customizable | Maintenance, no governance, fragmented, no monitoring |
 | **Buy (Labelbox, Scale)** | Feature-rich | Expensive, data leaves platform, labeling only |
 | **MLOps platforms** | Monitoring | No labeling, separate tool, integration tax |
-| **Databits** | Complete lifecycle, native, governed | Focused scope |
+| **Ontos ML Workbench** | Complete lifecycle, native, governed | Focused scope |
 
-### Why Databits Wins
+### Why Ontos ML Workbench Wins
 
 1. **Complete lifecycle** - Data to monitoring, not just labeling
 2. **Data stays in Databricks** - No export, no sync, no security review
@@ -315,7 +315,7 @@ Databricks has:
 
 ### Feature Comparison
 
-| Feature | Labelbox | Scale AI | Weights & Biases | Arize | Databits |
+| Feature | Labelbox | Scale AI | Weights & Biases | Arize | Ontos ML Workbench |
 |---------|----------|----------|------------------|-------|----------|
 | Data Extraction | ❌ | ❌ | ❌ | ❌ | ✅ |
 | AI Pre-labeling | ✅ | ✅ | ❌ | ❌ | ✅ |
@@ -388,7 +388,7 @@ Databricks has:
 
 ### Cost to Build Equivalent
 
-| Component | In-House Build | Databits |
+| Component | In-House Build | Ontos ML Workbench |
 |-----------|---------------|----------|
 | Data extraction jobs | $50-100K | Included |
 | Labeling UI | $40-80K | Included |
@@ -420,7 +420,7 @@ Databricks has:
 |--------|--------|--------|--------|-------|
 | Build internally | $500K | $200K | $200K | $900K |
 | Buy multiple tools | $300K | $300K | $300K | $900K |
-| Databits | $0* | $0* | $0* | $0* |
+| Ontos ML Workbench | $0* | $0* | $0* | $0* |
 
 *Included in existing Databricks license
 
@@ -571,7 +571,7 @@ Databricks has:
 
 ### The Proof Point
 
-> "We deployed Databits in our workspace on Monday. By month end, we had:
+> "We deployed Ontos ML Workbench in our workspace on Monday. By month end, we had:
 > - 5,000 contracts labeled by our legal team (no SQL)
 > - A fine-tuned model for clause extraction
 > - An agent deployed with 3 custom tools
@@ -588,34 +588,34 @@ Databricks has:
 ### Labelbox
 - **Strengths:** Feature-rich labeling, enterprise-grade
 - **Weaknesses:** Labeling only, expensive ($$$), data leaves platform
-- **Databits advantage:** Complete lifecycle, native, governed
+- **Ontos ML Workbench advantage:** Complete lifecycle, native, governed
 
 ### Scale AI
 - **Strengths:** Managed labeling workforce
 - **Weaknesses:** Very expensive, less control, no post-deploy
-- **Databits advantage:** Your people, your data, your governance
+- **Ontos ML Workbench advantage:** Your people, your data, your governance
 
 ### Weights & Biases
 - **Strengths:** Excellent experiment tracking
 - **Weaknesses:** No labeling, limited monitoring
-- **Databits advantage:** Complete lifecycle in one place
+- **Ontos ML Workbench advantage:** Complete lifecycle in one place
 
 ### Arize / Fiddler
 - **Strengths:** Strong monitoring and observability
 - **Weaknesses:** No labeling, no training
-- **Databits advantage:** Complete lifecycle, native integration
+- **Ontos ML Workbench advantage:** Complete lifecycle, native integration
 
 ### Label Studio (Open Source)
 - **Strengths:** Free, customizable
 - **Weaknesses:** Self-hosted, no governance, labeling only
-- **Databits advantage:** Full lifecycle, zero maintenance
+- **Ontos ML Workbench advantage:** Full lifecycle, zero maintenance
 
 ### Prodigy
 - **Strengths:** Fast annotation, active learning
 - **Weaknesses:** Single-user focus, no governance, no monitoring
-- **Databits advantage:** Multi-user workflow, governed, complete lifecycle
+- **Ontos ML Workbench advantage:** Multi-user workflow, governed, complete lifecycle
 
 ### Internal Streamlit Apps
 - **Strengths:** Customizable, quick to start
 - **Weaknesses:** Fragmented, ungoverned, maintenance burden, incomplete
-- **Databits advantage:** Unified, governed, complete, zero maintenance
+- **Ontos ML Workbench advantage:** Unified, governed, complete, zero maintenance

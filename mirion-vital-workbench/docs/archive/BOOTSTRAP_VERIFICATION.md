@@ -14,7 +14,7 @@
 
 ### 1. Bootstrap.sh Analysis
 
-**Location**: `/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/scripts/bootstrap.sh`
+**Location**: `/Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/scripts/bootstrap.sh`
 
 **Status**: ✅ Functional but uses older schema
 
@@ -76,7 +76,7 @@
 
 ### 2. Setup_database.py Analysis
 
-**Location**: `/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/scripts/setup_database.py`
+**Location**: `/Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/scripts/setup_database.py`
 
 **Status**: ✅ Current and uses PRD v2.3 schema
 
@@ -104,12 +104,12 @@
 # Local dev (home catalog)
 python scripts/setup_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # Production
 python scripts/setup_database.py \
   --catalog erp-demonstrations \
-  --schema vital_workbench \
+  --schema ontos_ml_workbench \
   --warehouse-id abc123
 
 # With profile
@@ -132,7 +132,7 @@ python scripts/setup_database.py \
 
 ### 3. Schema Files Validation
 
-**Location**: `/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/schemas/`
+**Location**: `/Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench/schemas/`
 
 **Files Found**:
 - ✅ 01_create_catalog.sql
@@ -180,7 +180,7 @@ python scripts/setup_database.py \
 # 1. Setup database with PRD v2.3 schema
 python scripts/setup_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # 2. Seed sample data
 python scripts/seed_sheets_data.py
@@ -245,10 +245,10 @@ The project has a complete bootstrap system, but with two parallel paths:
 
 ```bash
 # 1. Setup database
-cd /Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench
+cd /Users/stuart.gano/Documents/Customers/Acme Instruments/ontos-ml-workbench
 python scripts/setup_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # 2. Seed sample data
 python scripts/seed_sheets_data.py

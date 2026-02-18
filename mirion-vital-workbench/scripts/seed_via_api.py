@@ -10,7 +10,7 @@ from databricks.sdk import WorkspaceClient
 
 # Configuration
 CATALOG = "erp-demonstrations"
-SCHEMA = "vital_workbench"
+SCHEMA = "ontos_ml_workbench"
 
 
 def get_client():
@@ -309,7 +309,7 @@ def seed_sheets(client, warehouse_id: str):
 
 
 def main():
-    print("Seeding VITAL Workbench demo data...")
+    print("Seeding Ontos ML Workbench demo data...")
 
     client = get_client()
 

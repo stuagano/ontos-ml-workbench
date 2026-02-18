@@ -1,4 +1,4 @@
-# VITAL Workbench - Data Loading Performance Optimization
+# Ontos ML Workbench - Data Loading Performance Optimization
 
 **Date**: February 5, 2026
 **Status**: ✅ Ready to Deploy
@@ -224,7 +224,7 @@ curl https://your-app.databricksapps.com/api/v1/admin/cache/stats
   "keys": [
     "uc:catalogs",
     "uc:schemas:erp-demonstrations",
-    "uc:tables:erp-demonstrations:vital_workbench:cols=False"
+    "uc:tables:erp-demonstrations:ontos_ml_workbench:cols=False"
   ]
 }
 ```
@@ -249,7 +249,7 @@ uvicorn app.main:app --reload
 
 # Watch logs for cache warming
 # ✓ Cache warmed: 12 catalogs
-# ✓ Cache warmed: 47 tables in erp-demonstrations.vital_workbench
+# ✓ Cache warmed: 47 tables in erp-demonstrations.ontos_ml_workbench
 ```
 
 ### Production Deployment
@@ -271,7 +271,7 @@ databricks workspace import-dir /tmp/vital-clean \
   --overwrite --profile fe-vm-serverless-dxukih
 
 # Deploy
-databricks apps deploy vital-workbench-fevm-v3 \
+databricks apps deploy ontos-ml-workbench-fevm-v3 \
   --source-code-path /Workspace/Users/stuart.gano@databricks.com/apps/vital-source \
   --mode SNAPSHOT \
   --profile fe-vm-serverless-dxukih

@@ -1,4 +1,4 @@
-"""VITAL → Ontos DQX Quality Proxy Service.
+"""Ontos ML → Ontos DQX Quality Proxy Service.
 
 Fetches QA pairs from Ontos, runs heuristic quality checks locally,
 and pushes results back through Ontos's quality gate endpoint.
@@ -23,7 +23,7 @@ logger = logging.getLogger("dqx_quality_proxy")
 
 
 class DQXQualityService:
-    """Orchestrates fetch → check → push for the VITAL quality proxy."""
+    """Orchestrates fetch → check → push for the Ontos ML quality proxy."""
 
     def __init__(self) -> None:
         settings = get_settings()
@@ -183,7 +183,7 @@ class DQXQualityService:
         """POST check results to Ontos's import-dqx-results endpoint."""
         payload = DQXResultImport(
             check_results=results,
-            source="vital-dqx-proxy",
+            source="ontos-ml-dqx-proxy",
             dqx_run_id=dqx_run_id,
         )
         url = f"/api/training-data/quality/collections/{collection_id}/import-dqx-results"

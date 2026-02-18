@@ -1,4 +1,4 @@
-# E2E Test Suite for VITAL Platform Workbench
+# E2E Test Suite for Ontos ML Workbench
 
 Comprehensive end-to-end tests for the Deploy → Monitor → Improve workflow using Playwright.
 

@@ -5,7 +5,7 @@
 -- These are the datasets that get exported for model fine-tuning
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS home_stuart_gano.mirion_vital_workbench.training_sheets (
+CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.training_sheets (
   -- Identity
   id STRING NOT NULL,
   name STRING NOT NULL,
@@ -65,6 +65,6 @@ TBLPROPERTIES (
 );
 
 -- Create indexes for common queries
-CREATE INDEX IF NOT EXISTS idx_training_sheets_sheet ON home_stuart_gano.mirion_vital_workbench.training_sheets(sheet_id);
-CREATE INDEX IF NOT EXISTS idx_training_sheets_template ON home_stuart_gano.mirion_vital_workbench.training_sheets(template_id);
-CREATE INDEX IF NOT EXISTS idx_training_sheets_status ON home_stuart_gano.mirion_vital_workbench.training_sheets(status);
+CREATE INDEX IF NOT EXISTS idx_training_sheets_sheet ON home_stuart_gano.ontos_ml_workbench.training_sheets(sheet_id);
+CREATE INDEX IF NOT EXISTS idx_training_sheets_template ON home_stuart_gano.ontos_ml_workbench.training_sheets(template_id);
+CREATE INDEX IF NOT EXISTS idx_training_sheets_status ON home_stuart_gano.ontos_ml_workbench.training_sheets(status);

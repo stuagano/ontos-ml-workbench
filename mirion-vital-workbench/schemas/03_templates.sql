@@ -7,7 +7,7 @@
 -- VERIFIED SCHEMA: Matches actual database as of 2026-02-11
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS home_stuart_gano.mirion_vital_workbench.templates (
+CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.templates (
   -- Identity
   id STRING NOT NULL,
   name STRING NOT NULL,

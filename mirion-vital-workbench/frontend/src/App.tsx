@@ -1,5 +1,5 @@
 /**
- * Databits Workbench - Main Application
+ * Ontos ML Workbench - Main Application
  *
  * Complete AI lifecycle platform for Databricks:
  * DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
@@ -167,7 +167,7 @@ function AppContent() {
     setEditingTemplate(null);
     setDatasetContext(null); // Clear any dataset context
     setShowEditor(true);
-    toast.info("New Databit", "Creating new template (Alt+N)");
+    toast.info("New Template", "Creating new template (Alt+N)");
   }, [toast]);
 
   const handleEscape = useCallback(() => {
@@ -198,7 +198,7 @@ function AppContent() {
       <div className="min-h-screen flex items-center justify-center bg-db-gray-50">
         <div className="text-center">
           <Loader2 className="w-10 h-10 animate-spin text-db-orange mx-auto mb-4" />
-          <p className="text-db-gray-600">Loading Databits Workbench...</p>
+          <p className="text-db-gray-600">Loading Ontos ML Workbench...</p>
         </div>
       </div>
     );
@@ -258,7 +258,7 @@ function AppContent() {
   return (
     <div className="min-h-screen flex flex-col bg-db-gray-50">
       <Header
-        appName={config?.app_name || "Databits Workbench"}
+        appName={config?.app_name || "Ontos ML Workbench"}
         currentUser={config?.current_user || "Unknown"}
         workspaceUrl={config?.workspace_url || ""}
         showCanonicalLabeling={showCanonicalLabeling}

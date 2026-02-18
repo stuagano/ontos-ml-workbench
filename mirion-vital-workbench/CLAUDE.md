@@ -1,6 +1,6 @@
-# VITAL Platform Workbench
+# Ontos ML Workbench
 
-**Mission control for Mirion's AI-powered radiation safety platform on Databricks**
+**Mission control for Acme Instruments' AI-powered radiation safety platform on Databricks**
 
 ```
 DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
@@ -11,7 +11,7 @@ DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
 
 ## Project Overview
 
-VITAL Platform Workbench is a Databricks App for building and governing AI systems for radiation safety. It enables Mirion's domain experts, physicists, and data stewards to participate in AI development through a no-code, multimodal data curation platform.
+Ontos ML Workbench is a Databricks App for building and governing AI systems for radiation safety. It enables Acme Instruments' domain experts, physicists, and data stewards to participate in AI development through a no-code, multimodal data curation platform.
 
 ### Core Concepts
 
@@ -25,7 +25,7 @@ Expert-validated labels stored independently of Q&A pairs. Enables **"label once
 Materialized Q&A pairs generated from Sheets + Templates. Canonical label lookup provides automatic pre-approval when expert labels exist.
 
 **4. Prompt Templates (Reusable IP)**
-With LLMs, data modality no longer matters. Images, sensor telemetry, documents all converge through **prompt templates** - reusable assets encoding Mirion's 60+ years of radiation expertise.
+With LLMs, data modality no longer matters. Images, sensor telemetry, documents all converge through **prompt templates** - reusable assets encoding Acme Instruments' 60+ years of radiation expertise.
 
 ### Key Use Cases
 - **Defect Detection**: Image + sensor context → defect classification
@@ -53,7 +53,7 @@ With LLMs, data modality no longer matters. Images, sensor telemetry, documents 
 │       └── types/          # TypeScript types
 ├── schemas/                # Delta table DDL
 ├── resources/              # DAB job definitions
-├── synthetic_data/         # Mirion-specific sample data
+├── synthetic_data/         # Acme Instruments-specific sample data
 ├── databricks.yml          # DAB bundle config
 └── app.yaml               # Databricks App config
 ```
@@ -93,19 +93,19 @@ npm run dev
 cd frontend && npm run build && cd ..
 
 # Deploy app
-databricks apps deploy vital-workbench \
-  --source-code-path /Workspace/Users/<your-email>/Apps/vital-workbench \
+databricks apps deploy ontos-ml-workbench \
+  --source-code-path /Workspace/Users/<your-email>/Apps/ontos-ml-workbench \
   --profile=your-profile
 
 # IMPORTANT: Always poll for deployment completion
-./.claude/scripts/poll-databricks-app.sh vital-workbench your-profile
+./.claude/scripts/poll-databricks-app.sh ontos-ml-workbench your-profile
 ```
 
 **See**: `.claude/DEPLOYMENT_WORKFLOW.md` for complete deployment procedures and troubleshooting.
 
 ## Synthetic Data
 
-Sample data for Mirion use cases in `synthetic_data/`:
+Sample data for Acme Instruments use cases in `synthetic_data/`:
 - `defect_detection/` - Inspection images with defect labels
 - `predictive_maintenance/` - Equipment telemetry and failures
 - `anomaly_detection/` - Sensor streams with labeled anomalies
@@ -113,12 +113,12 @@ Sample data for Mirion use cases in `synthetic_data/`:
 
 ## Delta Tables (PRD v2.3)
 
-**Primary Development Location**: `serverless_dxukih_catalog.mirion` (FEVM workspace)
+**Primary Development Location**: `serverless_dxukih_catalog.ontos_ml` (FEVM workspace)
 
 **Configuration**: Set in `backend/.env`
 - Workspace: FEVM (https://fevm-serverless-dxukih.cloud.databricks.com)
 - Catalog: `serverless_dxukih_catalog`
-- Schema: `mirion`
+- Schema: `ontos_ml`
 - Warehouse: `387bcda0f2ece20c`
 - Profile: `fe-vm-serverless-dxukih`
 

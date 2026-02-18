@@ -1,7 +1,7 @@
 /**
  * Module Registry
  *
- * Central registry for all pluggable modules in VITAL
+ * Central registry for all pluggable modules in Ontos ML
  */
 
 import type { VitalModule } from "./types";

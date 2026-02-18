@@ -224,7 +224,7 @@ Usage constraints can be **automatically inherited** from source table tags:
 from databricks.sdk import WorkspaceClient
 
 # Get source table tags
-source_table = catalog.get_table('mirion_vital.raw.patient_scans')
+source_table = catalog.get_table('ontos_ml.raw.patient_scans')
 tags = source_table.tags
 
 # Auto-populate usage constraints
@@ -313,7 +313,7 @@ Export will include: 70 pairs
 All usage constraint changes are logged:
 
 ```sql
-mirion_vital.workbench.usage_constraint_audit (
+ontos_ml.workbench.usage_constraint_audit (
   id, qa_pair_id,
   old_allowed_uses ARRAY<STRING>,
   new_allowed_uses ARRAY<STRING>,
@@ -353,7 +353,7 @@ WHERE NOT array_contains(old_prohibited_uses, 'training')
 
 **Default values for existing data:**
 ```sql
-UPDATE mirion_vital.workbench.qa_pairs
+UPDATE ontos_ml.workbench.qa_pairs
 SET 
   allowed_uses = ['training', 'validation', 'evaluation', 'few_shot', 'testing'],
   prohibited_uses = [],
@@ -365,7 +365,7 @@ WHERE allowed_uses IS NULL;
 **For PHI-tagged tables:**
 ```sql
 -- Auto-detect and restrict PHI data
-UPDATE mirion_vital.workbench.qa_pairs qa
+UPDATE ontos_ml.workbench.qa_pairs qa
 SET 
   prohibited_uses = ['training', 'validation'],
   allowed_uses = ['few_shot', 'testing', 'evaluation'],
@@ -373,8 +373,8 @@ SET
   data_classification = 'restricted'
 WHERE qa.training_sheet_id IN (
   SELECT ts.id 
-  FROM mirion_vital.workbench.training_sheets ts
-  JOIN mirion_vital.workbench.sheets s ON s.id = ts.sheet_id
+  FROM ontos_ml.workbench.training_sheets ts
+  JOIN ontos_ml.workbench.sheets s ON s.id = ts.sheet_id
   WHERE s.uc_table_name IN (
     SELECT table_name 
     FROM system.information_schema.table_tags

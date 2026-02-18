@@ -1,4 +1,4 @@
-"""VITAL-native data quality endpoints for Sheets.
+"""Workbench-native data quality endpoints for Sheets.
 
 Translates Sheet source_table references into DQX InputConfig and runs
 profiling, check execution, and AI rule generation on behalf of the user.

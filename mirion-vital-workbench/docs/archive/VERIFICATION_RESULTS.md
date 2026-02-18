@@ -59,7 +59,7 @@ $ curl "http://localhost:8000/api/v1/feedback/stats"
 
 **Current Error:**
 ```
-[TABLE_OR_VIEW_NOT_FOUND] The table or view `erp-demonstrations`.`vital_workbench`.`monitor_alerts` cannot be found.
+[TABLE_OR_VIEW_NOT_FOUND] The table or view `erp-demonstrations`.`ontos_ml_workbench`.`monitor_alerts` cannot be found.
 ```
 
 **Affected Endpoint:** `/api/v1/monitoring/alerts`
@@ -75,7 +75,7 @@ $ curl "http://localhost:8000/api/v1/feedback/stats"
 3. Execute:
 
 ```sql
-CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`vital_workbench`.monitor_alerts (
+CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`ontos_ml_workbench`.monitor_alerts (
   id STRING NOT NULL,
   endpoint_id STRING NOT NULL,
   alert_type STRING NOT NULL,
@@ -126,7 +126,7 @@ cannot be resolved. Did you mean one of the following? [`id`, `rating`,
 3. Execute:
 
 ```sql
-ALTER TABLE `erp-demonstrations`.`vital_workbench`.feedback_items
+ALTER TABLE `erp-demonstrations`.`ontos_ml_workbench`.feedback_items
 ADD COLUMN IF NOT EXISTS flagged BOOLEAN DEFAULT FALSE;
 ```
 
@@ -146,7 +146,7 @@ Execute both fixes at once:
 
 ```sql
 -- Fix 1: Create monitor_alerts table
-CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`vital_workbench`.monitor_alerts (
+CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`ontos_ml_workbench`.monitor_alerts (
   id STRING NOT NULL,
   endpoint_id STRING NOT NULL,
   alert_type STRING NOT NULL,
@@ -164,12 +164,12 @@ CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`vital_workbench`.monitor_alerts
 ) USING DELTA;
 
 -- Fix 2: Add flagged column to feedback_items
-ALTER TABLE `erp-demonstrations`.`vital_workbench`.feedback_items
+ALTER TABLE `erp-demonstrations`.`ontos_ml_workbench`.feedback_items
 ADD COLUMN IF NOT EXISTS flagged BOOLEAN DEFAULT FALSE;
 
 -- Verification
-SHOW TABLES IN `erp-demonstrations`.`vital_workbench`;
-DESCRIBE TABLE `erp-demonstrations`.`vital_workbench`.feedback_items;
+SHOW TABLES IN `erp-demonstrations`.`ontos_ml_workbench`;
+DESCRIBE TABLE `erp-demonstrations`.`ontos_ml_workbench`.feedback_items;
 ```
 
 ---

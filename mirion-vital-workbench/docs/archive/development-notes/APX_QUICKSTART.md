@@ -1,4 +1,4 @@
-# APX Quick Reference for VITAL Development
+# APX Quick Reference for Ontos ML Development
 
 ## Essential Commands
 

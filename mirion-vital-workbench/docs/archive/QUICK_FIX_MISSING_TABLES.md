@@ -4,7 +4,7 @@
 
 Monitoring endpoints fail with error:
 ```
-Table 'erp-demonstrations.vital_workbench.monitor_alerts' doesn't exist
+Table 'erp-demonstrations.ontos_ml_workbench.monitor_alerts' doesn't exist
 ```
 
 ## Solution
@@ -21,11 +21,11 @@ Two tables are missing from your workspace. Run these migrations to create them.
 
 **Development Environment** (typical):
 - Catalog: `home_stuart_gano` (or your home catalog)
-- Schema: `mirion_vital_workbench`
+- Schema: `ontos_ml_workbench`
 
 **Production Environment** (example):
 - Catalog: `erp-demonstrations`
-- Schema: `vital_workbench`
+- Schema: `ontos_ml_workbench`
 
 Check your `.env` file:
 ```bash
@@ -42,10 +42,10 @@ cat backend/.env | grep DATABRICKS_SCHEMA
 3. Replace `${catalog}` and `${schema}` with your values:
    ```sql
    -- Example for production
-   CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`vital_workbench`.monitor_alerts (
+   CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`ontos_ml_workbench`.monitor_alerts (
 
    -- Example for dev
-   CREATE TABLE IF NOT EXISTS `home_stuart_gano`.`mirion_vital_workbench`.monitor_alerts (
+   CREATE TABLE IF NOT EXISTS `home_stuart_gano`.`ontos_ml_workbench`.monitor_alerts (
    ```
 4. Run the query
 5. Verify: `DESCRIBE TABLE EXTENDED your_catalog.your_schema.monitor_alerts;`
@@ -55,7 +55,7 @@ cat backend/.env | grep DATABRICKS_SCHEMA
 ```bash
 # Set your catalog and schema
 CATALOG="erp-demonstrations"
-SCHEMA="vital_workbench"
+SCHEMA="ontos_ml_workbench"
 
 # Generate migration SQL with replacements
 sed "s/\${catalog}/$CATALOG/g; s/\${schema}/$SCHEMA/g" \
@@ -77,7 +77,7 @@ from databricks.sdk import WorkspaceClient
 
 # Configuration
 CATALOG = "erp-demonstrations"  # or "home_stuart_gano" for dev
-SCHEMA = "vital_workbench"      # or "mirion_vital_workbench" for dev
+SCHEMA = "ontos_ml_workbench"      # or "ontos_ml_workbench" for dev
 WAREHOUSE_ID = "your-warehouse-id"
 
 # Initialize client (uses authentication from environment)

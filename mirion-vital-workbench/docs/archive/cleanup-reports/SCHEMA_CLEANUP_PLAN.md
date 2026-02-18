@@ -4,28 +4,28 @@
 
 ### Found Configurations:
 
-1. **`serverless_dxukih_catalog.mirion`**
+1. **`serverless_dxukih_catalog.ontos_ml`**
    - Location: `backend/.env` (ACTIVE), `databricks.yml` fevm target
    - SQL Files: `setup_serverless_catalog*.sql` (4 variations!)
    - Warehouse: `387bcda0f2ece20c`
 
-2. **`home_stuart_gano.mirion_vital_workbench`**
+2. **`home_stuart_gano.ontos_ml_workbench`**
    - Location: `backend/.env.example`, `schemas/01_create_catalog.sql`
    - Purpose: Primary development schema
 
-3. **`home_stuart_gano.vital_workbench`**
+3. **`home_stuart_gano.ontos_ml_workbench`**
    - Location: `databricks.yml` logfood target
 
-4. **`main.vital_workbench_dev`**
+4. **`main.ontos_ml_workbench_dev`**
    - Location: `databricks.yml` dev target
 
-5. **`main.vital_workbench`**
+5. **`main.ontos_ml_workbench`**
    - Location: `databricks.yml` default variables
 
-6. **`erp-demonstrations.vital_workbench`**
+6. **`erp-demonstrations.ontos_ml_workbench`**
    - Location: `schemas/create_tables.sql`
 
-7. **`vital_workbench.main`**
+7. **`ontos_ml_workbench.main`**
    - Location: APX version `.env.example`
 
 8. **Various others** in test scripts and seed data
@@ -54,7 +54,7 @@
 **Primary Development Location:**
 ```
 Catalog: home_stuart_gano
-Schema: mirion_vital_workbench
+Schema: ontos_ml_workbench
 ```
 
 **Reasoning:**
@@ -64,7 +64,7 @@ Schema: mirion_vital_workbench
 4. ✅ Personal development space (isolated from shared workspaces)
 
 **Secondary Targets** (for deployment only):
-- **fevm**: `serverless_dxukih_catalog.mirion` (shared FEVM workspace)
+- **fevm**: `serverless_dxukih_catalog.ontos_ml` (shared FEVM workspace)
 - **production**: TBD (when metastore admin available)
 
 ---
@@ -78,13 +78,13 @@ Schema: mirion_vital_workbench
 ```bash
 # backend/.env - WRONG (currently points to serverless)
 DATABRICKS_CATALOG=serverless_dxukih_catalog
-DATABRICKS_SCHEMA=mirion
+DATABRICKS_SCHEMA=ontos_ml
 DATABRICKS_WAREHOUSE_ID=387bcda0f2ece20c
 DATABRICKS_CONFIG_PROFILE=fe-vm-serverless-dxukih
 
 # backend/.env - CORRECT (should point to home catalog)
 DATABRICKS_CATALOG=home_stuart_gano
-DATABRICKS_SCHEMA=mirion_vital_workbench
+DATABRICKS_SCHEMA=ontos_ml_workbench
 DATABRICKS_WAREHOUSE_ID=<your-warehouse-id>
 DATABRICKS_CONFIG_PROFILE=<your-profile>
 ```
@@ -93,7 +93,7 @@ DATABRICKS_CONFIG_PROFILE=<your-profile>
 ```bash
 # Check backend can connect to correct schema
 curl "http://localhost:8000/api/v1/sheets" | jq .
-# Should return sheets from home_stuart_gano.mirion_vital_workbench
+# Should return sheets from home_stuart_gano.ontos_ml_workbench
 ```
 
 ---
@@ -172,7 +172,7 @@ targets:
       profile: <your-primary-profile>
     variables:
       catalog: home_stuart_gano
-      schema: mirion_vital_workbench
+      schema: ontos_ml_ontos_ml_workbench
       warehouse_id: <your-warehouse-id>
 
   fevm:
@@ -182,7 +182,7 @@ targets:
       host: https://fevm-serverless-dxukih.cloud.databricks.com
     variables:
       catalog: serverless_dxukih_catalog
-      schema: mirion
+      schema: ontos_ml
       warehouse_id: "387bcda0f2ece20c"
 ```
 
@@ -196,7 +196,7 @@ targets:
 ```sql
 -- Run in Databricks SQL Editor
 USE CATALOG home_stuart_gano;
-USE SCHEMA mirion_vital_workbench;
+USE SCHEMA ontos_ml_workbench;
 
 SHOW TABLES;
 
@@ -229,14 +229,14 @@ databricks sql --file 02_sheets.sql
 # Option 1: SQL Editor (recommended)
 # Copy contents and execute with:
 #   USE CATALOG home_stuart_gano;
-#   USE SCHEMA mirion_vital_workbench;
+#   USE SCHEMA ontos_ml_workbench;
 
 # Option 2: CLI
 databricks sql exec \
   --file fix_runtime_errors.sql \
   --warehouse-id <your-warehouse-id> \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 ```
 
 ---
@@ -254,11 +254,11 @@ databricks sql exec \
 
 **Primary Development:**
 - Catalog: `home_stuart_gano`
-- Schema: `mirion_vital_workbench`
+- Schema: `ontos_ml_workbench`
 - Purpose: Local development and testing
 
 **Deployment Targets:**
-- FEVM: `serverless_dxukih_catalog.mirion`
+- FEVM: `serverless_dxukih_catalog.ontos_ml`
 - Production: TBD (requires metastore admin)
 
 **Important**: Always use `backend/.env` for local development configuration.
@@ -269,13 +269,13 @@ Never hardcode catalog/schema in SQL files - use variables or config.
 
 ## Execution Checklist
 
-- [ ] 1. Update `backend/.env` to point to `home_stuart_gano.mirion_vital_workbench`
+- [ ] 1. Update `backend/.env` to point to `home_stuart_gano.ontos_ml_workbench`
 - [ ] 2. Restart backend to pick up new config
 - [ ] 3. Test API endpoints: `curl http://localhost:8000/api/v1/sheets`
 - [ ] 4. Delete stale schema SQL files (list above)
 - [ ] 5. Create `docs/archive/` and move old docs
 - [ ] 6. Update `databricks.yml` with clean targets
-- [ ] 7. Verify tables exist: `SHOW TABLES IN home_stuart_gano.mirion_vital_workbench;`
+- [ ] 7. Verify tables exist: `SHOW TABLES IN home_stuart_gano.ontos_ml_workbench;`
 - [ ] 8. Execute `fix_runtime_errors.sql` if tables missing
 - [ ] 9. Update README/CLAUDE.md/DEPLOYMENT.md with correct locations
 - [ ] 10. Test full workflow: DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
@@ -285,7 +285,7 @@ Never hardcode catalog/schema in SQL files - use variables or config.
 ## Post-Cleanup State
 
 **Single Source of Truth:**
-- Development: `home_stuart_gano.mirion_vital_workbench` (in `backend/.env`)
+- Development: `home_stuart_gano.ontos_ml_workbench` (in `backend/.env`)
 - Schema Files: `schemas/01-08*.sql` (numbered series only)
 - DAB Config: `databricks.yml` with clear dev/fevm separation
 - Clean Docs: Essential docs in root, historical docs in `docs/archive/`

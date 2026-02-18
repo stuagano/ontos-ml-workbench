@@ -1,6 +1,6 @@
-# VITAL Workbench tmux Setup Guide
+# Ontos ML Workbench tmux Setup Guide
 
-Beautiful, persistent development environment optimized for Claude Code + VITAL Workbench.
+Beautiful, persistent development environment optimized for Claude Code + Ontos ML Workbench.
 
 ## Features
 
@@ -17,10 +17,10 @@ Beautiful, persistent development environment optimized for Claude Code + VITAL 
 
 ```bash
 # From anywhere
-~/Documents/Customers/Mirion/mirion-vital-workbench/scripts/tmux-dev-session.sh
+~/Documents/Customers/Acme Instruments/ontos-ml-workbench/scripts/tmux-dev-session.sh
 
 # Or add alias to ~/.zshrc:
-alias vital='~/Documents/Customers/Mirion/mirion-vital-workbench/scripts/tmux-dev-session.sh'
+alias vital='~/Documents/Customers/Acme Instruments/ontos-ml-workbench/scripts/tmux-dev-session.sh'
 
 # Then simply:
 vital
@@ -151,7 +151,7 @@ vital  # Will ask if you want to attach to existing session
 | `q` | Exit copy mode |
 | **Scroll with mouse** | Mouse wheel works! |
 
-### VITAL-Specific Shortcuts
+### Ontos ML-Specific Shortcuts
 | Key | Action |
 |-----|--------|
 | `Ctrl+a t` | Run pytest tests |
@@ -253,7 +253,7 @@ vital  # Attach to existing session
 ### 2. Quick Reference Sheet
 ```bash
 # Add to your shell for quick reference
-alias tmux-help='less ~/Documents/Customers/Mirion/mirion-vital-workbench/TMUX_SETUP.md'
+alias tmux-help='less ~/Documents/Customers/Acme Instruments/ontos-ml-workbench/TMUX_SETUP.md'
 ```
 
 ### 3. Copy Mode for Long Outputs
@@ -330,10 +330,10 @@ vital
 ```bash
 # Make sure you're in the right directory
 Alt+2  # Backend window
-pwd    # Should show: .../mirion-vital-workbench/backend
+pwd    # Should show: .../ontos-ml-workbench/backend
 
 Alt+3  # Frontend window
-pwd    # Should show: .../mirion-vital-workbench/frontend
+pwd    # Should show: .../ontos-ml-workbench/frontend
 ```
 
 ## Advanced Configuration
@@ -419,6 +419,6 @@ Ctrl+a f                  # Fullscreen pane
 
 ---
 
-**Happy coding with VITAL Workbench + tmux + Claude Code!** 🚀
+**Happy coding with Ontos ML Workbench + tmux + Claude Code!** 🚀
 
 Your development environment is now persistent, beautiful, and optimized for AI-assisted development.

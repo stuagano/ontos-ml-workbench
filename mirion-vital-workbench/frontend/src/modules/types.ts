@@ -59,7 +59,7 @@ export interface ModuleSettings {
 }
 
 /**
- * A pluggable module that extends VITAL functionality
+ * A pluggable module that extends Ontos ML functionality
  */
 export interface VitalModule {
   /** Unique identifier */

@@ -1,6 +1,6 @@
-## Backend - VITAL Workbench FastAPI
+## Backend - Ontos ML Workbench FastAPI
 
-Mission control backend for Mirion's AI-powered radiation safety platform.
+Mission control backend for Acme Instruments' AI-powered radiation safety platform.
 
 ## Stack
 - Python 3.11, FastAPI, Pydantic v2
@@ -31,7 +31,7 @@ After backend changes:
 ## Conventions
 - Use Pydantic models for all request/response schemas
 - Async by default for route handlers
-- Unity Catalog tables: `home_stuart_gano.mirion_vital_workbench.*`
+- Unity Catalog tables: `home_stuart_gano.ontos_ml_workbench.*`
 - Service layer handles all Databricks SDK calls
 - Use composite keys: `(sheet_id, item_ref, label_type)` for canonical labels
 - Terminology: "Sheet", "Training Sheet", "Canonical Label" (not old terms)

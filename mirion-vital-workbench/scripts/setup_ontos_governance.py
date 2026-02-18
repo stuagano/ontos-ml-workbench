@@ -2,7 +2,7 @@
 """
 Ontos Governance Layer Quick-Start Setup
 
-This script sets up the governance tables for Ontos integration with VITAL Workbench.
+This script sets up the governance tables for Ontos integration with Ontos ML Workbench.
 It creates the schema, seeds initial glossary terms from existing canonical labels,
 and configures baseline compliance rules.
 
@@ -59,7 +59,7 @@ GOVERNANCE_TABLES_SQL = """
 -- ============================================================================
 -- ONTOS GOVERNANCE TABLES
 -- ============================================================================
--- These tables store governance metadata that complements VITAL Workbench
+-- These tables store governance metadata that complements Ontos ML Workbench
 -- operational data. Together they enable semantic search, compliance automation,
 -- and impact analysis.
 -- ============================================================================
@@ -67,7 +67,7 @@ GOVERNANCE_TABLES_SQL = """
 -- ---------------------------------------------------------------------------
 -- Table: glossary_terms
 -- ---------------------------------------------------------------------------
--- Business terms and metrics definitions. Synced from VITAL domain concepts.
+-- Business terms and metrics definitions. Synced from Workbench domain concepts.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS {catalog}.{schema}.glossary_terms (
     id STRING NOT NULL,
@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS {catalog}.{schema}.glossary_terms (
 
     CONSTRAINT pk_glossary_terms PRIMARY KEY (id)
 )
-COMMENT 'Business glossary terms synced from VITAL Workbench domain model'
+COMMENT 'Business glossary terms synced from Ontos ML Workbench domain model'
 TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true');
 
 -- ---------------------------------------------------------------------------
@@ -146,7 +146,7 @@ ON {catalog}.{schema}.semantic_relationships (target_type, target_id);
 -- ---------------------------------------------------------------------------
 -- Table: compliance_rules
 -- ---------------------------------------------------------------------------
--- Declarative compliance rules evaluated against VITAL data.
+-- Declarative compliance rules evaluated against Workbench data.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS {catalog}.{schema}.compliance_rules (
     id STRING NOT NULL,
@@ -293,7 +293,7 @@ ON {catalog}.{schema}.governance_audit_log (target_type, target_id);
 
 SHARED_VIEWS_SQL = """
 -- ============================================================================
--- SHARED VIEWS: VITAL Workbench + Ontos Integration
+-- SHARED VIEWS: Ontos ML Workbench + Ontos Integration
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -441,7 +441,7 @@ SEED_GLOSSARY_TERMS_SQL = """
 -- ============================================================================
 -- SEED: Initial Glossary Terms
 -- ============================================================================
--- These are the core domain terms from VITAL Workbench's defect detection model.
+-- These are the core domain terms from Ontos ML Workbench's defect detection model.
 -- ============================================================================
 
 -- Clear existing terms (for idempotent re-runs)
@@ -544,7 +544,7 @@ SEED_COMPLIANCE_RULES_SQL = """
 -- ============================================================================
 -- SEED: Compliance Rules
 -- ============================================================================
--- Baseline governance rules for VITAL Workbench data quality.
+-- Baseline governance rules for Ontos ML Workbench data quality.
 -- ============================================================================
 
 -- Clear existing rules (for idempotent re-runs)
@@ -681,7 +681,7 @@ SEED_DATA_CONTRACTS_SQL = """
 -- ============================================================================
 -- SEED: Data Contracts
 -- ============================================================================
--- ODCS v3.0.2 contracts for core VITAL Workbench tables.
+-- ODCS v3.0.2 contracts for core Ontos ML Workbench tables.
 -- ============================================================================
 
 -- Clear existing contracts (for idempotent re-runs)
@@ -694,19 +694,19 @@ INSERT INTO {catalog}.{schema}.data_contracts
 VALUES
 ('vital_contract_001', 'Canonical Labels Contract', '1.0.0',
  'Expert-validated ground truth labels for ML training',
- 'QA Team', 'qa-engineering@mirion.com', 'Quality Control',
+ 'QA Team', 'qa-engineering@example.com', 'Quality Control',
  'table', '{catalog}.{schema}.canonical_labels',
  4, '99.9%', '24 hours', 'active'),
 
 ('vital_contract_002', 'Training Sheets Contract', '1.0.0',
  'Materialized Q&A pairs for model fine-tuning',
- 'ML Engineering', 'ml-engineering@mirion.com', 'Model Lifecycle',
+ 'ML Engineering', 'ml-engineering@example.com', 'Model Lifecycle',
  'table', '{catalog}.{schema}.training_sheets',
  3, '99.5%', '48 hours', 'active'),
 
 ('vital_contract_003', 'Sheets Contract', '1.0.0',
  'Dataset definitions pointing to Unity Catalog sources',
- 'Data Engineering', 'data-engineering@mirion.com', 'Data Management',
+ 'Data Engineering', 'data-engineering@example.com', 'Data Management',
  'table', '{catalog}.{schema}.sheets',
  2, '99.9%', '1 hour', 'active');
 """
@@ -941,7 +941,7 @@ class OntosGovernanceSetup:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Set up Ontos governance tables for VITAL Workbench integration"
+        description="Set up Ontos governance tables for Ontos ML Workbench integration"
     )
     parser.add_argument(
         "--profile",

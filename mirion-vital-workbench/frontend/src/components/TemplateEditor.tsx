@@ -1,5 +1,5 @@
 /**
- * TemplateEditor - Full editor for creating/editing Databits (prompt templates)
+ * TemplateEditor - Full editor for creating/editing prompt templates
  *
  * Features:
  * - Input/output schema builder

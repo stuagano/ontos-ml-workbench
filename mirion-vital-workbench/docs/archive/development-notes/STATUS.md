@@ -1,4 +1,4 @@
-# VITAL Workbench - Project Status
+# Ontos ML Workbench - Project Status
 
 **Last Updated:** 2026-02-06  
 **PRD Version:** v2.3  
@@ -30,7 +30,7 @@
 - Architecture patterns established
 
 **Infrastructure:**
-- Unity Catalog schema: `erp-demonstrations.vital_workbench`
+- Unity Catalog schema: `erp-demonstrations.ontos_ml_workbench`
 - 15 Delta tables created and seeded
 - SQL Warehouse configured
 - Databricks Apps deployment working
@@ -49,7 +49,7 @@
 - All 7 stages scaffolded
 
 **Deployment:**
-- App URL: https://vital-workbench-fevm-v3-7474660127789418.aws.databricksapps.com
+- App URL: https://ontos-ml-workbench-fevm-v3-7474660127789418.aws.databricksapps.com
 - Performance optimized (83% faster initial load)
 - Cache warming (8 catalogs, 15 tables)
 - Gzip compression enabled
@@ -147,7 +147,7 @@ Results: ✅ No gaps, no breaking changes needed
 - **Environment:** FEVM Serverless workspace (dxukih)
 - **Deployment ID:** 01f102bede7c11b394c1c9ed77f11f45
 - **Status:** ACTIVE and SUCCEEDED
-- **URL:** https://vital-workbench-fevm-v3-7474660127789418.aws.databricksapps.com
+- **URL:** https://ontos-ml-workbench-fevm-v3-7474660127789418.aws.databricksapps.com
 
 ### Performance Metrics
 | Metric | Before | After | Improvement |
@@ -175,7 +175,7 @@ databricks workspace import-dir /tmp/vital-clean \
   --overwrite --profile fe-vm-serverless-dxukih
 
 # Deploy
-databricks apps deploy vital-workbench-fevm-v3 \
+databricks apps deploy ontos-ml-workbench-fevm-v3 \
   --source-code-path /Workspace/Users/stuart.gano@databricks.com/apps/vital-source \
   --mode SNAPSHOT \
   --profile fe-vm-serverless-dxukih
@@ -197,7 +197,7 @@ databricks apps deploy vital-workbench-fevm-v3 \
 │  └─ Static file serving (React frontend)   │
 └──────────────────────────────────────────────┘
          │
-         ├─> Unity Catalog: erp-demonstrations.vital_workbench
+         ├─> Unity Catalog: erp-demonstrations.ontos_ml_workbench
          ├─> SQL Warehouse: 387bcda0f2ece20c
          └─> Workspace: fevm-serverless-dxukih.cloud.databricks.com
 ```
@@ -394,7 +394,7 @@ npm run dev
 
 ### Database
 - **Catalog:** erp-demonstrations
-- **Schema:** vital_workbench
+- **Schema:** ontos_ml_workbench
 - **Warehouse ID:** 387bcda0f2ece20c
 - **Profile:** fe-vm-serverless-dxukih
 
@@ -415,7 +415,7 @@ npm run dev
 4. Documentation: Organized in `docs/` subdirectories
 
 ### Access Production
-**App URL:** https://vital-workbench-fevm-v3-7474660127789418.aws.databricksapps.com
+**App URL:** https://ontos-ml-workbench-fevm-v3-7474660127789418.aws.databricksapps.com
 
 Anyone with access to the FEVM workspace can use the app (authenticated via Databricks SSO).
 
@@ -494,7 +494,7 @@ Anyone with access to the FEVM workspace can use the app (authenticated via Data
 
 ### Status & Progress
 - `STATUS.md` - This file (consolidated project status)
-- `.claude/epics/vital-workbench/epic.md` - Task breakdown
+- `.claude/epics/ontos-ml-workbench/epic.md` - Task breakdown
 
 ---
 
@@ -502,7 +502,7 @@ Anyone with access to the FEVM workspace can use the app (authenticated via Data
 
 **Project Lead:** Stuart Gano (stuart.gano@databricks.com)  
 **Workspace:** FEVM Serverless (dxukih)  
-**App URL:** https://vital-workbench-fevm-v3-7474660127789418.aws.databricksapps.com
+**App URL:** https://ontos-ml-workbench-fevm-v3-7474660127789418.aws.databricksapps.com
 
 For questions or issues:
 1. Check documentation in `docs/`

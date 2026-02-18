@@ -7,7 +7,7 @@
 
 ## What Just Happened?
 
-We fixed **critical configuration issues** that prevented your VITAL Workbench from working:
+We fixed **critical configuration issues** that prevented your Ontos ML Workbench from working:
 
 **The Problem**: Backend was looking for tables in the **wrong catalog** (serverless) when they were actually in **home catalog**.
 
@@ -110,7 +110,7 @@ curl http://localhost:8000/api/v1/monitoring/alerts
 # Location: backend/.env
 
 DATABRICKS_CATALOG=home_stuart_gano
-DATABRICKS_SCHEMA=mirion_vital_workbench
+DATABRICKS_SCHEMA=ontos_ml_workbench
 DATABRICKS_WAREHOUSE_ID=<add-yours-here>
 ```
 
@@ -129,13 +129,13 @@ DATABRICKS_WAREHOUSE_ID=<add-yours-here>
 **Before** (`backend/.env.backup`):
 ```bash
 DATABRICKS_CATALOG=serverless_dxukih_catalog  # ❌ Wrong!
-DATABRICKS_SCHEMA=mirion
+DATABRICKS_SCHEMA=ontos_ml
 ```
 
 **After** (`backend/.env`):
 ```bash
 DATABRICKS_CATALOG=home_stuart_gano  # ✅ Correct!
-DATABRICKS_SCHEMA=mirion_vital_workbench
+DATABRICKS_SCHEMA=ontos_ml_workbench
 ```
 
 ### Schema Files
@@ -168,7 +168,7 @@ cat backend/.env | grep DATABRICKS
 
 # Should show:
 # DATABRICKS_CATALOG=home_stuart_gano
-# DATABRICKS_SCHEMA=mirion_vital_workbench
+# DATABRICKS_SCHEMA=ontos_ml_workbench
 # DATABRICKS_WAREHOUSE_ID=<your-id>
 ```
 
@@ -181,7 +181,7 @@ Check backend logs for "table not found" errors.
 Verify tables in Databricks SQL Editor:
 ```sql
 USE CATALOG home_stuart_gano;
-USE SCHEMA mirion_vital_workbench;
+USE SCHEMA ontos_ml_workbench;
 SHOW TABLES;
 ```
 

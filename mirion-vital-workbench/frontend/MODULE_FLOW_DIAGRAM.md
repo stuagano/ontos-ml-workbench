@@ -4,7 +4,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      VITAL PIPELINE FLOW                            │
+│                      Ontos ML PIPELINE FLOW                            │
 └─────────────────────────────────────────────────────────────────────┘
 
      DATA  →  TEMPLATE  →  CURATE  →  TRAIN  →  DEPLOY  →  MONITOR  →  IMPROVE

@@ -18,7 +18,7 @@ print("🌱 Seeding canonical labels...\n")
 
 # First, get the sheet IDs
 sheets_result = w.statement_execution.execute_statement(
-    statement="SELECT id, name FROM `erp-demonstrations`.vital_workbench.sheets ORDER BY name",
+    statement="SELECT id, name FROM `erp-demonstrations`.ontos_ml_workbench.sheets ORDER BY name",
     warehouse_id=warehouse_id,
     wait_timeout="30s",
 )
@@ -257,7 +257,7 @@ for i, label in enumerate(labels_data, 1):
     )
 
     sql = f"""
-    INSERT INTO `erp-demonstrations`.vital_workbench.canonical_labels (
+    INSERT INTO `erp-demonstrations`.ontos_ml_workbench.canonical_labels (
         id, sheet_id, item_ref, label_type, label_data, label_confidence,
         labeling_mode, version, reuse_count,
         data_classification, allowed_uses, prohibited_uses,
@@ -295,5 +295,5 @@ for i, label in enumerate(labels_data, 1):
 print(f"\n✅ Seeding complete!")
 print(f"\nVerify with:")
 print(
-    f"  SELECT label_type, count(*) FROM `erp-demonstrations`.vital_workbench.canonical_labels GROUP BY label_type;"
+    f"  SELECT label_type, count(*) FROM `erp-demonstrations`.ontos_ml_workbench.canonical_labels GROUP BY label_type;"
 )

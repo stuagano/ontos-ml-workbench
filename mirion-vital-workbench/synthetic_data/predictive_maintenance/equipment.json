@@ -12,7 +12,7 @@
     {
       "equipment_id": "DET-NPP-COOK-001",
       "type": "HPGe",
-      "manufacturer": "Mirion Technologies",
+      "manufacturer": "Acme Instruments",
       "model": "GC4020",
       "serial_number": "GC4020-2019-00542",
       "facility": "Cook Nuclear Plant",
@@ -31,7 +31,7 @@
     {
       "equipment_id": "DET-NPP-PALO-001",
       "type": "NaI",
-      "manufacturer": "Mirion Technologies",
+      "manufacturer": "Acme Instruments",
       "model": "SAM-940",
       "serial_number": "SAM940-2018-01234",
       "facility": "Palo Verde Nuclear Generating Station",
@@ -51,7 +51,7 @@
     {
       "equipment_id": "DET-NPP-WATTS-003",
       "type": "GM",
-      "manufacturer": "Mirion Technologies",
+      "manufacturer": "Acme Instruments",
       "model": "RDS-31",
       "serial_number": "RDS31-2020-00891",
       "facility": "Watts Bar Nuclear Plant",
@@ -70,7 +70,7 @@
     {
       "equipment_id": "DET-NPP-DIABLO-002",
       "type": "Ion_Chamber",
-      "manufacturer": "Mirion Technologies",
+      "manufacturer": "Acme Instruments",
       "model": "RM-80",
       "serial_number": "RM80-2017-00156",
       "facility": "Diablo Canyon Power Plant",
@@ -90,7 +90,7 @@
     {
       "equipment_id": "PM-NPP-SURRY-001",
       "type": "Portal_Monitor",
-      "manufacturer": "Mirion Technologies",
+      "manufacturer": "Acme Instruments",
       "model": "IPM-903",
       "serial_number": "IPM903-2016-00078",
       "facility": "Surry Nuclear Power Plant",

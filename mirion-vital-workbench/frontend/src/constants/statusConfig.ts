@@ -1,5 +1,5 @@
 /**
- * Shared status configurations for various entities in the VITAL Workbench
+ * Shared status configurations for various entities in the Ontos ML Workbench
  */
 
 import {

@@ -1,6 +1,6 @@
-# Deploying VITAL Workbench to Databricks Apps
+# Deploying Ontos ML Workbench to Databricks Apps
 
-This guide covers deploying the VITAL Workbench application to Databricks Apps using APX and Databricks Asset Bundles (DAB).
+This guide covers deploying the Ontos ML Workbench application to Databricks Apps using APX and Databricks Asset Bundles (DAB).
 
 ## Prerequisites
 
@@ -60,7 +60,7 @@ targets:
       profile: your-workspace-profile  # Change this
     variables:
       catalog: main
-      schema: vital_workbench_dev
+      schema: ontos_ml_workbench_dev
       warehouse_id: "your-warehouse-id"  # Add your SQL Warehouse ID
 ```
 
@@ -85,7 +85,7 @@ databricks bundle deploy -t dev --dry-run
 databricks bundle deploy -t dev
 
 # View deployment status
-databricks bundle run apps.vital-workbench -t dev
+databricks bundle run apps.ontos-ml-workbench -t dev
 ```
 
 ### 5. Access Your App
@@ -97,12 +97,12 @@ After deployment, get the app URL:
 databricks apps list
 
 # Or from the UI
-# Databricks Workspace → Apps → vital-workbench-dev
+# Databricks Workspace → Apps → ontos-ml-workbench-dev
 ```
 
 The app will be available at:
 ```
-https://<workspace>.cloud.databricks.com/apps/vital-workbench-dev
+https://<workspace>.cloud.databricks.com/apps/ontos-ml-workbench-dev
 ```
 
 ## Development Workflow
@@ -138,21 +138,21 @@ The project supports multiple deployment environments:
 databricks bundle deploy -t dev
 ```
 - Default target
-- Uses `vital_workbench_dev` schema
+- Uses `ontos_ml_workbench_dev` schema
 - Full error messages and logging
 
 ### Logfood (Internal Testing)
 ```bash
 databricks bundle deploy -t logfood
 ```
-- Uses `home_stuart_gano.vital_workbench` catalog
+- Uses `home_stuart_gano.ontos_ml_workbench` catalog
 - Internal Databricks workspace
 
 ### FE VM (Field Engineering Demo)
 ```bash
 databricks bundle deploy -t fevm
 ```
-- Uses `erp-demonstrations.vital_workbench` catalog
+- Uses `erp-demonstrations.ontos_ml_workbench` catalog
 - Serverless workspace
 - Pre-configured warehouse
 
@@ -191,7 +191,7 @@ uv sync
 
 **Check app logs:**
 ```bash
-databricks apps logs vital-workbench-dev -t dev
+databricks apps logs ontos-ml-workbench-dev -t dev
 ```
 
 **Common issues:**
@@ -263,7 +263,7 @@ These are configured in `resources/apps.yml` and populated from `databricks.yml`
 ## File Structure for Deployment
 
 ```
-mirion-vital-workbench/
+ontos-ml-workbench/
 ├── databricks.yml           # DAB bundle configuration
 ├── app.yaml                 # APX metadata
 ├── pyproject.toml           # Python dependencies
@@ -325,7 +325,7 @@ jobs:
 ## Support
 
 For issues:
-- Check Databricks Apps logs: `databricks apps logs vital-workbench-dev`
+- Check Databricks Apps logs: `databricks apps logs ontos-ml-workbench-dev`
 - Verify APX status: `apx dev status`
 - Review DAB validation: `databricks bundle validate`
 - Consult [Databricks Apps documentation](https://docs.databricks.com/en/dev-tools/databricks-apps/)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-End-to-end workflow testing for VITAL Workbench
+End-to-end workflow testing for Ontos ML Workbench
 Tests the complete DATA → GENERATE → LABEL → TRAIN workflow
 """
 
@@ -246,7 +246,7 @@ def main():
     start_time = time.time()
 
     log("=" * 80)
-    log("VITAL Workbench - End-to-End Workflow Testing")
+    log("Ontos ML Workbench - End-to-End Workflow Testing")
     log("=" * 80)
     log(f"Started: {datetime.now().isoformat()}")
     log(f"Base URL: {BASE_URL}")

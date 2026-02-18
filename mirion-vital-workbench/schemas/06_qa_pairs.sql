@@ -5,7 +5,7 @@
 -- Each pair may link to a canonical label for traceability
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS home_stuart_gano.mirion_vital_workbench.qa_pairs (
+CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.qa_pairs (
   -- Identity
   id STRING NOT NULL,
   training_sheet_id STRING NOT NULL COMMENT 'Reference to training_sheets.id',
@@ -57,8 +57,8 @@ TBLPROPERTIES (
 );
 
 -- Create indexes for common queries
-CREATE INDEX IF NOT EXISTS idx_qa_pairs_training_sheet ON home_stuart_gano.mirion_vital_workbench.qa_pairs(training_sheet_id);
-CREATE INDEX IF NOT EXISTS idx_qa_pairs_review_status ON home_stuart_gano.mirion_vital_workbench.qa_pairs(review_status);
-CREATE INDEX IF NOT EXISTS idx_qa_pairs_canonical_label ON home_stuart_gano.mirion_vital_workbench.qa_pairs(canonical_label_id) WHERE canonical_label_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_qa_pairs_auto_approved ON home_stuart_gano.mirion_vital_workbench.qa_pairs(was_auto_approved) WHERE was_auto_approved = true;
-CREATE INDEX IF NOT EXISTS idx_qa_pairs_item_ref ON home_stuart_gano.mirion_vital_workbench.qa_pairs(sheet_id, item_ref);
+CREATE INDEX IF NOT EXISTS idx_qa_pairs_training_sheet ON home_stuart_gano.ontos_ml_workbench.qa_pairs(training_sheet_id);
+CREATE INDEX IF NOT EXISTS idx_qa_pairs_review_status ON home_stuart_gano.ontos_ml_workbench.qa_pairs(review_status);
+CREATE INDEX IF NOT EXISTS idx_qa_pairs_canonical_label ON home_stuart_gano.ontos_ml_workbench.qa_pairs(canonical_label_id) WHERE canonical_label_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_qa_pairs_auto_approved ON home_stuart_gano.ontos_ml_workbench.qa_pairs(was_auto_approved) WHERE was_auto_approved = true;
+CREATE INDEX IF NOT EXISTS idx_qa_pairs_item_ref ON home_stuart_gano.ontos_ml_workbench.qa_pairs(sheet_id, item_ref);

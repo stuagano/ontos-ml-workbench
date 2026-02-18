@@ -1,4 +1,4 @@
-# 🧰 The Complete VITAL Toolbox
+# 🧰 The Complete Ontos ML Toolbox
 
 ## What You Already Have (Extract as Modules)
 
@@ -162,7 +162,7 @@
 - Template-based generation
 - Variation synthesis (paraphrase, augment)
 - Scenario generation (combine constraints)
-- Domain-specific generators (Mirion use cases)
+- Domain-specific generators (Acme Instruments use cases)
 - Quality filtering
 - Diversity metrics
 
@@ -171,7 +171,7 @@
 - CURATE: Augment training set
 - IMPROVE: Generate edge cases
 
-**Mirion-specific:**
+**Acme Instruments-specific:**
 - Generate equipment failure scenarios
 - Synthesize radiation reading patterns
 - Create maintenance history variations
@@ -258,7 +258,7 @@
 - DEPLOY: Cost projections
 - TRAIN: Training cost estimates
 
-**Mirion-specific value:**
+**Acme Instruments-specific value:**
 - Track cost per inspection
 - Optimize for high-volume scenarios
 - Budget planning
@@ -303,7 +303,7 @@
 - DATA: Index knowledge bases
 - DEPLOY: Select retrieval config
 
-**Mirion use cases:**
+**Acme Instruments use cases:**
 - Index technical manuals
 - Equipment documentation
 - Historical incident reports
@@ -327,7 +327,7 @@
 - DEPLOY: Deploy as agent endpoint
 - MONITOR: Trace agent executions
 
-**Mirion use cases:**
+**Acme Instruments use cases:**
 - Equipment diagnostic agents
 - Maintenance planning agents
 - Compliance checking workflows
@@ -377,7 +377,7 @@
 - DEPLOY: Enforce in production
 - MONITOR: Track violations
 
-**Mirion-specific:**
+**Acme Instruments-specific:**
 - Safety-critical validations
 - Compliance requirements
 - Domain-specific constraints
@@ -580,7 +580,7 @@ Data Quality Inspector → Synthetic Data Generator
 
 ---
 
-## Mirion-Specific Module Ideas
+## Acme Instruments-Specific Module Ideas
 
 ### 🏭 **Equipment Profiler**
 Build profiles of equipment behavior patterns from historical data
@@ -685,7 +685,7 @@ You have a **rich toolbox** of capabilities:
 **High-priority additions (15+ modules):**
 - Quality, Evaluation, Cost, Debug, RAG, Agent, etc.
 
-**Mirion-specific (6+ modules):**
+**Acme Instruments-specific (6+ modules):**
 - Equipment profiling, Radiation analysis, Compliance, etc.
 
 The module architecture makes all of this **manageable**:

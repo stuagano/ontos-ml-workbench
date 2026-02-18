@@ -1,6 +1,6 @@
 # FE VM Workspace Deployment Setup
 
-Quick setup guide for deploying VITAL Workbench to the FE VM Serverless workspace.
+Quick setup guide for deploying Ontos ML Workbench to the FE VM Serverless workspace.
 
 ## Workspace Details
 
@@ -11,7 +11,7 @@ From your JDBC connection string, I extracted:
 | **Workspace Host** | https://fevm-serverless-dxukih.cloud.databricks.com |
 | **Warehouse ID** | 387bcda0f2ece20c |
 | **Catalog** | erp-demonstrations |
-| **Schema** | vital_workbench |
+| **Schema** | ontos_ml_workbench |
 | **Target** | fevm (already configured) |
 
 ## One-Time Setup
@@ -47,7 +47,7 @@ databricks sql --profile fe-vm-serverless-dxukih \
 
 Expected output:
 ```
-erp-demonstrations | vital_workbench
+erp-demonstrations | ontos_ml_workbench
 ```
 
 ### 3. Create Schema (if needed)
@@ -55,7 +55,7 @@ erp-demonstrations | vital_workbench
 ```bash
 databricks sql --profile fe-vm-serverless-dxukih \
   --warehouse-id 387bcda0f2ece20c \
-  -e "CREATE SCHEMA IF NOT EXISTS erp_demonstrations.vital_workbench"
+  -e "CREATE SCHEMA IF NOT EXISTS erp_demonstrations.ontos_ml_workbench"
 ```
 
 ### 4. Create Database Tables
@@ -88,7 +88,7 @@ databricks bundle validate -t fevm
 databricks bundle deploy -t fevm
 
 # 4. Access app
-open https://fevm-serverless-dxukih.cloud.databricks.com/apps/vital-workbench-fevm
+open https://fevm-serverless-dxukih.cloud.databricks.com/apps/ontos-ml-workbench-fevm
 ```
 
 ## Verify Deployment
@@ -102,14 +102,14 @@ databricks apps list --profile fe-vm-serverless-dxukih
 ### View Logs
 
 ```bash
-databricks apps logs vital-workbench-fevm -t fevm --follow
+databricks apps logs ontos-ml-workbench-fevm -t fevm --follow
 ```
 
 ### Test the App
 
 1. Open the app URL:
    ```
-   https://fevm-serverless-dxukih.cloud.databricks.com/apps/vital-workbench-fevm
+   https://fevm-serverless-dxukih.cloud.databricks.com/apps/ontos-ml-workbench-fevm
    ```
 
 2. Test key workflows:
@@ -131,7 +131,7 @@ targets:
       host: https://fevm-serverless-dxukih.cloud.databricks.com
     variables:
       catalog: erp-demonstrations
-      schema: vital_workbench
+      schema: ontos_ml_workbench
       warehouse_id: "387bcda0f2ece20c"
 ```
 
@@ -166,7 +166,7 @@ databricks catalogs list --profile fe-vm-serverless-dxukih
 # Create schema if needed
 databricks sql --profile fe-vm-serverless-dxukih \
   --warehouse-id 387bcda0f2ece20c \
-  -e "CREATE SCHEMA IF NOT EXISTS erp_demonstrations.vital_workbench"
+  -e "CREATE SCHEMA IF NOT EXISTS erp_demonstrations.ontos_ml_workbench"
 ```
 
 ### App Deploy Failed
@@ -179,7 +179,7 @@ databricks bundle validate -t fevm
 databricks bundle deploy -t fevm --dry-run
 
 # Check app logs
-databricks apps logs vital-workbench-fevm -t fevm
+databricks apps logs ontos-ml-workbench-fevm -t fevm
 ```
 
 ## Development Workflow
@@ -191,7 +191,7 @@ databricks apps logs vital-workbench-fevm -t fevm
 export DATABRICKS_HOST="https://fevm-serverless-dxukih.cloud.databricks.com"
 export WAREHOUSE_ID="387bcda0f2ece20c"
 export CATALOG_NAME="erp-demonstrations"
-export SCHEMA_NAME="vital_workbench"
+export SCHEMA_NAME="ontos_ml_workbench"
 
 apx dev start
 ```
@@ -210,9 +210,9 @@ You now have 3 configured targets:
 
 | Target | Workspace | Catalog | Use Case |
 |--------|-----------|---------|----------|
-| **dev** | e2-demo-west | main.vital_workbench_dev | Personal development |
-| **logfood** | logfood | home_stuart_gano.vital_workbench | Internal testing |
-| **fevm** | fevm-serverless-dxukih | erp-demonstrations.vital_workbench | Demo/FE testing |
+| **dev** | e2-demo-west | main.ontos_ml_workbench_dev | Personal development |
+| **logfood** | logfood | home_stuart_gano.ontos_ml_workbench | Internal testing |
+| **fevm** | fevm-serverless-dxukih | erp-demonstrations.ontos_ml_workbench | Demo/FE testing |
 
 Deploy to any target:
 ```bash
@@ -231,6 +231,6 @@ databricks bundle deploy -t <target>
 ## Support
 
 For issues:
-- **Logs**: `databricks apps logs vital-workbench-fevm -t fevm`
+- **Logs**: `databricks apps logs ontos-ml-workbench-fevm -t fevm`
 - **Status**: `databricks apps list --profile fe-vm-serverless-dxukih`
 - **Redeploy**: `databricks bundle deploy -t fevm --force`

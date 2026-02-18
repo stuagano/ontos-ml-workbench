@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Seed demo data for Databits Workbench.
+Seed demo data for Ontos ML Workbench.
 
 This script populates the database with sample templates, tools, agents,
 and curation items for demonstration purposes.
@@ -635,22 +635,22 @@ def seed_labeling_workflow(sql_service, sheet_ids: list[str]) -> dict:
     # -------------------------------------------------------------------------
     users = [
         {
-            "email": "alice.physicist@mirion.com",
+            "email": "alice.physicist@example.com",
             "display_name": "Alice Chen",
             "role": "labeler",
         },
         {
-            "email": "bob.engineer@mirion.com",
+            "email": "bob.engineer@example.com",
             "display_name": "Bob Martinez",
             "role": "labeler",
         },
         {
-            "email": "carol.safety@mirion.com",
+            "email": "carol.safety@example.com",
             "display_name": "Carol Williams",
             "role": "reviewer",
         },
         {
-            "email": "david.manager@mirion.com",
+            "email": "david.manager@example.com",
             "display_name": "David Kim",
             "role": "manager",
         },
@@ -774,7 +774,7 @@ def seed_labeling_workflow(sql_service, sheet_ids: list[str]) -> dict:
         {
             "name": "Batch 1 - Initial Review",
             "item_indices": [0, 1, 2, 3, 4],
-            "assigned_to": "alice.physicist@mirion.com",
+            "assigned_to": "alice.physicist@example.com",
             "status": "in_progress",
             "labeled_count": 3,
             "priority": "high",
@@ -782,7 +782,7 @@ def seed_labeling_workflow(sql_service, sheet_ids: list[str]) -> dict:
         {
             "name": "Batch 2 - Secondary Review",
             "item_indices": [5, 6, 7, 8, 9],
-            "assigned_to": "bob.engineer@mirion.com",
+            "assigned_to": "bob.engineer@example.com",
             "status": "assigned",
             "labeled_count": 0,
             "priority": "normal",
@@ -828,13 +828,13 @@ def seed_labeling_workflow(sql_service, sheet_ids: list[str]) -> dict:
         # Task 1 items (Alice's batch)
         {"task_idx": 0, "row_index": 0, "status": "human_labeled",
          "human_labels": {"defect_type": "NORMAL", "severity": "none", "confidence": 95, "notes": "All readings normal, no visible issues"},
-         "labeled_by": "alice.physicist@mirion.com", "review_status": "approved"},
+         "labeled_by": "alice.physicist@example.com", "review_status": "approved"},
         {"task_idx": 0, "row_index": 1, "status": "human_labeled",
          "human_labels": {"defect_type": "CALIBRATION_DRIFT", "severity": "medium", "confidence": 88, "notes": "Readings elevated but consistent with drift pattern"},
-         "labeled_by": "alice.physicist@mirion.com", "review_status": "approved"},
+         "labeled_by": "alice.physicist@example.com", "review_status": "approved"},
         {"task_idx": 0, "row_index": 2, "status": "human_labeled",
          "human_labels": {"defect_type": "CONTAMINATION", "severity": "high", "confidence": 92, "notes": "Clear surface deposits visible, high readings confirm"},
-         "labeled_by": "alice.physicist@mirion.com", "review_status": None},
+         "labeled_by": "alice.physicist@example.com", "review_status": None},
         {"task_idx": 0, "row_index": 3, "status": "ai_labeled",
          "ai_labels": {"defect_type": "MINOR_WEAR", "severity": "low", "confidence": 78},
          "ai_confidence": 0.78, "human_labels": None, "labeled_by": None},
@@ -988,7 +988,7 @@ def seed_examples(sql_service, examples_dir: str = None):
 
 def main():
     """Main entry point."""
-    print("\n=== Databits Workbench Demo Data Seeder ===\n")
+    print("\n=== Ontos ML Workbench Demo Data Seeder ===\n")
 
     try:
         sql_service = get_sql_service()

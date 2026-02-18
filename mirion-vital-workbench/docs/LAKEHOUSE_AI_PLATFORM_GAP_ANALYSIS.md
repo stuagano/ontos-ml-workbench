@@ -2,7 +2,7 @@
 
 **Date:** January 30, 2026
 **Source:** Lakehouse_AI_Platform_Pitch.pptx
-**Target Codebase:** mirion-vital-workbench
+**Target Codebase:** ontos-ml-workbench
 
 ---
 

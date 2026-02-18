@@ -1,5 +1,5 @@
 /**
- * Databits Workbench - APX Sidebar Layout Version
+ * Ontos ML Workbench - APX Sidebar Layout Version
  *
  * Uses collapsible sidebar navigation instead of horizontal breadcrumb.
  * Toggle USE_SIDEBAR_LAYOUT in App.tsx to switch between layouts.
@@ -208,7 +208,7 @@ function AppContent() {
         <div className="text-center">
           <Loader2 className="w-10 h-10 animate-spin text-db-orange mx-auto mb-4" />
           <p className="text-db-gray-600 dark:text-gray-400">
-            Loading Databits Workbench...
+            Loading Ontos ML Workbench...
           </p>
         </div>
       </div>

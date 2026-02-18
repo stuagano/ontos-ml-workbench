@@ -1,5 +1,5 @@
 #!/bin/bash
-# Teardown script for VITAL Workbench
+# Teardown script for Ontos ML Workbench
 # Usage: ./scripts/teardown.sh <workspace-name>
 #
 # This removes the app and optionally the data
@@ -7,7 +7,7 @@
 set -e
 
 WORKSPACE_NAME="${1:-}"
-APP_NAME="vital-workbench"
+APP_NAME="ontos-ml-workbench"
 
 if [ -z "$WORKSPACE_NAME" ]; then
     echo "Usage: $0 <workspace-name>"
@@ -22,7 +22,7 @@ databricks apps delete "$APP_NAME" --profile="$PROFILE_NAME" 2>/dev/null || echo
 echo ""
 echo "App deleted. To also remove the data, run:"
 echo "  databricks sql exec --warehouse-id <ID> --profile=$PROFILE_NAME <<"EOF"
-echo "  DROP SCHEMA IF EXISTS main.vital_workbench CASCADE;"
+echo "  DROP SCHEMA IF EXISTS main.ontos_ml_workbench CASCADE;"
 echo "EOF"
 echo ""
 echo "Teardown complete."

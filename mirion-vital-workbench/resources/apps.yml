@@ -1,11 +1,11 @@
 # Databricks Apps Resource Configuration
-# Deploys the VITAL Workbench as a Databricks App
+# Deploys the Ontos ML Workbench as a Databricks App
 
 resources:
   apps:
-    vital-workbench:
-      name: vital-workbench-${bundle.target}
-      description: "VITAL Platform Workbench - Mission control for Mirion's AI-powered radiation safety platform"
+    ontos-ml-workbench:
+      name: ontos-ml-workbench-${bundle.target}
+      description: "Ontos ML Workbench - Mission control for AI-powered radiation safety platform"
 
       # Resources for the app
       resources:

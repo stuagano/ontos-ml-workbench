@@ -28,12 +28,12 @@
 
 **Source:**
 ```
-Unity Catalog Volume: /Volumes/mirion_vital/raw/medical_invoices/
+Unity Catalog Volume: /Volumes/ontos_ml/raw/medical_invoices/
   ├── invoice_001.pdf
   ├── invoice_002.pdf
   └── ... (500 invoices)
   
-Table: mirion_vital.raw.parsed_invoices
+Table: ontos_ml.raw.parsed_invoices
   - file_path: STRING
   - page_num: INT
   - extracted_text: STRING (from OCR)
@@ -45,14 +45,14 @@ Tags: PHI, PATIENT_DATA, BILLING
 
 **Sheet Creation:**
 ```sql
-INSERT INTO mirion_vital.workbench.sheets (
+INSERT INTO ontos_ml.workbench.sheets (
   id, name, uc_catalog, uc_schema, uc_table_name, uc_volume_path,
   item_count, sheet_type
 ) VALUES (
   'sheet-invoices-001',
   'Medical Invoices - January 2026',
-  'mirion_vital', 'raw', 'parsed_invoices',
-  '/Volumes/mirion_vital/raw/medical_invoices',
+  'ontos_ml', 'raw', 'parsed_invoices',
+  '/Volumes/ontos_ml/raw/medical_invoices',
   500,
   'pdf_extraction'
 );
@@ -520,7 +520,7 @@ example_store.sync_updates();
       "attachments": [
         {
           "type": "pdf",
-          "uc_path": "/Volumes/mirion_vital/raw/medical_invoices/invoice_042.pdf",
+          "uc_path": "/Volumes/ontos_ml/raw/medical_invoices/invoice_042.pdf",
           "page_num": 1
         }
       ]
@@ -561,7 +561,7 @@ if template.output_schema:
 
 ```python
 # Spark job to generate Q&A pairs for 10k+ PDFs
-df_invoices = spark.table("mirion_vital.raw.parsed_invoices")
+df_invoices = spark.table("ontos_ml.raw.parsed_invoices")
 
 df_qa_pairs = df_invoices.withColumn(
   "qa_pair",
@@ -572,7 +572,7 @@ df_qa_pairs = df_invoices.withColumn(
   )
 )
 
-df_qa_pairs.write.saveAsTable("mirion_vital.workbench.qa_pairs")
+df_qa_pairs.write.saveAsTable("ontos_ml.workbench.qa_pairs")
 ```
 
 **Impact:** Handle 10k+ invoices efficiently

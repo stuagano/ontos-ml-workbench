@@ -1,5 +1,5 @@
 """
-Comprehensive API Integration Tests for VITAL Workbench.
+Comprehensive API Integration Tests for Ontos ML Workbench.
 
 Tests all major API endpoints including:
 - Sheets (Dataset Definitions)
@@ -175,7 +175,7 @@ class TestCanonicalLabelsAPI:
             "label_type": "defect_type",
             "label_value": {"defect": "crack", "severity": "high"},
             "confidence": 1.0,
-            "labeled_by": "expert@mirion.com",
+            "labeled_by": "expert@example.com",
             "validation_method": "expert_review"
         }
 
@@ -297,7 +297,7 @@ class TestLabelingWorkflowAPI:
             "name": "Defect Review Job",
             "sheet_id": "sheet-001",
             "label_type": "defect_type",
-            "assignees": ["expert1@mirion.com", "expert2@mirion.com"],
+            "assignees": ["expert1@example.com", "expert2@example.com"],
             "priority": "high"
         }
 
@@ -421,7 +421,7 @@ class TestFeedbackAPI:
             "feedback_type": "incorrect",
             "correct_label": {"defect": "corrosion", "severity": "medium"},
             "comments": "Model misclassified corrosion as crack",
-            "submitted_by": "expert@mirion.com"
+            "submitted_by": "expert@example.com"
         }
 
         with patch.object(mock_sql_service, "execute_update", return_value=1):

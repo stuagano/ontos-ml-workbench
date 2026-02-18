@@ -11,7 +11,7 @@ warehouse_id = "387bcda0f2ece20c"
 print("📝 Creating canonical_labels table...\n")
 
 create_table_sql = """
-CREATE TABLE IF NOT EXISTS `erp-demonstrations`.vital_workbench.canonical_labels (
+CREATE TABLE IF NOT EXISTS `erp-demonstrations`.ontos_ml_workbench.canonical_labels (
   id STRING NOT NULL,
   sheet_id STRING NOT NULL COMMENT 'Reference to sheets.id',
   item_ref STRING NOT NULL COMMENT 'Identifier for the source item',
@@ -58,7 +58,7 @@ except Exception as e:
 # Verify
 print("\n🔍 Verifying table exists...")
 result = w.statement_execution.execute_statement(
-    statement="SHOW TABLES IN `erp-demonstrations`.vital_workbench LIKE 'canonical_labels'",
+    statement="SHOW TABLES IN `erp-demonstrations`.ontos_ml_workbench LIKE 'canonical_labels'",
     warehouse_id=warehouse_id,
     wait_timeout="30s",
 )
@@ -66,7 +66,7 @@ if result.result and result.result.data_array:
     print("✓ Table found in catalog")
     print("\n📋 Table schema:")
     desc_result = w.statement_execution.execute_statement(
-        statement="DESCRIBE TABLE `erp-demonstrations`.vital_workbench.canonical_labels",
+        statement="DESCRIBE TABLE `erp-demonstrations`.ontos_ml_workbench.canonical_labels",
         warehouse_id=warehouse_id,
         wait_timeout="30s",
     )

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Bootstrap script for VITAL Workbench on a fresh FEVM workspace
+# Bootstrap script for Ontos ML Workbench on a fresh FEVM workspace
 # Usage: ./scripts/bootstrap.sh <workspace-name>
 #
 # This script:
@@ -25,9 +25,9 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # Configuration
 WORKSPACE_NAME="${1:-}"
-APP_NAME="vital-workbench"
+APP_NAME="ontos-ml-workbench"
 CATALOG_NAME="${2:-}" # Will be auto-detected if not provided
-SCHEMA_NAME="vital_workbench"
+SCHEMA_NAME="ontos_ml_workbench"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
@@ -42,7 +42,7 @@ fi
 
 PROFILE_NAME="fe-vm-${WORKSPACE_NAME}"
 
-log_info "Starting VITAL Workbench bootstrap for workspace: $WORKSPACE_NAME"
+log_info "Starting Ontos ML Workbench bootstrap for workspace: $WORKSPACE_NAME"
 log_info "Using Databricks profile: $PROFILE_NAME"
 
 # Step 1: Validate workspace access
@@ -77,7 +77,7 @@ if [ -z "$WAREHOUSE_INFO" ] || [ "$WAREHOUSE_INFO" = "null null" ]; then
     log_warn "No SQL warehouse found. Creating a serverless warehouse..."
 
     WAREHOUSE_ID=$(databricks warehouses create \
-        --name "vital-workbench-warehouse" \
+        --name "ontos-ml-workbench-warehouse" \
         --cluster-size "2X-Small" \
         --warehouse-type "PRO" \
         --enable-serverless-compute \
@@ -390,7 +390,7 @@ command:
 
 env:
   - name: APP_NAME
-    value: vital-workbench
+    value: ontos-ml-workbench
   - name: APP_TITLE
     value: VITAL Platform Workbench
   - name: DATABRICKS_CATALOG
@@ -413,7 +413,7 @@ log_success "Frontend built"
 # Step 8: Sync and deploy app
 log_info "Step 8: Deploying application..."
 
-WORKSPACE_PATH="/Workspace/Users/stuart.gano@databricks.com/Apps/vital-workbench"
+WORKSPACE_PATH="/Workspace/Users/stuart.gano@databricks.com/Apps/ontos-ml-workbench"
 
 # Sync all files
 cd "$PROJECT_ROOT"
@@ -743,7 +743,7 @@ log_success "Curation items seeded"
 # Step 12: Print summary
 echo ""
 echo "==========================================="
-log_success "VITAL Workbench Bootstrap Complete!"
+log_success "Ontos ML Workbench Bootstrap Complete!"
 echo "==========================================="
 echo ""
 echo "Workspace:     $WORKSPACE_HOST"

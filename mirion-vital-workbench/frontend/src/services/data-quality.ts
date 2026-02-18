@@ -1,5 +1,5 @@
 /**
- * API client for VITAL-native data quality endpoints.
+ * API client for Ontos ML native data quality endpoints.
  */
 
 import type {

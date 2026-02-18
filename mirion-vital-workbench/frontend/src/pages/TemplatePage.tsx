@@ -1,5 +1,5 @@
 /**
- * TemplatePage - TEMPLATE stage for managing Databits (prompt templates)
+ * TemplatePage - TEMPLATE stage for managing prompt templates
  *
  * Shows selected data source from previous stage and allows selecting
  * a template to use for the workflow.

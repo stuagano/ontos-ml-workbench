@@ -1,10 +1,10 @@
 # Database Migration Guide
 
-This document describes how to apply database migrations for the VITAL Platform Workbench.
+This document describes how to apply database migrations for the Ontos ML Workbench.
 
 ## Overview
 
-The VITAL Platform uses Delta tables in Unity Catalog. Migrations create or modify these tables.
+The Ontos ML Platform uses Delta tables in Unity Catalog. Migrations create or modify these tables.
 
 ## Prerequisites
 
@@ -22,13 +22,13 @@ Before running migrations:
 
 ### Development Environment
 - **Catalog**: `home_stuart_gano` (or your home catalog)
-- **Schema**: `mirion_vital_workbench`
-- **Full path**: `home_stuart_gano.mirion_vital_workbench.*`
+- **Schema**: `ontos_ml_workbench`
+- **Full path**: `home_stuart_gano.ontos_ml_workbench.*`
 
 ### Production Environment
 - **Catalog**: `erp-demonstrations` (or your production catalog)
-- **Schema**: `vital_workbench`
-- **Full path**: `erp-demonstrations.vital_workbench.*`
+- **Schema**: `ontos_ml_workbench`
+- **Full path**: `erp-demonstrations.ontos_ml_workbench.*`
 
 ## How to Run Migrations
 
@@ -43,10 +43,10 @@ Before running migrations:
    -- Replace ${schema} with your schema name
 
    -- Example for production:
-   CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`vital_workbench`.monitor_alerts (
+   CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`ontos_ml_workbench`.monitor_alerts (
 
    -- Example for development:
-   CREATE TABLE IF NOT EXISTS `home_stuart_gano`.`mirion_vital_workbench`.monitor_alerts (
+   CREATE TABLE IF NOT EXISTS `home_stuart_gano`.`ontos_ml_workbench`.monitor_alerts (
    ```
 5. Select your SQL Warehouse
 6. Click **Run** to execute the migration
@@ -84,7 +84,7 @@ with open('schemas/create_monitor_alerts.sql', 'r') as f:
 
 # Substitute variables
 catalog = "erp-demonstrations"  # or "home_stuart_gano" for dev
-schema = "vital_workbench"      # or "mirion_vital_workbench" for dev
+schema = "ontos_ml_workbench"      # or "ontos_ml_workbench" for dev
 sql = sql_template.replace('${catalog}', catalog).replace('${schema}', schema)
 
 # Execute
@@ -125,7 +125,7 @@ print(f"Migration completed: {response.status}")
 - `created_at` (TIMESTAMP): Alert creation timestamp
 
 **Run this migration if**:
-- You see error: `Table 'erp-demonstrations.vital_workbench.monitor_alerts' doesn't exist`
+- You see error: `Table 'erp-demonstrations.ontos_ml_workbench.monitor_alerts' doesn't exist`
 - You're setting up a new workspace
 - You're deploying the monitoring endpoints for the first time
 
@@ -171,7 +171,7 @@ print(f"Migration completed: {response.status}")
 - `updated_by` (STRING): Last updater
 
 **Run this migration if**:
-- You see error: `Table 'erp-demonstrations.vital_workbench.model_training_lineage' doesn't exist`
+- You see error: `Table 'erp-demonstrations.ontos_ml_workbench.model_training_lineage' doesn't exist`
 - You're setting up model training workflows
 - You need lineage tracking for compliance and governance
 

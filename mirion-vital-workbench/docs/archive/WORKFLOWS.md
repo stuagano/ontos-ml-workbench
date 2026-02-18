@@ -1,6 +1,6 @@
-# VITAL Platform Workbench - Workflows
+# Ontos ML Workbench - Workflows
 
-Documentation for key workflows in the VITAL Platform Workbench.
+Documentation for key workflows in the Ontos ML Workbench.
 
 ## Table of Contents
 
@@ -219,7 +219,7 @@ PR checklist:
 **Target:**
 - Workspace: FEVM workspace or dev workspace
 - Catalog: `main` or `home_<user>`
-- Schema: `vital_workbench_dev`
+- Schema: `ontos_ml_workbench_dev`
 - Warehouse: X-Small or Small
 
 ### Staging Environment
@@ -238,7 +238,7 @@ PR checklist:
 
 **Target:**
 - Workspace: Staging workspace
-- Catalog: `mirion_vital_staging`
+- Catalog: `ontos_ml_staging`
 - Schema: `workbench`
 - Warehouse: Small or Medium
 
@@ -260,7 +260,7 @@ PR checklist:
 
 **Target:**
 - Workspace: Production workspace
-- Catalog: `mirion_vital`
+- Catalog: `ontos_ml`
 - Schema: `workbench`
 - Warehouse: Medium, Large, or Serverless
 
@@ -323,24 +323,24 @@ PR checklist:
 -- Verify current schema
 SELECT COUNT(*) as table_exists
 FROM system.information_schema.tables
-WHERE table_catalog = 'mirion_vital'
+WHERE table_catalog = 'ontos_ml'
   AND table_schema = 'workbench'
   AND table_name = 'qa_pairs';
 
 -- Add new columns
-ALTER TABLE mirion_vital.workbench.qa_pairs
+ALTER TABLE ontos_ml.workbench.qa_pairs
 ADD COLUMN allowed_uses ARRAY<STRING> COMMENT 'Allowed use cases for this Q&A pair';
 
-ALTER TABLE mirion_vital.workbench.qa_pairs
+ALTER TABLE ontos_ml.workbench.qa_pairs
 ADD COLUMN prohibited_uses ARRAY<STRING> COMMENT 'Prohibited use cases for this Q&A pair';
 
 -- Verify migration
-DESCRIBE mirion_vital.workbench.qa_pairs;
+DESCRIBE ontos_ml.workbench.qa_pairs;
 
 -- Validate data
 SELECT COUNT(*) as total_rows,
        SUM(CASE WHEN allowed_uses IS NULL THEN 1 ELSE 0 END) as null_allowed_uses
-FROM mirion_vital.workbench.qa_pairs;
+FROM ontos_ml.workbench.qa_pairs;
 ```
 
 ### Rollback Script Template
@@ -350,14 +350,14 @@ FROM mirion_vital.workbench.qa_pairs;
 -- Rollback for: migrate_20260207_add_usage_constraints.sql
 
 -- Remove columns
-ALTER TABLE mirion_vital.workbench.qa_pairs
+ALTER TABLE ontos_ml.workbench.qa_pairs
 DROP COLUMN allowed_uses;
 
-ALTER TABLE mirion_vital.workbench.qa_pairs
+ALTER TABLE ontos_ml.workbench.qa_pairs
 DROP COLUMN prohibited_uses;
 
 -- Verify rollback
-DESCRIBE mirion_vital.workbench.qa_pairs;
+DESCRIBE ontos_ml.workbench.qa_pairs;
 ```
 
 ### Apply Migration

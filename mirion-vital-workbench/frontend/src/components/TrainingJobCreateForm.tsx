@@ -101,7 +101,7 @@ export function TrainingJobCreateForm({ assembly, onSuccess, onCancel }: Trainin
         learning_rate: learningRate,
       },
       register_to_uc: registerToUC,
-      uc_catalog: "mirion_vital",
+      uc_catalog: "ontos_ml",
       uc_schema: "models",
     });
   };
@@ -151,7 +151,7 @@ export function TrainingJobCreateForm({ assembly, onSuccess, onCancel }: Trainin
           required
         />
         <p className="mt-1 text-sm text-db-gray-500">
-          This will be registered to Unity Catalog as: mirion_vital.models.{modelName}
+          This will be registered to Unity Catalog as: ontos_ml.models.{modelName}
         </p>
       </div>
 

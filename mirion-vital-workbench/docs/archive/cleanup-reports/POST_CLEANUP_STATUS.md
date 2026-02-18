@@ -7,15 +7,15 @@
 
 ## Problem Statement (Before)
 
-The VITAL Workbench codebase had **critical configuration issues** preventing it from working:
+The Ontos ML Workbench codebase had **critical configuration issues** preventing it from working:
 
 ### 6+ Duplicate Catalog/Schema Combinations
-1. `serverless_dxukih_catalog.mirion` (in backend/.env - WRONG location) ❌
-2. `home_stuart_gano.mirion_vital_workbench` (where tables actually exist) ✅
-3. `main.vital_workbench_dev` (in databricks.yml)
-4. `main.vital_workbench` (in databricks.yml default)
-5. `erp-demonstrations.vital_workbench` (in old schema files)
-6. `vital_workbench.main` (in APX version)
+1. `serverless_dxukih_catalog.ontos_ml` (in backend/.env - WRONG location) ❌
+2. `home_stuart_gano.ontos_ml_workbench` (where tables actually exist) ✅
+3. `main.ontos_ml_workbench_dev` (in databricks.yml)
+4. `main.ontos_ml_workbench` (in databricks.yml default)
+5. `erp-demonstrations.ontos_ml_workbench` (in old schema files)
+6. `ontos_ml_workbench.main` (in APX version)
 
 ### Root Cause
 Backend was configured to connect to **serverless catalog** but tables were in **home catalog** = **complete disconnect**.
@@ -47,7 +47,7 @@ Executed `scripts/cleanup-schemas.sh` which:
    - Cleaned up root directory
 
 4. **Established Single Source of Truth**
-   - Primary: `home_stuart_gano.mirion_vital_workbench`
+   - Primary: `home_stuart_gano.ontos_ml_workbench`
    - Documented in `backend/.env` and README.md
 
 ---
@@ -61,7 +61,7 @@ Executed `scripts/cleanup-schemas.sh` which:
 **Before**:
 ```bash
 DATABRICKS_CATALOG=serverless_dxukih_catalog
-DATABRICKS_SCHEMA=mirion
+DATABRICKS_SCHEMA=ontos_ml
 DATABRICKS_WAREHOUSE_ID=387bcda0f2ece20c
 DATABRICKS_CONFIG_PROFILE=fe-vm-serverless-dxukih
 ```
@@ -69,7 +69,7 @@ DATABRICKS_CONFIG_PROFILE=fe-vm-serverless-dxukih
 **After**:
 ```bash
 DATABRICKS_CATALOG=home_stuart_gano
-DATABRICKS_SCHEMA=mirion_vital_workbench
+DATABRICKS_SCHEMA=ontos_ml_workbench
 DATABRICKS_WAREHOUSE_ID=
 # Profile uses default from ~/.databrickscfg
 ```
@@ -90,7 +90,7 @@ All hardcoded conflicting catalog references removed:
 ### Schema Files Kept
 
 **Canonical numbered series** (01-08):
-- ✅ `01_create_catalog.sql` - Creates `home_stuart_gano.mirion_vital_workbench`
+- ✅ `01_create_catalog.sql` - Creates `home_stuart_gano.ontos_ml_workbench`
 - ✅ `02_sheets.sql` - Core table
 - ✅ `03_templates.sql` - Core table
 - ✅ `04_canonical_labels.sql` - Core table
@@ -189,7 +189,7 @@ Two critical schema fixes still need to be applied:
 Use Databricks SQL Editor to check:
 ```sql
 USE CATALOG home_stuart_gano;
-USE SCHEMA mirion_vital_workbench;
+USE SCHEMA ontos_ml_workbench;
 SHOW TABLES;
 ```
 
@@ -335,7 +335,7 @@ Navigate to http://localhost:5173 and test all 7 workflow stages:
 
 ### Immediate (Today)
 1. [ ] Add warehouse ID to `backend/.env`
-2. [ ] Verify tables exist in `home_stuart_gano.mirion_vital_workbench`
+2. [ ] Verify tables exist in `home_stuart_gano.ontos_ml_workbench`
 3. [ ] Run `fix_monitor_schema.sql` in Databricks SQL Editor
 4. [ ] Run `add_flagged_column.sql` in Databricks SQL Editor
 5. [ ] Restart backend and test API endpoints

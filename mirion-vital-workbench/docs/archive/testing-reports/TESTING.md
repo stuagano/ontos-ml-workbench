@@ -1,6 +1,6 @@
-# Testing Guide - VITAL Workbench
+# Testing Guide - Ontos ML Workbench
 
-Comprehensive testing strategy for the VITAL Platform Workbench, covering backend API tests, frontend unit tests, and end-to-end workflow tests.
+Comprehensive testing strategy for the Ontos ML Workbench, covering backend API tests, frontend unit tests, and end-to-end workflow tests.
 
 ## Table of Contents
 
@@ -47,7 +47,7 @@ npm run test:coverage
 ## Test Structure
 
 ```
-mirion-vital-workbench/
+ontos-ml-workbench/
 ├── backend/
 │   ├── tests/
 │   │   ├── conftest.py              # Pytest fixtures
@@ -319,7 +319,7 @@ test.describe('Feature', () => {
 
 ### E2E Test Script
 
-The E2E test script (`backend/scripts/e2e_test.py`) tests the complete VITAL workflow:
+The E2E test script (`backend/scripts/e2e_test.py`) tests the complete Ontos ML workflow:
 
 **Workflow Stages Tested:**
 1. **DATA** - Create Sheet (dataset definition)
@@ -354,7 +354,7 @@ python scripts/e2e_test.py --skip-cleanup
 
 ```
 ============================================================
-VITAL Workbench E2E Test Suite
+Ontos ML Workbench E2E Test Suite
 ============================================================
 Target: http://localhost:8000
 

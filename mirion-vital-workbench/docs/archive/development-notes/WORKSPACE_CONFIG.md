@@ -13,7 +13,7 @@
 Workspace:  https://fevm-serverless-dxukih.cloud.databricks.com
 Profile:    fe-vm-serverless-dxukih
 Catalog:    serverless_dxukih_catalog
-Schema:     mirion
+Schema:     ontos_ml
 Warehouse:  387bcda0f2ece20c
 ```
 
@@ -25,7 +25,7 @@ Warehouse:  387bcda0f2ece20c
 ```bash
 DATABRICKS_HOST=https://fevm-serverless-dxukih.cloud.databricks.com
 DATABRICKS_CATALOG=serverless_dxukih_catalog
-DATABRICKS_SCHEMA=mirion
+DATABRICKS_SCHEMA=ontos_ml
 DATABRICKS_WAREHOUSE_ID=387bcda0f2ece20c
 DATABRICKS_CONFIG_PROFILE=fe-vm-serverless-dxukih
 ```
@@ -40,7 +40,7 @@ targets:
       profile: fe-vm-serverless-dxukih
     variables:
       catalog: serverless_dxukih_catalog
-      schema: mirion
+      schema: ontos_ml
       warehouse_id: "387bcda0f2ece20c"
 ```
 
@@ -48,7 +48,7 @@ targets:
 
 ## Tables in FEVM
 
-Location: `serverless_dxukih_catalog.mirion`
+Location: `serverless_dxukih_catalog.ontos_ml`
 
 **Core Tables**:
 - sheets
@@ -81,7 +81,7 @@ Location: `serverless_dxukih_catalog.mirion`
 
 **Keep these values consistent**:
 - Catalog: `serverless_dxukih_catalog` (not home_stuart_gano)
-- Schema: `mirion` (not mirion_vital_workbench)
+- Schema: `ontos_ml` (not ontos_ml_workbench)
 - Workspace: FEVM (not e2-demo-west or logfood)
 
 **If you need to use a different workspace**:
@@ -102,7 +102,7 @@ Should output:
 ```
 DATABRICKS_HOST=https://fevm-serverless-dxukih.cloud.databricks.com
 DATABRICKS_CATALOG=serverless_dxukih_catalog
-DATABRICKS_SCHEMA=mirion
+DATABRICKS_SCHEMA=ontos_ml
 DATABRICKS_WAREHOUSE_ID=387bcda0f2ece20c
 DATABRICKS_CONFIG_PROFILE=fe-vm-serverless-dxukih
 ```
@@ -127,15 +127,15 @@ Expected: 200 responses, no errors
 ## History
 
 **Before cleanup** (bounced between 6+ configs):
-- ❌ home_stuart_gano.mirion_vital_workbench
-- ❌ main.vital_workbench_dev
-- ❌ serverless_dxukih_catalog.mirion
+- ❌ home_stuart_gano.ontos_ml_workbench
+- ❌ main.ontos_ml_workbench_dev
+- ❌ serverless_dxukih_catalog.ontos_ml
 - ❌ e2-demo-west workspace
 - ❌ logfood workspace
 - ❌ Multiple conflicting .env files
 
 **After cleanup** (single source of truth):
-- ✅ serverless_dxukih_catalog.mirion (FEVM)
+- ✅ serverless_dxukih_catalog.ontos_ml (FEVM)
 - ✅ One workspace, one config
 - ✅ All tables in same location
 

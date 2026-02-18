@@ -26,7 +26,7 @@ Previously, after deploying to Databricks Apps, we would immediately ask the use
 
 **Usage**:
 ```bash
-./.claude/scripts/poll-databricks-app.sh vital-workbench fe-vm-serverless-dxukih
+./.claude/scripts/poll-databricks-app.sh ontos-ml-workbench fe-vm-serverless-dxukih
 ```
 
 **Exit codes**:
@@ -62,15 +62,15 @@ Previously, after deploying to Databricks Apps, we would immediately ask the use
 cd frontend && npm run build && cd ..
 
 # 2. Deploy
-databricks apps deploy vital-workbench \
-  --source-code-path /Workspace/Users/<user>/Apps/vital-workbench \
+databricks apps deploy ontos-ml-workbench \
+  --source-code-path /Workspace/Users/<user>/Apps/ontos-ml-workbench \
   --profile=fe-vm-serverless-dxukih
 
 # 3. MANDATORY: Poll for completion
-./.claude/scripts/poll-databricks-app.sh vital-workbench fe-vm-serverless-dxukih
+./.claude/scripts/poll-databricks-app.sh ontos-ml-workbench fe-vm-serverless-dxukih
 
 # 4. Get URL
-APP_URL=$(databricks apps get vital-workbench --profile=fe-vm-serverless-dxukih -o json | jq -r '.url')
+APP_URL=$(databricks apps get ontos-ml-workbench --profile=fe-vm-serverless-dxukih -o json | jq -r '.url')
 
 # 5. Verify health
 curl -s "$APP_URL/health"
@@ -104,7 +104,7 @@ echo "✓ Deployment complete at: $APP_URL"
 
 **Successful deployment**:
 ```
-🔄 Polling deployment status for 'vital-workbench' (profile: fe-vm-serverless-dxukih)
+🔄 Polling deployment status for 'ontos-ml-workbench' (profile: fe-vm-serverless-dxukih)
    Timeout: 300s | Poll interval: 5s
 
 [0 s] Compute: ACTIVE | Pending: active_deployment
@@ -122,7 +122,7 @@ echo "✓ Deployment complete at: $APP_URL"
 
 **Failed deployment**:
 ```
-🔄 Polling deployment status for 'vital-workbench'...
+🔄 Polling deployment status for 'ontos-ml-workbench'...
 
 [0 s] Compute: ERROR | Pending: null
 
@@ -130,7 +130,7 @@ echo "✓ Deployment complete at: $APP_URL"
   Compute status: ERROR
   Status message: Failed to start application
 
-Check logs: databricks apps logs vital-workbench --profile=fe-vm-serverless-dxukih
+Check logs: databricks apps logs ontos-ml-workbench --profile=fe-vm-serverless-dxukih
 ```
 
 ## Testing

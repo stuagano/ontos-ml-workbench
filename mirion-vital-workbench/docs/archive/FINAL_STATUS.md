@@ -1,4 +1,4 @@
-# Final Verification Status - VITAL Workbench Localhost
+# Final Verification Status - Ontos ML Workbench Localhost
 
 **Date:** 2026-02-08
 **Time:** 12:41 PM PST
@@ -50,7 +50,7 @@
 
 **Error:**
 ```
-[TABLE_OR_VIEW_NOT_FOUND] The table or view `erp-demonstrations`.`vital_workbench`.`monitor_alerts` cannot be found.
+[TABLE_OR_VIEW_NOT_FOUND] The table or view `erp-demonstrations`.`ontos_ml_workbench`.`monitor_alerts` cannot be found.
 ```
 
 **Affected:** `/api/v1/monitoring/alerts`
@@ -58,7 +58,7 @@
 
 **Fix:** Execute SQL in Databricks:
 ```sql
-CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`vital_workbench`.monitor_alerts (
+CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`ontos_ml_workbench`.monitor_alerts (
   id STRING NOT NULL,
   endpoint_id STRING NOT NULL,
   alert_type STRING NOT NULL,
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS `erp-demonstrations`.`vital_workbench`.monitor_alerts
 
 **Fix:** Execute SQL in Databricks:
 ```sql
-ALTER TABLE `erp-demonstrations`.`vital_workbench`.feedback_items
+ALTER TABLE `erp-demonstrations`.`ontos_ml_workbench`.feedback_items
 ADD COLUMN IF NOT EXISTS flagged BOOLEAN DEFAULT FALSE;
 ```
 
@@ -204,7 +204,7 @@ positive = int(row["positive_count"] or 0)
    ```bash
    python3 scripts/seed_test_data.py \
      --catalog erp-demonstrations \
-     --schema vital_workbench
+     --schema ontos_ml_workbench
    ```
 
 2. **Run full E2E test suite** (once SQL fixes applied)

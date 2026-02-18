@@ -1,1 +1,1 @@
-"""Backend test suite for Databits Workbench."""
+"""Backend test suite for Ontos ML Workbench."""

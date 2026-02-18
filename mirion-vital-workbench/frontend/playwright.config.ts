@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Playwright E2E test configuration for VITAL Platform Workbench
+ * Playwright E2E test configuration for Ontos ML Workbench
  *
  * Comprehensive test suite for Deploy → Monitor → Improve workflow
  */

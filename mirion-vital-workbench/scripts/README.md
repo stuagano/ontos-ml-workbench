@@ -1,18 +1,18 @@
-# VITAL Workbench Scripts
+# Ontos ML Workbench Scripts
 
-Automated database setup, seeding, and verification for the VITAL Platform Workbench.
+Automated database setup, seeding, and verification for the Ontos ML Workbench.
 
 ## Quick Start
 
 ```bash
 # 1. Setup database (creates all tables)
-./scripts/setup_database.py --catalog home_stuart_gano --schema mirion_vital_workbench
+./scripts/setup_database.py --catalog home_stuart_gano --schema ontos_ml_workbench
 
-# 2. Seed test data (adds sample Mirion data)
-./scripts/seed_test_data.py --catalog home_stuart_gano --schema mirion_vital_workbench
+# 2. Seed test data (adds sample Acme Instruments data)
+./scripts/seed_test_data.py --catalog home_stuart_gano --schema ontos_ml_workbench
 
 # 3. Verify everything works
-./scripts/verify_database.py --catalog home_stuart_gano --schema mirion_vital_workbench
+./scripts/verify_database.py --catalog home_stuart_gano --schema ontos_ml_workbench
 ```
 
 ## Available Scripts
@@ -20,7 +20,7 @@ Automated database setup, seeding, and verification for the VITAL Platform Workb
 | Script | Purpose | Usage |
 |--------|---------|-------|
 | `setup_database.py` | Initialize all Delta tables | Creates catalog, schema, and all required tables |
-| `seed_test_data.py` | Add sample test data | Populates tables with realistic Mirion use case data |
+| `seed_test_data.py` | Add sample test data | Populates tables with realistic Acme Instruments use case data |
 | `verify_database.py` | Verify database setup | Checks tables exist, schemas correct, queries work |
 | `setup_ontos_governance.py` | Set up Ontos governance layer | Creates governance tables, seeds glossary terms, compliance rules |
 
@@ -70,17 +70,17 @@ databricks auth login --host https://your-workspace.cloud.databricks.com
 # Initialize database
 ./scripts/setup_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # Add sample data
 ./scripts/seed_test_data.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 
 # Verify setup
 ./scripts/verify_database.py \
   --catalog home_stuart_gano \
-  --schema mirion_vital_workbench
+  --schema ontos_ml_workbench
 ```
 
 Expected output from verify:
@@ -98,7 +98,7 @@ Row counts:
 
 ## Sample Data
 
-The seeding script adds realistic Mirion use case data:
+The seeding script adds realistic Acme Instruments use case data:
 
 **Sheets (3):**
 1. Radiation Detector Defect Images (vision AI)
@@ -146,7 +146,7 @@ databricks auth login
 
 To start fresh:
 ```bash
-./scripts/setup_database.py --reset --catalog home_stuart_gano --schema mirion_vital_workbench
+./scripts/setup_database.py --reset --catalog home_stuart_gano --schema ontos_ml_workbench
 ```
 
 This drops and recreates all tables. All data will be lost.
@@ -160,7 +160,7 @@ Set up the governance layer for data contracts, compliance rules, and semantic s
 ./scripts/setup_ontos_governance.py \
   --profile fe-vm-serverless-dxukih \
   --catalog serverless_dxukih_catalog \
-  --schema mirion
+  --schema ontos_ml
 
 # Dry run (preview SQL without executing)
 ./scripts/setup_ontos_governance.py --dry-run
@@ -169,7 +169,7 @@ Set up the governance layer for data contracts, compliance rules, and semantic s
 This creates:
 
 **Governance Tables:**
-- `glossary_terms` - Business term definitions synced from VITAL domain concepts
+- `glossary_terms` - Business term definitions synced from Ontos ML domain concepts
 - `semantic_relationships` - Knowledge graph edges for impact analysis
 - `compliance_rules` - Declarative governance rules
 - `compliance_results` - Rule evaluation history

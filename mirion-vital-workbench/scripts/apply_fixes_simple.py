@@ -8,7 +8,7 @@ from databricks.sdk.service.sql import StatementState
 
 warehouse_id = "0024da9c9e9a4dc2"
 catalog = "home_stuart_gano"
-schema = "mirion_vital_workbench"
+schema = "ontos_ml_workbench"
 
 print("=" * 70)
 print("Applying Schema Fixes")
@@ -19,7 +19,7 @@ w = WorkspaceClient()
 
 # Statement 1: Create monitor_alerts table
 sql1 = """
-CREATE TABLE IF NOT EXISTS home_stuart_gano.mirion_vital_workbench.monitor_alerts (
+CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.monitor_alerts (
   id STRING NOT NULL,
   endpoint_id STRING NOT NULL,
   alert_type STRING NOT NULL,
@@ -61,7 +61,7 @@ print()
 
 # Statement 2: Add flagged column
 sql2 = """
-ALTER TABLE home_stuart_gano.mirion_vital_workbench.feedback_items
+ALTER TABLE home_stuart_gano.ontos_ml_workbench.feedback_items
 ADD COLUMN IF NOT EXISTS flagged BOOLEAN DEFAULT FALSE
 """
 

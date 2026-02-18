@@ -1,6 +1,6 @@
-# Getting Started with VITAL Workbench
+# Getting Started with Ontos ML Workbench
 
-**App URL**: https://vital-workbench-fevm-v3-7474660127789418.aws.databricksapps.com
+**App URL**: https://ontos-ml-workbench-fevm-v3-7474660127789418.aws.databricksapps.com
 
 ## First Time Setup
 
@@ -28,7 +28,7 @@ The database starts empty. To populate it with sample templates and data:
 -- Location: schemas/seed_templates.sql
 
 -- Create sample templates
-INSERT INTO erp_demonstrations.vital_workbench.templates (
+INSERT INTO erp_demonstrations.ontos_ml_workbench.templates (
   id, name, description, version, status,
   prompt_template, system_prompt,
   input_schema, output_schema, examples,
@@ -64,7 +64,7 @@ export DATABRICKS_HOST="https://fevm-serverless-dxukih.cloud.databricks.com"
 export DATABRICKS_TOKEN="your-token-here"
 export DATABRICKS_WAREHOUSE_ID="387bcda0f2ece20c"
 export DATABRICKS_CATALOG="erp-demonstrations"
-export DATABRICKS_SCHEMA="vital_workbench"
+export DATABRICKS_SCHEMA="ontos_ml_workbench"
 
 # Run seed script
 python scripts/seed_demo_data.py
@@ -84,7 +84,7 @@ python scripts/seed_demo_data.py
 
 ### 2. Workflow Overview
 
-The VITAL Workbench follows a 7-stage AI development workflow:
+The Ontos ML Workbench follows a 7-stage AI development workflow:
 
 ```
 DATA → TEMPLATE → CURATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
@@ -114,7 +114,7 @@ You **must** complete each stage before moving forward:
 1. Click "Browse & Create Sheets"
 2. Browse Unity Catalog
 3. Select catalog: `erp-demonstrations`
-4. Select schema: `vital_workbench` (or any schema with tables)
+4. Select schema: `ontos_ml_workbench` (or any schema with tables)
 5. Select a table (or create a new sheet)
 6. Click "Select" - this unlocks TEMPLATE stage
 
@@ -212,7 +212,7 @@ All list views use the same DataTable component:
 **Fix**:
 1. Check app logs:
    ```bash
-   databricks apps logs vital-workbench-fevm-v3 --profile fe-vm-serverless-dxukih
+   databricks apps logs ontos-ml-workbench-fevm-v3 --profile fe-vm-serverless-dxukih
    ```
 2. Verify warehouse is running
 3. Check catalog/schema permissions
@@ -225,7 +225,7 @@ When you seed demo data, you get:
 1. **Document Classifier** - Categorize documents
 2. **Sentiment Analyzer** - Analyze customer feedback
 3. **Entity Extractor** - Extract named entities
-4. **Radiation Equipment Defect Classifier** - Mirion-specific use case
+4. **Radiation Equipment Defect Classifier** - Acme Instruments-specific use case
 
 ### Sample Sheets & Assemblies
 - Radiation equipment inspection data
