@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # The Lakebase schema has engine='postgres' for optimized OLTP workloads
     lakebase_schema: str = "vital_lakebase"
 
+    # Ontos backend URL (for DQX quality proxy)
+    ontos_base_url: str = "http://localhost:8000"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

@@ -34,6 +34,7 @@ import { TrainingJobCreateForm } from "../components/TrainingJobCreateForm";
 import { TrainingJobList } from "../components/TrainingJobList";
 import { TrainingJobDetail } from "../components/TrainingJobDetail";
 import { useModules } from "../hooks/useModules";
+import { QualityGatePanel } from "../components/QualityGatePanel";
 import type { AssembledDataset, AssemblyStatus } from "../types";
 
 // ============================================================================
@@ -446,6 +447,9 @@ export function TrainPage({ mode = "browse", onModeChange }: TrainPageProps) {
 
         <div className="flex-1 overflow-auto p-6">
           <div className="max-w-4xl mx-auto space-y-6">
+            {/* Quality Gate Panel */}
+            <QualityGatePanel collectionId={selectedAssembly.id} />
+
             {/* DSPy Optimization Callout */}
             <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-6">
               <div className="flex items-start gap-4">

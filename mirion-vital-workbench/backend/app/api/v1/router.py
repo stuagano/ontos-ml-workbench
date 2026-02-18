@@ -20,6 +20,7 @@ from app.api.v1.endpoints import (
     labeling,
     labelsets,
     monitoring,
+    quality_proxy,
     registries,
     settings,
     sheets_v2,
@@ -77,6 +78,9 @@ router.include_router(settings.router)
 
 # Data Quality - DQX-powered quality checks for Sheets
 router.include_router(data_quality.router)
+
+# Quality Proxy - VITAL → Ontos DQX quality gate bridge
+router.include_router(quality_proxy.router)
 
 # Admin - Cache management and system health
 router.include_router(admin.router)
