@@ -5,7 +5,7 @@
 -- P1 feature - creating schema now for future use
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.example_store (
+CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.example_store (
   -- Identity
   id STRING NOT NULL,
 
@@ -58,12 +58,12 @@ TBLPROPERTIES (
 );
 
 -- Create indexes for common queries
-CREATE INDEX IF NOT EXISTS idx_example_function ON home_stuart_gano.ontos_ml_workbench.example_store(function_name);
-CREATE INDEX IF NOT EXISTS idx_example_domain ON home_stuart_gano.ontos_ml_workbench.example_store(domain);
-CREATE INDEX IF NOT EXISTS idx_example_quality ON home_stuart_gano.ontos_ml_workbench.example_store(quality_score) WHERE quality_score >= 0.7;
-CREATE INDEX IF NOT EXISTS idx_example_verified ON home_stuart_gano.ontos_ml_workbench.example_store(is_verified) WHERE is_verified = true;
+CREATE INDEX IF NOT EXISTS idx_example_function ON ${CATALOG}.${SCHEMA}.example_store(function_name);
+CREATE INDEX IF NOT EXISTS idx_example_domain ON ${CATALOG}.${SCHEMA}.example_store(domain);
+CREATE INDEX IF NOT EXISTS idx_example_quality ON ${CATALOG}.${SCHEMA}.example_store(quality_score) WHERE quality_score >= 0.7;
+CREATE INDEX IF NOT EXISTS idx_example_verified ON ${CATALOG}.${SCHEMA}.example_store(is_verified) WHERE is_verified = true;
 
 -- Note: Vector Search index will be created separately in P1
 -- CREATE VECTOR SEARCH INDEX example_embeddings
---   ON home_stuart_gano.ontos_ml_workbench.example_store(embedding)
+--   ON ${CATALOG}.${SCHEMA}.example_store(embedding)
 --   USING EMBEDDING_MODEL 'databricks-bge-large-en';

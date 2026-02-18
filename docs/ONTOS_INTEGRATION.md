@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Date:** 2026-02-12
 **Status:** Design Draft
-**Author:** Stuart Gano
+**Author:** Ontos Team
 
 ---
 
@@ -495,7 +495,7 @@ class CanonicalLabelService:
 
         # Publish event for Ontos sync
         await self.event_bus.publish(
-            topic="vital.canonical_labels.created",
+            topic="ontos_ml.canonical_labels.created",
             payload={
                 "label_id": label.id,
                 "sheet_id": label.sheet_id,
@@ -510,8 +510,8 @@ class CanonicalLabelService:
 
 ```python
 # Ontos: Consume events and update governance metadata
-class VitalWorkbenchSyncHandler:
-    @event_handler("vital.canonical_labels.created")
+class OntosMLWorkbenchSyncHandler:
+    @event_handler("ontos_ml.canonical_labels.created")
     async def on_label_created(self, event: dict):
         # Update term usage statistics
         await self.glossary_manager.increment_term_usage(
@@ -540,7 +540,7 @@ class VitalWorkbenchSyncHandler:
 
 ```python
 # Ontos: Full sync from Ontos ML Workbench tables
-class VitalWorkbenchAdapter:
+class OntosMLWorkbenchAdapter:
     async def full_sync(self):
         """Perform full synchronization from Ontos ML tables."""
 
@@ -787,4 +787,4 @@ LEFT JOIN training_jobs tj ON tj.training_sheet_id = ts.id;
 
 ---
 
-*Document maintained by Stuart Gano. Last updated: 2026-02-12*
+*Document maintained by Ontos Team. Last updated: 2026-02-12*

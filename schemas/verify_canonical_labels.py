@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
+import os
 from databricks.sdk import WorkspaceClient
 
-w = WorkspaceClient(profile="fe-vm-serverless-dxukih")
+CATALOG = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+SCHEMA = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
+WAREHOUSE_ID = os.getenv("DATABRICKS_WAREHOUSE_ID")
+PROFILE = os.getenv("DATABRICKS_CONFIG_PROFILE", "DEFAULT")
+
+w = WorkspaceClient(profile=PROFILE)
 
 # Get labels by type
 result = w.statement_execution.execute_statement(
-    statement="""
+    statement=f"""
     SELECT
         label_type,
         COUNT(*) as count,
@@ -17,11 +23,11 @@ result = w.statement_execution.execute_statement(
             WHEN label_confidence = 'verified' THEN 4
             ELSE 0
         END) as avg_confidence
-    FROM `erp-demonstrations`.ontos_ml_workbench.canonical_labels
+    FROM `{CATALOG}`.{SCHEMA}.canonical_labels
     GROUP BY label_type
     ORDER BY count DESC
     """,
-    warehouse_id="387bcda0f2ece20c",
+    warehouse_id=WAREHOUSE_ID,
     wait_timeout="30s",
 )
 
@@ -49,17 +55,17 @@ if (
     print("📋 Sample Labels with Governance:")
     print("-" * 80)
     sample_result = w.statement_execution.execute_statement(
-        statement="""
+        statement=f"""
         SELECT
             item_ref,
             label_type,
             label_confidence,
             data_classification,
             SIZE(allowed_uses) as num_uses
-        FROM `erp-demonstrations`.ontos_ml_workbench.canonical_labels
+        FROM `{CATALOG}`.{SCHEMA}.canonical_labels
         LIMIT 5
         """,
-        warehouse_id="387bcda0f2ece20c",
+        warehouse_id=WAREHOUSE_ID,
         wait_timeout="30s",
     )
     if sample_result.result and sample_result.result.data_array:

@@ -606,7 +606,7 @@ wheels = [
 ]
 
 [[package]]
-name = "mirion-vital-workbench"
+name = "ontos-ml-workbench"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

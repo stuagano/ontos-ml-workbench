@@ -8,14 +8,14 @@ from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.sql import StatementState
 
 # Configuration
-WAREHOUSE_ID = "387bcda0f2ece20c"
-CATALOG = "erp-demonstrations"
-SCHEMA = "ontos_ml_workbench"
+CATALOG = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+SCHEMA = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
+WAREHOUSE_ID = os.getenv("DATABRICKS_WAREHOUSE_ID")
+PROFILE = os.getenv("DATABRICKS_CONFIG_PROFILE", "DEFAULT")
 
 def main():
     # Initialize Databricks client using profile from environment
-    profile = os.getenv("DATABRICKS_CONFIG_PROFILE", "fe-vm-serverless-dxukih")
-    w = WorkspaceClient(profile=profile)
+    w = WorkspaceClient(profile=PROFILE)
 
     print(f"Connected to Databricks workspace")
     print(f"Using warehouse: {WAREHOUSE_ID}")

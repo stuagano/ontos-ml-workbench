@@ -13,7 +13,7 @@ Requirements:
     - databricks-sdk
     - python-dotenv
 
-Author: Stuart Gano
+Author: Ontos Team
 Date: 2026-02-12
 """
 
@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS {catalog}.{schema}.glossary_terms (
     related_term_ids ARRAY<STRING> COMMENT 'Related terms',
 
     -- Audit
-    source STRING DEFAULT 'manual' COMMENT 'Origin: manual, vital_sync, import',
+    source STRING DEFAULT 'manual' COMMENT 'Origin: manual, ontos_sync, import',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
     created_by STRING,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
@@ -445,7 +445,7 @@ SEED_GLOSSARY_TERMS_SQL = """
 -- ============================================================================
 
 -- Clear existing terms (for idempotent re-runs)
-DELETE FROM {catalog}.{schema}.glossary_terms WHERE source = 'vital_seed';
+DELETE FROM {catalog}.{schema}.glossary_terms WHERE source = 'ontos_seed';
 
 -- Insert domain hierarchy and terms
 INSERT INTO {catalog}.{schema}.glossary_terms
@@ -456,87 +456,87 @@ VALUES
  'Unintended solder connection between adjacent pads or pins, creating electrical short',
  ARRAY('short', 'bridge', 'solder short'),
  "label_data:defect_type::STRING = 'solder_bridge'",
- NULL, 'vital_seed', 'setup_script', 'setup_script'),
+ NULL, 'ontos_seed', 'setup_script', 'setup_script'),
 
 ('{uuid2}', 'Cold Joint', 'Quality Control > Defect Classification',
  'Solder joint formed with insufficient heat, resulting in poor mechanical/electrical bond characterized by dull, grainy appearance',
  ARRAY('cold solder', 'dull joint', 'grainy joint'),
  "label_data:defect_type::STRING = 'cold_joint'",
- NULL, 'vital_seed', 'setup_script', 'setup_script'),
+ NULL, 'ontos_seed', 'setup_script', 'setup_script'),
 
 ('{uuid3}', 'Missing Component', 'Quality Control > Defect Classification',
  'Component absent from designated PCB location due to pick-and-place failure',
  ARRAY('absent component', 'pick failure'),
  "label_data:defect_type::STRING = 'missing_component'",
- NULL, 'vital_seed', 'setup_script', 'setup_script'),
+ NULL, 'ontos_seed', 'setup_script', 'setup_script'),
 
 ('{uuid4}', 'Discoloration', 'Quality Control > Defect Classification',
  'Color change on PCB surface indicating thermal stress, oxidation, or contamination',
  ARRAY('thermal damage', 'oxidation', 'burn mark'),
  "label_data:defect_type::STRING = 'discoloration'",
- NULL, 'vital_seed', 'setup_script', 'setup_script'),
+ NULL, 'ontos_seed', 'setup_script', 'setup_script'),
 
 ('{uuid5}', 'Scratch', 'Quality Control > Defect Classification',
  'Physical damage to PCB surface, traces, or solder mask',
  ARRAY('surface damage', 'trace damage'),
  "label_data:defect_type::STRING = 'scratch'",
- NULL, 'vital_seed', 'setup_script', 'setup_script'),
+ NULL, 'ontos_seed', 'setup_script', 'setup_script'),
 
 ('{uuid6}', 'Pass', 'Quality Control > Defect Classification',
  'No defects detected; all quality criteria met',
  ARRAY('no defect', 'clean', 'good'),
  "label_data:defect_type::STRING = 'pass'",
- NULL, 'vital_seed', 'setup_script', 'setup_script'),
+ NULL, 'ontos_seed', 'setup_script', 'setup_script'),
 
 -- Quality Metrics
 ('{uuid7}', 'Label Coverage', 'Model Lifecycle > Data Quality',
  'Percentage of items in a Sheet with expert-validated canonical labels',
  ARRAY('coverage rate', 'labeling progress'),
  'COUNT(canonical_labels) / sheet.item_count * 100',
- '>= 30%', 'vital_seed', 'setup_script', 'setup_script'),
+ '>= 30%', 'ontos_seed', 'setup_script', 'setup_script'),
 
 ('{uuid8}', 'Label Reuse Rate', 'Model Lifecycle > Data Quality',
  'Average number of times canonical labels are automatically reused across Training Sheets',
  ARRAY('reuse efficiency'),
  'AVG(canonical_labels.reuse_count)',
- NULL, 'vital_seed', 'setup_script', 'setup_script'),
+ NULL, 'ontos_seed', 'setup_script', 'setup_script'),
 
 ('{uuid9}', 'First Pass Yield', 'Manufacturing Process > Quality Metrics',
  'Percentage of inspected units passing QC without rework',
  ARRAY('FPY', 'yield rate'),
  "COUNT(pass) / COUNT(total) * 100",
- '>= 95%', 'vital_seed', 'setup_script', 'setup_script'),
+ '>= 95%', 'ontos_seed', 'setup_script', 'setup_script'),
 
 ('{uuid10}', 'Human-AI Agreement', 'Model Lifecycle > Training Metrics',
  'Rate at which AI predictions match expert labels',
  ARRAY('agreement rate', 'model accuracy'),
  'COUNT(matching) / COUNT(compared) * 100',
- '>= 90%', 'vital_seed', 'setup_script', 'setup_script'),
+ '>= 90%', 'ontos_seed', 'setup_script', 'setup_script'),
 
 -- Severity Levels
 ('{uuid11}', 'Low Severity', 'Quality Control > Severity Levels',
  'Minor defect, cosmetic only, no functional impact',
  ARRAY('minor', 'cosmetic'),
  "label_data:severity::STRING = 'low'",
- NULL, 'vital_seed', 'setup_script', 'setup_script'),
+ NULL, 'ontos_seed', 'setup_script', 'setup_script'),
 
 ('{uuid12}', 'Medium Severity', 'Quality Control > Severity Levels',
  'Defect with potential reliability impact requiring review',
  ARRAY('moderate'),
  "label_data:severity::STRING = 'medium'",
- NULL, 'vital_seed', 'setup_script', 'setup_script'),
+ NULL, 'ontos_seed', 'setup_script', 'setup_script'),
 
 ('{uuid13}', 'High Severity', 'Quality Control > Severity Levels',
  'Defect likely causing functional failure, mandatory rework required',
  ARRAY('major', 'critical defect'),
  "label_data:severity::STRING = 'high'",
- NULL, 'vital_seed', 'setup_script', 'setup_script'),
+ NULL, 'ontos_seed', 'setup_script', 'setup_script'),
 
 ('{uuid14}', 'Critical Severity', 'Quality Control > Severity Levels',
  'Safety-critical defect requiring production halt and immediate escalation',
  ARRAY('safety critical', 'stop ship'),
  "label_data:severity::STRING = 'critical'",
- NULL, 'vital_seed', 'setup_script', 'setup_script');
+ NULL, 'ontos_seed', 'setup_script', 'setup_script');
 """
 
 
@@ -548,14 +548,14 @@ SEED_COMPLIANCE_RULES_SQL = """
 -- ============================================================================
 
 -- Clear existing rules (for idempotent re-runs)
-DELETE FROM {catalog}.{schema}.compliance_rules WHERE id LIKE 'vital_%';
+DELETE FROM {catalog}.{schema}.compliance_rules WHERE id LIKE 'ontos_%';
 
 -- Insert compliance rules
 INSERT INTO {catalog}.{schema}.compliance_rules
 (id, name, description, domain, severity, rule_sql, schedule, trigger_events, enabled, created_by)
 VALUES
 -- Rule 1: High-severity labels require dual review
-('vital_rule_001', 'high_severity_dual_review',
+('ontos_rule_001', 'high_severity_dual_review',
  'All high-severity defect labels must be reviewed by at least 2 experts before production use',
  'Quality Control',
  'critical',
@@ -578,7 +578,7 @@ VALUES
  'setup_script'),
 
 -- Rule 2: Minimum label coverage for training
-('vital_rule_002', 'minimum_label_coverage',
+('ontos_rule_002', 'minimum_label_coverage',
  'Sheets intended for training must have at least 30% label coverage',
  'Model Lifecycle',
  'warning',
@@ -603,7 +603,7 @@ VALUES
  'setup_script'),
 
 -- Rule 3: Production models require high-confidence training data
-('vital_rule_003', 'production_confidence_threshold',
+('ontos_rule_003', 'production_confidence_threshold',
  'Training jobs for production models must use labels with >= 80% high confidence',
  'Model Lifecycle',
  'error',
@@ -630,7 +630,7 @@ VALUES
  'setup_script'),
 
 -- Rule 4: Stale labels need re-review
-('vital_rule_004', 'stale_label_review',
+('ontos_rule_004', 'stale_label_review',
  'Labels older than 90 days should be reviewed for continued accuracy',
  'Quality Control',
  'warning',
@@ -653,7 +653,7 @@ VALUES
  'setup_script'),
 
 -- Rule 5: Training data diversity
-('vital_rule_005', 'training_data_diversity',
+('ontos_rule_005', 'training_data_diversity',
  'Training sheets should include examples from multiple defect types',
  'Model Lifecycle',
  'warning',
@@ -685,26 +685,26 @@ SEED_DATA_CONTRACTS_SQL = """
 -- ============================================================================
 
 -- Clear existing contracts (for idempotent re-runs)
-DELETE FROM {catalog}.{schema}.data_contracts WHERE id LIKE 'vital_contract_%';
+DELETE FROM {catalog}.{schema}.data_contracts WHERE id LIKE 'ontos_contract_%';
 
 -- Insert data contracts
 INSERT INTO {catalog}.{schema}.data_contracts
 (id, name, version, description, owner_team, owner_email, domain, asset_type, asset_name,
  quality_rules_count, sla_availability, sla_freshness, status)
 VALUES
-('vital_contract_001', 'Canonical Labels Contract', '1.0.0',
+('ontos_contract_001', 'Canonical Labels Contract', '1.0.0',
  'Expert-validated ground truth labels for ML training',
  'QA Team', 'qa-engineering@example.com', 'Quality Control',
  'table', '{catalog}.{schema}.canonical_labels',
  4, '99.9%', '24 hours', 'active'),
 
-('vital_contract_002', 'Training Sheets Contract', '1.0.0',
+('ontos_contract_002', 'Training Sheets Contract', '1.0.0',
  'Materialized Q&A pairs for model fine-tuning',
  'ML Engineering', 'ml-engineering@example.com', 'Model Lifecycle',
  'table', '{catalog}.{schema}.training_sheets',
  3, '99.5%', '48 hours', 'active'),
 
-('vital_contract_003', 'Sheets Contract', '1.0.0',
+('ontos_contract_003', 'Sheets Contract', '1.0.0',
  'Dataset definitions pointing to Unity Catalog sources',
  'Data Engineering', 'data-engineering@example.com', 'Data Management',
  'table', '{catalog}.{schema}.sheets',

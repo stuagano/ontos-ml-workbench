@@ -146,8 +146,8 @@ def main():
      'image_filename', ARRAY(), ARRAY('image_path'),
      ARRAY('sensor_reading', 'timestamp', 'station_id', 'shift'),
      'all', NULL, NULL, 'active', 150, NULL,
-     CURRENT_TIMESTAMP(), 'stuart.gano@databricks.com',
-     CURRENT_TIMESTAMP(), 'stuart.gano@databricks.com'),
+     CURRENT_TIMESTAMP(), 'admin@example.com',
+     CURRENT_TIMESTAMP(), 'admin@example.com'),
 
     ('sheet-sensor-telemetry-001',
      'Radiation Sensor Telemetry',
@@ -156,8 +156,8 @@ def main():
      'reading_id', ARRAY('notes', 'alert_message'), ARRAY(),
      ARRAY('sensor_id', 'location', 'timestamp', 'calibration_date', 'reading_value'),
      'random', 1000, 'status = "active" AND reading_value > 0', 'active', 5000, NULL,
-     CURRENT_TIMESTAMP(), 'stuart.gano@databricks.com',
-     CURRENT_TIMESTAMP(), 'stuart.gano@databricks.com'),
+     CURRENT_TIMESTAMP(), 'admin@example.com',
+     CURRENT_TIMESTAMP(), 'admin@example.com'),
 
     ('sheet-medical-invoices-001',
      'Medical Invoice Entity Extraction',
@@ -166,8 +166,8 @@ def main():
      'invoice_id', ARRAY('invoice_text', 'patient_notes'), ARRAY('pdf_path'),
      ARRAY('invoice_date', 'total_amount', 'patient_id', 'provider_id'),
      'stratified', 500, 'invoice_date >= "2024-01-01"', 'active', 2500, NULL,
-     CURRENT_TIMESTAMP(), 'stuart.gano@databricks.com',
-     CURRENT_TIMESTAMP(), 'stuart.gano@databricks.com'),
+     CURRENT_TIMESTAMP(), 'admin@example.com',
+     CURRENT_TIMESTAMP(), 'admin@example.com'),
 
     ('sheet-maintenance-logs-001',
      'Equipment Maintenance Logs',
@@ -176,8 +176,8 @@ def main():
      'log_id', ARRAY('technician_notes', 'issue_description', 'resolution'), ARRAY(),
      ARRAY('equipment_id', 'service_date', 'downtime_hours', 'parts_replaced'),
      'all', NULL, NULL, 'active', 1200, NULL,
-     CURRENT_TIMESTAMP(), 'stuart.gano@databricks.com',
-     CURRENT_TIMESTAMP(), 'stuart.gano@databricks.com'),
+     CURRENT_TIMESTAMP(), 'admin@example.com',
+     CURRENT_TIMESTAMP(), 'admin@example.com'),
 
     ('sheet-qc-inspections-001',
      'Quality Control Inspection Photos',
@@ -186,8 +186,8 @@ def main():
      'inspection_id', ARRAY(), ARRAY('photo_path'),
      ARRAY('product_sku', 'line_number', 'inspector_id', 'timestamp', 'passed'),
      'all', NULL, NULL, 'active', 800, NULL,
-     CURRENT_TIMESTAMP(), 'stuart.gano@databricks.com',
-     CURRENT_TIMESTAMP(), 'stuart.gano@databricks.com')
+     CURRENT_TIMESTAMP(), 'admin@example.com',
+     CURRENT_TIMESTAMP(), 'admin@example.com')
     """
 
     execute_sql(w, settings.databricks_warehouse_id, seed_sql, "Inserting sample sheets")

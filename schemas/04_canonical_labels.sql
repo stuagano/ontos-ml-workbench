@@ -5,7 +5,7 @@
 -- This is the CORE INNOVATION - enables "label once, reuse everywhere"
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.canonical_labels (
+CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.canonical_labels (
   -- Identity
   id STRING NOT NULL,
 
@@ -56,7 +56,7 @@ TBLPROPERTIES (
 );
 
 -- Create indexes for efficient lookups
-CREATE INDEX IF NOT EXISTS idx_canonical_composite ON home_stuart_gano.ontos_ml_workbench.canonical_labels(sheet_id, item_ref, label_type);
-CREATE INDEX IF NOT EXISTS idx_canonical_sheet ON home_stuart_gano.ontos_ml_workbench.canonical_labels(sheet_id);
-CREATE INDEX IF NOT EXISTS idx_canonical_label_type ON home_stuart_gano.ontos_ml_workbench.canonical_labels(label_type);
-CREATE INDEX IF NOT EXISTS idx_canonical_quality ON home_stuart_gano.ontos_ml_workbench.canonical_labels(quality_score) WHERE quality_score IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_canonical_composite ON ${CATALOG}.${SCHEMA}.canonical_labels(sheet_id, item_ref, label_type);
+CREATE INDEX IF NOT EXISTS idx_canonical_sheet ON ${CATALOG}.${SCHEMA}.canonical_labels(sheet_id);
+CREATE INDEX IF NOT EXISTS idx_canonical_label_type ON ${CATALOG}.${SCHEMA}.canonical_labels(label_type);
+CREATE INDEX IF NOT EXISTS idx_canonical_quality ON ${CATALOG}.${SCHEMA}.canonical_labels(quality_score) WHERE quality_score IS NOT NULL;

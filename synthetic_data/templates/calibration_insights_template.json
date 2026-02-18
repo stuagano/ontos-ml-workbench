@@ -1,10 +1,10 @@
 {
-  "template_id": "mirion-calibration-insights-v1",
+  "template_id": "acme-calibration-insights-v1",
   "name": "Monte Carlo Calibration Insights",
   "description": "Analyzes Monte Carlo simulation results to provide calibration factor recommendations and uncertainty assessments. Helps physicists interpret simulation outputs.",
   "version": "1.0.0",
   "status": "published",
-  "created_by": "stuart.gano@databricks.com",
+  "created_by": "admin@example.com",
   "created_at": "2024-01-25T10:00:00Z",
   "use_case": "calibration_insights",
   "model_config": {
@@ -118,7 +118,7 @@
       }
     }
   ],
-  "tags": ["calibration", "monte-carlo", "physics", "radiation-safety", "nuclear", "mirion"],
+  "tags": ["calibration", "monte-carlo", "physics", "radiation-safety", "nuclear", "acme-instruments"],
   "metrics": {
     "total_inferences": 0,
     "avg_confidence": 0,

@@ -130,7 +130,7 @@ Monitoring
 
 ### Module Definition
 ```typescript
-interface VitalModule {
+interface OntosModule {
   id: string;
   name: string;
   description: string;
@@ -160,7 +160,7 @@ interface VitalModule {
 
 ### Example: DSPy Module Registration
 ```typescript
-const dspyModule: VitalModule = {
+const dspyModule: OntosModule = {
   id: "dspy-optimization",
   name: "DSPy Optimizer",
   description: "Automatic prompt and example optimization",
@@ -369,7 +369,7 @@ import { dspyModule } from "./dspy";
 import { labelingModule } from "./labeling";
 import { monitoringModule } from "./monitoring";
 
-export const MODULE_REGISTRY: VitalModule[] = [
+export const MODULE_REGISTRY: OntosModule[] = [
   dspyModule,
   labelingModule,
   monitoringModule,

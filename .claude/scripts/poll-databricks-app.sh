@@ -4,8 +4,8 @@
 
 set -e
 
-APP_NAME="${1:-vital-workbench}"
-PROFILE="${2:-fe-vm-serverless-dxukih}"
+APP_NAME="${1:-ontos-ml-workbench}"
+PROFILE="${2:-${DATABRICKS_CONFIG_PROFILE:-DEFAULT}}"
 MAX_WAIT=300  # 5 minutes
 POLL_INTERVAL=5  # 5 seconds
 

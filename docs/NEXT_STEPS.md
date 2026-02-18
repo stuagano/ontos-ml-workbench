@@ -5,7 +5,7 @@
 ### ✅ Completed
 
 **Infrastructure**
-- 9 Delta tables in `home_stuart_gano.ontos_ml_dev`
+- 9 Delta tables in `your_catalog.ontos_ml_dev`
 - 11 Databricks jobs deployed via DAB
 - CI/CD pipeline (backend, frontend, E2E tests)
 

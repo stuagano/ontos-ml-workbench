@@ -6,7 +6,7 @@
 -- ============================================================================
 
 -- Clear existing canonical labels for PCB sheet (if any)
-DELETE FROM lakebase_db.canonical_labels
+DELETE FROM ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels
 WHERE sheet_id = 'pcb_sheet_001';
 
 -- ============================================================================
@@ -15,7 +15,7 @@ WHERE sheet_id = 'pcb_sheet_001';
 -- ============================================================================
 
 -- Solder Bridge at U12 (very common pattern - 3 instances)
-INSERT INTO lakebase_db.canonical_labels (
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels (
   id, sheet_id, item_ref, label_type, label_data, confidence, labeled_by,
   created_at, updated_at, version, reuse_count, allowed_uses, prohibited_uses, notes
 ) VALUES
@@ -41,7 +41,7 @@ INSERT INTO lakebase_db.canonical_labels (
    'Third instance of U12 solder bridge - needs SMT process improvement');
 
 -- Solder Bridge at U8 (common pattern - 3 instances)
-INSERT INTO lakebase_db.canonical_labels VALUES
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels VALUES
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-A-002', 'defect_detection',
    '{"defect_type": "solder_bridge", "location": "U8", "severity": "high", "component": "capacitor_C23", "reasoning": "Solder bridge between adjacent pads of U8, affecting capacitor C23 connection"}',
    'high', 'expert_inspector@example.com',
@@ -64,7 +64,7 @@ INSERT INTO lakebase_db.canonical_labels VALUES
    'Milder U8 bridge - severity medium vs high on other instances');
 
 -- Solder Bridge at R47 (2 instances)
-INSERT INTO lakebase_db.canonical_labels VALUES
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels VALUES
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-A-003', 'defect_detection',
    '{"defect_type": "solder_bridge", "location": "R47", "severity": "high", "component": "resistor_R47", "reasoning": "Solder bridge across resistor R47 terminals, creating short circuit"}',
    'high', 'expert_inspector@example.com',
@@ -80,7 +80,7 @@ INSERT INTO lakebase_db.canonical_labels VALUES
    'Second R47 bridge instance');
 
 -- Cold Joint at J3 (3 instances)
-INSERT INTO lakebase_db.canonical_labels VALUES
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels VALUES
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-A-016', 'defect_detection',
    '{"defect_type": "cold_joint", "location": "J3", "severity": "medium", "component": "connector_J3", "reasoning": "Cold solder joint on J3 pin 5, grainy appearance indicates insufficient heat"}',
    'high', 'expert_inspector@example.com',
@@ -103,7 +103,7 @@ INSERT INTO lakebase_db.canonical_labels VALUES
    'Severe J3 cold joint - worse than typical instances');
 
 -- Missing Component (2 instances)
-INSERT INTO lakebase_db.canonical_labels VALUES
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels VALUES
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-A-026', 'defect_detection',
    '{"defect_type": "missing_component", "location": "R35", "severity": "high", "component": "resistor_R35", "reasoning": "Resistor R35 completely absent, empty pads with no solder"}',
    'high', 'expert_inspector@example.com',
@@ -119,7 +119,7 @@ INSERT INTO lakebase_db.canonical_labels VALUES
    'C12 missing component');
 
 -- Scratch Defect (1 instance)
-INSERT INTO lakebase_db.canonical_labels VALUES
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels VALUES
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-A-031', 'defect_detection',
    '{"defect_type": "scratch", "location": "trace_t12", "severity": "medium", "component": "trace", "reasoning": "Visible scratch across trace T12, copper exposed but trace continuity maintained"}',
    'high', 'expert_inspector@example.com',
@@ -128,7 +128,7 @@ INSERT INTO lakebase_db.canonical_labels VALUES
    'Trace scratch - cosmetic but potential reliability issue');
 
 -- Pass (1 instance for negative example)
-INSERT INTO lakebase_db.canonical_labels VALUES
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels VALUES
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-A-036', 'defect_detection',
    '{"defect_type": "pass", "location": null, "severity": null, "component": null, "reasoning": "Clean solder joints, all components present and properly placed, no physical damage"}',
    'high', 'expert_inspector@example.com',
@@ -142,7 +142,7 @@ INSERT INTO lakebase_db.canonical_labels VALUES
 -- ============================================================================
 
 -- Cold Joint at J1 (2 instances)
-INSERT INTO lakebase_db.canonical_labels VALUES
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels VALUES
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-B-001', 'defect_detection',
    '{"defect_type": "cold_joint", "location": "J1", "severity": "medium", "component": "connector_J1", "reasoning": "Cold solder joint J1 pin 3, dull finish indicates low temperature soldering"}',
    'high', 'expert_inspector@example.com',
@@ -158,7 +158,7 @@ INSERT INTO lakebase_db.canonical_labels VALUES
    'Recurring J1 pin 3 cold joint');
 
 -- Cold Joint at J2 (2 instances)
-INSERT INTO lakebase_db.canonical_labels VALUES
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels VALUES
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-B-002', 'defect_detection',
    '{"defect_type": "cold_joint", "location": "J2", "severity": "high", "component": "connector_J2", "reasoning": "Severe cold joint J2 pin 7, likely intermittent connection"}',
    'high', 'expert_inspector@example.com',
@@ -174,7 +174,7 @@ INSERT INTO lakebase_db.canonical_labels VALUES
    'Second J2 cold joint');
 
 -- Discoloration at U10 (3 instances - recurring thermal issue)
-INSERT INTO lakebase_db.canonical_labels VALUES
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels VALUES
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-B-009', 'defect_detection',
    '{"defect_type": "discoloration", "location": "U10", "severity": "high", "component": "IC_U10", "reasoning": "Brown discoloration around U10, indicates excessive heat during reflow"}',
    'high', 'expert_inspector@example.com',
@@ -197,7 +197,7 @@ INSERT INTO lakebase_db.canonical_labels VALUES
    'Severe U10 discoloration - possible component failure');
 
 -- Solder Bridge at U6 (2 instances)
-INSERT INTO lakebase_db.canonical_labels VALUES
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels VALUES
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-B-016', 'defect_detection',
    '{"defect_type": "solder_bridge", "location": "U6", "severity": "high", "component": "IC_U6", "reasoning": "Solder bridge U6 pins 8-9, logic error likely"}',
    'high', 'expert_inspector@example.com',
@@ -213,7 +213,7 @@ INSERT INTO lakebase_db.canonical_labels VALUES
    'Second U6 bridge instance');
 
 -- Pass (1 instance)
-INSERT INTO lakebase_db.canonical_labels VALUES
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels VALUES
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-B-024', 'defect_detection',
    '{"defect_type": "pass", "location": null, "severity": null, "component": null, "reasoning": "All solder joints clean, no discoloration, all components properly seated"}',
    'high', 'expert_inspector@example.com',
@@ -227,7 +227,7 @@ INSERT INTO lakebase_db.canonical_labels VALUES
 -- ============================================================================
 
 -- Scratch (2 instances)
-INSERT INTO lakebase_db.canonical_labels VALUES
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels VALUES
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-C-001', 'defect_detection',
    '{"defect_type": "scratch", "location": "trace_t1", "severity": "low", "component": "trace", "reasoning": "Surface scratch on trace T1, no copper exposure, cosmetic only"}',
    'high', 'expert_inspector@example.com',
@@ -243,7 +243,7 @@ INSERT INTO lakebase_db.canonical_labels VALUES
    'Zone X scratch with copper exposure');
 
 -- Discoloration at U1 (2 instances)
-INSERT INTO lakebase_db.canonical_labels VALUES
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels VALUES
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-C-004', 'defect_detection',
    '{"defect_type": "discoloration", "location": "U1", "severity": "medium", "component": "IC_U1", "reasoning": "Yellow discoloration around U1, oxidation from excessive heat"}',
    'high', 'expert_inspector@example.com',
@@ -259,7 +259,7 @@ INSERT INTO lakebase_db.canonical_labels VALUES
    'Severe U1 overheating - board likely non-functional');
 
 -- Pass (1 instance)
-INSERT INTO lakebase_db.canonical_labels VALUES
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels VALUES
   (gen_random_uuid(), 'pcb_sheet_001', 'PCB-C-011', 'defect_detection',
    '{"defect_type": "pass", "location": null, "severity": null, "component": null, "reasoning": "No defects detected, solder joints appear clean, no physical damage"}',
    'high', 'expert_inspector@example.com',
@@ -278,7 +278,7 @@ SELECT
   COUNT(DISTINCT item_ref) as unique_items,
   AVG(version) as avg_version,
   AVG(reuse_count) as avg_reuse
-FROM lakebase_db.canonical_labels
+FROM ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels
 WHERE sheet_id = 'pcb_sheet_001'
 GROUP BY label_type, confidence;
 
@@ -290,7 +290,7 @@ GROUP BY label_type, confidence;
 SELECT
   JSON_EXTRACT_STRING(label_data, '$.defect_type') as defect_type,
   COUNT(*) as label_count
-FROM lakebase_db.canonical_labels
+FROM ${CATALOG}.${LAKEBASE_SCHEMA}.canonical_labels
 WHERE sheet_id = 'pcb_sheet_001'
 GROUP BY JSON_EXTRACT_STRING(label_data, '$.defect_type')
 ORDER BY label_count DESC;

@@ -25,7 +25,7 @@ train_path = dbutils.widgets.get("train_path")
 val_path = dbutils.widgets.get("val_path")
 epochs = int(dbutils.widgets.get("epochs"))
 learning_rate = float(dbutils.widgets.get("learning_rate"))
-output_model_name = dbutils.widgets.get("output_model_name") or f"vital-{assembly_id[:8]}"
+output_model_name = dbutils.widgets.get("output_model_name") or f"ontos-{assembly_id[:8]}"
 
 print(f"Assembly: {assembly_id}")
 print(f"Base model: {base_model}")

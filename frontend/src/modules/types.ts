@@ -61,7 +61,7 @@ export interface ModuleSettings {
 /**
  * A pluggable module that extends Ontos ML functionality
  */
-export interface VitalModule {
+export interface OntosModule {
   /** Unique identifier */
   id: string;
 

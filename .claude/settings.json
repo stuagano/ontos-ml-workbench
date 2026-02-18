@@ -49,7 +49,7 @@
     ]
   },
   "includeCoAuthoredBy": true,
-  "enabledMcpjsonServers": ["ruv-swarm"],
+  "enabledMcpjsonServers": [],
   "statusLine": {
     "type": "command",
     "command": ".claude/statusline-command.sh"

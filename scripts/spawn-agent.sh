@@ -5,7 +5,7 @@
 # Usage: spawn-agent <pane-number> <agent-type> <prompt>
 # ============================================================================
 
-SESSION_NAME="vital"
+SESSION_NAME="ontos"
 
 if [ "$#" -lt 3 ]; then
     echo "Usage: spawn-agent <pane-number> <agent-type> <prompt>"
@@ -35,7 +35,7 @@ PROMPT=$3
 # Check if session exists
 if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
     echo "Error: Session '$SESSION_NAME' not found"
-    echo "Run 'vital-agents' first to create the session"
+    echo "Run 'ontos-agents' first to create the session"
     exit 1
 fi
 

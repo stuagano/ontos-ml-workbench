@@ -10,8 +10,8 @@
 -- 3. Lineage tracking - tracing configuration
 -- ============================================================================
 
-ALTER TABLE home_stuart_gano.ontos_ml_workbench.training_sheets
+ALTER TABLE ${CATALOG}.${SCHEMA}.training_sheets
 ADD COLUMN feature_columns ARRAY<STRING> COMMENT 'Independent variables (input features) used';
 
-ALTER TABLE home_stuart_gano.ontos_ml_workbench.training_sheets
+ALTER TABLE ${CATALOG}.${SCHEMA}.training_sheets
 ADD COLUMN target_column STRING COMMENT 'Dependent variable (output/target) being predicted';

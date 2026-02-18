@@ -7,17 +7,17 @@ Complete guide for initializing and managing the Ontos ML Workbench database on 
 ```bash
 # 1. Setup database (creates all tables)
 python scripts/setup_database.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 
 # 2. Seed test data (adds sample data)
 python scripts/seed_test_data.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 
 # 3. Verify setup (checks everything)
 python scripts/verify_database.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 ```
 
@@ -47,7 +47,7 @@ Scripts auto-detect the first available SQL warehouse. To specify a particular w
 ```bash
 python scripts/setup_database.py \
   --warehouse-id abc123def456 \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 ```
 
@@ -80,30 +80,30 @@ pip install databricks-sdk
 ```bash
 # Basic setup
 python scripts/setup_database.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 
 # With specific warehouse
 python scripts/setup_database.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench \
   --warehouse-id abc123
 
 # With CLI profile
 python scripts/setup_database.py \
   --profile dev \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 
 # Reset mode (⚠️  DESTRUCTIVE - drops all tables)
 python scripts/setup_database.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench \
   --reset
 
 # Debug mode
 python scripts/setup_database.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench \
   --debug
 ```
@@ -136,18 +136,18 @@ python scripts/setup_database.py \
 ```bash
 # Basic seeding
 python scripts/seed_test_data.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 
 # With CLI profile
 python scripts/seed_test_data.py \
   --profile dev \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 
 # Debug mode
 python scripts/seed_test_data.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench \
   --debug
 ```
@@ -185,18 +185,18 @@ python scripts/seed_test_data.py \
 ```bash
 # Basic verification
 python scripts/verify_database.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 
 # With CLI profile
 python scripts/verify_database.py \
   --profile dev \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 
 # Debug mode
 python scripts/verify_database.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench \
   --debug
 ```
@@ -216,17 +216,17 @@ python scripts/verify_database.py \
 ```bash
 # Step 1: Create all tables
 python scripts/setup_database.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 
 # Step 2: Add sample data
 python scripts/seed_test_data.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 
 # Step 3: Verify everything works
 python scripts/verify_database.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 ```
 
@@ -237,13 +237,13 @@ Use this to start fresh (deletes all data):
 ```bash
 # Reset will drop and recreate all tables
 python scripts/setup_database.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench \
   --reset
 
 # Reseed test data
 python scripts/seed_test_data.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 ```
 
@@ -254,18 +254,18 @@ For production environments:
 ```bash
 # 1. Setup with production catalog
 python scripts/setup_database.py \
-  --catalog erp-demonstrations \
+  --catalog your-catalog \
   --schema ontos_ml_workbench \
   --warehouse-id <prod-warehouse-id>
 
 # 2. Verify (skip seeding in production)
 python scripts/verify_database.py \
-  --catalog erp-demonstrations \
+  --catalog your-catalog \
   --schema ontos_ml_workbench
 
 # 3. Setup application environment
 cat > backend/.env <<EOF
-DATABRICKS_CATALOG=erp-demonstrations
+DATABRICKS_CATALOG=your-catalog
 DATABRICKS_SCHEMA=ontos_ml_workbench
 DATABRICKS_WAREHOUSE_ID=<prod-warehouse-id>
 EOF
@@ -278,17 +278,17 @@ For local development:
 ```bash
 # 1. Setup with home catalog
 python scripts/setup_database.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 
 # 2. Seed test data
 python scripts/seed_test_data.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 
 # 3. Configure application
 cat > backend/.env <<EOF
-DATABRICKS_CATALOG=home_stuart_gano
+DATABRICKS_CATALOG=your_catalog
 DATABRICKS_SCHEMA=ontos_ml_workbench
 DATABRICKS_CONFIG_PROFILE=DEFAULT
 EOF
@@ -304,7 +304,7 @@ EOF
 ```bash
 python scripts/setup_database.py \
   --warehouse-id abc123 \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench
 ```
 
@@ -358,7 +358,7 @@ python scripts/verify_database.py --debug
 **Diagnosis:**
 ```bash
 python scripts/verify_database.py \
-  --catalog home_stuart_gano \
+  --catalog your_catalog \
   --schema ontos_ml_workbench \
   --debug
 ```
@@ -368,7 +368,7 @@ python scripts/verify_database.py \
 1. **Missing tables:** Run setup script
    ```bash
    python scripts/setup_database.py \
-     --catalog home_stuart_gano \
+     --catalog your_catalog \
      --schema ontos_ml_workbench
    ```
 
@@ -400,18 +400,18 @@ Maintain separate environments:
 ```bash
 # Dev
 python scripts/setup_database.py \
-  --catalog home_stuart_gano \
-  --schema vital_dev
+  --catalog your_catalog \
+  --schema ontos_ml_dev
 
 # Staging
 python scripts/setup_database.py \
   --catalog shared_staging \
-  --schema vital_staging
+  --schema ontos_ml_staging
 
 # Production
 python scripts/setup_database.py \
-  --catalog erp-demonstrations \
-  --schema vital_production
+  --catalog your-catalog \
+  --schema ontos_ml_production
 ```
 
 ### CI/CD Integration

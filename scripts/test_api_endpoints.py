@@ -168,7 +168,7 @@ def main():
             "name": "Test Sheet - API Test",
             "description": "Created by automated test",
             "source_type": "uc_table",
-            "source_table": "erp-demonstrations.ontos_ml_workbench.test_data",
+            "source_table": "your_catalog.ontos_ml_workbench.test_data",
             "item_id_column": "id",
             "text_columns": ["description"],
             "image_columns": [],
@@ -195,13 +195,13 @@ def main():
 
     tester.test(
         "List Schemas",
-        "GET", "/api/v1/unity-catalog/catalogs/erp-demonstrations/schemas",
-        description="List schemas in erp-demonstrations catalog"
+        "GET", "/api/v1/unity-catalog/catalogs/your_catalog/schemas",
+        description="List schemas in your_catalog catalog"
     )
 
     tester.test(
         "List Tables",
-        "GET", "/api/v1/unity-catalog/catalogs/erp-demonstrations/schemas/ontos_ml_workbench/tables",
+        "GET", "/api/v1/unity-catalog/catalogs/your_catalog/schemas/ontos_ml_workbench/tables",
         description="List tables in ontos_ml_workbench schema"
     )
 

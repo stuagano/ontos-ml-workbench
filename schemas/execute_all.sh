@@ -10,7 +10,7 @@ set -e  # Exit on error
 
 SCHEMA_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "🚀 Creating VITAL Platform Workbench schema in Unity Catalog..."
+echo "🚀 Creating Ontos ML Workbench schema in Unity Catalog..."
 echo ""
 
 # Check if databricks CLI is available

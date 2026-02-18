@@ -1,10 +1,10 @@
 {
-  "template_id": "mirion-anomaly-detection-v1",
+  "template_id": "acme-anomaly-detection-v1",
   "name": "Radiation Detector Anomaly Detection & Explanation",
   "description": "Detects anomalies in real-time sensor streams and provides human-readable explanations with recommended actions. Designed for operational alerting.",
   "version": "1.0.0",
   "status": "published",
-  "created_by": "stuart.gano@databricks.com",
+  "created_by": "admin@example.com",
   "created_at": "2024-01-25T10:00:00Z",
   "use_case": "anomaly_detection",
   "model_config": {
@@ -101,7 +101,7 @@
       }
     }
   ],
-  "tags": ["anomaly-detection", "alerting", "real-time", "radiation-safety", "nuclear", "mirion"],
+  "tags": ["anomaly-detection", "alerting", "real-time", "radiation-safety", "nuclear", "acme-instruments"],
   "metrics": {
     "total_inferences": 0,
     "avg_confidence": 0,

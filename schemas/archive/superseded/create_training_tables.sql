@@ -1,7 +1,7 @@
 -- Create training_sheets and qa_pairs tables for PRD v2.3
--- Target: serverless_dxukih_catalog.mirion
+-- Target: ${CATALOG}.${SCHEMA}
 
-CREATE TABLE IF NOT EXISTS serverless_dxukih_catalog.mirion.training_sheets (
+CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.training_sheets (
   -- Identity
   id STRING NOT NULL,
   name STRING NOT NULL,
@@ -56,7 +56,7 @@ TBLPROPERTIES (
   'quality' = 'silver'
 );
 
-CREATE TABLE IF NOT EXISTS serverless_dxukih_catalog.mirion.qa_pairs (
+CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.qa_pairs (
   -- Identity
   id STRING NOT NULL,
   training_sheet_id STRING NOT NULL COMMENT 'Reference to training_sheets.id',

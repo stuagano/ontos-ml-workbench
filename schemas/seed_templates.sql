@@ -1,10 +1,9 @@
 -- Quick Start: Seed Demo Templates
--- Run this in Databricks SQL Editor
--- Warehouse: 387bcda0f2ece20c
--- Schema: erp-demonstrations.ontos_ml_workbench (ID: 8c866643-2b1e-4b8d-8497-8a009badfae3)
+-- Run this in Databricks SQL Editor or via execute_schemas.py
+-- Configure catalog/schema in backend/.env
 
 -- Template 1: Document Classifier
-INSERT INTO erp_demonstrations.ontos_ml_workbench.templates (
+INSERT INTO ${CATALOG}.${SCHEMA}.templates (
   id, name, description, version, status,
   prompt_template, system_prompt,
   input_schema, output_schema, examples,
@@ -30,7 +29,7 @@ INSERT INTO erp_demonstrations.ontos_ml_workbench.templates (
 );
 
 -- Template 2: Sentiment Analyzer
-INSERT INTO erp_demonstrations.ontos_ml_workbench.templates (
+INSERT INTO ${CATALOG}.${SCHEMA}.templates (
   id, name, description, version, status,
   prompt_template, system_prompt,
   input_schema, output_schema, examples,
@@ -56,7 +55,7 @@ INSERT INTO erp_demonstrations.ontos_ml_workbench.templates (
 );
 
 -- Template 3: Entity Extractor
-INSERT INTO erp_demonstrations.ontos_ml_workbench.templates (
+INSERT INTO ${CATALOG}.${SCHEMA}.templates (
   id, name, description, version, status,
   prompt_template, system_prompt,
   input_schema, output_schema, examples,
@@ -82,7 +81,7 @@ INSERT INTO erp_demonstrations.ontos_ml_workbench.templates (
 );
 
 -- Template 4: Radiation Equipment Defect Classifier
-INSERT INTO erp_demonstrations.ontos_ml_workbench.templates (
+INSERT INTO ${CATALOG}.${SCHEMA}.templates (
   id, name, description, version, status,
   prompt_template, system_prompt,
   input_schema, output_schema, examples,
@@ -109,5 +108,5 @@ INSERT INTO erp_demonstrations.ontos_ml_workbench.templates (
 
 -- Verify templates were created
 SELECT id, name, status, base_model, created_at
-FROM erp_demonstrations.ontos_ml_workbench.templates
+FROM ${CATALOG}.${SCHEMA}.templates
 ORDER BY created_at DESC;

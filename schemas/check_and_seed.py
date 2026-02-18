@@ -4,7 +4,13 @@
 # MAGIC
 # MAGIC This notebook checks the database state and seeds initial data if needed.
 # MAGIC
-# MAGIC **Schema:** `home_stuart_gano.ontos_ml_workbench`
+# MAGIC **Schema:** Configured via DATABRICKS_CATALOG and DATABRICKS_SCHEMA env vars
+
+# COMMAND ----------
+# Configuration - set these for your workspace
+import os
+CATALOG = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+SCHEMA = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
 
 # COMMAND ----------
 # MAGIC %md
@@ -13,14 +19,14 @@
 # COMMAND ----------
 # Check if schema exists
 try:
-    tables = spark.sql("SHOW TABLES IN home_stuart_gano.ontos_ml_workbench").collect()
+    tables = spark.sql(f"SHOW TABLES IN {CATALOG}.{SCHEMA}").collect()
     print(f"✅ Schema exists with {len(tables)} tables:")
     for table in tables:
         print(f"  - {table.tableName}")
 except Exception as e:
     print(f"❌ Schema not found: {e}")
     print("\nRun this to create schema:")
-    print("CREATE SCHEMA IF NOT EXISTS home_stuart_gano.ontos_ml_workbench")
+    print(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{SCHEMA}")
 
 # COMMAND ----------
 # MAGIC %md
@@ -40,7 +46,7 @@ tables_to_check = [
 print("Current data state:\n")
 for table in tables_to_check:
     try:
-        count = spark.sql(f"SELECT COUNT(*) as cnt FROM home_stuart_gano.ontos_ml_workbench.{table}").collect()[0].cnt
+        count = spark.sql(f"SELECT COUNT(*) as cnt FROM {CATALOG}.{SCHEMA}.{table}").collect()[0].cnt
         status = "✅" if count > 0 else "⚠️ "
         print(f"{status} {table}: {count} rows")
     except Exception as e:
@@ -75,7 +81,7 @@ sheets_data = [
         "description": "Microscope images of PCB inspection with sensor context",
         "source_type": "uc_volume",
         "source_table": None,
-        "source_volume": "/Volumes/home_stuart_gano/ontos_ml_workbench/pcb_images",
+        "source_volume": f"/Volumes/{CATALOG}/{SCHEMA}/pcb_images",
         "source_path": "defects/",
         "item_id_column": "filename",
         "text_columns": [],
@@ -93,7 +99,7 @@ sheets_data = [
         "name": "Equipment Sensor Telemetry",
         "description": "Real-time sensor readings for predictive maintenance",
         "source_type": "uc_table",
-        "source_table": "home_stuart_gano.ontos_ml_workbench.sensor_readings",
+        "source_table": f"{CATALOG}.{SCHEMA}.sensor_readings",
         "source_volume": None,
         "source_path": None,
         "item_id_column": "reading_id",
@@ -112,7 +118,7 @@ sheets_data = [
         "name": "Radiation Sensor Anomalies",
         "description": "Continuous monitoring stream for anomaly detection",
         "source_type": "uc_table",
-        "source_table": "home_stuart_gano.ontos_ml_workbench.radiation_readings",
+        "source_table": f"{CATALOG}.{SCHEMA}.radiation_readings",
         "source_volume": None,
         "source_path": None,
         "item_id_column": "event_id",
@@ -145,7 +151,7 @@ sheets_df = spark.createDataFrame([
     "created_at", "created_by", "updated_at", "updated_by"])
 
 # Insert or merge
-sheets_df.write.mode("append").saveAsTable("home_stuart_gano.ontos_ml_workbench.sheets")
+sheets_df.write.mode("append").saveAsTable(f"{CATALOG}.{SCHEMA}.sheets")
 print(f"✅ Seeded {len(sheets_data)} sheets")
 
 # COMMAND ----------
@@ -311,7 +317,7 @@ templates_df = spark.createDataFrame([
     "temperature", "status", "version", "use_case", "notes",
     "created_at", "created_by", "updated_at", "updated_by"])
 
-templates_df.write.mode("append").saveAsTable("home_stuart_gano.ontos_ml_workbench.templates")
+templates_df.write.mode("append").saveAsTable(f"{CATALOG}.{SCHEMA}.templates")
 print(f"✅ Seeded {len(templates_data)} templates")
 
 # COMMAND ----------
@@ -372,7 +378,7 @@ canonical_labels_df = spark.createDataFrame([
     "labeled_by", "review_notes",
     "created_at", "created_by", "updated_at", "updated_by"])
 
-canonical_labels_df.write.mode("append").saveAsTable("home_stuart_gano.ontos_ml_workbench.canonical_labels")
+canonical_labels_df.write.mode("append").saveAsTable(f"{CATALOG}.{SCHEMA}.canonical_labels")
 print(f"✅ Seeded {len(canonical_labels_data)} canonical labels")
 
 # COMMAND ----------
@@ -384,13 +390,13 @@ print("Verification:\n")
 
 # Check sheets
 print("📊 Sheets:")
-display(spark.sql("SELECT id, name, source_type, status, item_count FROM home_stuart_gano.ontos_ml_workbench.sheets"))
+display(spark.sql(f"SELECT id, name, source_type, status, item_count FROM {CATALOG}.{SCHEMA}.sheets"))
 
 print("\n📝 Templates:")
-display(spark.sql("SELECT id, name, label_type, status, use_case FROM home_stuart_gano.ontos_ml_workbench.templates"))
+display(spark.sql(f"SELECT id, name, label_type, status, use_case FROM {CATALOG}.{SCHEMA}.templates"))
 
 print("\n🏷️  Canonical Labels:")
-display(spark.sql("SELECT id, sheet_id, item_ref, label_type, labeled_by FROM home_stuart_gano.ontos_ml_workbench.canonical_labels"))
+display(spark.sql(f"SELECT id, sheet_id, item_ref, label_type, labeled_by FROM {CATALOG}.{SCHEMA}.canonical_labels"))
 
 # COMMAND ----------
 # MAGIC %md

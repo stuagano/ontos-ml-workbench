@@ -16,12 +16,12 @@ PURPLE='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Configuration
-SESSION_NAME="vital"
-PROJECT_ROOT="/Users/stuart.gano/Documents/Customers/Mirion/mirion-ontos-ml-workbench"
+SESSION_NAME="ontos"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Helper function for colored output
 log() {
-    echo -e "${BLUE}[VITAL]${NC} $1"
+    echo -e "${BLUE}[ONTOS]${NC} $1"
 }
 
 success() {

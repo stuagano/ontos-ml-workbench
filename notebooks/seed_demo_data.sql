@@ -2,8 +2,9 @@
 -- Run this notebook in the workspace to populate sample data
 
 -- Use the correct catalog/schema
-USE CATALOG `erp-demonstrations`;
-USE SCHEMA ontos_ml_workbench;
+-- Configure: replace with your catalog/schema or use execute_schemas.py
+USE CATALOG `${CATALOG}`;
+USE SCHEMA ${SCHEMA};
 
 -- ============================================================================
 -- TEMPLATES

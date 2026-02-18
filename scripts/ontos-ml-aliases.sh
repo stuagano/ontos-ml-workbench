@@ -11,30 +11,33 @@ export COLORTERM=truecolor
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
+# Auto-detect project root (set this to your project location if needed)
+ONTOS_ML_PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 # tmux session management
-alias vital='~/Documents/Customers/Mirion/mirion-ontos-ml-workbench/scripts/tmux-dev-session.sh'
-alias tmux-vital='tmux attach -t vital || ~/Documents/Customers/Mirion/mirion-ontos-ml-workbench/scripts/tmux-dev-session.sh'
-alias tmux-kill-vital='tmux kill-session -t vital'
+alias ontos='$ONTOS_ML_PROJECT_ROOT/scripts/tmux-dev-session.sh'
+alias tmux-ontos='tmux attach -t ontos || $ONTOS_ML_PROJECT_ROOT/scripts/tmux-dev-session.sh'
+alias tmux-kill-ontos='tmux kill-session -t ontos'
 alias tmux-ls='tmux ls'
 
 # Quick navigation to project
-alias vital-cd='cd ~/Documents/Customers/Mirion/mirion-ontos-ml-workbench'
-alias vital-backend='cd ~/Documents/Customers/Mirion/mirion-ontos-ml-workbench/backend'
-alias vital-frontend='cd ~/Documents/Customers/Mirion/mirion-ontos-ml-workbench/frontend'
+alias ontos-cd='cd $ONTOS_ML_PROJECT_ROOT'
+alias ontos-backend='cd $ONTOS_ML_PROJECT_ROOT/backend'
+alias ontos-frontend='cd $ONTOS_ML_PROJECT_ROOT/frontend'
 
 # Development servers
-alias vital-backend-start='cd ~/Documents/Customers/Mirion/mirion-ontos-ml-workbench/backend && source venv/bin/activate && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000'
-alias vital-frontend-start='cd ~/Documents/Customers/Mirion/mirion-ontos-ml-workbench/frontend && npm run dev'
+alias ontos-backend-start='cd $ONTOS_ML_PROJECT_ROOT/backend && source venv/bin/activate && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000'
+alias ontos-frontend-start='cd $ONTOS_ML_PROJECT_ROOT/frontend && npm run dev'
 
 # Testing shortcuts
-alias vital-test='cd ~/Documents/Customers/Mirion/mirion-ontos-ml-workbench && python3 frontend/test_all_endpoints.py'
-alias vital-pytest='cd ~/Documents/Customers/Mirion/mirion-ontos-ml-workbench/backend && source venv/bin/activate && pytest -v'
-alias vital-e2e='cd ~/Documents/Customers/Mirion/mirion-ontos-ml-workbench/backend && python3 scripts/e2e_test.py'
+alias ontos-test='cd $ONTOS_ML_PROJECT_ROOT && python3 frontend/test_all_endpoints.py'
+alias ontos-pytest='cd $ONTOS_ML_PROJECT_ROOT/backend && source venv/bin/activate && pytest -v'
+alias ontos-e2e='cd $ONTOS_ML_PROJECT_ROOT/backend && python3 scripts/e2e_test.py'
 
 # Quick documentation
-alias vital-help='less ~/Documents/Customers/Mirion/mirion-ontos-ml-workbench/TMUX_SETUP.md'
-alias tmux-help='less ~/Documents/Customers/Mirion/mirion-ontos-ml-workbench/TMUX_SETUP.md'
+alias ontos-help='less $ONTOS_ML_PROJECT_ROOT/TMUX_SETUP.md'
+alias tmux-help='less $ONTOS_ML_PROJECT_ROOT/TMUX_SETUP.md'
 
-# echo "✓ Ontos ML Workbench aliases loaded"
-# echo "  Type 'vital' to start tmux development session"
-# echo "  Type 'vital-help' to see tmux documentation"
+# echo "Ontos ML Workbench aliases loaded"
+# echo "  Type 'ontos' to start tmux development session"
+# echo "  Type 'ontos-help' to see tmux documentation"

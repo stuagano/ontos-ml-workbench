@@ -2,7 +2,7 @@
 
 **Date**: February 5, 2026
 **Status**: ✅ Deployed
-**App URL**: https://ontos-ml-workbench-fevm-v3-7474660127789418.aws.databricksapps.com
+**App URL**: https://your-app-url.databricksapps.com
 
 ## Problem
 
@@ -196,7 +196,7 @@ Use Chrome DevTools > Network tab to verify:
 
 The optimized build is deployed at:
 ```
-https://ontos-ml-workbench-fevm-v3-7474660127789418.aws.databricksapps.com
+https://your-app-url.databricksapps.com
 ```
 
 To verify the optimization is working:

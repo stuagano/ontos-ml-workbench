@@ -41,7 +41,7 @@ print(f"Include only approved: {include_only_approved}")
 # COMMAND ----------
 
 # Configuration
-CATALOG = "home_stuart_gano"
+CATALOG = "your_catalog"
 SCHEMA = "ontos_ml_dev"
 DEFAULT_VOLUME = f"/Volumes/{CATALOG}/{SCHEMA}/training_data"
 

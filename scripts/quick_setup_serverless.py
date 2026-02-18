@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Quick setup for serverless_dxukih_catalog.mirion
+Quick setup for Ontos ML Workbench.
 Creates schema, tables, and seeds sample data.
 """
 
+import os
 import sys
 import time
 from datetime import datetime
@@ -36,28 +37,34 @@ def execute_sql(client, warehouse_id, sql, description="SQL"):
     raise TimeoutError(f"SQL timed out: {description}")
 
 def main():
+    CATALOG = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+    SCHEMA = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
+    WAREHOUSE_ID = os.getenv("DATABRICKS_WAREHOUSE_ID")
+    PROFILE = os.getenv("DATABRICKS_CONFIG_PROFILE", "DEFAULT")
+
     # Initialize client
-    client = WorkspaceClient(profile="fe-vm-serverless-dxukih")
-    warehouse_id = "387bcda0f2ece20c"
+    client = WorkspaceClient(profile=PROFILE)
+    warehouse_id = WAREHOUSE_ID
+    catalog_schema = f"{CATALOG}.{SCHEMA}"
 
     print("=" * 80)
-    print("Ontos ML Workbench Quick Setup - Serverless")
+    print("Ontos ML Workbench Quick Setup")
     print("=" * 80)
-    print(f"Catalog: serverless_dxukih_catalog")
-    print(f"Schema: mirion")
+    print(f"Catalog: {CATALOG}")
+    print(f"Schema: {SCHEMA}")
     print(f"Warehouse: {warehouse_id}")
     print("=" * 80)
 
     # Step 1: Create schema
     print("\n[1/4] Creating schema...")
     execute_sql(client, warehouse_id,
-        "CREATE SCHEMA IF NOT EXISTS serverless_dxukih_catalog.mirion",
+        "CREATE SCHEMA IF NOT EXISTS {catalog_schema}",
         "Create schema")
 
     # Step 2: Create sheets table
     print("\n[2/4] Creating sheets table...")
     execute_sql(client, warehouse_id, """
-        CREATE TABLE IF NOT EXISTS serverless_dxukih_catalog.mirion.sheets (
+        CREATE TABLE IF NOT EXISTS {catalog_schema}.sheets (
           id STRING NOT NULL,
           name STRING NOT NULL,
           description STRING,
@@ -87,7 +94,7 @@ def main():
     # Step 3: Create templates table
     print("\n[3/4] Creating templates table...")
     execute_sql(client, warehouse_id, """
-        CREATE TABLE IF NOT EXISTS serverless_dxukih_catalog.mirion.templates (
+        CREATE TABLE IF NOT EXISTS {catalog_schema}.templates (
           id STRING NOT NULL,
           name STRING NOT NULL,
           description STRING,
@@ -114,16 +121,16 @@ def main():
     # Step 4: Seed sample data
     print("\n[4/4] Seeding sample data...")
     now = datetime.now().isoformat()
-    user = "stuart.gano@databricks.com"
+    user = client.current_user.me().user_name
 
     execute_sql(client, warehouse_id, f"""
-        INSERT INTO serverless_dxukih_catalog.mirion.sheets VALUES
+        INSERT INTO {catalog_schema}.sheets VALUES
         (
           'sheet-defect-001',
           'PCB Defect Detection',
           'Microscope images of PCBs with defect labels',
           'uc_table',
-          'serverless_dxukih_catalog.mirion.sample_defects',
+          '{catalog_schema}.sample_defects',
           NULL,
           NULL,
           'image_id',
@@ -146,7 +153,7 @@ def main():
           'Radiation Sensor Telemetry',
           'Time-series data from radiation detectors',
           'uc_table',
-          'serverless_dxukih_catalog.mirion.sample_telemetry',
+          '{catalog_schema}.sample_telemetry',
           NULL,
           NULL,
           'sensor_id',
@@ -169,7 +176,7 @@ def main():
           'Calibration Results',
           'Monte Carlo simulation outputs for detector calibration',
           'uc_table',
-          'serverless_dxukih_catalog.mirion.sample_calibration',
+          '{catalog_schema}.sample_calibration',
           NULL,
           NULL,
           'calibration_id',
@@ -190,7 +197,7 @@ def main():
     """, "Insert sample sheets")
 
     execute_sql(client, warehouse_id, f"""
-        INSERT INTO serverless_dxukih_catalog.mirion.templates VALUES
+        INSERT INTO {catalog_schema}.templates VALUES
         (
           'tmpl-defect-001',
           'Defect Classification',
@@ -239,15 +246,15 @@ def main():
     print("=" * 80)
 
     sheets_count = execute_sql(client, warehouse_id,
-        "SELECT COUNT(*) as count FROM serverless_dxukih_catalog.mirion.sheets",
+        "SELECT COUNT(*) as count FROM {catalog_schema}.sheets",
         "Count sheets")
 
     templates_count = execute_sql(client, warehouse_id,
-        "SELECT COUNT(*) as count FROM serverless_dxukih_catalog.mirion.templates",
+        "SELECT COUNT(*) as count FROM {catalog_schema}.templates",
         "Count templates")
 
     print("\n✅ Setup complete!")
-    print(f"   - Schema: serverless_dxukih_catalog.mirion")
+    print(f"   - Catalog.Schema: {catalog_schema}")
     print(f"   - Sheets: 3 sample sheets")
     print(f"   - Templates: 2 sample templates")
     print("\n🚀 Backend server is ready. Restart if it's already running.")

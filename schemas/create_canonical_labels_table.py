@@ -3,15 +3,21 @@
 Create canonical_labels table with PRD v2.3 schema
 """
 
+import os
 from databricks.sdk import WorkspaceClient
 
-w = WorkspaceClient(profile="fe-vm-serverless-dxukih")
-warehouse_id = "387bcda0f2ece20c"
+CATALOG = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+SCHEMA = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
+WAREHOUSE_ID = os.getenv("DATABRICKS_WAREHOUSE_ID")
+PROFILE = os.getenv("DATABRICKS_CONFIG_PROFILE", "DEFAULT")
+
+w = WorkspaceClient(profile=PROFILE)
+warehouse_id = WAREHOUSE_ID
 
 print("📝 Creating canonical_labels table...\n")
 
-create_table_sql = """
-CREATE TABLE IF NOT EXISTS `erp-demonstrations`.ontos_ml_workbench.canonical_labels (
+create_table_sql = f"""
+CREATE TABLE IF NOT EXISTS `{CATALOG}`.{SCHEMA}.canonical_labels (
   id STRING NOT NULL,
   sheet_id STRING NOT NULL COMMENT 'Reference to sheets.id',
   item_ref STRING NOT NULL COMMENT 'Identifier for the source item',
@@ -58,7 +64,7 @@ except Exception as e:
 # Verify
 print("\n🔍 Verifying table exists...")
 result = w.statement_execution.execute_statement(
-    statement="SHOW TABLES IN `erp-demonstrations`.ontos_ml_workbench LIKE 'canonical_labels'",
+    statement=f"SHOW TABLES IN `{CATALOG}`.{SCHEMA} LIKE 'canonical_labels'",
     warehouse_id=warehouse_id,
     wait_timeout="30s",
 )
@@ -66,7 +72,7 @@ if result.result and result.result.data_array:
     print("✓ Table found in catalog")
     print("\n📋 Table schema:")
     desc_result = w.statement_execution.execute_statement(
-        statement="DESCRIBE TABLE `erp-demonstrations`.ontos_ml_workbench.canonical_labels",
+        statement=f"DESCRIBE TABLE `{CATALOG}`.{SCHEMA}.canonical_labels",
         warehouse_id=warehouse_id,
         wait_timeout="30s",
     )

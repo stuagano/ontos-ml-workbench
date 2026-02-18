@@ -5,10 +5,10 @@
  */
 
 import { Wand2 } from "lucide-react";
-import type { VitalModule } from "../types";
+import type { OntosModule } from "../types";
 import DSPyOptimizer from "./DSPyOptimizer";
 
-export const dspyModule: VitalModule = {
+export const dspyModule: OntosModule = {
   id: "dspy-optimization",
   name: "DSPy Optimizer",
   description: "Automatic prompt and few-shot example optimization using DSPy framework",

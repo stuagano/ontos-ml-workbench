@@ -5,10 +5,9 @@ import json
 import sys
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
-sys.path.insert(
-    0, "/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/backend"
-)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.services.sql_service import get_sql_service
 
@@ -106,7 +105,7 @@ Rate each flower sample for quality (1-5) and health status.
         0,
         0,
         0,
-        'stuart.gano@databricks.com',
+        'admin@example.com',
         '{now}',
         '{now}'
     )
@@ -129,13 +128,13 @@ Rate each flower sample for quality (1-5) and health status.
         # First task in progress, second submitted, third pending
         if batch_num == 0:
             status = "in_progress"
-            assigned_to = "'stuart.gano@databricks.com'"
+            assigned_to = "'admin@example.com'"
             assigned_at = f"'{now}'"
             started_at = f"'{now}'"
             labeled_count = 2
         elif batch_num == 1:
             status = "submitted"
-            assigned_to = "'stuart.gano@databricks.com'"
+            assigned_to = "'admin@example.com'"
             assigned_at = f"'{now}'"
             started_at = f"'{now}'"
             labeled_count = 4
@@ -201,7 +200,7 @@ Rate each flower sample for quality (1-5) and health status.
                 {"quality_rating": quality, "health_status": health}
             )
             status = "human_labeled"
-            labeled_by = "'stuart.gano@databricks.com'"
+            labeled_by = "'admin@example.com'"
             labeled_at = f"'{now}'"
         else:
             human_labels = "NULL"
@@ -259,7 +258,7 @@ Rate each flower sample for quality (1-5) and health status.
             '{ai_labels}',
             {confidence},
             '{human_labels}',
-            'stuart.gano@databricks.com',
+            'admin@example.com',
             '{now}',
             'human_labeled',
             NULL, NULL, NULL, NULL,
@@ -272,7 +271,7 @@ Rate each flower sample for quality (1-5) and health status.
     # Create workspace user if not exists
     print("\nChecking workspace user...")
     users = sql.execute(
-        "SELECT id FROM workspace_users WHERE email = 'stuart.gano@databricks.com'"
+        "SELECT id FROM workspace_users WHERE email = 'admin@example.com'"
     )
     if not users:
         user_id = str(uuid.uuid4())
@@ -284,13 +283,13 @@ Rate each flower sample for quality (1-5) and health status.
             created_at, updated_at
         ) VALUES (
             '{user_id}',
-            'stuart.gano@databricks.com',
-            'Stuart Gano',
+            'admin@example.com',
+            'Admin User',
             'admin',
             10, 2, 6, 0, NULL, NULL, true, '{now}', '{now}', '{now}'
         )
         """)
-        print("  Created user: Stuart Gano")
+        print("  Created user: Admin User")
     else:
         print("  User already exists")
 

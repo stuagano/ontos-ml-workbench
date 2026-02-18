@@ -3,15 +3,21 @@
 Seed data for Ontos ML Workbench
 Creates sample data for testing and validation
 """
+import os
 from databricks.sdk import WorkspaceClient
 from datetime import datetime
 import json
 import uuid
 
-w = WorkspaceClient()
-warehouse_id = '071969b1ec9a91ca'
-schema = 'home_stuart_gano.ontos_ml_workbench'
-user = 'stuart.gano@databricks.com'
+CATALOG = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+SCHEMA = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
+WAREHOUSE_ID = os.getenv("DATABRICKS_WAREHOUSE_ID")
+PROFILE = os.getenv("DATABRICKS_CONFIG_PROFILE", "DEFAULT")
+
+w = WorkspaceClient(profile=PROFILE)
+warehouse_id = WAREHOUSE_ID
+schema = f'{CATALOG}.{SCHEMA}'
+user = w.current_user.me().user_name
 
 print('🌱 Seeding Ontos ML Workbench with sample data...\n')
 
@@ -34,7 +40,7 @@ INSERT INTO {schema}.sheets (
     'PCB Defect Detection Dataset',
     'Microscope images of PCBs with labeled defects',
     'uc_volume',
-    '/Volumes/home_stuart_gano/ontos_ml_workbench/pcb_images',
+    f'/Volumes/{CATALOG}/{SCHEMA}/pcb_images',
     'defect_images/',
     'image_filename',
     ARRAY(),
@@ -65,7 +71,7 @@ INSERT INTO {schema}.sheets (
     'Radiation Sensor Telemetry',
     'Time-series sensor data from radiation detectors',
     'uc_table',
-    'home_stuart_gano.ontos_ml_workbench.sensor_readings',
+    f'{CATALOG}.{SCHEMA}.sensor_readings',
     'reading_id',
     ARRAY('notes', 'alert_message'),
     ARRAY('sensor_id', 'location', 'timestamp'),

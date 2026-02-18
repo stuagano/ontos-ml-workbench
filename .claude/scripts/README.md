@@ -15,7 +15,7 @@ Polls Databricks Apps deployment status until ready.
 
 **Example**:
 ```bash
-./poll-databricks-app.sh ontos-ml-workbench fe-vm-serverless-dxukih
+./poll-databricks-app.sh ontos-ml-workbench <your-profile>
 ```
 
 **What it does**:

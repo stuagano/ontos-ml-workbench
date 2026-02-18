@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 """Quick seed script - adds minimal sample data"""
 
+import os
 import sys
 from datetime import datetime
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.sql import StatementState
 import time
+
+CATALOG = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+SCHEMA = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
+WAREHOUSE_ID = os.getenv("DATABRICKS_WAREHOUSE_ID")
+PROFILE = os.getenv("DATABRICKS_CONFIG_PROFILE", "DEFAULT")
 
 def exec_sql(client, warehouse_id, sql):
     result = client.statement_execution.execute_statement(
@@ -22,31 +28,32 @@ def exec_sql(client, warehouse_id, sql):
         time.sleep(1)
     return False
 
-client = WorkspaceClient(profile="fe-vm-serverless-dxukih")
-warehouse_id = "387bcda0f2ece20c"
+client = WorkspaceClient(profile=PROFILE)
+warehouse_id = WAREHOUSE_ID
 now = datetime.now().isoformat()
-user = "stuart.gano@databricks.com"
+user = client.current_user.me().user_name
+catalog_schema = f"{CATALOG}.{SCHEMA}"
 
 print("Seeding sheets...")
 success = exec_sql(client, warehouse_id, f"""
-INSERT INTO serverless_dxukih_catalog.mirion.sheets (
+INSERT INTO {catalog_schema}.sheets (
   id, name, description, source_type, source_table, source_volume, source_path,
   item_id_column, text_columns, image_columns, metadata_columns,
   sampling_strategy, sample_size, sample_seed, status, item_count, notes,
   created_at, created_by, updated_at, updated_by
 ) VALUES
 ('sheet-001', 'Defect Detection Data', 'Inspection images with defect labels',
- 'uc_table', 'serverless_dxukih_catalog.mirion.sample_defects', NULL, NULL,
+ 'uc_table', '{catalog_schema}.sample_defects', NULL, NULL,
  'image_id', ARRAY(), ARRAY('image_path'), ARRAY('sensor_reading', 'timestamp'),
  'all', NULL, NULL, 'active', 50, 'Sample data',
  TIMESTAMP'{now}', '{user}', TIMESTAMP'{now}', '{user}'),
 ('sheet-002', 'Sensor Telemetry', 'Radiation detector time-series data',
- 'uc_table', 'serverless_dxukih_catalog.mirion.sample_telemetry', NULL, NULL,
+ 'uc_table', '{catalog_schema}.sample_telemetry', NULL, NULL,
  'sensor_id', ARRAY('reading_value', 'status'), ARRAY(), ARRAY('timestamp', 'location'),
  'all', NULL, NULL, 'active', 1000, 'Sample data',
  TIMESTAMP'{now}', '{user}', TIMESTAMP'{now}', '{user}'),
 ('sheet-003', 'Calibration Results', 'Monte Carlo simulation outputs',
- 'uc_table', 'serverless_dxukih_catalog.mirion.sample_calibration', NULL, NULL,
+ 'uc_table', '{catalog_schema}.sample_calibration', NULL, NULL,
  'calibration_id', ARRAY('efficiency', 'resolution'), ARRAY(), ARRAY('detector_model'),
  'all', NULL, NULL, 'active', 200, 'Sample data',
  TIMESTAMP'{now}', '{user}', TIMESTAMP'{now}', '{user}')
@@ -57,7 +64,7 @@ if success:
 
     print("Seeding templates...")
     success = exec_sql(client, warehouse_id, f"""
-    INSERT INTO serverless_dxukih_catalog.mirion.templates (
+    INSERT INTO {catalog_schema}.templates (
       id, name, description, label_type, prompt_template, input_schema, output_schema,
       few_shot_count, model_name, temperature, status, version, use_case, notes,
       created_at, created_by, updated_at, updated_by

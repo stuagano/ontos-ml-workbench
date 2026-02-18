@@ -11,20 +11,20 @@
 --   where the Ontos ML Workbench is deployed.
 --
 -- Prerequisites:
---   - Schema home_stuart_gano.ontos_ml_workbench must exist
+--   - Schema ${CATALOG}.${SCHEMA} must exist
 --   - User must have CREATE TABLE and ALTER TABLE permissions
 --   - feedback_items table must exist (created by init.sql)
 --
 -- Validation:
 --   After running, verify with:
---     DESCRIBE TABLE EXTENDED home_stuart_gano.ontos_ml_workbench.monitor_alerts;
---     DESCRIBE TABLE EXTENDED home_stuart_gano.ontos_ml_workbench.feedback_items;
+--     DESCRIBE TABLE EXTENDED ${CATALOG}.${SCHEMA}.monitor_alerts;
+--     DESCRIBE TABLE EXTENDED ${CATALOG}.${SCHEMA}.feedback_items;
 --
 -- ============================================================================
 
 -- Set default catalog/schema for convenience
-USE CATALOG home_stuart_gano;
-USE SCHEMA ontos_ml_workbench;
+USE CATALOG ${CATALOG};
+USE SCHEMA ${SCHEMA};
 
 -- ============================================================================
 -- FIX #1: Create monitor_alerts table
@@ -33,7 +33,7 @@ USE SCHEMA ontos_ml_workbench;
 --          Supports drift, latency, error_rate, and quality alerts
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.monitor_alerts (
+CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.monitor_alerts (
   id STRING NOT NULL,
   endpoint_id STRING NOT NULL,
 
@@ -71,7 +71,7 @@ COMMENT 'Monitoring alerts for deployed model endpoints. Tracks drift, latency, 
 -- Note: ALTER TABLE ADD COLUMN is idempotent in Databricks - it will
 -- silently succeed if the column already exists
 
-ALTER TABLE home_stuart_gano.ontos_ml_workbench.feedback_items
+ALTER TABLE ${CATALOG}.${SCHEMA}.feedback_items
 ADD COLUMN IF NOT EXISTS flagged BOOLEAN DEFAULT FALSE;
 
 -- ============================================================================
@@ -83,8 +83,8 @@ SELECT
   'monitor_alerts table structure' as check_name,
   COUNT(*) as column_count
 FROM information_schema.columns
-WHERE table_catalog = 'home_stuart_gano'
-  AND table_schema = 'ontos_ml_workbench'
+WHERE table_catalog = '${CATALOG}'
+  AND table_schema = '${SCHEMA}'
   AND table_name = 'monitor_alerts';
 
 -- Verify feedback_items has flagged column
@@ -92,17 +92,17 @@ SELECT
   'feedback_items.flagged column exists' as check_name,
   CASE WHEN COUNT(*) > 0 THEN 'YES' ELSE 'NO' END as exists
 FROM information_schema.columns
-WHERE table_catalog = 'home_stuart_gano'
-  AND table_schema = 'ontos_ml_workbench'
+WHERE table_catalog = '${CATALOG}'
+  AND table_schema = '${SCHEMA}'
   AND table_name = 'feedback_items'
   AND column_name = 'flagged';
 
 -- Check row counts (should be 0 for new installations)
 SELECT 'monitor_alerts' as table_name, COUNT(*) as row_count
-FROM home_stuart_gano.ontos_ml_workbench.monitor_alerts
+FROM ${CATALOG}.${SCHEMA}.monitor_alerts
 UNION ALL
 SELECT 'feedback_items' as table_name, COUNT(*) as row_count
-FROM home_stuart_gano.ontos_ml_workbench.feedback_items;
+FROM ${CATALOG}.${SCHEMA}.feedback_items;
 
 -- ============================================================================
 -- Expected Results

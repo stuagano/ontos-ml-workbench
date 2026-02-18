@@ -7,7 +7,7 @@ and idempotent execution.
 
 Usage:
     python scripts/setup_database.py --catalog your_catalog --schema ontos_ml_workbench
-    python scripts/setup_database.py --catalog erp-demonstrations --schema ontos_ml_workbench --warehouse-id abc123
+    python scripts/setup_database.py --catalog your_catalog --schema ontos_ml_workbench --warehouse-id your_warehouse_id
     python scripts/setup_database.py --profile dev --reset  # Reset all tables
 """
 
@@ -459,7 +459,7 @@ Examples:
   python scripts/setup_database.py --catalog your_catalog --schema ontos_ml_workbench
 
   # Setup with specific warehouse
-  python scripts/setup_database.py --catalog erp-demonstrations --schema ontos_ml_workbench --warehouse-id abc123
+  python scripts/setup_database.py --catalog your_catalog --schema ontos_ml_workbench --warehouse-id your_warehouse_id
 
   # Setup using CLI profile
   python scripts/setup_database.py --profile dev --catalog your_catalog --schema ontos_ml_workbench

@@ -5,7 +5,7 @@
 -- Enables traceability from deployed model back to source data
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.model_training_lineage (
+CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.model_training_lineage (
   -- Identity
   id STRING NOT NULL,
 
@@ -64,6 +64,6 @@ TBLPROPERTIES (
 );
 
 -- Create indexes for common queries
-CREATE INDEX IF NOT EXISTS idx_lineage_model ON home_stuart_gano.ontos_ml_workbench.model_training_lineage(model_name, model_version);
-CREATE INDEX IF NOT EXISTS idx_lineage_training_sheet ON home_stuart_gano.ontos_ml_workbench.model_training_lineage(training_sheet_id);
-CREATE INDEX IF NOT EXISTS idx_lineage_status ON home_stuart_gano.ontos_ml_workbench.model_training_lineage(deployment_status);
+CREATE INDEX IF NOT EXISTS idx_lineage_model ON ${CATALOG}.${SCHEMA}.model_training_lineage(model_name, model_version);
+CREATE INDEX IF NOT EXISTS idx_lineage_training_sheet ON ${CATALOG}.${SCHEMA}.model_training_lineage(training_sheet_id);
+CREATE INDEX IF NOT EXISTS idx_lineage_status ON ${CATALOG}.${SCHEMA}.model_training_lineage(deployment_status);

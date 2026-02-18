@@ -8,7 +8,7 @@
 -- VALIDATION: Check all tables exist
 -- ============================================================================
 
-SHOW TABLES IN home_stuart_gano.ontos_ml_workbench;
+SHOW TABLES IN ${CATALOG}.${SCHEMA};
 
 -- Expected output: 7 tables
 -- sheets, templates, canonical_labels, training_sheets, qa_pairs,
@@ -18,17 +18,17 @@ SHOW TABLES IN home_stuart_gano.ontos_ml_workbench;
 -- VALIDATION: Verify schemas
 -- ============================================================================
 
-DESCRIBE EXTENDED home_stuart_gano.ontos_ml_workbench.canonical_labels;
+DESCRIBE EXTENDED ${CATALOG}.${SCHEMA}.canonical_labels;
 
 -- Verify composite key constraint exists
-SHOW CREATE TABLE home_stuart_gano.ontos_ml_workbench.canonical_labels;
+SHOW CREATE TABLE ${CATALOG}.${SCHEMA}.canonical_labels;
 
 -- ============================================================================
 -- SEED DATA: Insert test records
 -- ============================================================================
 
 -- 1. Sample Sheet (PCB defect detection)
-INSERT INTO home_stuart_gano.ontos_ml_workbench.sheets
+INSERT INTO ${CATALOG}.${SCHEMA}.sheets
   (id, name, description, source_type, source_table, item_id_column,
    text_columns, image_columns, status, created_by, updated_by)
 VALUES
@@ -47,7 +47,7 @@ VALUES
   );
 
 -- 2. Sample Template (PCB defect classification)
-INSERT INTO home_stuart_gano.ontos_ml_workbench.templates
+INSERT INTO ${CATALOG}.${SCHEMA}.templates
   (id, name, description, system_prompt, user_prompt_template, label_type,
    model_name, temperature, status, version, is_latest, created_by, updated_by)
 VALUES
@@ -68,7 +68,7 @@ VALUES
   );
 
 -- 3. Sample Canonical Label
-INSERT INTO home_stuart_gano.ontos_ml_workbench.canonical_labels
+INSERT INTO ${CATALOG}.${SCHEMA}.canonical_labels
   (id, sheet_id, item_ref, label_type, label_data, labeling_mode,
    label_confidence, version, created_by, updated_by)
 VALUES
@@ -86,7 +86,7 @@ VALUES
   );
 
 -- 4. Sample Training Sheet
-INSERT INTO home_stuart_gano.ontos_ml_workbench.training_sheets
+INSERT INTO ${CATALOG}.${SCHEMA}.training_sheets
   (id, name, description, sheet_id, template_id, template_version,
    generation_mode, model_used, status, total_items, generated_count,
    approved_count, auto_approved_count, created_by, updated_by)
@@ -110,7 +110,7 @@ VALUES
   );
 
 -- 5. Sample Q&A Pair (auto-approved via canonical label)
-INSERT INTO home_stuart_gano.ontos_ml_workbench.qa_pairs
+INSERT INTO ${CATALOG}.${SCHEMA}.qa_pairs
   (id, training_sheet_id, sheet_id, item_ref, messages, canonical_label_id,
    was_auto_approved, review_status, sequence_number, created_by, updated_by)
 VALUES
@@ -133,7 +133,7 @@ VALUES
   );
 
 -- 6. Sample Q&A Pair (needs review - no canonical label)
-INSERT INTO home_stuart_gano.ontos_ml_workbench.qa_pairs
+INSERT INTO ${CATALOG}.${SCHEMA}.qa_pairs
   (id, training_sheet_id, sheet_id, item_ref, messages, canonical_label_id,
    was_auto_approved, review_status, sequence_number, created_by, updated_by)
 VALUES
@@ -156,7 +156,7 @@ VALUES
   );
 
 -- 7. Sample Model Training Lineage
-INSERT INTO home_stuart_gano.ontos_ml_workbench.model_training_lineage
+INSERT INTO ${CATALOG}.${SCHEMA}.model_training_lineage
   (id, model_name, model_version, training_sheet_id, training_sheet_name,
    base_model, training_examples_count, deployment_status, created_by, updated_by)
 VALUES
@@ -178,7 +178,7 @@ VALUES
 -- ============================================================================
 
 -- This should succeed (different item_ref)
-INSERT INTO home_stuart_gano.ontos_ml_workbench.canonical_labels
+INSERT INTO ${CATALOG}.${SCHEMA}.canonical_labels
   (id, sheet_id, item_ref, label_type, label_data, labeling_mode,
    version, created_by, updated_by)
 VALUES
@@ -195,7 +195,7 @@ VALUES
   );
 
 -- This should succeed (different label_type for same item)
-INSERT INTO home_stuart_gano.ontos_ml_workbench.canonical_labels
+INSERT INTO ${CATALOG}.${SCHEMA}.canonical_labels
   (id, sheet_id, item_ref, label_type, label_data, labeling_mode,
    version, created_by, updated_by)
 VALUES
@@ -214,7 +214,7 @@ VALUES
 -- This SHOULD FAIL with UNIQUE constraint violation
 -- (same sheet_id + item_ref + label_type as label-pcb-001)
 /*
-INSERT INTO home_stuart_gano.ontos_ml_workbench.canonical_labels
+INSERT INTO ${CATALOG}.${SCHEMA}.canonical_labels
   (id, sheet_id, item_ref, label_type, label_data, labeling_mode,
    version, created_by, updated_by)
 VALUES
@@ -237,17 +237,17 @@ VALUES
 -- ============================================================================
 
 -- Check all seed data was inserted
-SELECT 'sheets' as table_name, COUNT(*) as row_count FROM home_stuart_gano.ontos_ml_workbench.sheets
+SELECT 'sheets' as table_name, COUNT(*) as row_count FROM ${CATALOG}.${SCHEMA}.sheets
 UNION ALL
-SELECT 'templates', COUNT(*) FROM home_stuart_gano.ontos_ml_workbench.templates
+SELECT 'templates', COUNT(*) FROM ${CATALOG}.${SCHEMA}.templates
 UNION ALL
-SELECT 'canonical_labels', COUNT(*) FROM home_stuart_gano.ontos_ml_workbench.canonical_labels
+SELECT 'canonical_labels', COUNT(*) FROM ${CATALOG}.${SCHEMA}.canonical_labels
 UNION ALL
-SELECT 'training_sheets', COUNT(*) FROM home_stuart_gano.ontos_ml_workbench.training_sheets
+SELECT 'training_sheets', COUNT(*) FROM ${CATALOG}.${SCHEMA}.training_sheets
 UNION ALL
-SELECT 'qa_pairs', COUNT(*) FROM home_stuart_gano.ontos_ml_workbench.qa_pairs
+SELECT 'qa_pairs', COUNT(*) FROM ${CATALOG}.${SCHEMA}.qa_pairs
 UNION ALL
-SELECT 'model_training_lineage', COUNT(*) FROM home_stuart_gano.ontos_ml_workbench.model_training_lineage;
+SELECT 'model_training_lineage', COUNT(*) FROM ${CATALOG}.${SCHEMA}.model_training_lineage;
 
 -- Verify canonical label reuse pattern
 SELECT
@@ -256,8 +256,8 @@ SELECT
   cl.label_data,
   qa.id as qa_pair_id,
   qa.was_auto_approved
-FROM home_stuart_gano.ontos_ml_workbench.canonical_labels cl
-LEFT JOIN home_stuart_gano.ontos_ml_workbench.qa_pairs qa
+FROM ${CATALOG}.${SCHEMA}.canonical_labels cl
+LEFT JOIN ${CATALOG}.${SCHEMA}.qa_pairs qa
   ON qa.canonical_label_id = cl.id
 ORDER BY cl.item_ref;
 

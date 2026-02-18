@@ -23,7 +23,7 @@ w = WorkspaceClient()
 catalog = settings.databricks_catalog
 schema = settings.databricks_schema
 table_name = f"{catalog}.{schema}.sheets"
-user = "stuart.gano@databricks.com"
+user = "admin@example.com"
 
 print(f"Target: {table_name}\n")
 
@@ -35,7 +35,7 @@ sheets = [
         "description": "Microscope images of PCBs with labeled defects",
         "source_type": "uc_volume",
         "source_table": None,
-        "source_volume": "/Volumes/home_stuart_gano/ontos_ml_workbench/pcb_images",
+        "source_volume": "/Volumes/your_catalog/ontos_ml_workbench/pcb_images",
         "source_path": "defect_images/",
         "item_id_column": "image_filename",
         "text_columns": [],

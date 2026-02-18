@@ -3,15 +3,21 @@
 Create simplified table schemas that work with standard Databricks SQL
 Removes: DEFAULT values, UNIQUE constraints, CREATE INDEX (not needed for Delta)
 """
+import os
 from databricks.sdk import WorkspaceClient
 
-w = WorkspaceClient()
-warehouse_id = '071969b1ec9a91ca'
+CATALOG = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+SCHEMA = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
+WAREHOUSE_ID = os.getenv("DATABRICKS_WAREHOUSE_ID")
+PROFILE = os.getenv("DATABRICKS_CONFIG_PROFILE", "DEFAULT")
+
+w = WorkspaceClient(profile=PROFILE)
+warehouse_id = WAREHOUSE_ID
 
 # Simplified table definitions (remove DEFAULT, UNIQUE, INDEX)
 tables = {
     'sheets': '''
-        CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.sheets (
+        CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.sheets (
           id STRING NOT NULL,
           name STRING NOT NULL,
           description STRING,
@@ -38,7 +44,7 @@ tables = {
     ''',
 
     'templates': '''
-        CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.templates (
+        CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.templates (
           id STRING NOT NULL,
           name STRING NOT NULL,
           description STRING,
@@ -67,7 +73,7 @@ tables = {
     ''',
 
     'canonical_labels': '''
-        CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.canonical_labels (
+        CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.canonical_labels (
           id STRING NOT NULL,
           sheet_id STRING NOT NULL,
           item_ref STRING NOT NULL,
@@ -94,7 +100,7 @@ tables = {
     ''',
 
     'training_sheets': '''
-        CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.training_sheets (
+        CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.training_sheets (
           id STRING NOT NULL,
           name STRING NOT NULL,
           description STRING,
@@ -129,7 +135,7 @@ tables = {
     ''',
 
     'qa_pairs': '''
-        CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.qa_pairs (
+        CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.qa_pairs (
           id STRING NOT NULL,
           training_sheet_id STRING NOT NULL,
           sheet_id STRING NOT NULL,
@@ -156,7 +162,7 @@ tables = {
     ''',
 
     'model_training_lineage': '''
-        CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.model_training_lineage (
+        CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.model_training_lineage (
           id STRING NOT NULL,
           model_name STRING NOT NULL,
           model_version STRING,
@@ -190,7 +196,7 @@ tables = {
     ''',
 
     'example_store': '''
-        CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.example_store (
+        CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.example_store (
           id STRING NOT NULL,
           input STRING NOT NULL COMMENT 'JSON input',
           expected_output STRING NOT NULL COMMENT 'JSON output',
@@ -226,7 +232,7 @@ for table_name, ddl in tables.items():
     print(f'📄 Creating {table_name}...')
     try:
         result = w.statement_execution.execute_statement(
-            statement=ddl,
+            statement=ddl.format(CATALOG=CATALOG, SCHEMA=SCHEMA),
             warehouse_id=warehouse_id
         )
 
@@ -243,7 +249,7 @@ for table_name, ddl in tables.items():
 # Verify
 print('\n' + '='*60)
 print('🔍 Verifying tables...')
-tables_list = list(w.tables.list('home_stuart_gano', 'ontos_ml_workbench'))
+tables_list = list(w.tables.list(CATALOG, SCHEMA))
 print(f'   ✅ Total tables: {len(tables_list)}')
 for t in sorted(tables_list, key=lambda x: x.name):
     print(f'      - {t.name}')

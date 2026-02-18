@@ -1,11 +1,18 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Quick Setup - Create Tables in erp-demonstrations.ontos_ml_workbench
+# MAGIC # Quick Setup - Create Tables for Ontos ML Workbench
+
+# COMMAND ----------
+# Configuration - set these for your workspace
+import os
+CATALOG = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+SCHEMA = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
+CATALOG_SCHEMA = f"`{CATALOG}`.{SCHEMA}"
 
 # COMMAND ----------
 # Create schema
-spark.sql("CREATE SCHEMA IF NOT EXISTS erp-demonstrations.ontos_ml_workbench")
-print("✅ Schema created: erp-demonstrations.ontos_ml_workbench")
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS `{CATALOG}`.{SCHEMA}")
+print(f"✅ Schema created: {CATALOG}.{SCHEMA}")
 
 # COMMAND ----------
 # Import datetime and user info
@@ -21,8 +28,8 @@ print(f"Setting up as: {user_email}")
 
 # COMMAND ----------
 # Sheets table
-spark.sql("""
-CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.sheets (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {CATALOG_SCHEMA}.sheets (
   id STRING NOT NULL,
   name STRING NOT NULL,
   description STRING,
@@ -49,8 +56,8 @@ CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.sheets (
 TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
-spark.sql("""
-CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.templates (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {CATALOG_SCHEMA}.templates (
   id STRING NOT NULL,
   name STRING NOT NULL,
   description STRING,
@@ -74,8 +81,8 @@ CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.templates (
 TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
-spark.sql("""
-CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.canonical_labels (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {CATALOG_SCHEMA}.canonical_labels (
   id STRING NOT NULL,
   sheet_id STRING NOT NULL,
   item_ref STRING NOT NULL,
@@ -93,8 +100,8 @@ CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.canonical_label
 TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
-spark.sql("""
-CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.training_sheets (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {CATALOG_SCHEMA}.training_sheets (
   id STRING NOT NULL,
   name STRING NOT NULL,
   sheet_id STRING NOT NULL,
@@ -112,8 +119,8 @@ CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.training_sheets
 TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
-spark.sql("""
-CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.qa_pairs (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {CATALOG_SCHEMA}.qa_pairs (
   id STRING NOT NULL,
   training_sheet_id STRING NOT NULL,
   sheet_id STRING NOT NULL,
@@ -133,8 +140,8 @@ CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.qa_pairs (
 TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
-spark.sql("""
-CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.model_training_lineage (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {CATALOG_SCHEMA}.model_training_lineage (
   id STRING NOT NULL,
   model_name STRING NOT NULL,
   training_sheet_ids ARRAY<STRING> NOT NULL,
@@ -151,8 +158,8 @@ CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.model_training_
 TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 """)
 
-spark.sql("""
-CREATE TABLE IF NOT EXISTS erp-demonstrations.ontos_ml_workbench.example_store (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {CATALOG_SCHEMA}.example_store (
   id STRING NOT NULL,
   template_id STRING NOT NULL,
   example_type STRING NOT NULL,
@@ -177,8 +184,8 @@ print("✅ All tables created!")
 # MAGIC ## Seed Sample Data Pointing to Your Existing Domain Tables
 
 # COMMAND ----------
-# Get list of existing tables in serverless_dxukih_catalog.ontos_ml
-domain_tables = spark.sql("SHOW TABLES IN serverless_dxukih_catalog.ontos_ml").collect()
+# Get list of existing tables in {CATALOG}.{SCHEMA}
+domain_tables = spark.sql(f"SHOW TABLES IN {CATALOG}.{SCHEMA}").collect()
 
 print(f"Found {len(domain_tables)} existing domain tables:")
 for table in domain_tables:
@@ -190,7 +197,7 @@ sheets_data = []
 
 for table in domain_tables:
     table_name = table.tableName
-    full_path = f"serverless_dxukih_catalog.ontos_ml.{table_name}"
+    full_path = f"{CATALOG}.{SCHEMA}.{table_name}"
 
     try:
         # Get row count
@@ -217,7 +224,7 @@ for table in domain_tables:
             "sample_seed": None,
             "status": "active",
             "item_count": count,
-            "notes": f"Auto-discovered from serverless_dxukih_catalog.ontos_ml with {count} rows"
+            "notes": f"Auto-discovered from {CATALOG}.{SCHEMA} with {count} rows"
         })
 
         print(f"✅ Will create sheet for: {table_name} ({count} rows)")
@@ -229,10 +236,10 @@ for table in domain_tables:
 sheets_data.append({
     "id": "sheet-domain-raw-volume",
     "name": "Raw Data Volume",
-    "description": "Points to /Volumes/serverless_dxukih_catalog/ontos_ml/raw_datak",
+    "description": f"Points to /Volumes/{CATALOG}/{SCHEMA}/raw_datak",
     "source_type": "uc_volume",
     "source_table": None,
-    "source_volume": "/Volumes/serverless_dxukih_catalog/ontos_ml/raw_datak",
+    "source_volume": f"/Volumes/{CATALOG}/{SCHEMA}/raw_datak",
     "source_path": "",
     "item_id_column": "filename",
     "text_columns": [],
@@ -264,7 +271,7 @@ if sheets_data:
         "sample_seed", "status", "item_count", "notes",
         "created_at", "created_by", "updated_at", "updated_by"])
 
-    sheets_df.write.mode("append").saveAsTable("erp-demonstrations.ontos_ml_workbench.sheets")
+    sheets_df.write.mode("append").saveAsTable(f"{CATALOG_SCHEMA}.sheets")
     print(f"\n✅ Created {len(sheets_data)} sheets!")
 
 # COMMAND ----------
@@ -300,7 +307,7 @@ templates_df = spark.createDataFrame([
     "temperature", "status", "version", "use_case", "notes",
     "created_at", "created_by", "updated_at", "updated_by"])
 
-templates_df.write.mode("append").saveAsTable("erp-demonstrations.ontos_ml_workbench.templates")
+templates_df.write.mode("append").saveAsTable(f"{CATALOG_SCHEMA}.templates")
 print("✅ Created 1 template!")
 
 # COMMAND ----------
@@ -310,10 +317,10 @@ print("✅ Created 1 template!")
 # COMMAND ----------
 print("\n📊 Final Status:\n")
 print("Sheets:")
-display(spark.sql("SELECT id, name, source_type, source_table, item_count, status FROM erp-demonstrations.ontos_ml_workbench.sheets"))
+display(spark.sql(f"SELECT id, name, source_type, source_table, item_count, status FROM {CATALOG_SCHEMA}.sheets"))
 
 print("\nTemplates:")
-display(spark.sql("SELECT id, name, label_type, status FROM erp-demonstrations.ontos_ml_workbench.templates"))
+display(spark.sql(f"SELECT id, name, label_type, status FROM {CATALOG_SCHEMA}.templates"))
 
 print("\n✅ Setup complete! Your app is ready to run.")
 print("\nRun ./start-dev.sh to start the application")

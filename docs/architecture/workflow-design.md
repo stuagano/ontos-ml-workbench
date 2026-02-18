@@ -138,7 +138,7 @@ curl http://127.0.0.1:8000/api/v1/templates
 ```typescript
 {
   selectedSource: {
-    catalog: "erp-demonstrations",
+    catalog: "your-catalog",
     schema: "ontos_ml_workbench",
     table: "iris_flowers" // or assembly reference
   },

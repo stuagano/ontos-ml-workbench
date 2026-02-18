@@ -1,3 +1,5 @@
+# The ontos submodule is optional — it provides data governance features.
+# Replace the URL below with your own fork or remove this submodule if not needed.
 [submodule "ontos"]
 	path = ontos
-	url = https://github.com/stuagano/ontos.git
+	url = https://github.com/<your-org>/ontos.git

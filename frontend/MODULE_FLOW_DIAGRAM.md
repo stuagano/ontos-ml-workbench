@@ -177,11 +177,11 @@
    ↓
    training_run_id: "run_789"
    ↓
-   model_uri: "models:/vital/1"
+   model_uri: "models:/ontos-ml/1"
 
 5. Deploy (DEPLOY)
    ↓
-   endpoint_id: "vital-defect-detector"
+   endpoint_id: "ontos-defect-detector"
 
 6. Monitor (MONITOR + Monitoring Module)
    ↓

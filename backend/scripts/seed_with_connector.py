@@ -38,7 +38,7 @@ print(f"Target: {table_name}")
 print(f"Warehouse: {settings.databricks_warehouse_id}\n")
 
 # Prepare seed data
-user = "stuart.gano@databricks.com"
+user = "admin@example.com"
 sheets = [
     {
         "id": f"sheet-{uuid4()}",
@@ -46,7 +46,7 @@ sheets = [
         "description": "Microscope images of PCBs with labeled defects",
         "source_type": "uc_volume",
         "source_table": None,
-        "source_volume": "/Volumes/home_stuart_gano/ontos_ml_workbench/pcb_images",
+        "source_volume": "/Volumes/your_catalog/ontos_ml_workbench/pcb_images",
         "source_path": "defect_images/",
         "item_id_column": "image_filename",
         "text_columns": [],

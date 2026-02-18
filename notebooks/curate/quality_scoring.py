@@ -16,7 +16,7 @@ print(f"Processing template: {template_id}")
 
 from pyspark.sql import functions as F
 
-catalog = "home_stuart_gano"
+catalog = "your_catalog"
 schema = "ontos_ml_dev"
 
 # Load items for this template

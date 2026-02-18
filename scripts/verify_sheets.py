@@ -6,9 +6,9 @@ import os
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.sql import StatementState
 
-WAREHOUSE_ID = "your-warehouse-id"
-CATALOG = "your_catalog"
-SCHEMA = "ontos_ml_workbench"
+WAREHOUSE_ID = os.getenv("DATABRICKS_WAREHOUSE_ID")
+CATALOG = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+SCHEMA = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
 
 def execute_query(w, sql, description):
     """Execute SQL and return results"""
@@ -52,7 +52,7 @@ def execute_query(w, sql, description):
         return None
 
 def main():
-    profile = os.getenv("DATABRICKS_CONFIG_PROFILE", "fe-vm-serverless-dxukih")
+    profile = os.getenv("DATABRICKS_CONFIG_PROFILE", "DEFAULT")
     w = WorkspaceClient(profile=profile)
 
     print("Ontos ML Workbench - Sheets Data Verification")

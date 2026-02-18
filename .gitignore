@@ -104,6 +104,7 @@ backend/dqx-static/
 # Playwright
 .playwright-mcp/
 test-results/
+test-screenshots/
 playwright-report/
 
 # Environment files with credentials

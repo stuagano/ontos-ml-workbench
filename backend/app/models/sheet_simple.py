@@ -1,6 +1,6 @@
 """
 Simplified Pydantic models for Sheet (dataset definitions)
-Matches schema in home_stuart_gano.ontos_ml_workbench.sheets
+Matches schema in your_catalog.ontos_ml_workbench.sheets
 
 These are the PRD v2.3 models - sheets as lightweight pointers to Unity Catalog data.
 For the legacy spreadsheet-style sheets, see sheet.py
@@ -107,7 +107,7 @@ class SheetResponse(SheetBase):
                 "name": "PCB Defect Detection Dataset",
                 "description": "Microscope images of PCBs with labeled defects",
                 "source_type": "uc_volume",
-                "source_volume": "/Volumes/home_stuart_gano/ontos_ml_workbench/pcb_images",
+                "source_volume": "/Volumes/your_catalog/ontos_ml_workbench/pcb_images",
                 "source_path": "defect_images/",
                 "item_id_column": "image_filename",
                 "text_columns": [],

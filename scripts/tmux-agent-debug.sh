@@ -15,10 +15,10 @@ YELLOW='\033[1;33m'
 PURPLE='\033[0;35m'
 NC='\033[0m'
 
-SESSION_NAME="vital-debug"
-PROJECT_ROOT="/Users/stuart.gano/Documents/Customers/Mirion/mirion-ontos-ml-workbench"
+SESSION_NAME="ontos-debug"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-log() { echo -e "${BLUE}[VITAL]${NC} $1"; }
+log() { echo -e "${BLUE}[ONTOS]${NC} $1"; }
 success() { echo -e "${GREEN}[✓]${NC} $1"; }
 error() { echo -e "${RED}[✗]${NC} $1"; }
 warning() { echo -e "${YELLOW}[!]${NC} $1"; }
@@ -36,7 +36,7 @@ if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
     fi
 fi
 
-log "Creating VITAL debug session with 4 agent panes..."
+log "Creating Ontos ML debug session with 4 agent panes..."
 echo ""
 
 # Verify project directory

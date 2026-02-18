@@ -1,7 +1,7 @@
 -- Curated Datasets Schema
 -- Training-ready QA pairs selected from reviewed assemblies
 
-CREATE TABLE IF NOT EXISTS lakebase_db.curated_datasets (
+CREATE TABLE IF NOT EXISTS ${CATALOG}.${LAKEBASE_SCHEMA}.curated_datasets (
     -- Identity
     id STRING PRIMARY KEY,
     name STRING NOT NULL,
@@ -37,16 +37,16 @@ CREATE TABLE IF NOT EXISTS lakebase_db.curated_datasets (
 
 -- Indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_curated_datasets_status
-ON lakebase_db.curated_datasets (status);
+ON ${CATALOG}.${LAKEBASE_SCHEMA}.curated_datasets (status);
 
 CREATE INDEX IF NOT EXISTS idx_curated_datasets_labelset
-ON lakebase_db.curated_datasets (labelset_id);
+ON ${CATALOG}.${LAKEBASE_SCHEMA}.curated_datasets (labelset_id);
 
 CREATE INDEX IF NOT EXISTS idx_curated_datasets_created
-ON lakebase_db.curated_datasets (created_at);
+ON ${CATALOG}.${LAKEBASE_SCHEMA}.curated_datasets (created_at);
 
 -- Seed data: Example curated datasets
-INSERT INTO lakebase_db.curated_datasets (
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.curated_datasets (
     id, name, description, labelset_id, assembly_ids,
     split_config, quality_threshold, status, version,
     example_count, quality_metrics, created_at, created_by,
@@ -108,26 +108,26 @@ INSERT INTO lakebase_db.curated_datasets (
 );
 
 -- View for dataset statistics
-CREATE OR REPLACE VIEW lakebase_db.curated_dataset_stats AS
+CREATE OR REPLACE VIEW ${CATALOG}.${LAKEBASE_SCHEMA}.curated_dataset_stats AS
 SELECT
     status,
     COUNT(*) as dataset_count,
     SUM(example_count) as total_examples,
     AVG(example_count) as avg_examples_per_dataset,
     AVG(quality_threshold) as avg_quality_threshold
-FROM lakebase_db.curated_datasets
+FROM ${CATALOG}.${LAKEBASE_SCHEMA}.curated_datasets
 GROUP BY status;
 
 -- Query examples:
 
 -- List all approved datasets
--- SELECT * FROM lakebase_db.curated_datasets WHERE status = 'approved';
+-- SELECT * FROM ${CATALOG}.${LAKEBASE_SCHEMA}.curated_datasets WHERE status = 'approved';
 
 -- Find datasets by labelset
--- SELECT * FROM lakebase_db.curated_datasets WHERE labelset_id = 'ls-defect-detection';
+-- SELECT * FROM ${CATALOG}.${LAKEBASE_SCHEMA}.curated_datasets WHERE labelset_id = 'ls-defect-detection';
 
 -- Get dataset statistics by status
--- SELECT * FROM lakebase_db.curated_dataset_stats;
+-- SELECT * FROM ${CATALOG}.${LAKEBASE_SCHEMA}.curated_dataset_stats;
 
 -- Find large datasets (>1000 examples)
--- SELECT name, example_count, status FROM lakebase_db.curated_datasets WHERE example_count > 1000;
+-- SELECT name, example_count, status FROM ${CATALOG}.${LAKEBASE_SCHEMA}.curated_datasets WHERE example_count > 1000;

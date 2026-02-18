@@ -2,6 +2,7 @@
 """
 Run SQL file with proper statement execution and waiting
 """
+import os
 import sys
 from pathlib import Path
 from databricks.sdk import WorkspaceClient
@@ -16,8 +17,11 @@ if not sql_file.exists():
     print(f"Error: {sql_file} not found")
     sys.exit(1)
 
-w = WorkspaceClient()
-warehouse_id = '071969b1ec9a91ca'
+PROFILE = os.getenv("DATABRICKS_CONFIG_PROFILE", "DEFAULT")
+WAREHOUSE_ID = os.getenv("DATABRICKS_WAREHOUSE_ID")
+
+w = WorkspaceClient(profile=PROFILE)
+warehouse_id = WAREHOUSE_ID
 
 print(f'Running {sql_file.name}...\n')
 

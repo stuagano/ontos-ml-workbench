@@ -15,7 +15,7 @@
   "samples": [
     {
       "id": "INSP-2024-001",
-      "image_uri": "gs://mirion-vital/inspections/2024/detector_001_front.jpg",
+      "image_uri": "gs://your-bucket/inspections/2024/detector_001_front.jpg",
       "equipment_id": "DET-NPP-COOK-001",
       "facility": "Cook Nuclear Plant",
       "inspection_date": "2024-01-15",
@@ -31,7 +31,7 @@
     },
     {
       "id": "INSP-2024-002",
-      "image_uri": "gs://mirion-vital/inspections/2024/detector_002_side.jpg",
+      "image_uri": "gs://your-bucket/inspections/2024/detector_002_side.jpg",
       "equipment_id": "DET-NPP-COOK-002",
       "facility": "Cook Nuclear Plant",
       "inspection_date": "2024-01-15",
@@ -48,7 +48,7 @@
     },
     {
       "id": "INSP-2024-003",
-      "image_uri": "gs://mirion-vital/inspections/2024/detector_003_crystal.jpg",
+      "image_uri": "gs://your-bucket/inspections/2024/detector_003_crystal.jpg",
       "equipment_id": "DET-NPP-PALO-001",
       "facility": "Palo Verde Nuclear Generating Station",
       "inspection_date": "2024-01-18",
@@ -67,7 +67,7 @@
     },
     {
       "id": "INSP-2024-004",
-      "image_uri": "gs://mirion-vital/inspections/2024/detector_004_seal.jpg",
+      "image_uri": "gs://your-bucket/inspections/2024/detector_004_seal.jpg",
       "equipment_id": "DET-NPP-WATTS-003",
       "facility": "Watts Bar Nuclear Plant",
       "inspection_date": "2024-01-20",
@@ -84,7 +84,7 @@
     },
     {
       "id": "INSP-2024-005",
-      "image_uri": "gs://mirion-vital/inspections/2024/detector_005_connector.jpg",
+      "image_uri": "gs://your-bucket/inspections/2024/detector_005_connector.jpg",
       "equipment_id": "DET-NPP-DIABLO-002",
       "facility": "Diablo Canyon Power Plant",
       "inspection_date": "2024-01-22",
@@ -103,7 +103,7 @@
     },
     {
       "id": "INSP-2024-006",
-      "image_uri": "gs://mirion-vital/inspections/2024/detector_006_housing.jpg",
+      "image_uri": "gs://your-bucket/inspections/2024/detector_006_housing.jpg",
       "equipment_id": "DET-NPP-SURRY-001",
       "facility": "Surry Nuclear Power Plant",
       "inspection_date": "2024-01-25",

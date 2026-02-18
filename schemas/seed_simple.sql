@@ -2,13 +2,13 @@
 -- Run this with: python3 run_sql.py seed_simple.sql
 
 -- 1. SHEETS
-INSERT INTO home_stuart_gano.ontos_ml_workbench.sheets VALUES (
+INSERT INTO ${CATALOG}.${SCHEMA}.sheets VALUES (
   'sheet-pcb-001',
   'PCB Defect Detection Dataset',
   'Microscope images of PCBs with labeled defects',
   'uc_volume',
   NULL,
-  '/Volumes/home_stuart_gano/ontos_ml_workbench/pcb_images',
+  '/Volumes/your_catalog/ontos_ml_workbench/pcb_images',
   'defect_images/',
   'image_filename',
   ARRAY(),
@@ -21,17 +21,17 @@ INSERT INTO home_stuart_gano.ontos_ml_workbench.sheets VALUES (
   150,
   NULL,
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com',
+  'admin@example.com',
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com'
+  'admin@example.com'
 );
 
-INSERT INTO home_stuart_gano.ontos_ml_workbench.sheets VALUES (
+INSERT INTO ${CATALOG}.${SCHEMA}.sheets VALUES (
   'sheet-sensor-001',
   'Radiation Sensor Telemetry',
   'Time-series sensor data from radiation detectors',
   'uc_table',
-  'home_stuart_gano.ontos_ml_workbench.sensor_readings',
+  '${CATALOG}.${SCHEMA}.sensor_readings',
   NULL,
   NULL,
   'reading_id',
@@ -45,13 +45,13 @@ INSERT INTO home_stuart_gano.ontos_ml_workbench.sheets VALUES (
   5000,
   NULL,
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com',
+  'admin@example.com',
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com'
+  'admin@example.com'
 );
 
 -- 2. TEMPLATES
-INSERT INTO home_stuart_gano.ontos_ml_workbench.templates VALUES (
+INSERT INTO ${CATALOG}.${SCHEMA}.templates VALUES (
   'template-pcb-001',
   'PCB Defect Classification',
   'Classify defects in PCB images',
@@ -72,13 +72,13 @@ INSERT INTO home_stuart_gano.ontos_ml_workbench.templates VALUES (
   TRUE,
   'active',
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com',
+  'admin@example.com',
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com'
+  'admin@example.com'
 );
 
 -- 3. CANONICAL LABELS
-INSERT INTO home_stuart_gano.ontos_ml_workbench.canonical_labels VALUES (
+INSERT INTO ${CATALOG}.${SCHEMA}.canonical_labels VALUES (
   'label-001',
   'sheet-pcb-001',
   'pcb_001.jpg',
@@ -90,21 +90,21 @@ INSERT INTO home_stuart_gano.ontos_ml_workbench.canonical_labels VALUES (
   NULL,
   1,
   NULL,
-  'stuart.gano@databricks.com',
+  'admin@example.com',
   CURRENT_TIMESTAMP(),
   0.9,
   ARRAY(),
   0,
   NULL,
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com',
+  'admin@example.com',
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com'
+  'admin@example.com'
 );
 
 -- Verification queries
-SELECT 'sheets' as table_name, COUNT(*) as row_count FROM home_stuart_gano.ontos_ml_workbench.sheets
+SELECT 'sheets' as table_name, COUNT(*) as row_count FROM ${CATALOG}.${SCHEMA}.sheets
 UNION ALL
-SELECT 'templates', COUNT(*) FROM home_stuart_gano.ontos_ml_workbench.templates
+SELECT 'templates', COUNT(*) FROM ${CATALOG}.${SCHEMA}.templates
 UNION ALL
-SELECT 'canonical_labels', COUNT(*) FROM home_stuart_gano.ontos_ml_workbench.canonical_labels;
+SELECT 'canonical_labels', COUNT(*) FROM ${CATALOG}.${SCHEMA}.canonical_labels;

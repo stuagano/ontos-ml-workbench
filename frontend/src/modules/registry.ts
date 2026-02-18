@@ -4,7 +4,7 @@
  * Central registry for all pluggable modules in Ontos ML
  */
 
-import type { VitalModule } from "./types";
+import type { OntosModule } from "./types";
 import type { PipelineStage } from "../types";
 
 // Import actual modules
@@ -22,7 +22,7 @@ import { dataQualityModule } from "./quality";
  * - Evaluation Harness (model comparison)
  * - Cost Tracker (budget monitoring)
  */
-export const MODULE_REGISTRY: VitalModule[] = [
+export const MODULE_REGISTRY: OntosModule[] = [
   dspyModule,
   dataQualityModule,
 ];
@@ -30,7 +30,7 @@ export const MODULE_REGISTRY: VitalModule[] = [
 /**
  * Get all modules available for a specific stage
  */
-export function getModulesForStage(stage: PipelineStage): VitalModule[] {
+export function getModulesForStage(stage: PipelineStage): OntosModule[] {
   return MODULE_REGISTRY.filter(
     (module) => module.isEnabled && module.stages.includes(stage)
   );
@@ -39,7 +39,7 @@ export function getModulesForStage(stage: PipelineStage): VitalModule[] {
 /**
  * Get module by ID
  */
-export function getModuleById(id: string): VitalModule | undefined {
+export function getModuleById(id: string): OntosModule | undefined {
   return MODULE_REGISTRY.find((module) => module.id === id);
 }
 
@@ -48,7 +48,7 @@ export function getModuleById(id: string): VitalModule | undefined {
  */
 export function getModulesByCategory(
   category: string
-): VitalModule[] {
+): OntosModule[] {
   return MODULE_REGISTRY.filter(
     (module) =>
       module.isEnabled &&

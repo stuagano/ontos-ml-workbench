@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
 """
-Create sheets table with PRD v2.3 schema in erp-demonstrations.ontos_ml_workbench
+Create sheets table with PRD v2.3 schema
 """
 
+import os
 from databricks.sdk import WorkspaceClient
 
-w = WorkspaceClient(profile="fe-vm-serverless-dxukih")
-warehouse_id = "387bcda0f2ece20c"
+CATALOG = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+SCHEMA = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
+WAREHOUSE_ID = os.getenv("DATABRICKS_WAREHOUSE_ID")
+PROFILE = os.getenv("DATABRICKS_CONFIG_PROFILE", "DEFAULT")
+
+w = WorkspaceClient(profile=PROFILE)
+warehouse_id = WAREHOUSE_ID
 
 print("📝 Creating sheets table with PRD v2.3 schema...\n")
 
 # Use identifier escaping for catalog with hyphen
-create_table_sql = """
-CREATE TABLE IF NOT EXISTS `erp-demonstrations`.ontos_ml_workbench.sheets (
+create_table_sql = f"""
+CREATE TABLE IF NOT EXISTS `{CATALOG}`.{SCHEMA}.sheets (
   id STRING NOT NULL,
   name STRING NOT NULL,
   description STRING,
@@ -56,7 +62,7 @@ except Exception as e:
 # Verify
 print("\n🔍 Verifying table exists...")
 result = w.statement_execution.execute_statement(
-    statement="SHOW TABLES IN `erp-demonstrations`.ontos_ml_workbench LIKE 'sheets'",
+    statement=f"SHOW TABLES IN `{CATALOG}`.{SCHEMA} LIKE 'sheets'",
     warehouse_id=warehouse_id,
     wait_timeout="30s",
 )

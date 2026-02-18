@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
-"""Apply schema fixes to FEVM workspace"""
+"""Apply schema fixes to workspace"""
 
+import os
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.sql import StatementState
 
-warehouse_id = "387bcda0f2ece20c"
-catalog = "serverless_dxukih_catalog"
-schema = "mirion"
+catalog = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+schema = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
+warehouse_id = os.getenv("DATABRICKS_WAREHOUSE_ID")
+profile = os.getenv("DATABRICKS_CONFIG_PROFILE", "DEFAULT")
 
 print("=" * 70)
-print("Applying Schema Fixes to FEVM Workspace")
+print("Applying Schema Fixes")
 print("=" * 70)
 print(f"Catalog: {catalog}")
 print(f"Schema:  {schema}")
 print()
 
-w = WorkspaceClient(profile="fe-vm-serverless-dxukih")
+w = WorkspaceClient(profile=profile)
 
 # Statement 1: Create monitor_alerts table
 sql1 = f"""

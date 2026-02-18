@@ -5,7 +5,7 @@
 -- and linked to canonical labels for governance and reusability.
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS lakebase_db.labelsets (
+CREATE TABLE IF NOT EXISTS ${CATALOG}.${LAKEBASE_SCHEMA}.labelsets (
     -- Primary key
     id STRING PRIMARY KEY,
 
@@ -47,22 +47,22 @@ CREATE TABLE IF NOT EXISTS lakebase_db.labelsets (
 
 -- Index on status for filtering published labelsets
 CREATE INDEX IF NOT EXISTS idx_labelsets_status
-ON lakebase_db.labelsets (status);
+ON ${CATALOG}.${LAKEBASE_SCHEMA}.labelsets (status);
 
 -- Index on label_type for canonical label association
 CREATE INDEX IF NOT EXISTS idx_labelsets_label_type
-ON lakebase_db.labelsets (label_type);
+ON ${CATALOG}.${LAKEBASE_SCHEMA}.labelsets (label_type);
 
 -- Index on use_case for filtering
 CREATE INDEX IF NOT EXISTS idx_labelsets_use_case
-ON lakebase_db.labelsets (use_case);
+ON ${CATALOG}.${LAKEBASE_SCHEMA}.labelsets (use_case);
 
 -- ============================================================================
 -- Seed Data: Example Labelsets
 -- ============================================================================
 
 -- PCB Defect Detection Labelset
-INSERT INTO lakebase_db.labelsets VALUES (
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.labelsets VALUES (
     'labelset_pcb_defects',
     'PCB Defect Types',
     'Standard defect classifications for PCB manufacturing quality inspection',
@@ -101,7 +101,7 @@ INSERT INTO lakebase_db.labelsets VALUES (
 );
 
 -- Image Classification Labelset
-INSERT INTO lakebase_db.labelsets VALUES (
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.labelsets VALUES (
     'labelset_image_classification',
     'General Image Classification',
     'Multi-class image classification labels',
@@ -135,7 +135,7 @@ INSERT INTO lakebase_db.labelsets VALUES (
 );
 
 -- Sentiment Analysis Labelset
-INSERT INTO lakebase_db.labelsets VALUES (
+INSERT INTO ${CATALOG}.${LAKEBASE_SCHEMA}.labelsets VALUES (
     'labelset_sentiment',
     'Sentiment Analysis',
     'Text sentiment classification (positive, negative, neutral)',
@@ -181,5 +181,5 @@ SELECT
     canonical_label_count,
     use_case,
     created_at
-FROM lakebase_db.labelsets
+FROM ${CATALOG}.${LAKEBASE_SCHEMA}.labelsets
 ORDER BY created_at DESC;

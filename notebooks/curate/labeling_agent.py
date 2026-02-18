@@ -45,7 +45,7 @@ print(f"Batch size: {batch_size}")
 # COMMAND ----------
 
 # Configuration
-CATALOG = "home_stuart_gano"
+CATALOG = "your_catalog"
 SCHEMA = "ontos_ml_dev"
 
 # COMMAND ----------

@@ -7,10 +7,10 @@
 import { useState } from "react";
 import { ChevronRight, X } from "lucide-react";
 import { clsx } from "clsx";
-import type { VitalModule, ModuleContext } from "../modules/types";
+import type { OntosModule, ModuleContext } from "../modules/types";
 
 interface ModuleDrawerProps {
-  modules: VitalModule[];
+  modules: OntosModule[];
   context: ModuleContext;
   onOpenModule: (moduleId: string, context: ModuleContext) => void;
   position?: "right" | "left";
@@ -192,7 +192,7 @@ export function ModuleDrawer({
  * Shows inline in stage content
  */
 interface ModuleQuickActionProps {
-  module: VitalModule;
+  module: OntosModule;
   context: ModuleContext;
   onOpen: () => void;
   variant?: "primary" | "secondary";

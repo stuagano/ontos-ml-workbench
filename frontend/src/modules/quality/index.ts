@@ -5,10 +5,10 @@
  */
 
 import { Shield } from "lucide-react";
-import type { VitalModule } from "../types";
+import type { OntosModule } from "../types";
 import DataQualityInspector from "./DataQualityInspector";
 
-export const dataQualityModule: VitalModule = {
+export const dataQualityModule: OntosModule = {
   id: "data-quality",
   name: "Data Quality Inspector",
   description: "Automated validation, profiling, and quality checks for your data",

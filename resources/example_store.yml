@@ -73,24 +73,21 @@ jobs:
         - ${var.alert_email}
 
   # Effectiveness score update job
-  example_effectiveness_updater:
-    name: "[${bundle.target}] Example Store - Update Effectiveness Scores"
-
-    tasks:
-      - task_key: update_effectiveness
-        notebook_task:
-          notebook_path: ../notebooks/curate/update_effectiveness.py
-          base_parameters:
-            catalog: ${var.catalog}
-            schema: ${var.schema}
-
-        environment_key: default
-
-    # Schedule: Run weekly
-    schedule:
-      quartz_cron_expression: "0 0 3 ? * SUN"  # 3 AM Sundays
-      timezone_id: America/Los_Angeles
-      pause_status: PAUSED
+  # NOTE: Uncomment and provide notebooks/curate/update_effectiveness.py before enabling
+  # example_effectiveness_updater:
+  #   name: "[${bundle.target}] Example Store - Update Effectiveness Scores"
+  #   tasks:
+  #     - task_key: update_effectiveness
+  #       notebook_task:
+  #         notebook_path: ../notebooks/curate/update_effectiveness.py
+  #         base_parameters:
+  #           catalog: ${var.catalog}
+  #           schema: ${var.schema}
+  #       environment_key: default
+  #   schedule:
+  #     quartz_cron_expression: "0 0 3 ? * SUN"  # 3 AM Sundays
+  #     timezone_id: America/Los_Angeles
+  #     pause_status: PAUSED
 
 # Variables specific to Example Store
 variables:

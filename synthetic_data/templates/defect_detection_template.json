@@ -1,10 +1,10 @@
 {
-  "template_id": "mirion-defect-detection-v1",
+  "template_id": "acme-defect-detection-v1",
   "name": "Radiation Detector Defect Detection",
   "description": "Analyzes inspection images of radiation detectors to identify and classify defects. Combines visual analysis with sensor context for comprehensive assessment.",
   "version": "1.0.0",
   "status": "published",
-  "created_by": "stuart.gano@databricks.com",
+  "created_by": "admin@example.com",
   "created_at": "2024-01-25T10:00:00Z",
   "use_case": "defect_detection",
   "model_config": {
@@ -94,7 +94,7 @@
   "few_shot_examples": [
     {
       "input": {
-        "inspection_image_uri": "gs://mirion-vital/examples/crystal_crack_example.jpg",
+        "inspection_image_uri": "gs://your-bucket/examples/crystal_crack_example.jpg",
         "equipment_id": "DET-EXAMPLE-001",
         "equipment_type": "NaI",
         "facility": "Example Nuclear Plant",
@@ -117,7 +117,7 @@
     },
     {
       "input": {
-        "inspection_image_uri": "gs://mirion-vital/examples/normal_detector.jpg",
+        "inspection_image_uri": "gs://your-bucket/examples/normal_detector.jpg",
         "equipment_id": "DET-EXAMPLE-002",
         "equipment_type": "HPGe",
         "facility": "Example Nuclear Plant",
@@ -138,7 +138,7 @@
       }
     }
   ],
-  "tags": ["defect-detection", "visual-inspection", "radiation-safety", "nuclear", "mirion"],
+  "tags": ["defect-detection", "visual-inspection", "radiation-safety", "nuclear", "acme-instruments"],
   "metrics": {
     "total_inferences": 0,
     "avg_confidence": 0,

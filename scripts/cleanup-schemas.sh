@@ -74,7 +74,7 @@ ${PROFILE:+DATABRICKS_CONFIG_PROFILE=$PROFILE}
 
 # API Configuration
 API_V1_STR=/api/v1
-PROJECT_NAME=VITAL Platform Workbench
+PROJECT_NAME=Ontos ML Workbench
 
 # Logging
 LOG_LEVEL=INFO

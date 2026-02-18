@@ -11,7 +11,7 @@
 -- ============================================================================
 
 -- Change this to your catalog and schema
-USE CATALOG home_stuart_gano;
+USE CATALOG your_catalog;
 USE SCHEMA ontos_ml_workbench;
 
 -- ============================================================================

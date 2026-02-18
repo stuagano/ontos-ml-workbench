@@ -2,8 +2,10 @@
 -- Run this in Databricks SQL Editor connected to your warehouse
 
 -- Use the correct catalog/schema
-USE CATALOG `erp-demonstrations`;
-USE SCHEMA ontos_ml_workbench;
+-- CONFIGURATION: Replace ${CATALOG} and ${SCHEMA} with your values,
+-- or run via execute_schemas.py which substitutes automatically.
+-- USE CATALOG `${CATALOG}`;
+-- USE SCHEMA ${SCHEMA};
 
 -- Insert sample sheets
 INSERT INTO sheets (
@@ -36,7 +38,7 @@ INSERT INTO sheets (
   'Microscope images of PCBs with labeled defects for computer vision training',
   'uc_volume',
   NULL,
-  '/Volumes/home_stuart_gano/ontos_ml_workbench/pcb_images',
+  '/Volumes/${CATALOG}/ontos_ml_workbench/pcb_images',
   'defect_images/',
   'image_filename',
   ARRAY(),
@@ -49,9 +51,9 @@ INSERT INTO sheets (
   150,
   NULL,
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com',
+  'admin@example.com',
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com'
+  'admin@example.com'
 ),
 
 -- 2. Radiation Sensor Telemetry (Time Series)
@@ -60,7 +62,7 @@ INSERT INTO sheets (
   'Radiation Sensor Telemetry',
   'Time-series sensor data from radiation detectors for anomaly detection',
   'uc_table',
-  'home_stuart_gano.ontos_ml_workbench.sensor_readings',
+  '${CATALOG}.${SCHEMA}.sensor_readings',
   NULL,
   NULL,
   'reading_id',
@@ -74,9 +76,9 @@ INSERT INTO sheets (
   5000,
   NULL,
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com',
+  'admin@example.com',
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com'
+  'admin@example.com'
 ),
 
 -- 3. Medical Invoice Entity Extraction (Document AI + Structured)
@@ -85,7 +87,7 @@ INSERT INTO sheets (
   'Medical Invoice Entity Extraction',
   'Healthcare billing invoices (PDFs + structured data) for entity extraction',
   'uc_table',
-  'home_stuart_gano.ontos_ml_workbench.parsed_invoices',
+  '${CATALOG}.${SCHEMA}.parsed_invoices',
   NULL,
   NULL,
   'invoice_id',
@@ -99,9 +101,9 @@ INSERT INTO sheets (
   2500,
   NULL,
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com',
+  'admin@example.com',
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com'
+  'admin@example.com'
 ),
 
 -- 4. Equipment Maintenance Logs (Text Classification)
@@ -110,7 +112,7 @@ INSERT INTO sheets (
   'Equipment Maintenance Logs',
   'Service records and maintenance notes for predictive maintenance',
   'uc_table',
-  'home_stuart_gano.ontos_ml_workbench.maintenance_logs',
+  '${CATALOG}.${SCHEMA}.maintenance_logs',
   NULL,
   NULL,
   'log_id',
@@ -124,9 +126,9 @@ INSERT INTO sheets (
   1200,
   NULL,
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com',
+  'admin@example.com',
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com'
+  'admin@example.com'
 ),
 
 -- 5. Quality Control Inspection Photos (Vision AI)
@@ -136,7 +138,7 @@ INSERT INTO sheets (
   'Final product inspection images from manufacturing line',
   'uc_volume',
   NULL,
-  '/Volumes/home_stuart_gano/ontos_ml_workbench/qc_images',
+  '/Volumes/${CATALOG}/ontos_ml_workbench/qc_images',
   'inspections/',
   'inspection_id',
   ARRAY(),
@@ -149,9 +151,9 @@ INSERT INTO sheets (
   800,
   NULL,
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com',
+  'admin@example.com',
   CURRENT_TIMESTAMP(),
-  'stuart.gano@databricks.com'
+  'admin@example.com'
 );
 
 -- Verify insertion

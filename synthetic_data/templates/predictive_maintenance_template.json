@@ -1,10 +1,10 @@
 {
-  "template_id": "mirion-predictive-maintenance-v1",
+  "template_id": "acme-predictive-maintenance-v1",
   "name": "Radiation Detector Predictive Maintenance",
   "description": "Analyzes equipment telemetry and maintenance history to predict failures and recommend preventive actions. Uses time series patterns and domain knowledge for accurate predictions.",
   "version": "1.0.0",
   "status": "published",
-  "created_by": "stuart.gano@databricks.com",
+  "created_by": "admin@example.com",
   "created_at": "2024-01-25T10:00:00Z",
   "use_case": "predictive_maintenance",
   "model_config": {
@@ -169,7 +169,7 @@
       }
     }
   ],
-  "tags": ["predictive-maintenance", "telemetry", "radiation-safety", "nuclear", "mirion", "rul"],
+  "tags": ["predictive-maintenance", "telemetry", "radiation-safety", "nuclear", "acme-instruments", "rul"],
   "metrics": {
     "total_inferences": 0,
     "avg_confidence": 0,

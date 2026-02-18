@@ -12,7 +12,7 @@ Ontos ML Workbench is a Databricks App that gives domain experts, data scientist
 
 | Component | Role | How It's Used |
 |-----------|------|---------------|
-| **[Ontos](https://github.com/stuagano/ontos)** | Data governance & contracts | Git submodule — provides data product management, contracts (ODCS), compliance, and asset review workflows |
+| **Ontos** | Data governance & contracts | Git submodule (optional) — provides data product management, contracts (ODCS), compliance, and asset review workflows |
 | **[DQX](https://github.com/databrickslabs/dqx)** | Data quality | pip package (`databricks-labs-dqx[llm]`) — quality rules engine integrated into the workbench pipeline |
 | **[APX](https://databricks-solutions.github.io/apx/)** | Dev tooling | CLI tool — unified hot-reload dev server for backend + frontend |
 
@@ -30,12 +30,11 @@ The workbench adds the ML lifecycle layer on top: prompt templates as reusable I
 ### Clone
 
 ```bash
-git clone --recurse-submodules https://github.com/<your-org>/ontos-ml-workbench.git
+git clone https://github.com/<your-org>/ontos-ml-workbench.git
 cd ontos-ml-workbench
-```
 
-If you already cloned without `--recurse-submodules`:
-```bash
+# Optional: initialize the ontos governance submodule
+# (requires access to the ontos repo — workbench runs fine without it)
 git submodule update --init --recursive
 ```
 

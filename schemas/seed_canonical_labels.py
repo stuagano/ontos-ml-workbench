@@ -5,20 +5,26 @@ Creates diverse examples across different label types
 """
 
 import json
+import os
 import uuid
 from datetime import datetime
 
 from databricks.sdk import WorkspaceClient
 
-w = WorkspaceClient(profile="fe-vm-serverless-dxukih")
-warehouse_id = "387bcda0f2ece20c"
-user = "stuart.gano@databricks.com"
+CATALOG = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+SCHEMA = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
+WAREHOUSE_ID = os.getenv("DATABRICKS_WAREHOUSE_ID")
+PROFILE = os.getenv("DATABRICKS_CONFIG_PROFILE", "DEFAULT")
+
+w = WorkspaceClient(profile=PROFILE)
+warehouse_id = WAREHOUSE_ID
+user = w.current_user.me().user_name
 
 print("🌱 Seeding canonical labels...\n")
 
 # First, get the sheet IDs
 sheets_result = w.statement_execution.execute_statement(
-    statement="SELECT id, name FROM `erp-demonstrations`.ontos_ml_workbench.sheets ORDER BY name",
+    statement=f"SELECT id, name FROM `{CATALOG}`.{SCHEMA}.sheets ORDER BY name",
     warehouse_id=warehouse_id,
     wait_timeout="30s",
 )
@@ -257,7 +263,7 @@ for i, label in enumerate(labels_data, 1):
     )
 
     sql = f"""
-    INSERT INTO `erp-demonstrations`.ontos_ml_workbench.canonical_labels (
+    INSERT INTO `{CATALOG}`.{SCHEMA}.canonical_labels (
         id, sheet_id, item_ref, label_type, label_data, label_confidence,
         labeling_mode, version, reuse_count,
         data_classification, allowed_uses, prohibited_uses,
@@ -295,5 +301,5 @@ for i, label in enumerate(labels_data, 1):
 print(f"\n✅ Seeding complete!")
 print(f"\nVerify with:")
 print(
-    f"  SELECT label_type, count(*) FROM `erp-demonstrations`.ontos_ml_workbench.canonical_labels GROUP BY label_type;"
+    f"  SELECT label_type, count(*) FROM `{CATALOG}`.{SCHEMA}.canonical_labels GROUP BY label_type;"
 )

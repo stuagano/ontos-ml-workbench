@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
+import os
 from databricks.sdk import WorkspaceClient
 
-w = WorkspaceClient(profile="fe-vm-serverless-dxukih")
-sql = "SELECT name, source_type, item_count, status FROM `erp-demonstrations`.ontos_ml_workbench.sheets ORDER BY name"
+CATALOG = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+SCHEMA = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
+WAREHOUSE_ID = os.getenv("DATABRICKS_WAREHOUSE_ID")
+PROFILE = os.getenv("DATABRICKS_CONFIG_PROFILE", "DEFAULT")
+
+w = WorkspaceClient(profile=PROFILE)
+sql = f"SELECT name, source_type, item_count, status FROM `{CATALOG}`.{SCHEMA}.sheets ORDER BY name"
 result = w.statement_execution.execute_statement(
-    statement=sql, warehouse_id="387bcda0f2ece20c", wait_timeout="30s"
+    statement=sql, warehouse_id=WAREHOUSE_ID, wait_timeout="30s"
 )
 
 print(

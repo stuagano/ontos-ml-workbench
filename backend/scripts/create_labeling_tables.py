@@ -2,10 +2,9 @@
 """Create labeling workflow tables in Databricks."""
 
 import sys
+from pathlib import Path
 
-sys.path.insert(
-    0, "/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/backend"
-)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.services.sql_service import get_sql_service
 

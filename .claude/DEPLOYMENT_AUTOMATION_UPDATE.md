@@ -26,7 +26,7 @@ Previously, after deploying to Databricks Apps, we would immediately ask the use
 
 **Usage**:
 ```bash
-./.claude/scripts/poll-databricks-app.sh ontos-ml-workbench fe-vm-serverless-dxukih
+./.claude/scripts/poll-databricks-app.sh ontos-ml-workbench <your-profile>
 ```
 
 **Exit codes**:
@@ -64,13 +64,13 @@ cd frontend && npm run build && cd ..
 # 2. Deploy
 databricks apps deploy ontos-ml-workbench \
   --source-code-path /Workspace/Users/<user>/Apps/ontos-ml-workbench \
-  --profile=fe-vm-serverless-dxukih
+  --profile=<your-profile>
 
 # 3. MANDATORY: Poll for completion
-./.claude/scripts/poll-databricks-app.sh ontos-ml-workbench fe-vm-serverless-dxukih
+./.claude/scripts/poll-databricks-app.sh ontos-ml-workbench <your-profile>
 
 # 4. Get URL
-APP_URL=$(databricks apps get ontos-ml-workbench --profile=fe-vm-serverless-dxukih -o json | jq -r '.url')
+APP_URL=$(databricks apps get ontos-ml-workbench --profile=<your-profile> -o json | jq -r '.url')
 
 # 5. Verify health
 curl -s "$APP_URL/health"
@@ -104,7 +104,7 @@ echo "✓ Deployment complete at: $APP_URL"
 
 **Successful deployment**:
 ```
-🔄 Polling deployment status for 'ontos-ml-workbench' (profile: fe-vm-serverless-dxukih)
+🔄 Polling deployment status for 'ontos-ml-workbench' (profile: <your-profile>)
    Timeout: 300s | Poll interval: 5s
 
 [0 s] Compute: ACTIVE | Pending: active_deployment
@@ -130,7 +130,7 @@ echo "✓ Deployment complete at: $APP_URL"
   Compute status: ERROR
   Status message: Failed to start application
 
-Check logs: databricks apps logs ontos-ml-workbench --profile=fe-vm-serverless-dxukih
+Check logs: databricks apps logs ontos-ml-workbench --profile=<your-profile>
 ```
 
 ## Testing

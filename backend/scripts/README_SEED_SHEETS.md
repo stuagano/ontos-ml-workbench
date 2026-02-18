@@ -14,7 +14,7 @@ The `sheets` table starts empty, making the DATA stage unusable until sheets are
 
 **Steps:**
 1. Open Databricks SQL Editor
-2. Connect to warehouse: `387bcda0f2ece20c`
+2. Connect to your SQL Warehouse
 3. Copy entire contents of `schemas/seed_sheets.sql`
 4. Run the SQL
 5. Verify: Should see 5 sheets inserted
@@ -106,7 +106,7 @@ curl http://localhost:8000/api/v1/sheets-v2
 **Via SQL:**
 ```sql
 SELECT name, source_type, item_count, status
-FROM home_stuart_gano.ontos_ml_workbench.sheets;
+FROM your_catalog.ontos_ml_workbench.sheets;
 ```
 
 **Via UI:**

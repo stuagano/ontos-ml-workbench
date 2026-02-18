@@ -9,17 +9,23 @@
 # MAGIC ## Step 1: Discover Existing Volumes
 
 # COMMAND ----------
+# Configuration - set these for your workspace
+import os
+CATALOG = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+SCHEMA = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
+
+# COMMAND ----------
 # List all volumes in the workspace
 print("📂 Discovering volumes...\n")
 
 try:
-    volumes = spark.sql("SHOW VOLUMES IN serverless_dxukih_catalog.mirion").collect()
-    print(f"Found {len(volumes)} volumes in serverless_dxukih_catalog.mirion:\n")
+    volumes = spark.sql(f"SHOW VOLUMES IN {CATALOG}.{SCHEMA}").collect()
+    print(f"Found {len(volumes)} volumes in {CATALOG}.{SCHEMA}:\n")
     for vol in volumes:
         print(f"  - {vol.volume_name}")
         # Try to list contents
         try:
-            volume_path = f"/Volumes/serverless_dxukih_catalog/mirion/{vol.volume_name}"
+            volume_path = f"/Volumes/{CATALOG}/{SCHEMA}/{vol.volume_name}"
             files = dbutils.fs.ls(volume_path)
             print(f"    Contents ({len(files)} items):")
             for f in files[:5]:  # Show first 5 items
@@ -33,7 +39,7 @@ except Exception as e:
     print(f"Could not list volumes: {e}")
     print("\nTrying to access raw_datak directly...")
     try:
-        files = dbutils.fs.ls("/Volumes/serverless_dxukih_catalog/mirion/raw_datak")
+        files = dbutils.fs.ls(f"/Volumes/{CATALOG}/{SCHEMA}/raw_datak")
         print(f"✅ Found raw_datak volume with {len(files)} items")
         for f in files[:10]:
             print(f"  {f.name} ({'dir' if f.isDir() else f.size})")
@@ -47,10 +53,10 @@ except Exception as e:
 # COMMAND ----------
 print("📊 Discovering tables...\n")
 
-# List all schemas in serverless_dxukih_catalog
+# List all schemas in catalog
 try:
-    schemas = spark.sql("SHOW SCHEMAS IN serverless_dxukih_catalog").collect()
-    print(f"Found {len(schemas)} schemas in serverless_dxukih_catalog:\n")
+    schemas = spark.sql(f"SHOW SCHEMAS IN {CATALOG}").collect()
+    print(f"Found {len(schemas)} schemas in {CATALOG}:\n")
 
     for schema in schemas:
         schema_name = schema.databaseName
@@ -58,14 +64,14 @@ try:
 
         # List tables in each schema
         try:
-            tables = spark.sql(f"SHOW TABLES IN serverless_dxukih_catalog.{schema_name}").collect()
+            tables = spark.sql(f"SHOW TABLES IN {CATALOG}.{schema_name}").collect()
             if len(tables) > 0:
                 print(f"  Tables ({len(tables)}):")
                 for table in tables[:5]:  # Show first 5
                     table_name = table.tableName
                     # Get row count
                     try:
-                        count = spark.sql(f"SELECT COUNT(*) as cnt FROM serverless_dxukih_catalog.{schema_name}.{table_name}").collect()[0].cnt
+                        count = spark.sql(f"SELECT COUNT(*) as cnt FROM {CATALOG}.{schema_name}.{table_name}").collect()[0].cnt
                         print(f"    - {table_name} ({count} rows)")
                     except:
                         print(f"    - {table_name}")
@@ -85,11 +91,11 @@ except Exception as e:
 # MAGIC ## Step 3: Check Ontos ML Workbench Schema
 
 # COMMAND ----------
-print("🔍 Checking home_stuart_gano.ontos_ml_workbench schema...\n")
+print(f"🔍 Checking {CATALOG}.{SCHEMA} schema...\n")
 
 # Check if schema exists
 try:
-    spark.sql("CREATE SCHEMA IF NOT EXISTS home_stuart_gano.ontos_ml_workbench")
+    spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{SCHEMA}")
     print("✅ Schema exists or created\n")
 
     # Check which tables exist
@@ -103,13 +109,13 @@ try:
         "example_store"
     ]
 
-    existing_tables = spark.sql("SHOW TABLES IN home_stuart_gano.ontos_ml_workbench").collect()
+    existing_tables = spark.sql(f"SHOW TABLES IN {CATALOG}.{SCHEMA}").collect()
     existing_table_names = [t.tableName for t in existing_tables]
 
     print("Table status:")
     for table in tables_needed:
         if table in existing_table_names:
-            count = spark.sql(f"SELECT COUNT(*) as cnt FROM home_stuart_gano.ontos_ml_workbench.{table}").collect()[0].cnt
+            count = spark.sql(f"SELECT COUNT(*) as cnt FROM {CATALOG}.{SCHEMA}.{table}").collect()[0].cnt
             print(f"  ✅ {table}: {count} rows")
         else:
             print(f"  ❌ {table}: NOT CREATED")
@@ -147,8 +153,8 @@ schema_files = [
 print("Creating tables inline...\n")
 
 # Sheets table
-spark.sql("""
-CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.sheets (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.sheets (
   id STRING NOT NULL,
   name STRING NOT NULL,
   description STRING,
@@ -179,8 +185,8 @@ TBLPROPERTIES (
 print("✅ sheets")
 
 # Templates table
-spark.sql("""
-CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.templates (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.templates (
   id STRING NOT NULL,
   name STRING NOT NULL,
   description STRING,
@@ -208,8 +214,8 @@ TBLPROPERTIES (
 print("✅ templates")
 
 # Canonical Labels table
-spark.sql("""
-CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.canonical_labels (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.canonical_labels (
   id STRING NOT NULL,
   sheet_id STRING NOT NULL,
   item_ref STRING NOT NULL,
@@ -231,8 +237,8 @@ TBLPROPERTIES (
 print("✅ canonical_labels")
 
 # Training Sheets table
-spark.sql("""
-CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.training_sheets (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.training_sheets (
   id STRING NOT NULL,
   name STRING NOT NULL,
   sheet_id STRING NOT NULL,
@@ -254,8 +260,8 @@ TBLPROPERTIES (
 print("✅ training_sheets")
 
 # QA Pairs table
-spark.sql("""
-CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.qa_pairs (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.qa_pairs (
   id STRING NOT NULL,
   training_sheet_id STRING NOT NULL,
   sheet_id STRING NOT NULL,
@@ -279,8 +285,8 @@ TBLPROPERTIES (
 print("✅ qa_pairs")
 
 # Model Training Lineage table
-spark.sql("""
-CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.model_training_lineage (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.model_training_lineage (
   id STRING NOT NULL,
   model_name STRING NOT NULL,
   training_sheet_ids ARRAY<STRING> NOT NULL,
@@ -301,8 +307,8 @@ TBLPROPERTIES (
 print("✅ model_training_lineage")
 
 # Example Store table
-spark.sql("""
-CREATE TABLE IF NOT EXISTS home_stuart_gano.ontos_ml_workbench.example_store (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.example_store (
   id STRING NOT NULL,
   template_id STRING NOT NULL,
   example_type STRING NOT NULL,
@@ -350,7 +356,7 @@ sheets_data = [
         "description": "Existing data in raw_datak volume",
         "source_type": "uc_volume",
         "source_table": None,
-        "source_volume": "/Volumes/serverless_dxukih_catalog/ontos_ml/raw_datak",
+        "source_volume": f"/Volumes/{CATALOG}/{SCHEMA}/raw_datak",
         "source_path": "",
         "item_id_column": "filename",
         "text_columns": [],
@@ -365,12 +371,12 @@ sheets_data = [
     }
 ]
 
-# Check if there are any tables in serverless_dxukih_catalog.ontos_ml
+# Check if there are any tables in the catalog schema
 try:
-    tables = spark.sql("SHOW TABLES IN serverless_dxukih_catalog.ontos_ml").collect()
+    tables = spark.sql(f"SHOW TABLES IN {CATALOG}.{SCHEMA}").collect()
     for table in tables:
         table_name = table.tableName
-        full_table_path = f"serverless_dxukih_catalog.ontos_ml.{table_name}"
+        full_table_path = f"{CATALOG}.{SCHEMA}.{table_name}"
 
         # Get row count
         try:
@@ -434,7 +440,7 @@ sheets_df = spark.createDataFrame([
     "sample_seed", "status", "item_count", "notes",
     "created_at", "created_by", "updated_at", "updated_by"])
 
-sheets_df.write.mode("append").saveAsTable("home_stuart_gano.ontos_ml_workbench.sheets")
+sheets_df.write.mode("append").saveAsTable(f"{CATALOG}.{SCHEMA}.sheets")
 print(f"✅ Created {len(sheets_data)} sheets")
 
 # COMMAND ----------
@@ -492,7 +498,7 @@ templates_df = spark.createDataFrame([
     "temperature", "status", "version", "use_case", "notes",
     "created_at", "created_by", "updated_at", "updated_by"])
 
-templates_df.write.mode("append").saveAsTable("home_stuart_gano.ontos_ml_workbench.templates")
+templates_df.write.mode("append").saveAsTable(f"{CATALOG}.{SCHEMA}.templates")
 print(f"✅ Created {len(templates_data)} templates")
 
 # COMMAND ----------
@@ -504,10 +510,10 @@ print("📊 Final Status:\n")
 
 # Show sheets
 print("Sheets:")
-display(spark.sql("SELECT id, name, source_type, source_table, source_volume, item_count FROM home_stuart_gano.ontos_ml_workbench.sheets"))
+display(spark.sql(f"SELECT id, name, source_type, source_table, source_volume, item_count FROM {CATALOG}.{SCHEMA}.sheets"))
 
 print("\nTemplates:")
-display(spark.sql("SELECT id, name, label_type, use_case FROM home_stuart_gano.ontos_ml_workbench.templates"))
+display(spark.sql(f"SELECT id, name, label_type, use_case FROM {CATALOG}.{SCHEMA}.templates"))
 
 print("\n✅ Database seeded with your existing data!")
 print("\nNext: Start the application with ./start-dev.sh")

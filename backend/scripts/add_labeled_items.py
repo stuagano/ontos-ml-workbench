@@ -5,10 +5,9 @@ import json
 import sys
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
-sys.path.insert(
-    0, "/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/backend"
-)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.services.sql_service import get_sql_service
 
@@ -46,7 +45,7 @@ def main():
                 {"quality_rating": quality, "health_status": health}
             )
             status = "human_labeled"
-            labeled_by = "stuart.gano@databricks.com"
+            labeled_by = "admin@example.com"
             labeled_at = now
             human_part = f"'{human_labels}', '{labeled_by}', '{labeled_at}'"
         else:
@@ -98,7 +97,7 @@ def main():
         ) VALUES (
             '{item_id}', '{task2_id}', '{job_id}', {row_idx},
             '{ai_labels}', {confidence},
-            '{human_labels}', 'stuart.gano@databricks.com', '{now}', 'human_labeled',
+            '{human_labels}', 'admin@example.com', '{now}', 'human_labeled',
             NULL, NULL, NULL, NULL,
             {is_difficult}, false, NULL,
             '{now}', '{now}'
@@ -117,7 +116,7 @@ def main():
 
     # Check for workspace user
     users = sql.execute(
-        "SELECT id FROM workspace_users WHERE email = 'stuart.gano@databricks.com'"
+        "SELECT id FROM workspace_users WHERE email = 'admin@example.com'"
     )
     if not users:
         user_id = str(uuid.uuid4())
@@ -128,7 +127,7 @@ def main():
             accuracy_score, avg_time_per_item, is_active, last_active_at,
             created_at, updated_at
         ) VALUES (
-            '{user_id}', 'stuart.gano@databricks.com', 'Stuart Gano', 'admin',
+            '{user_id}', 'admin@example.com', 'Admin User', 'admin',
             10, 2, 6, 0, NULL, NULL, true, '{now}', '{now}', '{now}'
         )
         """)

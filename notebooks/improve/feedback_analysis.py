@@ -8,7 +8,7 @@
 from pyspark.sql import functions as F
 from datetime import datetime, timedelta
 
-catalog = "home_stuart_gano"
+catalog = "your_catalog"
 schema = "ontos_ml_dev"
 
 # COMMAND ----------

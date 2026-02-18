@@ -9,15 +9,14 @@ import requests
 from databricks.sdk import WorkspaceClient
 
 # Configuration
-CATALOG = "erp-demonstrations"
-SCHEMA = "ontos_ml_workbench"
+CATALOG = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+SCHEMA = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
 
 
 def get_client():
     """Get Databricks workspace client."""
-    return WorkspaceClient(
-        profile=os.environ.get("DATABRICKS_CONFIG_PROFILE", "fe-vm-serverless-dxukih")
-    )
+    profile = os.getenv("DATABRICKS_CONFIG_PROFILE", "DEFAULT")
+    return WorkspaceClient(profile=profile)
 
 
 def execute_sql(client, warehouse_id: str, sql: str):

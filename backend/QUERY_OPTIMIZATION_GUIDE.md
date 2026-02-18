@@ -212,13 +212,13 @@ curl http://localhost:8000/api/v1/sheets-v2/{sheet_id}
 
 4. **Check table size:**
    ```sql
-   DESCRIBE DETAIL home_stuart_gano.ontos_ml_workbench.sheets;
+   DESCRIBE DETAIL your_catalog.ontos_ml_workbench.sheets;
    ```
 
 5. **Optimize table:**
    ```sql
-   OPTIMIZE home_stuart_gano.ontos_ml_workbench.sheets;
-   ANALYZE TABLE home_stuart_gano.ontos_ml_workbench.sheets COMPUTE STATISTICS;
+   OPTIMIZE your_catalog.ontos_ml_workbench.sheets;
+   ANALYZE TABLE your_catalog.ontos_ml_workbench.sheets COMPUTE STATISTICS;
    ```
 
 ### High Latency Despite Optimizations

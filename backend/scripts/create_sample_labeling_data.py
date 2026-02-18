@@ -5,10 +5,9 @@ import json
 import sys
 import uuid
 from datetime import datetime
+from pathlib import Path
 
-sys.path.insert(
-    0, "/Users/stuart.gano/Documents/Customers/Mirion/mirion-vital-workbench/backend"
-)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.services.sql_service import get_sql_service
 
@@ -193,7 +192,7 @@ def main():
         'published',
         '{columns_json}',
         {len(FLOWER_DATA)},
-        'stuart.gano@databricks.com',
+        'admin@example.com',
         '{now}',
         '{now}'
     )
@@ -311,7 +310,7 @@ Review each iris flower sample and assess its quality and health status.
         0,
         0,
         0,
-        'stuart.gano@databricks.com',
+        'admin@example.com',
         '{now}',
         '{now}'
     )
@@ -334,7 +333,7 @@ Review each iris flower sample and assess its quality and health status.
         # First task assigned and in progress, others pending
         if batch_idx == 0:
             status = "in_progress"
-            assigned_to = "stuart.gano@databricks.com"
+            assigned_to = "admin@example.com"
             assigned_at = now
             started_at = now
         else:
@@ -433,8 +432,8 @@ Review each iris flower sample and assess its quality and health status.
         created_at, updated_at
     ) VALUES (
         '{user_id}',
-        'stuart.gano@databricks.com',
-        'Stuart Gano',
+        'admin@example.com',
+        'Admin User',
         'admin',
         10,
         1,
@@ -448,7 +447,7 @@ Review each iris flower sample and assess its quality and health status.
         '{now}'
     )
     """)
-    print(f"  User created: Stuart Gano (admin)")
+    print(f"  User created: Admin User (admin)")
 
     print("\n" + "=" * 60)
     print("SAMPLE DATA CREATED SUCCESSFULLY!")

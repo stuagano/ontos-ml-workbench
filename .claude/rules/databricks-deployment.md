@@ -44,13 +44,13 @@ cd frontend && npm run build && cd ..
 # 2. Deploy
 databricks apps deploy ontos-ml-workbench \
   --source-code-path /Workspace/Users/user@example.com/Apps/ontos-ml-workbench \
-  --profile=fe-vm-serverless-dxukih
+  --profile=<your-profile>
 
 # 3. AUTOMATICALLY poll for completion (DO NOT SKIP THIS!)
-./.claude/scripts/poll-databricks-app.sh ontos-ml-workbench fe-vm-serverless-dxukih
+./.claude/scripts/poll-databricks-app.sh ontos-ml-workbench <your-profile>
 
 # 4. Verify endpoint
-APP_URL=$(databricks apps get ontos-ml-workbench --profile=fe-vm-serverless-dxukih -o json | jq -r '.url')
+APP_URL=$(databricks apps get ontos-ml-workbench --profile=<your-profile> -o json | jq -r '.url')
 curl $APP_URL/health
 
 # 5. NOW ask user to test

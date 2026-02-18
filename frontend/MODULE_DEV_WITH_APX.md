@@ -34,10 +34,10 @@ touch frontend/src/modules/cost/CostTracker.tsx
 **`frontend/src/modules/cost/index.ts`**
 ```typescript
 import { DollarSign } from "lucide-react";
-import type { VitalModule } from "../types";
+import type { OntosModule } from "../types";
 import CostTracker from "./CostTracker";
 
-export const costTrackerModule: VitalModule = {
+export const costTrackerModule: OntosModule = {
   id: "cost-tracker",
   name: "Cost Tracker",
   description: "Monitor inference costs and budget alerts",
@@ -147,7 +147,7 @@ import { dspyModule } from "./dspy";
 import { dataQualityModule } from "./quality";
 import { costTrackerModule } from "./cost";  // Add import
 
-export const MODULE_REGISTRY: VitalModule[] = [
+export const MODULE_REGISTRY: OntosModule[] = [
   dspyModule,
   dataQualityModule,
   costTrackerModule,  // Add to registry

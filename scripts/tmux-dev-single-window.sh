@@ -16,10 +16,10 @@ PURPLE='\033[0;35m'
 NC='\033[0m'
 
 # Configuration
-SESSION_NAME="vital"
-PROJECT_ROOT="/Users/stuart.gano/Documents/Customers/Mirion/mirion-ontos-ml-workbench"
+SESSION_NAME="ontos"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-log() { echo -e "${BLUE}[VITAL]${NC} $1"; }
+log() { echo -e "${BLUE}[ONTOS]${NC} $1"; }
 success() { echo -e "${GREEN}[✓]${NC} $1"; }
 error() { echo -e "${RED}[✗]${NC} $1"; }
 warning() { echo -e "${YELLOW}[!]${NC} $1"; }
@@ -66,7 +66,7 @@ if [ ! -d "$PROJECT_ROOT" ]; then
 fi
 
 # Create new session with one window
-tmux new-session -d -s "$SESSION_NAME" -c "$PROJECT_ROOT" -n "VITAL"
+tmux new-session -d -s "$SESSION_NAME" -c "$PROJECT_ROOT" -n "Ontos"
 
 # ============================================================================
 # Single Window Layout - Everything Visible

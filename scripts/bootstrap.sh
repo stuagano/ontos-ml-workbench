@@ -394,7 +394,7 @@ env:
   - name: APP_NAME
     value: ontos-ml-workbench
   - name: APP_TITLE
-    value: VITAL Platform Workbench
+    value: Ontos ML Workbench
   - name: DATABRICKS_CATALOG
     value: ${CATALOG_NAME}
   - name: DATABRICKS_SCHEMA
@@ -415,7 +415,12 @@ log_success "Frontend built"
 # Step 8: Sync and deploy app
 log_info "Step 8: Deploying application..."
 
-WORKSPACE_PATH="/Workspace/Users/stuart.gano@databricks.com/Apps/ontos-ml-workbench"
+USER_EMAIL=$(databricks auth env --profile="$PROFILE_NAME" 2>/dev/null | grep DATABRICKS_USER | cut -d= -f2 | tr -d '"')
+if [ -z "$USER_EMAIL" ]; then
+    log_error "Could not determine user email from Databricks profile. Set USER_EMAIL manually."
+    exit 1
+fi
+WORKSPACE_PATH="/Workspace/Users/${USER_EMAIL}/Apps/${APP_NAME}"
 
 # Sync all files
 cd "$PROJECT_ROOT"

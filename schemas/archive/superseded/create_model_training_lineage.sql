@@ -18,7 +18,7 @@
 
 -- Replace these variables with your actual catalog and schema names
 -- Example:
---   catalog: erp-demonstrations (or home_stuart_gano for dev)
+--   catalog: your_catalog (or your_catalog for dev)
 --   schema: ontos_ml_workbench (or ontos_ml_workbench for dev)
 
 CREATE TABLE IF NOT EXISTS `${catalog}`.`${schema}`.model_training_lineage (

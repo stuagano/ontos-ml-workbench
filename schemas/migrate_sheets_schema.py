@@ -4,11 +4,17 @@ Migrate sheets table from old schema to new PRD v2.3 schema
 WARNING: This drops and recreates the table, losing existing data
 """
 
+import os
 from databricks.sdk import WorkspaceClient
 
-w = WorkspaceClient(profile="fe-vm-serverless-dxukih")
-warehouse_id = "387bcda0f2ece20c"
-schema = "`erp-demonstrations`.ontos_ml_workbench"
+CATALOG = os.getenv("DATABRICKS_CATALOG", "your_catalog")
+SCHEMA_NAME = os.getenv("DATABRICKS_SCHEMA", "ontos_ml_workbench")
+WAREHOUSE_ID = os.getenv("DATABRICKS_WAREHOUSE_ID")
+PROFILE = os.getenv("DATABRICKS_CONFIG_PROFILE", "DEFAULT")
+
+w = WorkspaceClient(profile=PROFILE)
+warehouse_id = WAREHOUSE_ID
+schema = f"`{CATALOG}`.{SCHEMA_NAME}"
 
 print("🔄 Migrating sheets table to new schema...\n")
 
