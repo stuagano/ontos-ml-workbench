@@ -22,6 +22,7 @@ import {
   Loader2,
   RefreshCw,
   Filter,
+  Copy,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -29,6 +30,7 @@ import {
   deleteTemplate,
   publishTemplate,
   archiveTemplate,
+  createTemplateVersion,
 } from "../services/api";
 import { useToast } from "../components/Toast";
 import { useWorkflow } from "../context/WorkflowContext";
@@ -160,6 +162,15 @@ export function TemplatePage({ onEditTemplate, onClose }: TemplatePageProps) {
     onError: (error) => toast.error("Archive failed", error.message),
   });
 
+  const versionMutation = useMutation({
+    mutationFn: createTemplateVersion,
+    onSuccess: (newVersion) => {
+      queryClient.invalidateQueries({ queryKey: ["templates"] });
+      toast.success("Version created", `New version: v${newVersion.version}`);
+    },
+    onError: (error) => toast.error("Version creation failed", error.message),
+  });
+
   const templates = data?.templates || [];
 
   const handleSelectTemplate = (template: Template) => {
@@ -286,6 +297,13 @@ export function TemplatePage({ onEditTemplate, onClose }: TemplatePageProps) {
       icon: Archive,
       onClick: (template) => archiveMutation.mutate(template.id),
       show: (template) => template.status !== "archived",
+    },
+    {
+      label: "Create Version",
+      icon: Copy,
+      onClick: (template) => versionMutation.mutate(template.id),
+      show: (template) => template.status === "published",
+      className: "text-blue-600",
     },
     {
       label: "Delete",

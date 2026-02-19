@@ -23,6 +23,9 @@ import {
   Sparkles,
   CheckCircle,
   AlertCircle,
+  Copy,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -31,6 +34,8 @@ import {
   deleteExample,
   searchExamples,
   getTopExamples,
+  trackExampleUsage,
+  regenerateExampleEmbeddings,
 } from "../services/api";
 import { useToast } from "../components/Toast";
 import { SkeletonCard } from "../components/Skeleton";
@@ -94,9 +99,10 @@ interface ExampleCardProps {
   example: ExampleRecord;
   onEdit: (example: ExampleRecord) => void;
   onDelete: (id: string) => void;
+  onCopy: (example: ExampleRecord) => void;
 }
 
-function ExampleCard({ example, onEdit, onDelete }: ExampleCardProps) {
+function ExampleCard({ example, onEdit, onDelete, onCopy }: ExampleCardProps) {
   const [showMenu, setShowMenu] = useState(false);
 
   const difficultyConfig = EXAMPLE_DIFFICULTIES.find(
@@ -200,6 +206,15 @@ function ExampleCard({ example, onEdit, onDelete }: ExampleCardProps) {
                 onClick={() => setShowMenu(false)}
               />
               <div className="absolute right-0 top-8 z-20 bg-white rounded-lg shadow-lg border border-db-gray-200 py-1 min-w-[120px]">
+                <button
+                  onClick={() => {
+                    onCopy(example);
+                    setShowMenu(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-db-gray-50 flex items-center gap-2"
+                >
+                  <Copy className="w-4 h-4" /> Copy
+                </button>
                 <button
                   onClick={() => {
                     onEdit(example);
@@ -366,6 +381,19 @@ export function ExampleStorePage({ onClose }: ExampleStorePageProps) {
     onError: (error) => toast.error("Delete failed", error.message),
   });
 
+  // Regenerate embeddings mutation
+  const regenerateEmbeddingsMutation = useMutation({
+    mutationFn: () => regenerateExampleEmbeddings(undefined, false),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["examples"] });
+      toast.success(
+        "Embeddings regenerated",
+        `Processed ${result.processed}, skipped ${result.skipped}, errors ${result.errors}`
+      );
+    },
+    onError: (error) => toast.error("Regeneration failed", error.message),
+  });
+
   // Determine which data to show
   const isSearching = searchText.length > 2;
   const displayExamples = isSearching
@@ -374,6 +402,15 @@ export function ExampleStorePage({ onClose }: ExampleStorePageProps) {
   const totalCount = isSearching
     ? searchResults?.total_matches || 0
     : data?.total || 0;
+
+  const handleCopyExample = async (example: ExampleRecord) => {
+    const text = JSON.stringify({ input: example.input, output: example.expected_output }, null, 2);
+    await navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard");
+    trackExampleUsage(example.example_id, { context: "copy" }).catch(() => {
+      // Fire-and-forget: don't block on tracking failure
+    });
+  };
 
   const handleCreateNew = () => {
     setEditingExample(null);
@@ -418,13 +455,28 @@ export function ExampleStorePage({ onClose }: ExampleStorePageProps) {
               </p>
             </div>
           </div>
-          <button
-            onClick={handleCreateNew}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            New Example
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => regenerateEmbeddingsMutation.mutate()}
+              disabled={regenerateEmbeddingsMutation.isPending}
+              className="flex items-center gap-2 px-3 py-2 text-db-gray-600 hover:text-db-gray-800 hover:bg-db-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              title="Regenerate embeddings for all examples"
+            >
+              {regenerateEmbeddingsMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              Regenerate Embeddings
+            </button>
+            <button
+              onClick={handleCreateNew}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              New Example
+            </button>
+          </div>
         </div>
 
         {/* Search and Filters */}
@@ -552,6 +604,7 @@ export function ExampleStorePage({ onClose }: ExampleStorePageProps) {
                       example={example}
                       onEdit={handleEdit}
                       onDelete={(id) => deleteMutation.mutate(id)}
+                      onCopy={handleCopyExample}
                     />
                   ))}
                 </div>

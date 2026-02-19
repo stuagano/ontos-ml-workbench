@@ -69,6 +69,11 @@ const LabelSetsPage = lazy(() =>
     default: m.LabelSetsPage,
   })),
 );
+const RegistriesPage = lazy(() =>
+  import("./pages/RegistriesPage").then((m) => ({
+    default: m.RegistriesPage,
+  })),
+);
 import { getConfig, listTemplates } from "./services/api";
 import { setWorkspaceUrl } from "./services/databricksLinks";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -95,6 +100,7 @@ function AppContent() {
   const [showDataQuality, setShowDataQuality] = useState(false);
   const [showLabelingJobs, setShowLabelingJobs] = useState(false);
   const [showLabelSets, setShowLabelSets] = useState(false);
+  const [showRegistries, setShowRegistries] = useState(false);
   const [selectedDSPyTemplate, setSelectedDSPyTemplate] = useState<Template | null>(null);
   const [datasetContext, setDatasetContext] = useState<{
     columns: Array<{ name: string; type: string }>;
@@ -180,7 +186,8 @@ function AppContent() {
     if (showDataQuality) setShowDataQuality(false);
     if (showLabelingJobs) setShowLabelingJobs(false);
     if (showLabelSets) setShowLabelSets(false);
-  }, [showEditor, showPromptTemplates, showExampleStore, showDSPyOptimizer, showCanonicalLabeling, showDataQuality, showLabelingJobs, showLabelSets]);
+    if (showRegistries) setShowRegistries(false);
+  }, [showEditor, showPromptTemplates, showExampleStore, showDSPyOptimizer, showCanonicalLabeling, showDataQuality, showLabelingJobs, showLabelSets, showRegistries]);
 
   // Register keyboard shortcuts
   useKeyboardShortcuts([
@@ -323,6 +330,8 @@ function AppContent() {
       onToggleLabelingJobs={() => setShowLabelingJobs(!showLabelingJobs)}
       showLabelSets={showLabelSets}
       onToggleLabelSets={() => setShowLabelSets(!showLabelSets)}
+      showRegistries={showRegistries}
+      onToggleRegistries={() => setShowRegistries(!showRegistries)}
     >
       <ErrorBoundary>
         <Suspense
@@ -549,6 +558,23 @@ function AppContent() {
               </div>
             </div>
             <LabelSetsPage />
+          </Suspense>
+        </div>
+      )}
+
+      {/* Registries Tool (overlays entire view) */}
+      {showRegistries && (
+        <div className="fixed inset-0 z-50 bg-db-gray-50 dark:bg-gray-950 overflow-auto">
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-screen">
+                <Loader2 className="w-10 h-10 animate-spin text-db-orange" />
+              </div>
+            }
+          >
+            <RegistriesPage
+              onClose={() => setShowRegistries(false)}
+            />
           </Suspense>
         </div>
       )}

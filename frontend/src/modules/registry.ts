@@ -15,6 +15,7 @@ import { labelingModule } from "./labeling";
 import { labelSetsModule } from "./label-sets";
 import { canonicalLabelsModule } from "./canonical-labels";
 import { qualityGateModule } from "./quality-gate";
+import { registriesModule } from "./registries";
 
 /**
  * All registered modules
@@ -33,6 +34,7 @@ export const MODULE_REGISTRY: OntosModule[] = [
   labelSetsModule,
   canonicalLabelsModule,
   qualityGateModule,
+  registriesModule,
 ];
 
 /**

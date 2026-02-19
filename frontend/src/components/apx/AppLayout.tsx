@@ -165,6 +165,13 @@ const TOOLS_CONFIG = {
     color: "text-lime-500",
     description: "Manage label set configurations",
   },
+  registries: {
+    id: "registries",
+    label: "Registries",
+    icon: Package,
+    color: "text-slate-500",
+    description: "Manage tools, agents, and endpoints",
+  },
 };
 
 // ============================================================================
@@ -328,6 +335,8 @@ interface ToolsNavProps {
   onToggleLabelingJobs: () => void;
   showLabelSets: boolean;
   onToggleLabelSets: () => void;
+  showRegistries: boolean;
+  onToggleRegistries: () => void;
 }
 
 function ToolsNav({
@@ -345,6 +354,8 @@ function ToolsNav({
   onToggleLabelingJobs,
   showLabelSets,
   onToggleLabelSets,
+  showRegistries,
+  onToggleRegistries,
 }: ToolsNavProps) {
   const { open } = useSidebar();
   const PromptTemplatesIcon = TOOLS_CONFIG.promptTemplates.icon;
@@ -354,6 +365,7 @@ function ToolsNav({
   const DataQualityIcon = TOOLS_CONFIG.dataQuality.icon;
   const LabelingJobsIcon = TOOLS_CONFIG.labelingJobs.icon;
   const LabelSetsIcon = TOOLS_CONFIG.labelSets.icon;
+  const RegistriesIcon = TOOLS_CONFIG.registries.icon;
 
   return (
     <SidebarGroup>
@@ -489,6 +501,25 @@ function ToolsNav({
               )}
             />
             {open && <span>{TOOLS_CONFIG.labelSets.label}</span>}
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+
+        {/* Registries */}
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            isActive={showRegistries}
+            tooltip={TOOLS_CONFIG.registries.description}
+            onClick={onToggleRegistries}
+          >
+            <RegistriesIcon
+              className={clsx(
+                "w-5 h-5 flex-shrink-0",
+                showRegistries
+                  ? TOOLS_CONFIG.registries.color
+                  : "text-db-gray-500",
+              )}
+            />
+            {open && <span>{TOOLS_CONFIG.registries.label}</span>}
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>
@@ -628,6 +659,8 @@ interface AppLayoutProps {
   onToggleLabelingJobs: () => void;
   showLabelSets: boolean;
   onToggleLabelSets: () => void;
+  showRegistries: boolean;
+  onToggleRegistries: () => void;
 }
 
 export function AppLayout({
@@ -652,6 +685,8 @@ export function AppLayout({
   onToggleLabelingJobs,
   showLabelSets,
   onToggleLabelSets,
+  showRegistries,
+  onToggleRegistries,
 }: AppLayoutProps) {
   return (
     <SidebarProvider>
@@ -681,6 +716,8 @@ export function AppLayout({
             onToggleLabelingJobs={onToggleLabelingJobs}
             showLabelSets={showLabelSets}
             onToggleLabelSets={onToggleLabelSets}
+            showRegistries={showRegistries}
+            onToggleRegistries={onToggleRegistries}
           />
           <GovernanceNav ontosUrl={ontosUrl} />
         </SidebarContent>

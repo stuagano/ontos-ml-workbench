@@ -17,7 +17,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Database,
   Table2,
@@ -35,6 +35,7 @@ import {
   Filter,
   Edit,
   ChevronRight,
+  Archive,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { UCBrowser, type UCItem } from "../components/UCBrowser";
@@ -53,6 +54,10 @@ import {
   getTemplate,
   attachTemplateToSheet,
   assembleSheet,
+  publishSheet,
+  archiveSheet,
+  deleteSheet,
+  detachTemplateFromSheet,
 } from "../services/api";
 import { useToast } from "../components/Toast";
 import { useWorkflow } from "../context/WorkflowContext";
@@ -1116,6 +1121,33 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
       s.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const publishMutation = useMutation({
+      mutationFn: publishSheet,
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["sheets"] });
+        toast.success("Sheet published");
+      },
+      onError: (error: Error) => toast.error("Publish failed", error.message),
+    });
+
+    const archiveMutation = useMutation({
+      mutationFn: archiveSheet,
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["sheets"] });
+        toast.info("Sheet archived");
+      },
+      onError: (error: Error) => toast.error("Archive failed", error.message),
+    });
+
+    const deleteMutation = useMutation({
+      mutationFn: deleteSheet,
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["sheets"] });
+        toast.success("Sheet deleted");
+      },
+      onError: (error: Error) => toast.error("Delete failed", error.message),
+    });
+
     // Define table columns for sheets
     const columns: Column<Sheet>[] = [
       {
@@ -1184,14 +1216,27 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
         className: "text-blue-600",
       },
       {
+        label: "Publish",
+        icon: CheckCircle,
+        onClick: (sheet) => publishMutation.mutate(sheet.id),
+        show: (sheet) => sheet.status === "draft",
+        className: "text-green-600",
+      },
+      {
+        label: "Archive",
+        icon: Archive,
+        onClick: (sheet) => archiveMutation.mutate(sheet.id),
+        show: (sheet) => sheet.status !== "archived",
+      },
+      {
         label: "Delete",
         icon: Trash2,
         onClick: (sheet) => {
-          if (confirm(`Delete sheet "${sheet.name}"?`)) {
-            // TODO: Implement delete
-            toast.info("Delete", "Delete functionality coming soon");
+          if (confirm(`Delete sheet "${sheet.name}"? This cannot be undone.`)) {
+            deleteMutation.mutate(sheet.id);
           }
         },
+        show: (sheet) => sheet.status === "draft",
         className: "text-red-600",
       },
     ];
@@ -1489,6 +1534,21 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
             <div className="px-3 py-2 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700 text-sm">
               <CheckCircle className="w-4 h-4" />
               Template attached
+              <button
+                onClick={async () => {
+                  if (!sheet) return;
+                  try {
+                    const updated = await detachTemplateFromSheet(sheet.id);
+                    setSheet(updated);
+                    toast.info("Template detached");
+                  } catch (err) {
+                    toast.error("Detach failed", err instanceof Error ? err.message : "Unknown error");
+                  }
+                }}
+                className="ml-1 text-xs text-red-500 hover:text-red-700 underline"
+              >
+                Detach
+              </button>
             </div>
           )}
 
