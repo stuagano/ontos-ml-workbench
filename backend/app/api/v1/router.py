@@ -16,6 +16,7 @@ from app.api.v1.endpoints import (
     examples,
     feedback,
     gaps,
+    governance,
     jobs,
     labeling,
     labelsets,
@@ -84,3 +85,6 @@ router.include_router(quality_proxy.router)
 
 # Admin - Cache management and system health
 router.include_router(admin.router)
+
+# Governance - RBAC roles, teams, and data domains
+router.include_router(governance.router)

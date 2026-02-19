@@ -1,8 +1,8 @@
 # Ontos ML Workbench - Project Status
 
-**Last Updated:** February 18, 2026
+**Last Updated:** February 19, 2026
 **PRD Version:** 2.3
-**Overall Progress:** ~85% backend, ~75% frontend (ML Pipeline); 0% Ontos Governance Integration
+**Overall Progress:** ~85% backend, ~75% frontend (ML Pipeline); Phase 1 (G1–G3) Ontos Governance complete
 
 > This is the single source of truth for implementation status. It replaces the stale
 > `GAP_ANALYSIS_V2.md`, `SPRINT_PLAN.md`, `BACKLOG.md`, and `prd/v2.3-implementation-status.md`.
@@ -134,6 +134,7 @@
 | Labeling Jobs | Yes | `LabelingJobsPage.tsx` (1099 lines) | Yes | Create, Start, Pause, Resume, Delete | DONE |
 | Label Sets | Yes | `LabelSetsPage.tsx` (619 lines) | Yes | Full CRUD + Publish/Archive | DONE |
 | Registries | Yes | `RegistriesPage.tsx` (1050 lines) | Yes | Full CRUD for Tools/Agents/Endpoints | DONE |
+| Governance | Yes (Admin) | `GovernancePage.tsx` (670 lines) | Yes | Roles matrix, user assign, teams CRUD, domains tree | DONE |
 | Example Effectiveness | No sidebar entry | `ExampleEffectivenessDashboard.tsx` (548 lines) | Yes (read) | None | DONE (read-only dashboard, embedded in Example Store module) |
 
 ---
@@ -157,7 +158,7 @@
 
 ## Backend API Coverage
 
-**19 routers** registered under `/api/v1`. ~150+ endpoints total.
+**20 routers** registered under `/api/v1`. ~175+ endpoints total.
 
 | Router | Endpoints | Status |
 |--------|-----------|--------|
@@ -182,6 +183,8 @@
 | Agents | 3 | Fully implemented |
 | Settings/Admin | 7 | Fully implemented |
 | Data Quality (DQX) | 4 | Fully implemented — results persisted to `dqx_quality_results` table |
+| Governance | 23 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree |
+| Auth Core | 0 (middleware) | `get_current_user`, `require_permission`, `require_role` dependencies; `enforce_auth=false` default |
 | Quality Proxy | 1 | Fully implemented |
 
 ---
@@ -198,7 +201,7 @@
 
 ~~6. **Labeling table schemas not in DDL**~~ — FIXED. DDL files `09_labeling_jobs.sql` through `12_workspace_users.sql` added to `schemas/`.
 
-7. **No auth middleware** — All endpoints are open at FastAPI layer; relies entirely on Databricks App platform OAuth.
+7. **Auth middleware not enforced** — RBAC roles, permissions, and `get_current_user` dependency exist (`backend/app/core/auth.py`), but `enforce_auth=false` by default. Set `ENFORCE_AUTH=true` in `.env` to activate permission checks on endpoints. Currently resolves user identity without blocking requests.
 
 ---
 
@@ -250,9 +253,9 @@ These features are prerequisites for the ML Workbench to participate in an Ontos
 
 | # | Feature | Description | What We Have | What's Missing | Effort |
 |---|---------|-------------|-------------|----------------|--------|
-| G1 | **RBAC Roles & Permissions** | 6-role system: Admin, Data Governance Officer, Data Steward, Data Producer, Data Consumer, Security Officer. Per-role permissions, team role overrides. | Platform OAuth only (Known Issue #7). No role-based access control. | Auth middleware, role definitions, permission checks on all endpoints, role assignment UI. | L |
-| G2 | **Teams** | User collections with role assignments, domain association, metadata (Slack channels, leads, tools). | `workspace_users` table only (name, email, role). No team concept. | Teams CRUD (backend + DDL), team membership management, role overrides per team, team-domain linking. | M |
-| G3 | **Domains** | Hierarchical business area groupings (parent-child). Ownership boundaries for data assets. | No domain concept. Sheets/templates are flat (no organizational hierarchy). | Domains CRUD, parent-child hierarchy, domain→asset association, domain browser UI. | M |
+| ~~G1~~ | ~~**RBAC Roles & Permissions**~~ | ~~6-role system with per-feature permission levels. Auth middleware with soft/hard enforcement.~~ | ~~DONE — `auth.py` (get_current_user, require_permission, require_role), 6 default roles with 11-feature permission matrix, user assignment CRUD, `enforce_auth` toggle. DDL: `19_app_roles.sql`, `20_user_role_assignments.sql`, `24_seed_default_roles.sql`. UI: Roles tab in GovernancePage.~~ | ~~Enforce auth on individual endpoints (opt-in per route).~~ | ~~L~~ |
+| ~~G2~~ | ~~**Teams**~~ | ~~User collections with role assignments, domain association, leads.~~ | ~~DONE — Teams CRUD + member management with role overrides. DDL: `21_teams.sql`, `22_team_members.sql`. UI: Teams tab with detail view + member add/remove.~~ | ~~Team metadata (Slack channels, tools).~~ | ~~M~~ |
+| ~~G3~~ | ~~**Domains**~~ | ~~Hierarchical business area groupings (parent-child). Ownership boundaries.~~ | ~~DONE — Domains CRUD + tree hierarchy. DDL: `23_data_domains.sql`. UI: Domains tab with tree view + create form + color picker.~~ | ~~Domain→asset association (domain_id on sheets/templates).~~ | ~~M~~ |
 | G4 | **Asset Review Workflow** | Steward review/approval process for data assets. AI-assisted review. Review history tracking. | Q&A pair review (approve/edit/reject) in CuratePage. No asset-level review. | Generalized review request system, steward assignment, review status tracking, approval gating on publish/deploy actions. | L |
 
 ### G-P1: High Value Governance Features
@@ -282,7 +285,7 @@ Features for mature data governance organizations.
 
 ### Implementation Strategy
 
-**Phase 1 — Foundation (G1–G3):** RBAC + Teams + Domains. These are organizational primitives that everything else depends on. Without roles and teams, governance features have no enforcement mechanism.
+**Phase 1 — Foundation (G1–G3): DONE.** RBAC + Teams + Domains. 6 DDL files, auth core (`auth.py`), governance service (23 endpoints), GovernancePage with 3 tabs. `enforce_auth=false` default preserves existing functionality.
 
 **Phase 2 — Governance Core (G4–G6):** Asset Review + Data Contracts + Compliance Policies. These give the ML pipeline a governance layer — reviewers can approve datasets before training, contracts guarantee data quality, policies enforce standards.
 
@@ -292,7 +295,15 @@ Features for mature data governance organizations.
 
 ---
 
-## Recently Completed (Feb 18, 2026)
+## Recently Completed (Feb 19, 2026)
+
+- **Ontos Governance G1–G3 (RBAC, Teams, Domains)**: Full implementation across 19 files:
+  - **Phase 1 (DDL)**: 6 schema files — `19_app_roles.sql`, `20_user_role_assignments.sql`, `21_teams.sql`, `22_team_members.sql`, `23_data_domains.sql`, `24_seed_default_roles.sql` (6 default roles with 11-feature permission matrix)
+  - **Phase 2 (Backend)**: `auth.py` (AccessLevel enum, CurrentUser, get_current_user/require_permission/require_role dependencies), `governance.py` models, `governance_service.py` (CRUD for roles/users/teams/members/domains + domain tree builder), `governance.py` endpoints (23 routes)
+  - **Phase 3 (Wiring)**: Added `enforce_auth` setting, registered governance router, updated `execute_all.sh` + `schemas/README.md`
+  - **Phase 4 (Frontend)**: `governance.ts` types, `governance.ts` service (20 API functions), `GovernancePage.tsx` (3 tabs: permission matrix + user assignment, team list/detail + member management, domain tree + create form), Admin sidebar section in `AppLayout.tsx` + `AppWithSidebar.tsx`
+
+## Previously Completed (Feb 18, 2026)
 
 - **Lineage DAG visualization**: `LineageDAG.tsx` SVG-based component in TrainingJobDetail Lineage tab. Shows Sheet→Template→Training Sheet→Model with canonical label branches and Q&A pair counts. No external graph library needed.
 - **Dedicated metrics ingestion**: `endpoint_metrics` table (DDL `18_endpoint_metrics.sql`) captures per-request latency, status, tokens, cost. Endpoints: `POST /monitoring/metrics/ingest`, `POST /monitoring/metrics/ingest/batch`, `GET /monitoring/metrics/timeseries/{id}`. Performance endpoint now returns real p50/p95/p99 latencies. MonitorPage chart uses real timeseries with mock fallback.

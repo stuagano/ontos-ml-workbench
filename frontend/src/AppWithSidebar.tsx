@@ -74,6 +74,11 @@ const RegistriesPage = lazy(() =>
     default: m.RegistriesPage,
   })),
 );
+const GovernancePage = lazy(() =>
+  import("./pages/GovernancePage").then((m) => ({
+    default: m.GovernancePage,
+  })),
+);
 import { getConfig, listTemplates } from "./services/api";
 import { setWorkspaceUrl } from "./services/databricksLinks";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -101,6 +106,7 @@ function AppContent() {
   const [showLabelingJobs, setShowLabelingJobs] = useState(false);
   const [showLabelSets, setShowLabelSets] = useState(false);
   const [showRegistries, setShowRegistries] = useState(false);
+  const [showGovernance, setShowGovernance] = useState(false);
   const [selectedDSPyTemplate, setSelectedDSPyTemplate] = useState<Template | null>(null);
   const [datasetContext, setDatasetContext] = useState<{
     columns: Array<{ name: string; type: string }>;
@@ -187,7 +193,8 @@ function AppContent() {
     if (showLabelingJobs) setShowLabelingJobs(false);
     if (showLabelSets) setShowLabelSets(false);
     if (showRegistries) setShowRegistries(false);
-  }, [showEditor, showPromptTemplates, showExampleStore, showDSPyOptimizer, showCanonicalLabeling, showDataQuality, showLabelingJobs, showLabelSets, showRegistries]);
+    if (showGovernance) setShowGovernance(false);
+  }, [showEditor, showPromptTemplates, showExampleStore, showDSPyOptimizer, showCanonicalLabeling, showDataQuality, showLabelingJobs, showLabelSets, showRegistries, showGovernance]);
 
   // Register keyboard shortcuts
   useKeyboardShortcuts([
@@ -332,6 +339,8 @@ function AppContent() {
       onToggleLabelSets={() => setShowLabelSets(!showLabelSets)}
       showRegistries={showRegistries}
       onToggleRegistries={() => setShowRegistries(!showRegistries)}
+      showGovernance={showGovernance}
+      onToggleGovernance={() => setShowGovernance(!showGovernance)}
     >
       <ErrorBoundary>
         <Suspense
@@ -574,6 +583,23 @@ function AppContent() {
           >
             <RegistriesPage
               onClose={() => setShowRegistries(false)}
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {/* Governance (overlays entire view) */}
+      {showGovernance && (
+        <div className="fixed inset-0 z-50 bg-db-gray-50 dark:bg-gray-950 overflow-auto">
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-screen">
+                <Loader2 className="w-10 h-10 animate-spin text-db-orange" />
+              </div>
+            }
+          >
+            <GovernancePage
+              onClose={() => setShowGovernance(false)}
             />
           </Suspense>
         </div>

@@ -40,6 +40,12 @@ SQL_FILES=(
     "16_bit_attribution.sql"
     "17_dqx_quality_results.sql"
     "18_endpoint_metrics.sql"
+    "19_app_roles.sql"
+    "20_user_role_assignments.sql"
+    "21_teams.sql"
+    "22_team_members.sql"
+    "23_data_domains.sql"
+    "24_seed_default_roles.sql"
     "99_validate_and_seed.sql"
 )
 

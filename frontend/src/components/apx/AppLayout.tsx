@@ -339,6 +339,17 @@ interface ToolsNavProps {
   onToggleRegistries: () => void;
 }
 
+// Admin section config
+const ADMIN_CONFIG = {
+  governance: {
+    id: "governance",
+    label: "Governance",
+    icon: Shield,
+    color: "text-amber-600",
+    description: "Roles, teams, and domains",
+  },
+};
+
 function ToolsNav({
   showPromptTemplates,
   onTogglePromptTemplates,
@@ -528,6 +539,45 @@ function ToolsNav({
 }
 
 // ============================================================================
+// Admin Section (Internal Governance)
+// ============================================================================
+
+interface AdminNavProps {
+  showGovernance: boolean;
+  onToggleGovernance: () => void;
+}
+
+function AdminNav({ showGovernance, onToggleGovernance }: AdminNavProps) {
+  const { open } = useSidebar();
+  const GovernanceIcon = ADMIN_CONFIG.governance.icon;
+
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>Admin</SidebarGroupLabel>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            isActive={showGovernance}
+            tooltip={ADMIN_CONFIG.governance.description}
+            onClick={onToggleGovernance}
+          >
+            <GovernanceIcon
+              className={clsx(
+                "w-5 h-5 flex-shrink-0",
+                showGovernance
+                  ? ADMIN_CONFIG.governance.color
+                  : "text-db-gray-500",
+              )}
+            />
+            {open && <span>{ADMIN_CONFIG.governance.label}</span>}
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    </SidebarGroup>
+  );
+}
+
+// ============================================================================
 // Governance Links (External - Ontos Platform)
 // ============================================================================
 
@@ -661,6 +711,8 @@ interface AppLayoutProps {
   onToggleLabelSets: () => void;
   showRegistries: boolean;
   onToggleRegistries: () => void;
+  showGovernance: boolean;
+  onToggleGovernance: () => void;
 }
 
 export function AppLayout({
@@ -687,6 +739,8 @@ export function AppLayout({
   onToggleLabelSets,
   showRegistries,
   onToggleRegistries,
+  showGovernance,
+  onToggleGovernance,
 }: AppLayoutProps) {
   return (
     <SidebarProvider>
@@ -718,6 +772,10 @@ export function AppLayout({
             onToggleLabelSets={onToggleLabelSets}
             showRegistries={showRegistries}
             onToggleRegistries={onToggleRegistries}
+          />
+          <AdminNav
+            showGovernance={showGovernance}
+            onToggleGovernance={onToggleGovernance}
           />
           <GovernanceNav ontosUrl={ontosUrl} />
         </SidebarContent>

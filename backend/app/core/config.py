@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # Ontos backend URL (for DQX quality proxy)
     ontos_base_url: str = "http://localhost:8000"
 
+    # Auth enforcement (False = resolve user identity but don't block requests)
+    enforce_auth: bool = False
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

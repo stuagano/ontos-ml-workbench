@@ -317,6 +317,12 @@ GRANT ALL PRIVILEGES ON SCHEMA main.ontos_ml_workbench TO platform_admins;
 - `16_bit_attribution.sql` - Model attribution scores per training data
 - `17_dqx_quality_results.sql` - Data quality check results per sheet
 - `18_endpoint_metrics.sql` - Per-request endpoint performance metrics
+- `19_app_roles.sql` - RBAC role definitions with per-feature permissions
+- `20_user_role_assignments.sql` - User-to-role mappings
+- `21_teams.sql` - Organizational teams for data governance
+- `22_team_members.sql` - Team membership with role overrides
+- `23_data_domains.sql` - Hierarchical data domains
+- `24_seed_default_roles.sql` - Seed 6 default RBAC roles
 - `99_validate_and_seed.sql` - Validation queries
 
 ### Active Migrations
