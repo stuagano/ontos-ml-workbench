@@ -18,6 +18,7 @@ import {
   UserPlus,
   X,
   ChevronRight,
+  Wrench,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -26,6 +27,7 @@ import {
   assignUserRole,
   listTeams,
   createTeam,
+  updateTeam,
   deleteTeam,
   listTeamMembers,
   addTeamMember,
@@ -226,6 +228,7 @@ function TeamsTab() {
   const [newTeamName, setNewTeamName] = useState("");
   const [newTeamDesc, setNewTeamDesc] = useState("");
   const [newMemberEmail, setNewMemberEmail] = useState("");
+  const [newTool, setNewTool] = useState("");
 
   const { data: teams = [], isLoading } = useQuery({
     queryKey: ["governance-teams"],
@@ -258,6 +261,16 @@ function TeamsTab() {
       setSelectedTeam(null);
     },
     onError: (err: Error) => toast.error("Delete Failed", err.message),
+  });
+
+  const updateTeamMutation = useMutation({
+    mutationFn: ({ teamId, data }: { teamId: string; data: Partial<{ metadata: { tools: string[] } }> }) =>
+      updateTeam(teamId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-teams"] });
+      toast.success("Team Updated", "Team metadata updated");
+    },
+    onError: (err: Error) => toast.error("Update Failed", err.message),
   });
 
   const addMemberMutation = useMutation({
@@ -306,6 +319,69 @@ function TeamsTab() {
             >
               <Trash2 className="w-4 h-4" />
             </button>
+          </div>
+        )}
+
+        {/* Tools metadata */}
+        {team && (
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-db-gray-700 dark:text-gray-300 flex items-center gap-2">
+              <Wrench className="w-4 h-4" /> Tools
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {(team.metadata?.tools ?? []).map((tool) => (
+                <span
+                  key={tool}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 text-sm bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 rounded-full"
+                >
+                  {tool}
+                  <button
+                    onClick={() => {
+                      const updated = (team.metadata?.tools ?? []).filter((t) => t !== tool);
+                      updateTeamMutation.mutate({ teamId: team.id, data: { metadata: { tools: updated } } });
+                    }}
+                    className="p-0.5 hover:text-red-500 transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+              {(team.metadata?.tools ?? []).length === 0 && (
+                <span className="text-xs text-db-gray-400 dark:text-gray-600">No tools assigned</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                value={newTool}
+                onChange={(e) => setNewTool(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newTool.trim()) {
+                    const current = team.metadata?.tools ?? [];
+                    if (!current.includes(newTool.trim())) {
+                      updateTeamMutation.mutate({ teamId: team.id, data: { metadata: { tools: [...current, newTool.trim()] } } });
+                    }
+                    setNewTool("");
+                  }
+                }}
+                placeholder="Add tool (e.g., MLflow, DSPy, DQX)..."
+                className="flex-1 px-3 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+              />
+              <button
+                onClick={() => {
+                  if (newTool.trim()) {
+                    const current = team.metadata?.tools ?? [];
+                    if (!current.includes(newTool.trim())) {
+                      updateTeamMutation.mutate({ teamId: team.id, data: { metadata: { tools: [...current, newTool.trim()] } } });
+                    }
+                    setNewTool("");
+                  }
+                }}
+                disabled={!newTool.trim() || updateTeamMutation.isPending}
+                className="px-3 py-1.5 text-sm bg-db-orange text-white rounded-lg hover:bg-db-red disabled:opacity-50 transition-colors"
+              >
+                Add
+              </button>
+            </div>
           </div>
         )}
 
@@ -416,6 +492,15 @@ function TeamsTab() {
                 )}
               </div>
               <div className="flex items-center gap-3">
+                {(team.metadata?.tools ?? []).length > 0 && (
+                  <div className="flex items-center gap-1">
+                    <Wrench className="w-3 h-3 text-db-gray-400" />
+                    <span className="text-xs text-db-gray-400 dark:text-gray-600">
+                      {team.metadata.tools.slice(0, 3).join(", ")}
+                      {team.metadata.tools.length > 3 && ` +${team.metadata.tools.length - 3}`}
+                    </span>
+                  </div>
+                )}
                 <span className="text-xs text-db-gray-500 dark:text-gray-500">{team.member_count} members</span>
                 <ChevronRight className="w-4 h-4 text-db-gray-400" />
               </div>

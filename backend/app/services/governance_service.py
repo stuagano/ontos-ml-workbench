@@ -176,16 +176,19 @@ class GovernanceService:
     def create_team(self, data: dict, created_by: str) -> dict:
         team_id = str(uuid.uuid4())
         leads_json = json.dumps(data.get("leads", [])).replace("'", "''")
+        metadata_json = json.dumps(data["metadata"]).replace("'", "''") if data.get("metadata") else None
 
         self.sql.execute_update(f"""
             INSERT INTO {self._table('teams')}
-            (id, name, description, domain_id, leads, is_active,
+            (id, name, description, domain_id, leads, metadata, is_active,
              created_at, created_by, updated_at, updated_by)
             VALUES (
                 '{team_id}', '{_esc(data["name"])}',
                 {f"'{_esc(data['description'])}'" if data.get('description') else 'NULL'},
                 {f"'{_esc(data['domain_id'])}'" if data.get('domain_id') else 'NULL'},
-                '{leads_json}', true,
+                '{leads_json}',
+                {f"'{metadata_json}'" if metadata_json else 'NULL'},
+                true,
                 current_timestamp(), '{_esc(created_by)}',
                 current_timestamp(), '{_esc(created_by)}'
             )
@@ -204,6 +207,9 @@ class GovernanceService:
         if data.get("leads") is not None:
             leads_json = json.dumps(data["leads"]).replace("'", "''")
             updates.append(f"leads = '{leads_json}'")
+        if data.get("metadata") is not None:
+            metadata_json = json.dumps(data["metadata"]).replace("'", "''")
+            updates.append(f"metadata = '{metadata_json}'")
         if data.get("is_active") is not None:
             updates.append(f"is_active = {str(data['is_active']).lower()}")
 
@@ -226,9 +232,12 @@ class GovernanceService:
         )
 
     def _parse_team(self, row: dict) -> dict:
+        raw_metadata = row.get("metadata")
+        metadata = json.loads(raw_metadata) if raw_metadata else {"tools": []}
         return {
             **row,
             "leads": json.loads(row["leads"]) if row.get("leads") else [],
+            "metadata": metadata,
             "is_active": row.get("is_active") in (True, "true", "1"),
             "member_count": int(row.get("member_count", 0)),
         }

@@ -36,6 +36,10 @@ export interface CurrentUserInfo {
   allowed_stages: string[];
 }
 
+export interface TeamMetadata {
+  tools: string[];
+}
+
 export interface Team {
   id: string;
   name: string;
@@ -43,6 +47,7 @@ export interface Team {
   domain_id: string | null;
   domain_name: string | null;
   leads: string[];
+  metadata: TeamMetadata;
   is_active: boolean;
   member_count: number;
   created_at: string | null;

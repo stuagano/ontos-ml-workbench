@@ -8,6 +8,7 @@ import type {
   CurrentUserInfo,
   Team,
   TeamMember,
+  TeamMetadata,
   DataDomain,
   DomainTreeNode,
 } from "../types/governance";
@@ -123,7 +124,7 @@ export async function getTeam(teamId: string): Promise<Team> {
 }
 
 export async function createTeam(
-  data: { name: string; description?: string; domain_id?: string; leads?: string[] },
+  data: { name: string; description?: string; domain_id?: string; leads?: string[]; metadata?: TeamMetadata },
 ): Promise<Team> {
   return fetchJson(`${API_BASE}/teams`, {
     method: "POST",

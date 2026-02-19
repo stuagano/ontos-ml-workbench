@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.teams (
   description STRING,
   domain_id STRING COMMENT 'FK to data_domains.id',
   leads STRING COMMENT 'JSON array of team lead emails',
+  metadata STRING COMMENT 'JSON object for team metadata (tools, integrations, etc.)',
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP(),
   created_by STRING NOT NULL,

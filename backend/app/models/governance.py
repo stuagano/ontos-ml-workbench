@@ -87,12 +87,18 @@ class CurrentUserResponse(BaseModel):
 # ============================================================================
 
 
+class TeamMetadata(BaseModel):
+    """Flexible team metadata (tools, integrations, etc.)."""
+    tools: list[str] = Field(default_factory=list, description="Tools/platforms the team uses")
+
+
 class TeamCreate(BaseModel):
     """Request body for creating a team."""
     name: str = Field(..., min_length=1, max_length=255)
     description: str | None = None
     domain_id: str | None = None
     leads: list[str] = Field(default_factory=list, description="Team lead emails")
+    metadata: TeamMetadata | None = None
 
 
 class TeamUpdate(BaseModel):
@@ -101,6 +107,7 @@ class TeamUpdate(BaseModel):
     description: str | None = None
     domain_id: str | None = None
     leads: list[str] | None = None
+    metadata: TeamMetadata | None = None
     is_active: bool | None = None
 
 
@@ -137,6 +144,7 @@ class TeamResponse(BaseModel):
     domain_id: str | None = None
     domain_name: str | None = None
     leads: list[str] = Field(default_factory=list)
+    metadata: TeamMetadata = Field(default_factory=TeamMetadata)
     is_active: bool = True
     member_count: int = 0
     created_at: datetime | None = None
