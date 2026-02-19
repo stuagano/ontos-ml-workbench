@@ -46,6 +46,7 @@ SQL_FILES=(
     "22_team_members.sql"
     "23_data_domains.sql"
     "24_seed_default_roles.sql"
+    "25_add_domain_id_columns.sql"
     "99_validate_and_seed.sql"
 )
 

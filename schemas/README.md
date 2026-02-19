@@ -34,6 +34,13 @@ databricks sql --file 15_annotation_tasks.sql
 databricks sql --file 16_bit_attribution.sql
 databricks sql --file 17_dqx_quality_results.sql
 databricks sql --file 18_endpoint_metrics.sql
+databricks sql --file 19_app_roles.sql
+databricks sql --file 20_user_role_assignments.sql
+databricks sql --file 21_teams.sql
+databricks sql --file 22_team_members.sql
+databricks sql --file 23_data_domains.sql
+databricks sql --file 24_seed_default_roles.sql
+databricks sql --file 25_add_domain_id_columns.sql
 
 # 3. Validate setup
 databricks sql --file 99_validate_and_seed.sql
@@ -323,6 +330,7 @@ GRANT ALL PRIVILEGES ON SCHEMA main.ontos_ml_workbench TO platform_admins;
 - `22_team_members.sql` - Team membership with role overrides
 - `23_data_domains.sql` - Hierarchical data domains
 - `24_seed_default_roles.sql` - Seed 6 default RBAC roles
+- `25_add_domain_id_columns.sql` - Add domain_id FK to sheets, templates, training_sheets
 - `99_validate_and_seed.sql` - Validation queries
 
 ### Active Migrations

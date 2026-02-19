@@ -201,7 +201,7 @@
 
 ~~6. **Labeling table schemas not in DDL**~~ — FIXED. DDL files `09_labeling_jobs.sql` through `12_workspace_users.sql` added to `schemas/`.
 
-7. **Auth middleware not enforced** — RBAC roles, permissions, and `get_current_user` dependency exist (`backend/app/core/auth.py`), but `enforce_auth=false` by default. Set `ENFORCE_AUTH=true` in `.env` to activate permission checks on endpoints. Currently resolves user identity without blocking requests.
+7. **Auth enforcement opt-in** — RBAC auth dependencies wired on all governance mutation endpoints (13 of 23 routes). `enforce_auth=false` by default (soft mode: logs warnings but allows through). Set `ENFORCE_AUTH=true` in `.env` to activate 403 blocking. Read-only endpoints remain open. Non-governance endpoints not yet wired.
 
 ---
 
@@ -302,6 +302,8 @@ Features for mature data governance organizations.
   - **Phase 2 (Backend)**: `auth.py` (AccessLevel enum, CurrentUser, get_current_user/require_permission/require_role dependencies), `governance.py` models, `governance_service.py` (CRUD for roles/users/teams/members/domains + domain tree builder), `governance.py` endpoints (23 routes)
   - **Phase 3 (Wiring)**: Added `enforce_auth` setting, registered governance router, updated `execute_all.sh` + `schemas/README.md`
   - **Phase 4 (Frontend)**: `governance.ts` types, `governance.ts` service (20 API functions), `GovernancePage.tsx` (3 tabs: permission matrix + user assignment, team list/detail + member management, domain tree + create form), Admin sidebar section in `AppLayout.tsx` + `AppWithSidebar.tsx`
+- **Domain→asset association**: `25_add_domain_id_columns.sql` — adds `domain_id` FK column to sheets, templates, training_sheets tables
+- **Auth enforcement on governance endpoints**: `require_permission()` wired to all 13 mutation endpoints (role CRUD needs admin/admin, user assignment needs governance/admin, team+domain CRUD needs governance/write). Soft mode by default.
 
 ## Previously Completed (Feb 18, 2026)
 

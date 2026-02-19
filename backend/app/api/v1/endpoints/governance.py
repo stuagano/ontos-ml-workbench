@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.core.auth import CurrentUser, get_current_user
+from app.core.auth import CurrentUser, get_current_user, require_permission
 from app.core.databricks import get_current_user as get_db_user
 from app.models.governance import (
     AppRoleCreate,
@@ -40,8 +40,8 @@ async def list_roles():
 
 
 @router.post("/roles", response_model=AppRoleResponse, status_code=201)
-async def create_role(role: AppRoleCreate):
-    """Create a new role."""
+async def create_role(role: AppRoleCreate, _auth: CurrentUser = Depends(require_permission("admin", "admin"))):
+    """Create a new role. Requires admin permission on admin feature."""
     user = get_db_user()
     svc = get_governance_service()
     return svc.create_role(role.model_dump(), user)
@@ -58,8 +58,8 @@ async def get_role(role_id: str):
 
 
 @router.put("/roles/{role_id}", response_model=AppRoleResponse)
-async def update_role(role_id: str, role: AppRoleUpdate):
-    """Update a role."""
+async def update_role(role_id: str, role: AppRoleUpdate, _auth: CurrentUser = Depends(require_permission("admin", "admin"))):
+    """Update a role. Requires admin permission on admin feature."""
     user = get_db_user()
     svc = get_governance_service()
     result = svc.update_role(role_id, role.model_dump(exclude_unset=True), user)
@@ -69,8 +69,8 @@ async def update_role(role_id: str, role: AppRoleUpdate):
 
 
 @router.delete("/roles/{role_id}", status_code=204)
-async def delete_role(role_id: str):
-    """Delete a role."""
+async def delete_role(role_id: str, _auth: CurrentUser = Depends(require_permission("admin", "admin"))):
+    """Delete a role. Requires admin permission on admin feature."""
     svc = get_governance_service()
     svc.delete_role(role_id)
 
@@ -101,8 +101,8 @@ async def get_current_user_info(user: CurrentUser = Depends(get_current_user)):
 
 
 @router.post("/users/assign", response_model=UserRoleAssignmentResponse)
-async def assign_user_role(assignment: UserRoleAssignCreate):
-    """Assign a role to a user (creates or updates)."""
+async def assign_user_role(assignment: UserRoleAssignCreate, _auth: CurrentUser = Depends(require_permission("governance", "admin"))):
+    """Assign a role to a user. Requires admin permission on governance feature."""
     user = get_db_user()
     svc = get_governance_service()
     return svc.assign_user_role(assignment.model_dump(), user)
@@ -121,8 +121,8 @@ async def list_teams():
 
 
 @router.post("/teams", response_model=TeamResponse, status_code=201)
-async def create_team(team: TeamCreate):
-    """Create a new team."""
+async def create_team(team: TeamCreate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Create a new team. Requires write permission on governance feature."""
     user = get_db_user()
     svc = get_governance_service()
     return svc.create_team(team.model_dump(), user)
@@ -139,8 +139,8 @@ async def get_team(team_id: str):
 
 
 @router.put("/teams/{team_id}", response_model=TeamResponse)
-async def update_team(team_id: str, team: TeamUpdate):
-    """Update a team."""
+async def update_team(team_id: str, team: TeamUpdate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Update a team. Requires write permission on governance feature."""
     user = get_db_user()
     svc = get_governance_service()
     result = svc.update_team(team_id, team.model_dump(exclude_unset=True), user)
@@ -150,8 +150,8 @@ async def update_team(team_id: str, team: TeamUpdate):
 
 
 @router.delete("/teams/{team_id}", status_code=204)
-async def delete_team(team_id: str):
-    """Delete a team and its members."""
+async def delete_team(team_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Delete a team and its members. Requires write permission on governance feature."""
     svc = get_governance_service()
     svc.delete_team(team_id)
 
@@ -164,23 +164,23 @@ async def list_team_members(team_id: str):
 
 
 @router.post("/teams/{team_id}/members", response_model=TeamMemberResponse, status_code=201)
-async def add_team_member(team_id: str, member: TeamMemberAdd):
-    """Add a member to a team."""
+async def add_team_member(team_id: str, member: TeamMemberAdd, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Add a member to a team. Requires write permission on governance feature."""
     user = get_db_user()
     svc = get_governance_service()
     return svc.add_team_member(team_id, member.model_dump(), user)
 
 
 @router.put("/teams/{team_id}/members/{member_id}", response_model=TeamMemberResponse)
-async def update_team_member(team_id: str, member_id: str, member: TeamMemberUpdate):
-    """Update a team member's role override."""
+async def update_team_member(team_id: str, member_id: str, member: TeamMemberUpdate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Update a team member's role override. Requires write permission on governance feature."""
     svc = get_governance_service()
     return svc.update_team_member(member_id, member.model_dump(exclude_unset=True))
 
 
 @router.delete("/teams/{team_id}/members/{member_id}", status_code=204)
-async def remove_team_member(team_id: str, member_id: str):
-    """Remove a member from a team."""
+async def remove_team_member(team_id: str, member_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Remove a member from a team. Requires write permission on governance feature."""
     svc = get_governance_service()
     svc.remove_team_member(member_id)
 
@@ -198,8 +198,8 @@ async def list_domains():
 
 
 @router.post("/domains", response_model=DataDomainResponse, status_code=201)
-async def create_domain(domain: DataDomainCreate):
-    """Create a new data domain."""
+async def create_domain(domain: DataDomainCreate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Create a new data domain. Requires write permission on governance feature."""
     user = get_db_user()
     svc = get_governance_service()
     return svc.create_domain(domain.model_dump(), user)
@@ -223,8 +223,8 @@ async def get_domain(domain_id: str):
 
 
 @router.put("/domains/{domain_id}", response_model=DataDomainResponse)
-async def update_domain(domain_id: str, domain: DataDomainUpdate):
-    """Update a data domain."""
+async def update_domain(domain_id: str, domain: DataDomainUpdate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Update a data domain. Requires write permission on governance feature."""
     user = get_db_user()
     svc = get_governance_service()
     result = svc.update_domain(domain_id, domain.model_dump(exclude_unset=True), user)
@@ -234,7 +234,7 @@ async def update_domain(domain_id: str, domain: DataDomainUpdate):
 
 
 @router.delete("/domains/{domain_id}", status_code=204)
-async def delete_domain(domain_id: str):
-    """Delete a data domain."""
+async def delete_domain(domain_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Delete a data domain. Requires write permission on governance feature."""
     svc = get_governance_service()
     svc.delete_domain(domain_id)
