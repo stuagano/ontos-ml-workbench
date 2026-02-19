@@ -26,6 +26,7 @@ import {
   Database,
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { QualityGatePanel } from '../components/QualityGatePanel';
 import { DataTable, Column, RowAction } from '../components/DataTable';
 import {
   useCuratedDatasets,
@@ -642,6 +643,9 @@ function DatasetDetailView({ dataset, onBack, onEdit }: DatasetDetailViewProps) 
               )}
             </div>
           )}
+
+          {/* Quality Gate */}
+          <QualityGatePanel collectionId={currentDataset.id} />
 
           {/* Preview */}
           {preview && preview.examples.length > 0 && (

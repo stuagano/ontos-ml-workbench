@@ -25,6 +25,10 @@ import {
   Check,
   ShieldCheck,
   Layers,
+  FileCheck,
+  Package,
+  Shield,
+  GraduationCap,
 } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -493,6 +497,112 @@ function ToolsNav({
 }
 
 // ============================================================================
+// Governance Links (External - Ontos Platform)
+// ============================================================================
+
+interface GovernanceLink {
+  label: string;
+  path: string;
+  icon: typeof Database;
+  description: string;
+}
+
+const GOVERNANCE_LINKS: GovernanceLink[] = [
+  {
+    label: "Data Contracts",
+    path: "/data-contracts",
+    icon: FileCheck,
+    description: "Manage data contracts and SLAs",
+  },
+  {
+    label: "Data Products",
+    path: "/data-products",
+    icon: Package,
+    description: "Browse and manage data products",
+  },
+  {
+    label: "Compliance",
+    path: "/compliance",
+    icon: Shield,
+    description: "Compliance policies and audits",
+  },
+  {
+    label: "Asset Reviews",
+    path: "/asset-reviews",
+    icon: ClipboardList,
+    description: "Review and approve data assets",
+  },
+  {
+    label: "Training Curation",
+    path: "/training-data-curation",
+    icon: GraduationCap,
+    description: "Curate training data governance",
+  },
+  {
+    label: "Business Glossary",
+    path: "/business-glossary",
+    icon: BookOpen,
+    description: "Shared business terminology",
+  },
+];
+
+interface GovernanceNavProps {
+  ontosUrl?: string;
+}
+
+function GovernanceNav({ ontosUrl }: GovernanceNavProps) {
+  const { open } = useSidebar();
+
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>Governance</SidebarGroupLabel>
+      <SidebarMenu>
+        {GOVERNANCE_LINKS.map((link) => {
+          const Icon = link.icon;
+          const isDisabled = !ontosUrl;
+
+          return (
+            <SidebarMenuItem key={link.path}>
+              <SidebarMenuButton
+                tooltip={
+                  isDisabled
+                    ? "Configure ONTOS_BASE_URL to enable"
+                    : link.description
+                }
+                onClick={() => {
+                  if (ontosUrl) {
+                    window.open(ontosUrl + link.path, "_blank");
+                  }
+                }}
+                className={isDisabled ? "opacity-40 cursor-not-allowed" : ""}
+              >
+                <Icon
+                  className={clsx(
+                    "w-5 h-5 flex-shrink-0",
+                    isDisabled ? "text-db-gray-400" : "text-db-gray-500",
+                  )}
+                />
+                {open && (
+                  <>
+                    <span className="flex-1 text-left">{link.label}</span>
+                    <ExternalLink
+                      className={clsx(
+                        "w-3 h-3",
+                        isDisabled ? "text-db-gray-300" : "text-db-gray-400",
+                      )}
+                    />
+                  </>
+                )}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          );
+        })}
+      </SidebarMenu>
+    </SidebarGroup>
+  );
+}
+
+// ============================================================================
 // Main Layout
 // ============================================================================
 
@@ -503,6 +613,7 @@ interface AppLayoutProps {
   completedStages?: PipelineStage[];
   currentUser: string;
   workspaceUrl?: string;
+  ontosUrl?: string;
   showPromptTemplates: boolean;
   onTogglePromptTemplates: () => void;
   showExamples: boolean;
@@ -526,6 +637,7 @@ export function AppLayout({
   completedStages = [],
   currentUser,
   workspaceUrl,
+  ontosUrl,
   showPromptTemplates,
   onTogglePromptTemplates,
   showExamples,
@@ -570,6 +682,7 @@ export function AppLayout({
             showLabelSets={showLabelSets}
             onToggleLabelSets={onToggleLabelSets}
           />
+          <GovernanceNav ontosUrl={ontosUrl} />
         </SidebarContent>
 
         <SidebarFooter>

@@ -225,6 +225,7 @@ async def get_config():
         "catalog": settings.databricks_catalog,
         "schema": settings.databricks_schema,
         "current_user": user,
+        "ontos_url": settings.ontos_base_url,
     }
 
 

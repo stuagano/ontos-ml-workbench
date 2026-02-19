@@ -64,6 +64,7 @@ import {
 } from "../components/annotation";
 import { useSheetCanonicalStats } from "../hooks/useCanonicalLabels";
 import { PromoteToCanonicalModal } from "../components/PromoteToCanonicalModal";
+import { QualityGatePanel } from "../components/QualityGatePanel";
 import { getConfig } from "../services/api";
 import type { AssembledDataset, AssembledRow, ResponseSource } from "../types";
 
@@ -1348,6 +1349,13 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
                   labels
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Quality Gate */}
+          {assemblyId && (
+            <div className="mb-6">
+              <QualityGatePanel collectionId={assemblyId} />
             </div>
           )}
 

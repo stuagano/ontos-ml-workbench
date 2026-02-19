@@ -7,24 +7,32 @@
 import type { OntosModule } from "./types";
 import type { PipelineStage } from "../types";
 
-// Import actual modules
+// Import modules
 import { dspyModule } from "./dspy";
 import { dataQualityModule } from "./quality";
+import { exampleStoreModule } from "./example-store";
+import { labelingModule } from "./labeling";
+import { labelSetsModule } from "./label-sets";
+import { canonicalLabelsModule } from "./canonical-labels";
+import { qualityGateModule } from "./quality-gate";
 
 /**
  * All registered modules
  *
  * Future modules to add:
- * - Labeling Workflows (multi-user annotation)
  * - Monitoring & Alerts (drift detection, performance tracking)
  * - Analytics Dashboard (detailed usage analytics)
- * - Example Store (few-shot example management)
  * - Evaluation Harness (model comparison)
  * - Cost Tracker (budget monitoring)
  */
 export const MODULE_REGISTRY: OntosModule[] = [
   dspyModule,
   dataQualityModule,
+  exampleStoreModule,
+  labelingModule,
+  labelSetsModule,
+  canonicalLabelsModule,
+  qualityGateModule,
 ];
 
 /**

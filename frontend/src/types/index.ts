@@ -608,6 +608,7 @@ export interface AppConfig {
   catalog: string;
   schema: string;
   current_user: string;
+  ontos_url?: string;
 }
 
 // ============================================================================

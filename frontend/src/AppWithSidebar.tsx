@@ -306,6 +306,7 @@ function AppContent() {
       completedStages={completedStages}
       currentUser={config?.current_user || "Unknown"}
       workspaceUrl={config?.workspace_url}
+      ontosUrl={config?.ontos_url}
       showPromptTemplates={showPromptTemplates}
       onTogglePromptTemplates={() =>
         setShowPromptTemplates(!showPromptTemplates)

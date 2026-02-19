@@ -94,6 +94,7 @@ export function ImprovePage({ mode = "browse", onModeChange }: ImprovePageProps)
   const [ratingFilter, setRatingFilter] = useState<
     "all" | "positive" | "negative"
   >("all");
+  const [feedbackToConvert, setFeedbackToConvert] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const toast = useToast();
 
@@ -164,11 +165,15 @@ export function ImprovePage({ mode = "browse", onModeChange }: ImprovePageProps)
 
   const handleAddToTraining = (feedbackId: string) => {
     if (templates.length === 0) {
-      alert("No templates available. Create a template first.");
+      toast.error("No templates", "Create a template first in Prompt Templates (Alt+T).");
       return;
     }
-    // Use first template for now - could add a selector
-    convertMutation.mutate({ feedbackId, templateId: templates[0].id });
+    if (templates.length === 1) {
+      convertMutation.mutate({ feedbackId, templateId: templates[0].id });
+      return;
+    }
+    // Multiple templates — show picker
+    setFeedbackToConvert(feedbackId);
   };
 
   const isLoading = endpointsLoading || feedbackLoading;
@@ -465,6 +470,52 @@ export function ImprovePage({ mode = "browse", onModeChange }: ImprovePageProps)
                     Start Improvement Cycle
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Template Picker Modal */}
+        {feedbackToConvert && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-md p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-db-gray-800 dark:text-white">
+                  Select Template
+                </h2>
+                <button
+                  onClick={() => setFeedbackToConvert(null)}
+                  className="text-db-gray-400 hover:text-db-gray-600 dark:hover:text-gray-300"
+                >
+                  &times;
+                </button>
+              </div>
+              <p className="text-sm text-db-gray-600 dark:text-gray-400 mb-4">
+                Choose which template to use for converting this feedback to training data:
+              </p>
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {templates.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      convertMutation.mutate({
+                        feedbackId: feedbackToConvert,
+                        templateId: t.id,
+                      });
+                      setFeedbackToConvert(null);
+                    }}
+                    className="w-full text-left p-3 rounded-lg border border-db-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-colors"
+                  >
+                    <div className="font-medium text-db-gray-800 dark:text-white">
+                      {t.name}
+                    </div>
+                    {t.description && (
+                      <div className="text-sm text-db-gray-500 dark:text-gray-400 mt-1">
+                        {t.description}
+                      </div>
+                    )}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
