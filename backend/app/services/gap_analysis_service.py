@@ -30,6 +30,7 @@ from app.models.gap_analysis import (
     GapSeverity,
     GapStatus,
     GapType,
+    GapUpdate,
     QualityGap,
     TaskStatus,
 )
@@ -555,6 +556,96 @@ async def create_annotation_task(
         priority=task.priority,
         status=TaskStatus.PENDING,
         created_at=datetime.now(),
+    )
+
+
+async def update_gap_in_db(gap_id: str, update: GapUpdate) -> GapResponse:
+    """Persist gap updates to the identified_gaps table."""
+    settings = get_settings()
+
+    set_clauses = []
+    if update.status:
+        set_clauses.append(f"status = '{_escape_sql(update.status.value)}'")
+    if update.severity:
+        set_clauses.append(f"severity = '{_escape_sql(update.severity.value)}'")
+    if update.suggested_action:
+        set_clauses.append(
+            f"suggested_action = '{_escape_sql(update.suggested_action)}'"
+        )
+    if update.resolution_notes:
+        set_clauses.append(
+            f"resolution_notes = '{_escape_sql(update.resolution_notes)}'"
+        )
+
+    if set_clauses:
+        query = f"""
+        UPDATE {settings.uc_catalog}.{settings.uc_schema}.identified_gaps
+        SET {', '.join(set_clauses)}
+        WHERE gap_id = '{_escape_sql(gap_id)}'
+        """
+        try:
+            await execute_sql(query)
+        except Exception as e:
+            logger.warning(f"Failed to persist gap update: {e}")
+
+    # Return updated gap
+    gap = await get_gap(gap_id)
+    if not gap:
+        raise ValueError(f"Gap {gap_id} not found after update")
+    return gap
+
+
+async def list_annotation_tasks(
+    status: str | None = None,
+    team: str | None = None,
+    limit: int = 20,
+) -> list[AnnotationTaskResponse]:
+    """List annotation tasks from the database."""
+    settings = get_settings()
+
+    where_clauses = []
+    if status:
+        where_clauses.append(f"status = '{_escape_sql(status)}'")
+    if team:
+        where_clauses.append(f"assigned_team = '{_escape_sql(team)}'")
+
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+    query = f"""
+    SELECT * FROM {settings.uc_catalog}.{settings.uc_schema}.annotation_tasks
+    {where_sql}
+    ORDER BY created_at DESC
+    LIMIT {limit}
+    """
+
+    try:
+        result = await execute_sql(query)
+        rows = result.get("data", [])
+        return [_row_to_annotation_task(row) for row in rows]
+    except Exception as e:
+        logger.warning(f"Failed to list annotation tasks: {e}")
+        return []
+
+
+def _row_to_annotation_task(row: dict) -> AnnotationTaskResponse:
+    """Convert a database row to AnnotationTaskResponse."""
+    return AnnotationTaskResponse(
+        task_id=row.get("task_id", ""),
+        task_type=row.get("task_type", "gap_fill"),
+        title=row.get("title", ""),
+        description=row.get("description"),
+        instructions=row.get("instructions"),
+        source_gap_id=row.get("source_gap_id"),
+        target_record_count=row.get("target_record_count", 0),
+        records_completed=row.get("records_completed", 0),
+        assigned_to=row.get("assigned_to"),
+        assigned_team=row.get("assigned_team"),
+        priority=row.get("priority", "medium"),
+        status=TaskStatus(row.get("status", "pending")),
+        due_date=row.get("due_date"),
+        output_bit_id=row.get("output_bit_id"),
+        created_at=row.get("created_at"),
+        created_by=row.get("created_by"),
     )
 
 

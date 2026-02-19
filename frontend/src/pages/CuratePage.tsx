@@ -65,6 +65,7 @@ import {
 import { useSheetCanonicalStats } from "../hooks/useCanonicalLabels";
 import { PromoteToCanonicalModal } from "../components/PromoteToCanonicalModal";
 import { QualityGatePanel } from "../components/QualityGatePanel";
+import { LabelVersionHistory } from "../components/LabelVersionHistory";
 import { getConfig } from "../services/api";
 import type { AssembledDataset, AssembledRow, ResponseSource } from "../types";
 
@@ -419,6 +420,11 @@ function DetailPanel({
               </div>
             )}
           </div>
+        )}
+
+        {/* Canonical Label Version History */}
+        {row.canonical_label_id && (
+          <LabelVersionHistory labelId={row.canonical_label_id} />
         )}
       </div>
 

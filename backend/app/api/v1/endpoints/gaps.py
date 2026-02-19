@@ -32,8 +32,10 @@ from app.services.gap_analysis_service import (
     create_annotation_task,
     create_gap_record,
     get_gap,
+    list_annotation_tasks as list_tasks_from_db,
     list_gaps,
     run_full_gap_analysis,
+    update_gap_in_db,
 )
 from app.services.mlflow_integration_service import (
     check_and_analyze_model,
@@ -178,17 +180,8 @@ async def update_gap(gap_id: str, update: GapUpdate) -> GapResponse:
     if not gap:
         raise HTTPException(status_code=404, detail=f"Gap {gap_id} not found")
 
-    # Apply updates
-    if update.status:
-        gap.status = update.status
-    if update.severity:
-        gap.severity = update.severity
-    if update.suggested_action:
-        gap.suggested_action = update.suggested_action
-
-    # TODO: Persist update to database
-
-    return gap
+    # Persist update to database and return updated gap
+    return await update_gap_in_db(gap_id, update)
 
 
 # ============================================================================
@@ -234,5 +227,4 @@ async def list_annotation_tasks(
     limit: int = Query(default=20, ge=1, le=100),
 ):
     """List annotation tasks."""
-    # TODO: Implement task listing from database
-    return []
+    return await list_tasks_from_db(status=status, team=team, limit=limit)

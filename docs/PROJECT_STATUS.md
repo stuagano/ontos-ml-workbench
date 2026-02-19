@@ -63,7 +63,7 @@
 | Create / edit canonical labels | DONE | Full CRUD wired to 13 backend endpoints |
 | Multiple labelsets per item | DONE | Composite key `(sheet_id, item_ref, label_type)` |
 | Label confidence + usage constraints | DONE | Backend model supports it |
-| Version history | BACKEND ONLY | Backend tracks versions; UI doesn't display history |
+| Version history | DONE | `LabelVersionHistory.tsx` panel in CuratePage detail view |
 | **Labeling Jobs (annotation workflow)** | | |
 | Create / manage labeling jobs | DONE | `LabelingJobsPage.tsx` — create, start, pause, resume, delete |
 | Task assignment + progress tracking | DONE | 30+ backend endpoints for full workflow |
@@ -113,8 +113,8 @@
 | User feedback capture (thumbs up/down) | DONE | `ImprovePage.tsx` + `POST /feedback` |
 | Feedback stats and trends | DONE | Stats endpoint wired to UI |
 | Convert feedback to training data | DONE | `POST /feedback/{id}/to-training` wired |
-| Gap analysis | SCAFFOLD | Backend uses **simulated** analysis functions (`_simulate_error_analysis`, etc.); CRUD for gap records is real |
-| Annotation task creation from gaps | NOT STARTED | `GET /gaps/tasks` always returns `[]` |
+| Gap analysis | SCAFFOLD | Backend uses **simulated** analysis functions (`_simulate_error_analysis`, etc.); CRUD for gap records is real and persists to DB |
+| Annotation task creation from gaps | DONE | `POST /gaps/{id}/task` creates tasks; `GET /gaps/tasks` queries `annotation_tasks` table |
 | Trigger retraining | NOT STARTED | No UI to initiate retrain from gaps |
 
 ---
@@ -174,7 +174,7 @@
 | Feedback | 10 | Fully implemented |
 | Registries | 15 | Fully implemented |
 | Unity Catalog | 6 | Fully implemented |
-| Gap Analysis | 10 | Partial — analysis is simulated, CRUD is real |
+| Gap Analysis | 10 | Partial — analysis is simulated, CRUD + annotation tasks persist to DB |
 | Attribution | 7 | Present — not fully verified |
 | Agents | 3 | Fully implemented |
 | Settings/Admin | 7 | Fully implemented |
@@ -185,7 +185,7 @@
 
 ## Known Issues
 
-1. **Gap analysis is simulated** — `gap_analysis_service.py` uses `_simulate_*` helper functions instead of real model evaluation. `PUT /gaps/{id}` has a `# TODO: Persist update to database` comment.
+1. **Gap analysis is simulated** — `gap_analysis_service.py` uses `_simulate_*` helper functions instead of real model evaluation. Gap CRUD (create/update/list) and annotation task endpoints now persist to DB correctly.
 
 2. **Data quality results stub** — `GET /data-quality/sheets/{id}/results` returns empty results, no DB persistence.
 
@@ -217,8 +217,8 @@
 | ~~5~~ | ~~**Deploy — rollback UI**~~ | ~~DONE — `rollbackDeployment` API function + "Rollback Version" row action in DeployPage~~ | ~~XS~~ |
 | 6 | **Deploy — guardrails** | PRD P1 feature. No backend or frontend. Research Databricks Guardrails API first. | L |
 | 7 | **Monitor — dedicated metrics ingestion** | Currently derives metrics from feedback table. Need real Lakehouse Monitoring integration. | M |
-| 8 | **Canonical label version history UI** | Backend tracks versions; UI needs a history viewer panel | S |
-| 9 | **Agent Framework hook** | `AgentRetrieverService` exists; need documentation + registration endpoint for Mosaic AI Agent Framework | M |
+| ~~8~~ | ~~**Canonical label version history UI**~~ | ~~DONE — `LabelVersionHistory.tsx` expandable panel wired into CuratePage detail view~~ | ~~S~~ |
+| ~~9~~ | ~~**Agent Framework hook**~~ | ~~DONE (code) — `AgentRetrieverService` + 3 agent endpoints + Registries CRUD all implemented. Only documentation missing.~~ | ~~M~~ |
 | ~~10~~ | ~~**Labeling schema DDL**~~ | ~~DONE — `09_labeling_jobs.sql`, `10_labeling_tasks.sql`, `11_labeled_items.sql`, `12_workspace_users.sql`~~ | ~~S~~ |
 
 ### P2: Nice to Have
@@ -251,6 +251,10 @@
 - Confirmed TrainPage fully wired (was incorrectly listed as read-only — all 9 training endpoints connected)
 - Canonical label coverage banner in SheetBuilder: shows "X% coverage" when template selected
 - Progress tracking rules added to all CLAUDE.md files
+- Gap analysis: fixed `PUT /gaps/{id}` to persist updates to DB (was a TODO stub)
+- Gap analysis: fixed `GET /gaps/tasks` to query `annotation_tasks` table (was returning `[]`)
+- Canonical label version history UI: `LabelVersionHistory.tsx` expandable panel in CuratePage detail view
+- Agent Framework confirmed fully implemented (retrieval service + 3 endpoints + registries CRUD)
 
 ---
 
