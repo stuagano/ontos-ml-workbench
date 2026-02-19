@@ -45,6 +45,7 @@ import {
   getFeedbackStats,
   getPerformanceMetrics,
   getRealtimeMetrics,
+  getMetricsTimeseries,
   listAlerts,
   getDriftDetection,
   type ServingEndpoint,
@@ -76,42 +77,66 @@ const TIME_RANGE_HOURS: Record<TimeRange, number> = {
 };
 
 // ============================================================================
-// Mock Chart Data Generator
+// Chart Data Builder
 // ============================================================================
 
-function generateMockChartData(
+function buildChartSeries(
+  timeseriesData: Array<{
+    timestamp: string;
+    total_requests: number;
+    avg_latency_ms?: number;
+    p95_latency_ms?: number;
+    error_rate: number;
+  }> | undefined,
   timeRange: TimeRange,
-  hasEndpoints: boolean
+  hasEndpoints: boolean,
 ): MetricSeries[] {
-  if (!hasEndpoints) {
-    return [];
+  if (!hasEndpoints) return [];
+
+  // Use real data when available
+  if (timeseriesData && timeseriesData.length > 0) {
+    const series: MetricSeries[] = [
+      {
+        name: "Requests",
+        data: timeseriesData.map((p) => ({
+          timestamp: p.timestamp,
+          value: p.total_requests,
+        })),
+        color: "cyan-600",
+        strokeWidth: 2,
+      },
+    ];
+
+    // Add latency series if available
+    const hasLatency = timeseriesData.some((p) => p.avg_latency_ms != null);
+    if (hasLatency) {
+      series.push({
+        name: "Avg Latency (ms)",
+        data: timeseriesData.map((p) => ({
+          timestamp: p.timestamp,
+          value: Math.round(p.avg_latency_ms ?? 0),
+        })),
+        color: "amber-500",
+        strokeWidth: 1.5,
+      });
+    }
+    return series;
   }
 
+  // Fallback: generate placeholder data
   const hours = TIME_RANGE_HOURS[timeRange];
-  const points = Math.min(hours, 24); // Max 24 data points
+  const points = Math.min(hours, 24);
   const now = new Date();
-  const interval = (hours * 60 * 60 * 1000) / points; // ms per point
+  const interval = (hours * 60 * 60 * 1000) / points;
 
   const requestData = [];
-  const latencyData = [];
-
   for (let i = points; i >= 0; i--) {
     const timestamp = new Date(now.getTime() - i * interval).toISOString();
-
-    // Generate request volume (with some variation)
     const baseRequests = 1200;
     const variation = Math.sin(i * 0.5) * 200 + Math.random() * 100;
     requestData.push({
       timestamp,
       value: Math.max(0, Math.floor(baseRequests + variation)),
-    });
-
-    // Generate latency (with some variation)
-    const baseLatency = 180;
-    const latencyVariation = Math.sin(i * 0.3) * 30 + Math.random() * 20;
-    latencyData.push({
-      timestamp,
-      value: Math.max(50, Math.floor(baseLatency + latencyVariation)),
     });
   }
 
@@ -553,6 +578,18 @@ export function MonitorPage({ mode = "browse" }: MonitorPageProps) {
             comparison_hours: 24,
           })
         : Promise.resolve(null),
+    enabled: !!selectedEndpoint && hasEndpoints,
+  });
+
+  // Fetch real timeseries chart data
+  const { data: timeseriesData } = useQuery({
+    queryKey: ["metrics-timeseries", selectedEndpoint, timeRange],
+    queryFn: () =>
+      selectedEndpoint
+        ? getMetricsTimeseries(selectedEndpoint, {
+            hours: TIME_RANGE_HOURS[timeRange],
+          })
+        : Promise.resolve([]),
     enabled: !!selectedEndpoint && hasEndpoints,
   });
 
@@ -1022,7 +1059,7 @@ export function MonitorPage({ mode = "browse" }: MonitorPageProps) {
                     </button>
                   </div>
                   <MetricsLineChart
-                    series={generateMockChartData(timeRange, hasEndpoints)}
+                    series={buildChartSeries(timeseriesData, timeRange, hasEndpoints)}
                     height={192}
                     empty={!hasEndpoints}
                     emptyMessage="No endpoint data available"

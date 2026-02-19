@@ -31,6 +31,9 @@ databricks sql --file 12_workspace_users.sql
 databricks sql --file 13_model_evaluations.sql
 databricks sql --file 14_identified_gaps.sql
 databricks sql --file 15_annotation_tasks.sql
+databricks sql --file 16_bit_attribution.sql
+databricks sql --file 17_dqx_quality_results.sql
+databricks sql --file 18_endpoint_metrics.sql
 
 # 3. Validate setup
 databricks sql --file 99_validate_and_seed.sql
@@ -311,6 +314,9 @@ GRANT ALL PRIVILEGES ON SCHEMA main.ontos_ml_workbench TO platform_admins;
 - `13_model_evaluations.sql` - Model evaluation results (mlflow.evaluate)
 - `14_identified_gaps.sql` - Gap analysis identified gaps
 - `15_annotation_tasks.sql` - Annotation tasks for gap remediation
+- `16_bit_attribution.sql` - Model attribution scores per training data
+- `17_dqx_quality_results.sql` - Data quality check results per sheet
+- `18_endpoint_metrics.sql` - Per-request endpoint performance metrics
 - `99_validate_and_seed.sql` - Validation queries
 
 ### Active Migrations

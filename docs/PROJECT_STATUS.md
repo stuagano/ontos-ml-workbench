@@ -2,10 +2,13 @@
 
 **Last Updated:** February 18, 2026
 **PRD Version:** 2.3
-**Overall Progress:** ~85% backend, ~75% frontend
+**Overall Progress:** ~85% backend, ~75% frontend (ML Pipeline); 0% Ontos Governance Integration
 
 > This is the single source of truth for implementation status. It replaces the stale
 > `GAP_ANALYSIS_V2.md`, `SPRINT_PLAN.md`, `BACKLOG.md`, and `prd/v2.3-implementation-status.md`.
+>
+> **New:** See [Ontos Governance Platform — Gap Analysis](#ontos-governance-platform--gap-analysis)
+> for features from the Ontos User Guide that are not yet in the ML Workbench.
 
 ---
 
@@ -67,7 +70,7 @@
 | **Labeling Jobs (annotation workflow)** | | |
 | Create / manage labeling jobs | DONE | `LabelingJobsPage.tsx` — create, start, pause, resume, delete |
 | Task assignment + progress tracking | DONE | 30+ backend endpoints for full workflow |
-| Task board view | SCAFFOLD | Button exists, shows "Coming soon" toast |
+| Task board view | DONE | `LabelingWorkflow` orchestrator wired into both `AppWithSidebar` and `LabelingModule` |
 | **Label Sets** | | |
 | Browse / create / manage label sets | DONE | `LabelSetsPage.tsx` with full CRUD |
 | Publish / archive lifecycle | DONE | Status-aware row actions |
@@ -94,14 +97,14 @@
 | List / manage serving endpoints | DONE | Endpoint table with status |
 | Rollback to previous version | DONE | "Rollback Version" row action in DeployPage |
 | Registries (Tools/Agents/Endpoints) | DONE | `RegistriesPage.tsx` — tabbed CRUD admin (just built) |
-| Guardrails configuration | NOT STARTED | PRD P1 feature, no implementation |
+| Guardrails configuration | DONE | `GuardrailsPanel` component, GET+PUT `/deployment/endpoints/{name}/guardrails`, Databricks AI Gateway SDK integration |
 
 ### Stage 6: MONITOR — DONE (scaffold-level for some metrics)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Endpoint performance metrics | DONE | `MonitorPage.tsx` queries real feedback data |
-| Real-time metrics (latency, errors) | PARTIAL | API exists, derived from feedback table (no dedicated metrics ingestion) |
+| Real-time metrics (latency, errors) | DONE | `endpoint_metrics` table + ingestion endpoints + timeseries API; falls back to feedback-derived when empty |
 | Drift detection | PARTIAL | UI panel exists, backend endpoint works but analysis is basic |
 | Alert management (create/ack/resolve) | DONE | Full alert CRUD wired in MonitorPage |
 | Health dashboard | DONE | Combined health score endpoint |
@@ -169,16 +172,16 @@
 | Example Store | 12 | Fully implemented |
 | DSPy | 10 | Fully implemented |
 | Training | 12 | Fully implemented (includes 3 evaluation endpoints) |
-| Deployment | 13 | Fully implemented |
-| Monitoring | 10 | Fully implemented |
+| Deployment | 15 | Fully implemented (+ guardrails GET/PUT) |
+| Monitoring | 14 | Fully implemented (+ metrics ingestion, timeseries, batch ingest) |
 | Feedback | 10 | Fully implemented |
 | Registries | 15 | Fully implemented |
 | Unity Catalog | 6 | Fully implemented |
 | Gap Analysis | 10 | Fully implemented — real queries + CRUD + annotation tasks |
-| Attribution | 7 | Present — not fully verified |
+| Attribution | 7 | Fully implemented — fixed `settings.get_table()` + `execute_sql()` result handling + DDL |
 | Agents | 3 | Fully implemented |
 | Settings/Admin | 7 | Fully implemented |
-| Data Quality (DQX) | 4 | Partial — `GET results` is a stub |
+| Data Quality (DQX) | 4 | Fully implemented — results persisted to `dqx_quality_results` table |
 | Quality Proxy | 1 | Fully implemented |
 
 ---
@@ -187,7 +190,7 @@
 
 ~~1. **Gap analysis is simulated**~~ — FIXED. `gap_analysis_service.py` now uses real SQL queries against `feedback_items`, `endpoints_registry`, `qa_pairs`, `model_evaluations`. Simulated data kept as fallback only when tables don't exist. DDL added for `identified_gaps` and `annotation_tasks`.
 
-2. **Data quality results stub** — `GET /data-quality/sheets/{id}/results` returns empty results, no DB persistence.
+~~2. **Data quality results stub**~~ — FIXED. `run_checks()` now persists results to `dqx_quality_results` table. `get_results()` queries the table and returns historical runs.
 
 3. ~~**Schema references stale**~~ — FIXED. `canonical_labels.py`, `feedback.py`, `training_service.py`, and `settings.py` now use `training_sheets`/`qa_pairs`.
 
@@ -215,28 +218,91 @@
 |---|---------|----------------|--------|
 | ~~4~~ | ~~**Canonical label lookup status in GENERATE**~~ | ~~DONE — Coverage % banner in SheetBuilder using `getCanonicalLabelStats`~~ | ~~S~~ |
 | ~~5~~ | ~~**Deploy — rollback UI**~~ | ~~DONE — `rollbackDeployment` API function + "Rollback Version" row action in DeployPage~~ | ~~XS~~ |
-| 6 | **Deploy — guardrails** | PRD P1 feature. No backend or frontend. Research Databricks Guardrails API first. | L |
-| 7 | **Monitor — dedicated metrics ingestion** | Currently derives metrics from feedback table. Need real Lakehouse Monitoring integration. | M |
+| ~~6~~ | ~~**Deploy — guardrails**~~ | ~~DONE — `GuardrailsPanel` slide-out drawer with safety, PII, keywords, topics, rate limits. Backend uses `put_ai_gateway()` SDK.~~ | ~~L~~ |
+| ~~7~~ | ~~**Monitor — dedicated metrics ingestion**~~ | ~~DONE — `endpoint_metrics` DDL, `POST /monitoring/metrics/ingest` + batch, `GET /monitoring/metrics/timeseries/{id}`, performance endpoint now returns real latencies.~~ | ~~M~~ |
 | ~~8~~ | ~~**Canonical label version history UI**~~ | ~~DONE — `LabelVersionHistory.tsx` expandable panel wired into CuratePage detail view~~ | ~~S~~ |
 | ~~9~~ | ~~**Agent Framework hook**~~ | ~~DONE (code) — `AgentRetrieverService` + 3 agent endpoints + Registries CRUD all implemented. Only documentation missing.~~ | ~~M~~ |
 | ~~10~~ | ~~**Labeling schema DDL**~~ | ~~DONE — `09_labeling_jobs.sql`, `10_labeling_tasks.sql`, `11_labeled_items.sql`, `12_workspace_users.sql`~~ | ~~S~~ |
 
-### P2: Nice to Have
+### P2: Nice to Have (PRD)
 
 | # | Feature | What's Missing | Effort |
 |---|---------|----------------|--------|
-| 11 | **Lineage DAG visualization** | Backend has attribution/lineage traversal; no interactive frontend visualization | L |
+| ~~11~~ | ~~**Lineage DAG visualization**~~ | ~~DONE — `LineageDAG.tsx` SVG component in TrainingJobDetail Lineage tab. Shows Sheet→Template→Training Sheet→Model with canonical label branches.~~ | ~~L~~ |
 | ~~12~~ | ~~**Model evaluation harness**~~ | ~~DONE — `evaluation_service.py` + 3 endpoints + `model_evaluations` DDL + Evaluate tab in TrainingJobDetail~~ | ~~L~~ |
 | 13 | **Synthetic data generation** | PRD P2. No backend or frontend. | L |
 | 14 | **Active learning** | PRD P2. No model-in-the-loop sampling. | L |
 | 15 | **Image annotation tools** | PRD P2. Bounding box / polygon labeling for vision use cases. | L |
-| 16 | **Data Quality results persistence** | `GET /data-quality/sheets/{id}/results` is a stub | S |
-| 17 | **Task board view for labeling** | Button exists with "Coming soon" toast | M |
+| ~~16~~ | ~~**Data Quality results persistence**~~ | ~~DONE — `run_checks()` persists to `dqx_quality_results` table, `get_results()` queries history~~ | ~~S~~ |
+| ~~17~~ | ~~**Task board view for labeling**~~ | ~~DONE — `LabelingWorkflow` orchestrator wired into `AppWithSidebar` + `LabelingModule`~~ | ~~M~~ |
+
+---
+
+## Ontos Governance Platform — Gap Analysis
+
+> Compared against [Ontos User Guide](https://github.com/databrickslabs/ontos/blob/main/src/docs/USER-GUIDE.md).
+> The ML Workbench currently runs independently of Ontos governance. These items represent
+> features from the Ontos platform that would need to be integrated or replicated.
+
+### G-P0: Required for Governance Integration
+
+These features are prerequisites for the ML Workbench to participate in an Ontos-governed data ecosystem.
+
+| # | Feature | Description | What We Have | What's Missing | Effort |
+|---|---------|-------------|-------------|----------------|--------|
+| G1 | **RBAC Roles & Permissions** | 6-role system: Admin, Data Governance Officer, Data Steward, Data Producer, Data Consumer, Security Officer. Per-role permissions, team role overrides. | Platform OAuth only (Known Issue #7). No role-based access control. | Auth middleware, role definitions, permission checks on all endpoints, role assignment UI. | L |
+| G2 | **Teams** | User collections with role assignments, domain association, metadata (Slack channels, leads, tools). | `workspace_users` table only (name, email, role). No team concept. | Teams CRUD (backend + DDL), team membership management, role overrides per team, team-domain linking. | M |
+| G3 | **Domains** | Hierarchical business area groupings (parent-child). Ownership boundaries for data assets. | No domain concept. Sheets/templates are flat (no organizational hierarchy). | Domains CRUD, parent-child hierarchy, domain→asset association, domain browser UI. | M |
+| G4 | **Asset Review Workflow** | Steward review/approval process for data assets. AI-assisted review. Review history tracking. | Q&A pair review (approve/edit/reject) in CuratePage. No asset-level review. | Generalized review request system, steward assignment, review status tracking, approval gating on publish/deploy actions. | L |
+
+### G-P1: High Value Governance Features
+
+Features that make the ML Workbench enterprise-grade for regulated environments (radiation safety).
+
+| # | Feature | Description | What We Have | What's Missing | Effort |
+|---|---------|-------------|-------------|----------------|--------|
+| G5 | **Data Contracts (ODCS v3.0.2)** | Schema specifications with quality guarantees, SLOs, semantic linking. Lifecycle: Draft→Proposed→Under Review→Approved→Active→Certified→Deprecated→Retired. | Sheets define column schemas loosely. DQX checks exist but no contract abstraction. | Data contract entity (DDL + Pydantic model), contract editor UI, SLO definitions, contract↔dataset binding, ODCS YAML import/export. | L |
+| G6 | **Compliance Policies (DSL)** | SQL-like DSL for governance rules. Check across catalogs/schemas/tables. Tagging, notifications, validation failure actions. Scheduled + on-demand runs. | No policy engine. Governance is manual. | Policy DSL parser, policy CRUD, scheduled execution engine, results dashboard, integration with Unity Catalog asset metadata. | L |
+| G7 | **Process Workflows** | Event-driven automation with triggers, entity types, steps. Blocking/non-blocking execution. Approval pausing for human-in-the-loop. Visual workflow designer. | Labeling workflow has jobs→tasks→annotate→review state machine. No general-purpose workflow engine. | Generic workflow engine, trigger definitions, step library, visual designer UI, workflow execution + pause/resume. | L |
+| G8 | **Projects** | Workspace containers for team initiatives. Personal vs. Team types. Logical isolation for development. | No project concept. All assets are global within the Unity Catalog schema. | Projects CRUD, project membership, asset↔project scoping, project-level permissions. | M |
+
+### G-P2: Advanced Governance
+
+Features for mature data governance organizations.
+
+| # | Feature | Description | What We Have | What's Missing | Effort |
+|---|---------|-------------|-------------|----------------|--------|
+| G9 | **Data Products** | Curated asset collections (Source, Source-Aligned, Aggregate, Consumer-Aligned). Input/Output ports. Marketplace publishing, subscriptions. | No data product abstraction. Individual datasets only. | Data product entity, product types, port definitions, marketplace UI, subscription system. | L |
+| G10 | **Semantic Models** | Knowledge graphs connecting technical assets to business concepts (RDF/RDFS). Business Concepts, Business Properties, three-tier semantic linking. | Templates encode domain knowledge as prompts, but no formal ontology. | Semantic model CRUD, concept/property graph, semantic linking to datasets/contracts, graph visualization UI. | L |
+| G11 | **MCP Integration** | Model Context Protocol for AI assistant access. Token management, scoped access (read/write/special), tool discovery. | No MCP server. Backend is REST-only. | MCP server implementation, token CRUD, scope management, tool registration, AI assistant integration. | L |
+| G12 | **Delivery Modes** | Direct (immediate), Indirect (GitOps), Manual deployment. Git repository setup, YAML configs, version control integration. | Single deployment mode (Databricks Serving Endpoints via SDK). | Git-based deployment pipeline, YAML configuration generation, multi-mode deployment UI, approval gates per mode. | M |
+| G13 | **Multi-Platform Connectors** | Pluggable platform adapters (Unity Catalog, Snowflake, Kafka, Power BI). Unified governance across platforms. | Databricks-only (Unity Catalog + Serving Endpoints + FMAPI). | Connector abstraction layer, Snowflake/Kafka adapters, unified asset discovery across platforms. | L |
+| G14 | **Dataset Marketplace** | Publishing datasets for discovery, subscriptions, access requests. | Sheets can be published/archived but not discoverable by external consumers. | Marketplace catalog UI, subscription requests, access approval workflow, usage analytics. | M |
+| G15 | **Naming Conventions** | Enforced naming rules per entity type. Validation on create/update. | No naming validation. | Naming convention config, validation hooks on CRUD operations. | S |
+
+### Implementation Strategy
+
+**Phase 1 — Foundation (G1–G3):** RBAC + Teams + Domains. These are organizational primitives that everything else depends on. Without roles and teams, governance features have no enforcement mechanism.
+
+**Phase 2 — Governance Core (G4–G6):** Asset Review + Data Contracts + Compliance Policies. These give the ML pipeline a governance layer — reviewers can approve datasets before training, contracts guarantee data quality, policies enforce standards.
+
+**Phase 3 — Orchestration (G7–G8):** Process Workflows + Projects. Automate the governance processes established in Phase 2. Projects provide logical isolation for team work.
+
+**Phase 4 — Platform (G9–G15):** Data Products, Semantic Models, MCP, Delivery Modes, Connectors, Marketplace, Naming. These extend governance across the full data ecosystem.
 
 ---
 
 ## Recently Completed (Feb 18, 2026)
 
+- **Lineage DAG visualization**: `LineageDAG.tsx` SVG-based component in TrainingJobDetail Lineage tab. Shows Sheet→Template→Training Sheet→Model with canonical label branches and Q&A pair counts. No external graph library needed.
+- **Dedicated metrics ingestion**: `endpoint_metrics` table (DDL `18_endpoint_metrics.sql`) captures per-request latency, status, tokens, cost. Endpoints: `POST /monitoring/metrics/ingest`, `POST /monitoring/metrics/ingest/batch`, `GET /monitoring/metrics/timeseries/{id}`. Performance endpoint now returns real p50/p95/p99 latencies. MonitorPage chart uses real timeseries with mock fallback.
+- **Guardrails configuration**: `GuardrailsPanel.tsx` slide-out drawer with safety filters, PII handling (NONE/MASK/BLOCK), keyword blocking, topic whitelisting, and rate limits. Backend `GET/PUT /deployment/endpoints/{name}/guardrails` uses Databricks SDK `put_ai_gateway()`. Row action "Configure Guardrails" added to DeployPage.
+- **Quick Wins batch**: Task board wired, attribution service fixed, DQX persistence added
+  - Task board: `AppWithSidebar` and `LabelingModule` now render `LabelingWorkflow` (orchestrates jobs→tasks→annotate→review)
+  - Attribution service: fixed `settings.uc_catalog`/`uc_schema` → `_get_tables()` helper, `result.get("data")` → direct list, `model_bits` → `model_training_lineage`
+  - DQX results: `run_checks()` persists to `dqx_quality_results` table, `get_results()` queries history (last 10 runs)
+  - DDL: `schemas/16_bit_attribution.sql`, `schemas/17_dqx_quality_results.sql`
+- Dead code cleanup: removed `log_attribution_to_mlflow()` and `generate_databricks_job_config()` from `mlflow_integration_service.py` (-113 lines)
 - Gap analysis service: rewrote all 4 analysis functions with real SQL queries (was using hardcoded simulated data)
   - `analyze_model_errors()` queries `model_evaluations` + `feedback_items` JOIN `endpoints_registry`
   - `analyze_coverage_distribution()` queries `qa_pairs` JOIN `training_sheets`

@@ -59,9 +59,9 @@ const DSPyOptimizationPage = lazy(() =>
     default: m.DSPyOptimizationPage,
   })),
 );
-const LabelingJobsPage = lazy(() =>
-  import("./pages/LabelingJobsPage").then((m) => ({
-    default: m.LabelingJobsPage,
+const LabelingWorkflow = lazy(() =>
+  import("./components/labeling").then((m) => ({
+    default: m.LabelingWorkflow,
   })),
 );
 const LabelSetsPage = lazy(() =>
@@ -529,7 +529,7 @@ function AppContent() {
                 </button>
               </div>
             </div>
-            <LabelingJobsPage />
+            <LabelingWorkflow />
           </Suspense>
         </div>
       )}

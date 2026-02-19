@@ -37,6 +37,7 @@ import {
   getJobEvaluation,
 } from "../services/api";
 import type { EvaluationMetric } from "../types";
+import { LineageDAG } from "./LineageDAG";
 import { useToast } from "./Toast";
 
 interface TrainingJobDetailProps {
@@ -548,86 +549,7 @@ export function TrainingJobDetail({ jobId, onBack }: TrainingJobDetailProps) {
 
         {/* Lineage Tab */}
         {activeTab === "lineage" && lineage && (
-          <div className="space-y-4">
-            <div className="bg-white border border-db-gray-200 rounded-lg p-4">
-              <h3 className="font-medium text-db-gray-900 mb-4">
-                Data Lineage
-              </h3>
-              <div className="space-y-3">
-                {/* Sheet */}
-                {lineage.sheet && (
-                  <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Database className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-db-gray-900">
-                        Sheet
-                      </div>
-                      <div className="text-xs text-db-gray-500">
-                        {lineage.sheet.name || lineage.sheet.id}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Arrow */}
-                <div className="ml-4 border-l-2 border-db-gray-300 h-4" />
-
-                {/* Training Sheet */}
-                {lineage.training_sheet && (
-                  <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                      <GitBranch className="w-4 h-4 text-green-600" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-db-gray-900">
-                        Training Sheet
-                      </div>
-                      <div className="text-xs text-db-gray-500">
-                        {lineage.training_sheet.id.slice(0, 16)}...
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Arrow */}
-                <div className="ml-4 border-l-2 border-db-gray-300 h-4" />
-
-                {/* Model */}
-                <div className="flex items-center gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                    <Zap className="w-4 h-4 text-purple-600" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-db-gray-900">
-                      Model
-                    </div>
-                    <div className="text-xs text-db-gray-500">
-                      {job.model_name}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Template Info */}
-            {lineage.template && (
-              <div className="bg-white border border-db-gray-200 rounded-lg p-4">
-                <h3 className="font-medium text-db-gray-900 mb-2">
-                  Template Used
-                </h3>
-                <div className="text-sm text-db-gray-600">
-                  <div className="font-medium">{lineage.template.name}</div>
-                  {lineage.template.label_type && (
-                    <div className="text-xs text-db-gray-500 mt-1">
-                      Label Type: {lineage.template.label_type}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          <LineageDAG lineage={lineage} modelName={job.model_name} />
         )}
 
         {/* Evaluate Tab */}

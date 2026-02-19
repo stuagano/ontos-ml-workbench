@@ -4,13 +4,16 @@ Translates Sheet source_table references into DQX InputConfig and runs
 profiling, check execution, and AI rule generation on behalf of the user.
 """
 
+import json
 import logging
+import uuid
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.api.dqx.dependencies import get_engine, get_generator, get_obo_ws, get_spark
+from app.core.config import get_settings
 from app.services.sql_service import execute_sql
 
 from databricks.labs.dqx.engine import DQEngine
@@ -165,7 +168,7 @@ async def run_checks(
 
         pass_rate = passed / total_rows if total_rows > 0 else 1.0
 
-        return RunChecksResult(
+        result = RunChecksResult(
             table=source_table,
             total_rows=total_rows,
             passed_rows=passed,
@@ -173,6 +176,27 @@ async def run_checks(
             pass_rate=round(pass_rate, 4),
             column_results=column_results,
         )
+
+        # Persist results for get_results() endpoint
+        try:
+            settings = get_settings()
+            table = settings.get_table("dqx_quality_results")
+            run_id = str(uuid.uuid4())
+            col_json = json.dumps(column_results)
+            await execute_sql(f"""
+                INSERT INTO {table}
+                (id, run_id, sheet_id, source_table, total_rows, passed_rows,
+                 failed_rows, pass_rate, checks_run, column_results)
+                VALUES (
+                    '{uuid.uuid4()}', '{run_id}', '{sheet_id}', '{source_table}',
+                    {total_rows}, {passed}, {failed}, {round(pass_rate, 4)},
+                    {len(body.checks)}, '{col_json}'
+                )
+            """)
+        except Exception as store_err:
+            logger.warning(f"Failed to persist DQX results (non-fatal): {store_err}")
+
+        return result
     except Exception as e:
         logger.error(f"Check run failed for {source_table}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to run checks: {e}")
@@ -203,8 +227,44 @@ async def get_results(sheet_id: str):
     """Get the latest quality check results for a sheet."""
     source_table = await _get_sheet_source_table(sheet_id)
 
-    # For now, return empty results — future: store results in Delta table
-    return QualityResults(
-        sheet_id=sheet_id,
-        table=source_table,
-    )
+    try:
+        settings = get_settings()
+        table = settings.get_table("dqx_quality_results")
+        rows = await execute_sql(f"""
+            SELECT run_id, source_table, total_rows, passed_rows, failed_rows,
+                   pass_rate, checks_run, column_results, run_at
+            FROM {table}
+            WHERE sheet_id = '{sheet_id}'
+            ORDER BY run_at DESC
+            LIMIT 10
+        """)
+
+        if not rows:
+            return QualityResults(sheet_id=sheet_id, table=source_table)
+
+        latest = rows[0]
+        col_results_raw = latest.get("column_results", "[]")
+        col_results = json.loads(col_results_raw) if col_results_raw else []
+
+        return QualityResults(
+            sheet_id=sheet_id,
+            table=source_table,
+            last_run_at=str(latest.get("run_at", "")),
+            pass_rate=latest.get("pass_rate"),
+            total_checks=latest.get("checks_run", 0),
+            results=[
+                {
+                    "run_id": r.get("run_id"),
+                    "pass_rate": r.get("pass_rate"),
+                    "total_rows": r.get("total_rows"),
+                    "passed_rows": r.get("passed_rows"),
+                    "failed_rows": r.get("failed_rows"),
+                    "checks_run": r.get("checks_run"),
+                    "run_at": str(r.get("run_at", "")),
+                }
+                for r in rows
+            ],
+        )
+    except Exception as e:
+        logger.warning(f"Failed to fetch DQX results (returning empty): {e}")
+        return QualityResults(sheet_id=sheet_id, table=source_table)

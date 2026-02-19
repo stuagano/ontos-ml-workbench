@@ -2428,3 +2428,56 @@ export interface HealthStatus {
   drift_severity: "low" | "medium" | "high" | "critical";
   timestamp: string;
 }
+
+export interface TimeseriesPoint {
+  timestamp: string;
+  total_requests: number;
+  avg_latency_ms?: number;
+  p95_latency_ms?: number;
+  error_rate: number;
+  total_tokens?: number;
+}
+
+export interface MetricIngestRequest {
+  endpoint_id: string;
+  endpoint_name?: string;
+  request_id?: string;
+  model_name?: string;
+  model_version?: string;
+  latency_ms: number;
+  status_code?: number;
+  error_message?: string;
+  input_tokens?: number;
+  output_tokens?: number;
+  total_tokens?: number;
+  cost_dollars?: number;
+}
+
+// ============================================================================
+// Guardrails
+// ============================================================================
+
+export interface GuardrailParameters {
+  safety: boolean;
+  pii_behavior: "NONE" | "MASK" | "BLOCK";
+  invalid_keywords: string[];
+  valid_topics: string[];
+}
+
+export interface RateLimitConfig {
+  key: "USER" | "SERVICE_PRINCIPAL" | "ENDPOINT";
+  calls: number;
+  renewal_period: string;
+}
+
+export interface GuardrailsConfig {
+  input_guardrails: GuardrailParameters;
+  output_guardrails: GuardrailParameters;
+  rate_limits: RateLimitConfig[];
+}
+
+export interface GuardrailsResponse {
+  endpoint_name: string;
+  guardrails: GuardrailsConfig | null;
+  applied: boolean;
+}

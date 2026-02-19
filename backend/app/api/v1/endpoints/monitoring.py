@@ -28,6 +28,7 @@ _settings = get_settings()
 ENDPOINTS_TABLE = _settings.get_table("endpoints_registry")
 FEEDBACK_TABLE = _settings.get_table("feedback_items")
 ALERTS_TABLE = _settings.get_table("monitor_alerts")
+METRICS_TABLE = _settings.get_table("endpoint_metrics")
 
 
 # ============================================================================
@@ -106,6 +107,160 @@ class DriftReport(BaseModel):
     severity: str  # low, medium, high, critical
 
 
+class MetricIngestRequest(BaseModel):
+    """Ingest a per-request metric data point."""
+
+    endpoint_id: str
+    endpoint_name: str | None = None
+    request_id: str | None = None
+    model_name: str | None = None
+    model_version: str | None = None
+    latency_ms: float
+    status_code: int = 200
+    error_message: str | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
+    cost_dollars: float | None = None
+
+
+class MetricIngestBatchRequest(BaseModel):
+    """Ingest multiple metric data points."""
+
+    metrics: list[MetricIngestRequest]
+
+
+class TimeseriesPoint(BaseModel):
+    """A single point in a time series."""
+
+    timestamp: str
+    total_requests: int = 0
+    avg_latency_ms: float | None = None
+    p95_latency_ms: float | None = None
+    error_rate: float = 0.0
+    total_tokens: int | None = None
+
+
+# ============================================================================
+# Metrics Ingestion
+# ============================================================================
+
+
+@router.post("/metrics/ingest", status_code=201)
+async def ingest_metric(body: MetricIngestRequest) -> dict[str, str]:
+    """
+    Ingest a single per-request metric data point.
+
+    Called by the serving layer after each model inference to capture
+    actual latency, token usage, and error information.
+    """
+    metric_id = str(uuid.uuid4())
+    try:
+        _sql.execute_update(f"""
+            INSERT INTO {METRICS_TABLE}
+            (id, endpoint_id, endpoint_name, request_id, model_name,
+             model_version, latency_ms, status_code, error_message,
+             input_tokens, output_tokens, total_tokens, cost_dollars)
+            VALUES (
+                '{metric_id}', '{body.endpoint_id}',
+                {f"'{body.endpoint_name}'" if body.endpoint_name else 'NULL'},
+                {f"'{body.request_id}'" if body.request_id else 'NULL'},
+                {f"'{body.model_name}'" if body.model_name else 'NULL'},
+                {f"'{body.model_version}'" if body.model_version else 'NULL'},
+                {body.latency_ms}, {body.status_code},
+                {f"'{body.error_message}'" if body.error_message else 'NULL'},
+                {body.input_tokens or 'NULL'}, {body.output_tokens or 'NULL'},
+                {body.total_tokens or 'NULL'}, {body.cost_dollars or 'NULL'}
+            )
+        """)
+        return {"id": metric_id}
+    except Exception as e:
+        logger.error(f"Failed to ingest metric: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to ingest metric: {e}")
+
+
+@router.post("/metrics/ingest/batch", status_code=201)
+async def ingest_metrics_batch(body: MetricIngestBatchRequest) -> dict[str, int]:
+    """Ingest a batch of metric data points."""
+    inserted = 0
+    for m in body.metrics:
+        try:
+            await ingest_metric(m)
+            inserted += 1
+        except Exception as e:
+            logger.warning(f"Failed to ingest metric in batch: {e}")
+    return {"inserted": inserted, "total": len(body.metrics)}
+
+
+@router.get("/metrics/timeseries/{endpoint_id}", response_model=list[TimeseriesPoint])
+async def get_timeseries(
+    endpoint_id: str,
+    hours: int = Query(24, ge=1, le=168),
+    bucket_minutes: int = Query(60, ge=5, le=1440),
+) -> list[TimeseriesPoint]:
+    """
+    Get time-bucketed metrics for charts.
+
+    Returns aggregated metrics per time bucket for the specified endpoint.
+    Queries the dedicated endpoint_metrics table for real latency data.
+    """
+    try:
+        query = f"""
+        SELECT
+            date_trunc('HOUR', created_at) as bucket,
+            COUNT(*) as total_requests,
+            AVG(latency_ms) as avg_latency_ms,
+            PERCENTILE_APPROX(latency_ms, 0.95) as p95_latency_ms,
+            AVG(CASE WHEN status_code >= 400 THEN 1.0 ELSE 0.0 END) as error_rate,
+            SUM(COALESCE(total_tokens, 0)) as total_tokens
+        FROM {METRICS_TABLE}
+        WHERE endpoint_id = '{endpoint_id}'
+          AND created_at >= current_timestamp() - INTERVAL {hours} HOUR
+        GROUP BY date_trunc('HOUR', created_at)
+        ORDER BY bucket
+        """
+        rows = _sql.execute(query)
+
+        if rows:
+            return [
+                TimeseriesPoint(
+                    timestamp=str(row["bucket"]),
+                    total_requests=int(row["total_requests"]),
+                    avg_latency_ms=float(row["avg_latency_ms"]) if row.get("avg_latency_ms") else None,
+                    p95_latency_ms=float(row["p95_latency_ms"]) if row.get("p95_latency_ms") else None,
+                    error_rate=float(row.get("error_rate", 0)) * 100,
+                    total_tokens=int(row["total_tokens"]) if row.get("total_tokens") else None,
+                )
+                for row in rows
+            ]
+
+        # Fall back to feedback-derived data when no dedicated metrics exist
+        fallback = f"""
+        SELECT
+            date_trunc('HOUR', created_at) as bucket,
+            COUNT(*) as total_requests,
+            AVG(CASE WHEN rating < 3 OR flagged = TRUE THEN 1.0 ELSE 0.0 END) as error_rate
+        FROM {FEEDBACK_TABLE}
+        WHERE endpoint_id = '{endpoint_id}'
+          AND created_at >= current_timestamp() - INTERVAL {hours} HOUR
+        GROUP BY date_trunc('HOUR', created_at)
+        ORDER BY bucket
+        """
+        fallback_rows = _sql.execute(fallback)
+        return [
+            TimeseriesPoint(
+                timestamp=str(row["bucket"]),
+                total_requests=int(row["total_requests"]),
+                error_rate=float(row.get("error_rate", 0)) * 100,
+            )
+            for row in fallback_rows
+        ]
+
+    except Exception as e:
+        logger.error(f"Failed to get timeseries: {e}")
+        return []
+
+
 # ============================================================================
 # Performance Metrics
 # ============================================================================
@@ -161,6 +316,38 @@ async def get_performance_metrics(
 
         rows = _sql.execute(metrics_sql)
 
+        # Try to get real latency data from endpoint_metrics
+        latency_by_endpoint: dict[str, dict[str, float]] = {}
+        try:
+            latency_conditions = [
+                f"created_at >= current_timestamp() - INTERVAL {hours} HOUR"
+            ]
+            if endpoint_id:
+                latency_conditions.append(f"endpoint_id = '{endpoint_id}'")
+            latency_where = " AND ".join(latency_conditions)
+
+            latency_sql = f"""
+            SELECT
+                endpoint_id,
+                AVG(latency_ms) as avg_latency,
+                PERCENTILE_APPROX(latency_ms, 0.5) as p50_latency,
+                PERCENTILE_APPROX(latency_ms, 0.95) as p95_latency,
+                PERCENTILE_APPROX(latency_ms, 0.99) as p99_latency
+            FROM {METRICS_TABLE}
+            WHERE {latency_where}
+            GROUP BY endpoint_id
+            """
+            latency_rows = _sql.execute(latency_sql)
+            for lr in latency_rows:
+                latency_by_endpoint[lr["endpoint_id"]] = {
+                    "avg": float(lr.get("avg_latency") or 0),
+                    "p50": float(lr.get("p50_latency") or 0),
+                    "p95": float(lr.get("p95_latency") or 0),
+                    "p99": float(lr.get("p99_latency") or 0),
+                }
+        except Exception:
+            pass  # Metrics table may not exist yet
+
         metrics = []
         for row in rows:
             # Get endpoint name
@@ -173,6 +360,8 @@ async def get_performance_metrics(
                 endpoint_rows[0]["name"] if endpoint_rows else "Unknown"
             )
 
+            latency = latency_by_endpoint.get(row["endpoint_id"], {})
+
             metrics.append(
                 PerformanceMetrics(
                     endpoint_id=row["endpoint_id"],
@@ -181,6 +370,10 @@ async def get_performance_metrics(
                     total_requests=int(row["total_requests"]),
                     successful_requests=int(row["successful_requests"]),
                     failed_requests=int(row["failed_requests"]),
+                    avg_latency_ms=latency.get("avg"),
+                    p50_latency_ms=latency.get("p50"),
+                    p95_latency_ms=latency.get("p95"),
+                    p99_latency_ms=latency.get("p99"),
                     error_rate=float(row["error_rate"]) * 100,
                     requests_per_minute=float(row["requests_per_minute"]),
                     last_updated=row["last_updated"],

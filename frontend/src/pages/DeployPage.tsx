@@ -28,6 +28,7 @@ import {
   Filter,
   Search,
   RotateCcw,
+  Shield,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -44,6 +45,7 @@ import {
 import { openDatabricks } from "../services/databricksLinks";
 import { useToast } from "../components/Toast";
 import { DataTable, Column, RowAction } from "../components/DataTable";
+import { GuardrailsPanel } from "../components/GuardrailsPanel";
 import { WorkflowBanner } from "../components/WorkflowBanner";
 import { StatusBadge } from "../components/StatusBadge";
 import {
@@ -588,6 +590,9 @@ export function DeployPage({ mode = "browse" }: DeployPageProps) {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [playgroundEndpoint, setPlaygroundEndpoint] =
     useState<ServingEndpoint | null>(null);
+  const [guardrailsEndpoint, setGuardrailsEndpoint] = useState<string | null>(
+    null,
+  );
 
   const toast = useToast();
 
@@ -724,6 +729,13 @@ export function DeployPage({ mode = "browse" }: DeployPageProps) {
       },
       show: (endpoint) => endpoint.state === "READY",
       className: "text-amber-600",
+    },
+    {
+      label: "Configure Guardrails",
+      icon: Shield,
+      onClick: (endpoint) => setGuardrailsEndpoint(endpoint.name),
+      show: (endpoint) => endpoint.state === "READY",
+      className: "text-purple-600",
     },
     {
       label: "Refresh Status",
@@ -928,6 +940,14 @@ export function DeployPage({ mode = "browse" }: DeployPageProps) {
         endpoint={playgroundEndpoint}
         onClose={() => setPlaygroundEndpoint(null)}
       />
+
+      {/* Guardrails Panel */}
+      {guardrailsEndpoint && (
+        <GuardrailsPanel
+          endpointName={guardrailsEndpoint}
+          onClose={() => setGuardrailsEndpoint(null)}
+        />
+      )}
     </div>
   );
 }

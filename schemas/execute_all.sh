@@ -37,6 +37,9 @@ SQL_FILES=(
     "13_model_evaluations.sql"
     "14_identified_gaps.sql"
     "15_annotation_tasks.sql"
+    "16_bit_attribution.sql"
+    "17_dqx_quality_results.sql"
+    "18_endpoint_metrics.sql"
     "99_validate_and_seed.sql"
 )
 

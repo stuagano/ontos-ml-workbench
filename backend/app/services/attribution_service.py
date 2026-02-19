@@ -41,6 +41,15 @@ from app.services.sql_service import execute_sql
 logger = logging.getLogger(__name__)
 
 
+def _get_tables() -> dict[str, str]:
+    """Get fully qualified table names using settings.get_table()."""
+    settings = get_settings()
+    return {
+        "attribution": settings.get_table("bit_attribution"),
+        "lineage": settings.get_table("model_training_lineage"),
+    }
+
+
 # ============================================================================
 # Ablation Attribution
 # ============================================================================
@@ -405,12 +414,12 @@ async def get_attribution(
     method: AttributionMethod | None = None,
 ) -> AttributionResponse | None:
     """Get stored attribution results for a model version."""
-    settings = get_settings()
+    tables = _get_tables()
 
     method_clause = f"AND attribution_method = '{method.value}'" if method else ""
 
     query = f"""
-    SELECT * FROM {settings.uc_catalog}.{settings.uc_schema}.bit_attribution
+    SELECT * FROM {tables["attribution"]}
     WHERE model_name = '{model_name}'
       AND model_version = '{model_version}'
       {method_clause}
@@ -418,8 +427,7 @@ async def get_attribution(
     """
 
     try:
-        result = await execute_sql(query)
-        rows = result.get("data", [])
+        rows = await execute_sql(query)
 
         if not rows:
             return None
@@ -621,7 +629,7 @@ async def analyze_regression(
 
 async def get_bit_impact_history(bit_id: str) -> BitImpactHistoryResponse:
     """Get history of a bit's impact across all models."""
-    settings = get_settings()
+    tables = _get_tables()
 
     query = f"""
     SELECT
@@ -633,14 +641,13 @@ async def get_bit_impact_history(bit_id: str) -> BitImpactHistoryResponse:
         accuracy_impact,
         f1_impact,
         computed_at
-    FROM {settings.uc_catalog}.{settings.uc_schema}.bit_attribution
+    FROM {tables["attribution"]}
     WHERE bit_id = '{bit_id}'
     ORDER BY computed_at DESC
     """
 
     try:
-        result = await execute_sql(query)
-        rows = result.get("data", [])
+        rows = await execute_sql(query)
 
         history = [
             BitImpactEntry(
@@ -697,20 +704,19 @@ async def get_bit_impact_history(bit_id: str) -> BitImpactHistoryResponse:
 async def _get_model_bits(
     model_name: str, model_version: str
 ) -> list[tuple[str, int]]:
-    """Get bits used to train a model from lineage tables."""
-    settings = get_settings()
+    """Get training sheets used to train a model from lineage tables."""
+    tables = _get_tables()
 
     query = f"""
-    SELECT DISTINCT bit_id, bit_version
-    FROM {settings.uc_catalog}.{settings.uc_schema}.model_bits
+    SELECT DISTINCT training_sheet_id, 1 as bit_version
+    FROM {tables["lineage"]}
     WHERE model_name = '{model_name}'
       AND model_version = '{model_version}'
     """
 
     try:
-        result = await execute_sql(query)
-        rows = result.get("data", [])
-        return [(row["bit_id"], row["bit_version"]) for row in rows]
+        rows = await execute_sql(query)
+        return [(row["training_sheet_id"], row["bit_version"]) for row in rows]
     except Exception:
         return []
 
@@ -722,11 +728,11 @@ async def _store_attribution(
     contributions: list[BitContribution],
 ) -> None:
     """Store attribution results in the database."""
-    settings = get_settings()
+    tables = _get_tables()
 
     for c in contributions:
         query = f"""
-        INSERT INTO {settings.uc_catalog}.{settings.uc_schema}.bit_attribution
+        INSERT INTO {tables["attribution"]}
         (model_name, model_version, bit_id, bit_version, attribution_method,
          accuracy_impact, precision_impact, recall_impact, f1_impact,
          importance_rank, importance_score, computed_at)

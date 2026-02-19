@@ -564,3 +564,200 @@ async def validate_endpoint(endpoint_name: str) -> dict[str, Any]:
         raise HTTPException(
             status_code=500, detail=f"Failed to validate endpoint: {e}"
         )
+
+
+# ============================================================================
+# Guardrails
+# ============================================================================
+
+
+class GuardrailParameters(BaseModel):
+    """Guardrail parameters for input or output."""
+
+    safety: bool = Field(False, description="Enable safety content filters")
+    pii_behavior: str = Field(
+        "NONE", description="PII handling: NONE, MASK, BLOCK"
+    )
+    invalid_keywords: list[str] = Field(
+        default_factory=list, description="Keywords to reject"
+    )
+    valid_topics: list[str] = Field(
+        default_factory=list, description="Allowed topics whitelist"
+    )
+
+
+class RateLimitConfig(BaseModel):
+    """Rate limit configuration."""
+
+    key: str = Field(
+        "ENDPOINT", description="Limit scope: USER, SERVICE_PRINCIPAL, ENDPOINT"
+    )
+    calls: int = Field(100, description="Calls per renewal period")
+    renewal_period: str = Field("minute", description="Renewal period")
+
+
+class GuardrailsConfig(BaseModel):
+    """Full guardrails configuration for a serving endpoint."""
+
+    input_guardrails: GuardrailParameters = Field(
+        default_factory=GuardrailParameters
+    )
+    output_guardrails: GuardrailParameters = Field(
+        default_factory=GuardrailParameters
+    )
+    rate_limits: list[RateLimitConfig] = Field(default_factory=list)
+
+
+class GuardrailsResponse(BaseModel):
+    """Current guardrails state for an endpoint."""
+
+    endpoint_name: str
+    guardrails: GuardrailsConfig | None = None
+    applied: bool = False
+
+
+@router.get(
+    "/endpoints/{endpoint_name}/guardrails", response_model=GuardrailsResponse
+)
+async def get_guardrails(endpoint_name: str) -> GuardrailsResponse:
+    """Get current guardrails configuration for a serving endpoint."""
+    service = get_deployment_service()
+    try:
+        ws = service.get_workspace_client()
+        endpoint = ws.serving_endpoints.get(endpoint_name)
+
+        if not endpoint.ai_gateway:
+            return GuardrailsResponse(
+                endpoint_name=endpoint_name, applied=False
+            )
+
+        gw = endpoint.ai_gateway
+        guardrails = gw.guardrails
+
+        def _parse_params(params: Any) -> GuardrailParameters:
+            if not params:
+                return GuardrailParameters()
+            return GuardrailParameters(
+                safety=getattr(params, "safety", False) or False,
+                pii_behavior=(
+                    getattr(getattr(params, "pii", None), "behavior", "NONE")
+                    if getattr(params, "pii", None)
+                    else "NONE"
+                ),
+                invalid_keywords=list(
+                    getattr(params, "invalid_keywords", None) or []
+                ),
+                valid_topics=list(
+                    getattr(params, "valid_topics", None) or []
+                ),
+            )
+
+        config = GuardrailsConfig(
+            input_guardrails=(
+                _parse_params(guardrails.input) if guardrails else GuardrailParameters()
+            ),
+            output_guardrails=(
+                _parse_params(guardrails.output) if guardrails else GuardrailParameters()
+            ),
+            rate_limits=[
+                RateLimitConfig(
+                    key=str(getattr(rl, "key", "ENDPOINT")),
+                    calls=getattr(rl, "calls", 100) or 100,
+                    renewal_period=str(
+                        getattr(rl, "renewal_period", "minute")
+                    ),
+                )
+                for rl in (gw.rate_limits or [])
+            ],
+        )
+
+        return GuardrailsResponse(
+            endpoint_name=endpoint_name,
+            guardrails=config,
+            applied=True,
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to get guardrails: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get guardrails: {e}"
+        )
+
+
+@router.put(
+    "/endpoints/{endpoint_name}/guardrails", response_model=GuardrailsResponse
+)
+async def set_guardrails(
+    endpoint_name: str, config: GuardrailsConfig
+) -> GuardrailsResponse:
+    """
+    Apply guardrails to a serving endpoint via AI Gateway.
+
+    Uses the Databricks SDK `put_ai_gateway()` method to configure
+    safety filters, PII handling, keyword filtering, and rate limits.
+    """
+    service = get_deployment_service()
+    try:
+        from databricks.sdk.service.serving import (
+            AiGatewayGuardrailParameters,
+            AiGatewayGuardrailPiiBehavior,
+            AiGatewayGuardrails,
+            AiGatewayRateLimit,
+            AiGatewayRateLimitKey,
+            AiGatewayRateLimitRenewalPeriod,
+        )
+
+        def _build_params(
+            p: GuardrailParameters,
+        ) -> AiGatewayGuardrailParameters:
+            pii = None
+            if p.pii_behavior != "NONE":
+                pii = AiGatewayGuardrailPiiBehavior(behavior=p.pii_behavior)
+            return AiGatewayGuardrailParameters(
+                safety=p.safety,
+                pii=pii,
+                invalid_keywords=p.invalid_keywords or None,
+                valid_topics=p.valid_topics or None,
+            )
+
+        guardrails = AiGatewayGuardrails(
+            input=_build_params(config.input_guardrails),
+            output=_build_params(config.output_guardrails),
+        )
+
+        rate_limits = [
+            AiGatewayRateLimit(
+                key=AiGatewayRateLimitKey(rl.key),
+                calls=rl.calls,
+                renewal_period=AiGatewayRateLimitRenewalPeriod(
+                    rl.renewal_period.upper()
+                ),
+            )
+            for rl in config.rate_limits
+        ] or None
+
+        ws = service.get_workspace_client()
+        ws.serving_endpoints.put_ai_gateway(
+            name=endpoint_name,
+            guardrails=guardrails,
+            rate_limits=rate_limits,
+        )
+
+        logger.info(f"Applied guardrails to endpoint {endpoint_name}")
+
+        return GuardrailsResponse(
+            endpoint_name=endpoint_name,
+            guardrails=config,
+            applied=True,
+        )
+
+    except ImportError:
+        raise HTTPException(
+            status_code=501,
+            detail="Databricks SDK serving module not available for guardrails",
+        )
+    except Exception as e:
+        logger.error(f"Failed to set guardrails: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to set guardrails: {e}"
+        )

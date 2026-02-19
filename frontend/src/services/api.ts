@@ -10,6 +10,10 @@ export type {
   CreateAlertRequest,
   DriftDetection,
   HealthStatus,
+  TimeseriesPoint,
+  MetricIngestRequest,
+  GuardrailsConfig,
+  GuardrailsResponse,
 } from "../types";
 
 import type {
@@ -112,6 +116,11 @@ import type {
   CreateAlertRequest,
   DriftDetection,
   HealthStatus,
+  TimeseriesPoint,
+  MetricIngestRequest,
+  // Guardrails types
+  GuardrailsConfig,
+  GuardrailsResponse,
 } from "../types";
 
 const API_BASE = "/api/v1";
@@ -809,6 +818,37 @@ export async function queryServingEndpoint(
     method: "POST",
     body: JSON.stringify({ inputs }),
   });
+}
+
+// ============================================================================
+// Guardrails
+// ============================================================================
+
+/**
+ * Get current guardrails configuration for a serving endpoint
+ */
+export async function getGuardrails(
+  endpointName: string,
+): Promise<GuardrailsResponse> {
+  return fetchJson(
+    `${API_BASE}/deployment/endpoints/${endpointName}/guardrails`,
+  );
+}
+
+/**
+ * Apply guardrails configuration to a serving endpoint
+ */
+export async function setGuardrails(
+  endpointName: string,
+  config: GuardrailsConfig,
+): Promise<GuardrailsResponse> {
+  return fetchJson(
+    `${API_BASE}/deployment/endpoints/${endpointName}/guardrails`,
+    {
+      method: "PUT",
+      body: JSON.stringify(config),
+    },
+  );
 }
 
 // ============================================================================
@@ -2325,4 +2365,46 @@ export async function getEndpointHealth(
   endpointId: string,
 ): Promise<HealthStatus> {
   return fetchJson(`${API_BASE}/monitoring/health/${endpointId}`);
+}
+
+/**
+ * Get time-bucketed metrics for charts
+ */
+export async function getMetricsTimeseries(
+  endpointId: string,
+  params?: { hours?: number; bucket_minutes?: number },
+): Promise<TimeseriesPoint[]> {
+  const query = new URLSearchParams();
+  if (params?.hours) query.set("hours", params.hours.toString());
+  if (params?.bucket_minutes)
+    query.set("bucket_minutes", params.bucket_minutes.toString());
+
+  const queryString = query.toString();
+  return fetchJson(
+    `${API_BASE}/monitoring/metrics/timeseries/${endpointId}${queryString ? `?${queryString}` : ""}`,
+  );
+}
+
+/**
+ * Ingest a single metric data point
+ */
+export async function ingestMetric(
+  metric: MetricIngestRequest,
+): Promise<{ id: string }> {
+  return fetchJson(`${API_BASE}/monitoring/metrics/ingest`, {
+    method: "POST",
+    body: JSON.stringify(metric),
+  });
+}
+
+/**
+ * Ingest a batch of metric data points
+ */
+export async function ingestMetricsBatch(
+  metrics: MetricIngestRequest[],
+): Promise<{ inserted: number; total: number }> {
+  return fetchJson(`${API_BASE}/monitoring/metrics/ingest/batch`, {
+    method: "POST",
+    body: JSON.stringify({ metrics }),
+  });
 }

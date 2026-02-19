@@ -8,9 +8,9 @@ import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import type { ModuleComponentProps } from "../types";
 
-const LabelingJobsPage = lazy(() =>
-  import("../../pages/LabelingJobsPage").then((m) => ({
-    default: m.LabelingJobsPage,
+const LabelingWorkflow = lazy(() =>
+  import("../../components/labeling").then((m) => ({
+    default: m.LabelingWorkflow,
   })),
 );
 
@@ -23,7 +23,7 @@ export default function LabelingModule({ onClose }: ModuleComponentProps) {
         </div>
       }
     >
-      <LabelingJobsPage />
+      <LabelingWorkflow />
     </Suspense>
   );
 }
