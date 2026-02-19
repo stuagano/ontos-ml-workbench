@@ -35,9 +35,9 @@ class DataFlowDiagnostic(BaseModel):
     lakebase_initialized: bool
     sheets_count: int
     sheets_with_templates: int
-    assemblies_count: int
-    assemblies_by_status: dict[str, int]
-    assembly_rows_by_source: dict[str, int]
+    training_sheets_count: int
+    training_sheets_by_status: dict[str, int]
+    qa_pairs_by_review_status: dict[str, int]
     data_flow_issues: list[str]
     recommendations: list[str]
 
@@ -163,20 +163,20 @@ async def diagnose_data_flow():
 
     # Q&A pairs by review status (formerly assembly_rows by response_source)
     qa_pairs_table = settings.get_table("qa_pairs")
-    assembly_rows_by_source = {}
+    qa_pairs_by_status = {}
     try:
         source_result = sql_service.execute(
             f"SELECT review_status, COUNT(*) as cnt FROM {qa_pairs_table} GROUP BY review_status"
         )
         for row in source_result:
-            assembly_rows_by_source[row["review_status"]] = int(row["cnt"])
+            qa_pairs_by_status[row["review_status"]] = int(row["cnt"])
     except Exception:
         pass
 
     # Map new status names to old for compatibility
-    pending_count = assembly_rows_by_source.get("pending", 0)
-    approved_count = assembly_rows_by_source.get("approved", 0)
-    total_rows = sum(assembly_rows_by_source.values())
+    pending_count = qa_pairs_by_status.get("pending", 0)
+    approved_count = qa_pairs_by_status.get("approved", 0)
+    total_rows = sum(qa_pairs_by_status.values())
 
     if total_rows > 0 and pending_count == total_rows:
         issues.append("All Q&A pairs are pending review - no approved responses yet")
@@ -195,9 +195,9 @@ async def diagnose_data_flow():
         lakebase_initialized=lakebase_initialized,
         sheets_count=sheets_count,
         sheets_with_templates=sheets_with_templates,
-        assemblies_count=assemblies_count,
-        assemblies_by_status=assemblies_by_status,
-        assembly_rows_by_source=assembly_rows_by_source,
+        training_sheets_count=assemblies_count,
+        training_sheets_by_status=assemblies_by_status,
+        qa_pairs_by_review_status=qa_pairs_by_status,
         data_flow_issues=issues,
         recommendations=recommendations,
     )
@@ -212,56 +212,53 @@ async def trace_assembly(assembly_id: str):
     sql_service = get_sql_service()
     settings = get_settings()
 
-    assemblies_table = settings.get_table("assemblies")
-    assembly_rows_table = settings.get_table("assembly_rows")
+    training_sheets_table = settings.get_table("training_sheets")
+    qa_pairs_table = settings.get_table("qa_pairs")
     sheets_table = settings.get_table("sheets")
 
-    # Get assembly (try both column names for Delta vs Lakebase compatibility)
-    assembly_result = sql_service.execute(
-        f"SELECT * FROM {assemblies_table} WHERE id = '{assembly_id}'"
+    # Get training sheet
+    ts_result = sql_service.execute(
+        f"SELECT * FROM {training_sheets_table} WHERE id = '{assembly_id}'"
     )
-    if not assembly_result:
-        return {"error": f"Assembly {assembly_id} not found"}
+    if not ts_result:
+        return {"error": f"Training Sheet {assembly_id} not found"}
 
-    assembly = assembly_result[0]
+    training_sheet = ts_result[0]
 
     # Get source sheet
-    sheet_id = assembly["sheet_id"]
+    sheet_id = training_sheet["sheet_id"]
     sheet_result = sql_service.execute(
         f"SELECT * FROM {sheets_table} WHERE id = '{sheet_id}'"
     )
     sheet = sheet_result[0] if sheet_result else None
 
-    # Get row stats (use Databricks SQL compatible syntax)
+    # Get Q&A pair stats by review status
     row_stats = sql_service.execute(f"""
         SELECT
-            response_source,
+            review_status,
             COUNT(*) as count,
-            SUM(CASE WHEN is_flagged = TRUE THEN 1 ELSE 0 END) as flagged
-        FROM {assembly_rows_table}
-        WHERE assembly_id = '{assembly_id}'
-        GROUP BY response_source
+            SUM(CASE WHEN quality_flags IS NOT NULL AND SIZE(quality_flags) > 0 THEN 1 ELSE 0 END) as flagged
+        FROM {qa_pairs_table}
+        WHERE training_sheet_id = '{assembly_id}'
+        GROUP BY review_status
     """)
 
-    # Get sample rows (use SUBSTRING instead of LEFT for Databricks SQL)
+    # Get sample Q&A pairs
     sample_rows = sql_service.execute(f"""
-        SELECT row_index, SUBSTRING(prompt, 1, 100) as prompt_preview,
-               response_source, is_flagged, confidence_score
-        FROM {assembly_rows_table}
-        WHERE assembly_id = '{assembly_id}'
-        ORDER BY row_index
+        SELECT sequence_number, SUBSTRING(CAST(messages AS STRING), 1, 100) as messages_preview,
+               review_status, quality_flags, quality_score
+        FROM {qa_pairs_table}
+        WHERE training_sheet_id = '{assembly_id}'
+        ORDER BY sequence_number
         LIMIT 5
     """)
 
-    # Parse template config
-    template_config = json.loads(assembly.get("template_config", "{}"))
-
     return {
-        "assembly": {
+        "training_sheet": {
             "id": assembly_id,
-            "status": assembly.get("status"),
-            "total_rows": assembly.get("total_rows"),
-            "created_at": str(assembly.get("created_at")),
+            "status": training_sheet.get("status"),
+            "generated_count": training_sheet.get("generated_count"),
+            "created_at": str(training_sheet.get("created_at")),
         },
         "source_sheet": {
             "id": sheet_id,
@@ -269,15 +266,9 @@ async def trace_assembly(assembly_id: str):
             "status": sheet.get("status") if sheet else None,
             "has_template": sheet.get("template_config") is not None if sheet else False,
         },
-        "template_config": {
-            "name": template_config.get("name"),
-            "response_source_mode": template_config.get("response_source_mode"),
-            "response_column": template_config.get("response_column"),
-            "prompt_template_preview": template_config.get("prompt_template", "")[:200],
-        },
         "row_stats": [
             {
-                "source": r["response_source"],
+                "review_status": r["review_status"],
                 "count": r["count"],
                 "flagged": r["flagged"],
             }
@@ -285,25 +276,25 @@ async def trace_assembly(assembly_id: str):
         ],
         "sample_rows": [
             {
-                "row_index": r["row_index"],
-                "prompt_preview": r["prompt_preview"],
-                "source": r["response_source"],
-                "flagged": r["is_flagged"],
-                "confidence": r["confidence_score"],
+                "sequence_number": r["sequence_number"],
+                "messages_preview": r["messages_preview"],
+                "review_status": r["review_status"],
+                "quality_flags": r["quality_flags"],
+                "quality_score": r["quality_score"],
             }
             for r in sample_rows
         ],
         "training_readiness": {
-            "labeled_count": sum(
+            "approved_count": sum(
                 r["count"]
                 for r in row_stats
-                if r["response_source"] in ("human_labeled", "human_verified")
+                if r["review_status"] == "approved"
             ),
-            "ready_for_training": assembly.get("status") == "ready"
+            "ready_for_training": training_sheet.get("status") in ("review", "approved")
             and sum(
                 r["count"]
                 for r in row_stats
-                if r["response_source"] in ("human_labeled", "human_verified")
+                if r["review_status"] == "approved"
             )
             >= 10,
         },

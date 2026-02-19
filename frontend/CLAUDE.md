@@ -65,3 +65,9 @@ After frontend changes:
 - Auth: Databricks workspace authentication (handled by platform)
 - Error handling: Display user-friendly messages, log technical details
 - Loading states: Show spinners/skeletons during data fetch
+
+## Progress Tracking
+After frontend changes, update `docs/PROJECT_STATUS.md`:
+- Mark completed features as DONE in Stage-by-Stage Status or TOOLS Section Status tables
+- Add new entries to "Recently Completed" section
+- If wiring a new API function in `services/api.ts`, note it in the relevant stage row

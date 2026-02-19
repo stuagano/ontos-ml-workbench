@@ -781,6 +781,23 @@ export async function deleteServingEndpoint(
   });
 }
 
+export async function rollbackDeployment(
+  endpointName: string,
+  targetVersion: string,
+): Promise<{
+  endpoint_name: string;
+  status: string;
+  message: string;
+  action: string;
+  previous_version: string;
+  target_version: string;
+}> {
+  return fetchJson(
+    `${API_BASE}/deployment/endpoints/${endpointName}/rollback?target_version=${encodeURIComponent(targetVersion)}`,
+    { method: "POST" },
+  );
+}
+
 export async function queryServingEndpoint(
   endpointName: string,
   inputs: Record<string, unknown> | Record<string, unknown>[],

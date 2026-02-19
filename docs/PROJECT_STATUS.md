@@ -189,13 +189,11 @@
 
 2. **Data quality results stub** — `GET /data-quality/sheets/{id}/results` returns empty results, no DB persistence.
 
-3. **Schema references stale** — `canonical_labels.py` usage queries reference old `assemblies`/`assembly_rows` table names instead of PRD v2.3 `training_sheets`/`qa_pairs`.
+3. ~~**Schema references stale**~~ — FIXED. `canonical_labels.py`, `feedback.py`, `training_service.py`, and `settings.py` now use `training_sheets`/`qa_pairs`.
 
-4. **Feedback to-training uses old schema** — `feedback.py` `convert_to_training_data` references `assembly_id` on `assembly_rows` instead of `training_sheet_id` on `qa_pairs`.
+4. **TrainPage is read-only** — Backend has full training job lifecycle (create, poll, cancel, metrics), but the frontend only calls `listAssemblies`. No job creation or monitoring UI.
 
-5. **TrainPage is read-only** — Backend has full training job lifecycle (create, poll, cancel, metrics), but the frontend only calls `listAssemblies`. No job creation or monitoring UI.
-
-6. **Labeling table schemas not in DDL** — `labeling_jobs`, `labeling_tasks`, `labeled_items`, `workspace_users` tables are created by code but have no migration files in `schemas/`.
+~~6. **Labeling table schemas not in DDL**~~ — FIXED. DDL files `09_labeling_jobs.sql` through `12_workspace_users.sql` added to `schemas/`.
 
 7. **No auth middleware** — All endpoints are open at FastAPI layer; relies entirely on Databricks App platform OAuth.
 
@@ -208,20 +206,20 @@
 | # | Feature | What's Missing | Effort |
 |---|---------|----------------|--------|
 | 1 | **Train Page — job creation UI** | Wire `createTrainingJob`, `pollJobStatus`, `cancelJob`, `getJobMetrics` from API. TrainPage currently only reads assemblies. | M |
-| 2 | **Fix stale schema references** | Update `canonical_labels.py` + `feedback.py` to use `training_sheets`/`qa_pairs` instead of old `assemblies`/`assembly_rows` | S |
-| 3 | **Gap analysis — real implementation** | Replace `_simulate_*` functions with actual model evaluation using MLflow metrics. Persist gap updates to DB. | L |
+| ~~2~~ | ~~**Fix stale schema references**~~ | ~~DONE — `canonical_labels.py`, `feedback.py`, `training_service.py`, `settings.py` updated~~ | ~~S~~ |
+| 2 | **Gap analysis — real implementation** | Replace `_simulate_*` functions with actual model evaluation using MLflow metrics. Persist gap updates to DB. | L |
 
 ### P1: High Value
 
 | # | Feature | What's Missing | Effort |
 |---|---------|----------------|--------|
 | 4 | **Canonical label lookup status in GENERATE** | Show "X% of items have canonical labels" during assembly. Backend supports bulk lookup. | S |
-| 5 | **Deploy — rollback UI** | Backend `POST /endpoints/{name}/rollback` exists, needs a button in DeployPage | XS |
+| ~~5~~ | ~~**Deploy — rollback UI**~~ | ~~DONE — `rollbackDeployment` API function + "Rollback Version" row action in DeployPage~~ | ~~XS~~ |
 | 6 | **Deploy — guardrails** | PRD P1 feature. No backend or frontend. Research Databricks Guardrails API first. | L |
 | 7 | **Monitor — dedicated metrics ingestion** | Currently derives metrics from feedback table. Need real Lakehouse Monitoring integration. | M |
 | 8 | **Canonical label version history UI** | Backend tracks versions; UI needs a history viewer panel | S |
 | 9 | **Agent Framework hook** | `AgentRetrieverService` exists; need documentation + registration endpoint for Mosaic AI Agent Framework | M |
-| 10 | **Labeling schema DDL** | Add `labeling_jobs`, `labeling_tasks`, `labeled_items`, `workspace_users` to numbered DDL files | S |
+| ~~10~~ | ~~**Labeling schema DDL**~~ | ~~DONE — `09_labeling_jobs.sql`, `10_labeling_tasks.sql`, `11_labeled_items.sql`, `12_workspace_users.sql`~~ | ~~S~~ |
 
 ### P2: Nice to Have
 
@@ -246,6 +244,10 @@
 - SheetBuilder: template detach button
 - TemplatePage: "Create Version" action for published templates
 - Ontos governance made first-class (sidebar links to external Ontos modules)
+- Fixed stale schema references (`assemblies` → `training_sheets`, `assembly_rows` → `qa_pairs`) in 4 backend files
+- Labeling DDL files (09–12) added to `schemas/` for `labeling_jobs`, `labeling_tasks`, `labeled_items`, `workspace_users`
+- Deploy: rollback version row action wired to `POST /endpoints/{name}/rollback`
+- Deleted 125+ stale docs from `docs/archive/`, `schemas/archive/`, `docs/planning/`, `docs/implementation/`, `docs/prd/`
 
 ---
 
@@ -262,9 +264,12 @@
 
 ## Superseded Documents
 
-The following docs in `docs/` are now **stale** and superseded by this file:
+The following stale docs have been **deleted** (Feb 18, 2026):
 
-- `docs/GAP_ANALYSIS_V2.md` (Jan 30 — uses old "DataBit" terminology, lists completed features as missing)
-- `docs/SPRINT_PLAN.md` (Jan 30 — 14-week sprint plan for features already built)
-- `docs/BACKLOG.md` (Feb 2 — says 75% complete, doesn't reflect recent work)
-- `docs/prd/v2.3-implementation-status.md` (Feb 5 — says UI 0% for canonical labels, but CanonicalLabelingTool is built)
+- `docs/GAP_ANALYSIS_V2.md`, `docs/SPRINT_PLAN.md`, `docs/BACKLOG.md`
+- `docs/prd/` directory (including `v2.3-implementation-status.md`)
+- `docs/planning/` and `docs/implementation/` directories
+- `docs/archive/` and `schemas/archive/` directories
+- `docs/DOCUMENTATION_INDEX.md`, `docs/BUSINESS_CASE.md`, `docs/INTEGRATION_GUIDE.md`
+
+This file (`PROJECT_STATUS.md`) is the single source of truth for implementation status.

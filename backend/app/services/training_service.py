@@ -150,7 +150,7 @@ class TrainingService:
         query_sql = f"""
         SELECT j.*, ts.name as training_sheet_name
         FROM {self.jobs_table} j
-        LEFT JOIN {self.settings.get_table("assemblies")} ts ON ts.id = j.training_sheet_id
+        LEFT JOIN {self.settings.get_table("training_sheets")} ts ON ts.id = j.training_sheet_id
         WHERE j.id = '{job_id}'
         """
         rows = self.sql_service.execute(query_sql)
@@ -190,7 +190,7 @@ class TrainingService:
         query_sql = f"""
         SELECT j.*, ts.name as training_sheet_name
         FROM {self.jobs_table} j
-        LEFT JOIN {self.settings.get_table("assemblies")} ts ON ts.id = j.training_sheet_id
+        LEFT JOIN {self.settings.get_table("training_sheets")} ts ON ts.id = j.training_sheet_id
         WHERE {where_clause}
         ORDER BY j.created_at DESC
         LIMIT {page_size} OFFSET {offset}
@@ -313,7 +313,7 @@ class TrainingService:
 
     def _get_training_sheet(self, training_sheet_id: str) -> dict | None:
         """Get Training Sheet details."""
-        query_sql = f"SELECT * FROM {self.settings.get_table('assemblies')} WHERE id = '{training_sheet_id}'"
+        query_sql = f"SELECT * FROM {self.settings.get_table('training_sheets')} WHERE id = '{training_sheet_id}'"
         rows = self.sql_service.execute(query_sql)
         return rows[0] if rows else None
 
@@ -328,9 +328,9 @@ class TrainingService:
         # Get labeled Q&A pairs
         query_sql = f"""
         SELECT messages, item_ref
-        FROM {self.settings.get_table("assembly_rows")}
-        WHERE assembly_id = '{training_sheet_id}'
-        AND status = 'labeled'
+        FROM {self.settings.get_table("qa_pairs")}
+        WHERE training_sheet_id = '{training_sheet_id}'
+        AND review_status = 'approved'
         AND 'training' IN allowed_uses
         AND NOT array_contains(prohibited_uses, 'training')
         """

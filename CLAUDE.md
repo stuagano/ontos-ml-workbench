@@ -196,6 +196,18 @@ Feedback loops, gap analysis, retraining candidates
 - **DSPy Optimizer** (Alt+D) - Automated prompt optimization
 - **Canonical Labeling Tool** - Label source data directly
 
+## Progress Tracking
+
+**Single source of truth**: `docs/PROJECT_STATUS.md`
+
+After completing any feature, bug fix, or schema change:
+1. Update `docs/PROJECT_STATUS.md` — mark items DONE (strikethrough), update Known Issues, add to "Recently Completed"
+2. If you added/changed a Delta table, update `schemas/README.md` file listings and Quick Start section
+3. If you added/changed an API endpoint, verify the Backend API Coverage table is still accurate
+4. If you added/changed a frontend page or tool, verify the TOOLS Section Status and Stage-by-Stage tables
+
+Do NOT create new tracking documents. All status belongs in `docs/PROJECT_STATUS.md`.
+
 ## Code Style
 
 - **Modular**: Keep files focused and small

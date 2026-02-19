@@ -54,3 +54,10 @@ After backend changes:
 - All table operations through Unity Catalog (no direct file access)
 - Volume paths for multimodal data (images, PDFs, audio)
 - Job orchestration via DAB (databricks.yml)
+
+## Progress Tracking
+After backend changes, update `docs/PROJECT_STATUS.md`:
+- Mark completed features as DONE in Stage-by-Stage Status or Remaining Work tables
+- Add new entries to "Recently Completed" section
+- If adding endpoints, verify Backend API Coverage table
+- If adding/changing Delta tables, update `schemas/README.md`

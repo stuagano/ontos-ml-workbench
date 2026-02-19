@@ -4,10 +4,7 @@ This directory contains all Delta Lake table schemas for the Ontos ML Workbench 
 
 **Schema Location:** Configure via `backend/.env` (`DATABRICKS_CATALOG` and `DATABRICKS_SCHEMA`)
 
-For complete migration history and schema evolution, see:
-- `MIGRATION_HISTORY.md` - Complete migration tracking
-- `SCHEMA_REFERENCE.md` - Current field reference
-- `archive/` - Superseded and historical files
+For the current field reference, see `SCHEMA_REFERENCE.md`.
 
 ## Quick Start
 
@@ -27,6 +24,10 @@ databricks sql --file 05_training_sheets.sql
 databricks sql --file 06_qa_pairs.sql
 databricks sql --file 07_model_training_lineage.sql
 databricks sql --file 08_example_store.sql
+databricks sql --file 09_labeling_jobs.sql
+databricks sql --file 10_labeling_tasks.sql
+databricks sql --file 11_labeled_items.sql
+databricks sql --file 12_workspace_users.sql
 
 # 3. Validate setup
 databricks sql --file 99_validate_and_seed.sql
@@ -300,6 +301,10 @@ GRANT ALL PRIVILEGES ON SCHEMA main.ontos_ml_workbench TO platform_admins;
 - `06_qa_pairs.sql` - Individual Q&A pairs
 - `07_model_training_lineage.sql` - Model tracking
 - `08_example_store.sql` - Few-shot examples
+- `09_labeling_jobs.sql` - Labeling job definitions
+- `10_labeling_tasks.sql` - Labeling task batches
+- `11_labeled_items.sql` - Individual item annotations
+- `12_workspace_users.sql` - Labeling workspace users
 - `99_validate_and_seed.sql` - Validation queries
 
 ### Active Migrations
@@ -316,11 +321,7 @@ GRANT ALL PRIVILEGES ON SCHEMA main.ontos_ml_workbench TO platform_admins;
 
 ### Documentation
 - `README.md` - This file
-- `MIGRATION_HISTORY.md` - Complete migration tracking and version history
 - `SCHEMA_REFERENCE.md` - Current field reference and common mistakes
-- `COMPLETION_SUMMARY.md` - Historical record of initial setup
-- `MONITOR_SCHEMA_FIX_INSTRUCTIONS.md` - Monitor fix guide
-- `CLEANUP_PLAN.md` - Schema cleanup documentation
 
 ### Python Utilities
 - `execute_schemas.py` - Execute SQL via Databricks SDK
@@ -343,16 +344,8 @@ GRANT ALL PRIVILEGES ON SCHEMA main.ontos_ml_workbench TO platform_admins;
 ### Shell Scripts
 - `execute_all.sh` - Execute all schemas in order
 
-### Archive
-- `archive/superseded/` - Migrations consolidated into other files
-- `archive/workspace-specific/` - Scripts for old/different workspaces
-- `archive/test-scripts/` - Temporary test and optimization scripts
-- `archive/README.md` - Documentation of archived files
-
 ## Support
 
 For schema questions or modifications, see:
-- `MIGRATION_HISTORY.md` - Migration tracking and patterns
 - `SCHEMA_REFERENCE.md` - Field reference and common mistakes
-- PRD: `.claude/prds/ontos-ml-workbench.md`
-- Epic: `.claude/epics/ontos-ml-workbench/epic.md`
+- PRD: `docs/PRD.md`

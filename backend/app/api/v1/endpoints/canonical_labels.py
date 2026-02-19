@@ -47,8 +47,8 @@ _sql = get_sql_service()
 CANONICAL_LABELS_TABLE = _settings.get_table("canonical_labels")
 CANONICAL_LABEL_VERSIONS_TABLE = _settings.get_table("canonical_label_versions")
 SHEETS_TABLE = _settings.get_table("sheets")
-ASSEMBLIES_TABLE = _settings.get_table("assemblies")
-ASSEMBLY_ROWS_TABLE = _settings.get_table("assembly_rows")
+TRAINING_SHEETS_TABLE = _settings.get_table("training_sheets")
+QA_PAIRS_TABLE = _settings.get_table("qa_pairs")
 
 
 def _row_to_canonical_label(row: dict) -> CanonicalLabelResponse:
@@ -275,7 +275,7 @@ async def delete_canonical_label(label_id: str) -> None:
     # Check if label is in use
     usage_sql = f"""
         SELECT COUNT(*) as count
-        FROM {ASSEMBLY_ROWS_TABLE}
+        FROM {QA_PAIRS_TABLE}
         WHERE canonical_label_id = '{label_id}'
     """
     result = _sql.execute(usage_sql)
@@ -590,25 +590,25 @@ async def get_canonical_label_usage(label_id: str) -> dict[str, Any]:
     # Verify label exists
     await get_canonical_label(label_id)
 
-    # Find all assembly_rows that reference this label
+    # Find all qa_pairs that reference this label
     sql = f"""
         SELECT
-            ar.assembly_id,
-            ar.row_index,
-            a.name as assembly_name,
+            ar.training_sheet_id,
+            ar.sequence_number,
+            a.name as training_sheet_name,
             a.sheet_id
-        FROM {ASSEMBLY_ROWS_TABLE} ar
-        JOIN {ASSEMBLIES_TABLE} a ON ar.assembly_id = a.id
+        FROM {QA_PAIRS_TABLE} ar
+        JOIN {TRAINING_SHEETS_TABLE} a ON ar.training_sheet_id = a.id
         WHERE ar.canonical_label_id = '{label_id}'
     """
     result = _sql.execute(sql)
 
     usage = [
         {
-            "assembly_id": row["assembly_id"],
-            "assembly_name": row["assembly_name"],
+            "training_sheet_id": row["training_sheet_id"],
+            "training_sheet_name": row["training_sheet_name"],
             "sheet_id": row["sheet_id"],
-            "row_index": row["row_index"],
+            "sequence_number": row["sequence_number"],
         }
         for row in result
     ]

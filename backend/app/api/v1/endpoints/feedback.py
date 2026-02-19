@@ -32,8 +32,8 @@ _settings = get_settings()
 # Table names
 FEEDBACK_TABLE = _settings.get_table("feedback_items")
 ENDPOINTS_TABLE = _settings.get_table("endpoints_registry")
-ASSEMBLIES_TABLE = _settings.get_table("assemblies")
-ASSEMBLY_ROWS_TABLE = _settings.get_table("assembly_rows")
+TRAINING_SHEETS_TABLE = _settings.get_table("training_sheets")
+QA_PAIRS_TABLE = _settings.get_table("qa_pairs")
 
 
 @router.post("", response_model=FeedbackResponse, status_code=201)
@@ -405,21 +405,21 @@ async def unflag_feedback(feedback_id: str) -> FeedbackResponse:
 @router.post("/{feedback_id}/to-training")
 async def convert_to_training_data(
     feedback_id: str,
-    assembly_id: str = Query(..., description="Training Sheet (assembly) to add to"),
+    training_sheet_id: str = Query(..., description="Training Sheet to add to"),
 ) -> dict:
     """
     Convert feedback into training data for retraining.
 
-    Takes a feedback item and creates a new assembly row in the specified
+    Takes a feedback item and creates a new Q&A pair in the specified
     Training Sheet. This enables continuous improvement by converting
     real-world feedback directly into training examples.
 
     Args:
         feedback_id: Feedback item ID
-        assembly_id: Target Training Sheet (assembly) ID
+        training_sheet_id: Target Training Sheet ID
 
     Returns:
-        Created training row details
+        Created Q&A pair details
     """
     user = get_current_user()
     row_id = str(uuid.uuid4())
@@ -428,56 +428,71 @@ async def convert_to_training_data(
         # Get the feedback
         feedback = await get_feedback(feedback_id)
 
-        # Verify assembly exists
-        assembly_sql = f"""
-        SELECT id, total_rows FROM {ASSEMBLIES_TABLE}
-        WHERE id = '{assembly_id}'
+        # Verify training sheet exists
+        ts_sql = f"""
+        SELECT id, sheet_id, generated_count FROM {TRAINING_SHEETS_TABLE}
+        WHERE id = '{training_sheet_id}'
         """
-        assembly_result = _sql.execute(assembly_sql)
-        if not assembly_result:
+        ts_result = _sql.execute(ts_sql)
+        if not ts_result:
             raise HTTPException(status_code=404, detail="Training Sheet not found")
 
-        assembly = assembly_result[0]
-        next_row_index = assembly["total_rows"]
+        training_sheet = ts_result[0]
+        next_sequence = training_sheet["generated_count"]
 
-        # Create assembly row from feedback
-        # Use feedback input as prompt, output as human-verified response
+        # Build messages array from feedback
+        messages = json.dumps([
+            {"role": "user", "content": feedback.input_text},
+            {"role": "assistant", "content": feedback.output_text}
+        ]).replace(chr(39), chr(39) + chr(39))
+
+        generation_metadata = json.dumps(
+            {"source": "feedback", "feedback_id": feedback_id}
+        ).replace(chr(39), chr(39) + chr(39))
+
+        # Create Q&A pair from feedback using v2.3 schema
         insert_sql = f"""
-        INSERT INTO {ASSEMBLY_ROWS_TABLE} (
-            id, assembly_id, row_index, prompt, response,
-            response_source, labeled_by, labeled_at,
-            source_data
+        INSERT INTO {QA_PAIRS_TABLE} (
+            id, training_sheet_id, sheet_id, item_ref,
+            messages, review_status, reviewed_by, reviewed_at,
+            generation_metadata, sequence_number,
+            created_at, created_by, updated_at, updated_by
         ) VALUES (
             '{row_id}',
-            '{assembly_id}',
-            {next_row_index},
-            '{feedback.input_text.replace(chr(39), chr(39) + chr(39))}',
-            '{feedback.output_text.replace(chr(39), chr(39) + chr(39))}',
-            'human_verified',
+            '{training_sheet_id}',
+            '{training_sheet["sheet_id"]}',
+            'feedback-{feedback_id[:8]}',
+            '{messages}',
+            'approved',
             '{user}',
             current_timestamp(),
-            '{json.dumps({"source": "feedback", "feedback_id": feedback_id})}'
+            '{generation_metadata}',
+            {next_sequence},
+            current_timestamp(),
+            '{user}',
+            current_timestamp(),
+            '{user}'
         )
         """
         _sql.execute_update(insert_sql)
 
-        # Update assembly stats
+        # Update training sheet stats
         stats_sql = f"""
-        UPDATE {ASSEMBLIES_TABLE}
-        SET total_rows = total_rows + 1,
-            human_verified_count = human_verified_count + 1,
+        UPDATE {TRAINING_SHEETS_TABLE}
+        SET generated_count = generated_count + 1,
+            approved_count = approved_count + 1,
             updated_at = current_timestamp()
-        WHERE id = '{assembly_id}'
+        WHERE id = '{training_sheet_id}'
         """
         _sql.execute_update(stats_sql)
 
-        logger.info(f"Converted feedback {feedback_id} to training data in assembly {assembly_id}")
+        logger.info(f"Converted feedback {feedback_id} to training data in training sheet {training_sheet_id}")
 
         return {
             "status": "created",
-            "assembly_row_id": row_id,
-            "assembly_id": assembly_id,
-            "row_index": next_row_index,
+            "qa_pair_id": row_id,
+            "training_sheet_id": training_sheet_id,
+            "sequence_number": next_sequence,
             "feedback_id": feedback_id,
         }
 

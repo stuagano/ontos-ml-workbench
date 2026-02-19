@@ -27,6 +27,7 @@ import {
   Zap,
   Filter,
   Search,
+  RotateCcw,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -35,6 +36,7 @@ import {
   listServingEndpoints,
   deployModel,
   queryServingEndpoint,
+  rollbackDeployment,
   type UCModel,
   type UCModelVersion,
   type ServingEndpoint,
@@ -587,6 +589,8 @@ export function DeployPage({ mode = "browse" }: DeployPageProps) {
   const [playgroundEndpoint, setPlaygroundEndpoint] =
     useState<ServingEndpoint | null>(null);
 
+  const toast = useToast();
+
   const {
     data: endpoints,
     isLoading,
@@ -595,6 +599,21 @@ export function DeployPage({ mode = "browse" }: DeployPageProps) {
     queryKey: ["serving-endpoints"],
     queryFn: listServingEndpoints,
     refetchInterval: 15000, // Poll every 15s
+  });
+
+  const rollbackMutation = useMutation({
+    mutationFn: ({ endpointName, targetVersion }: { endpointName: string; targetVersion: string }) =>
+      rollbackDeployment(endpointName, targetVersion),
+    onSuccess: (result) => {
+      toast.success(
+        "Rollback Started",
+        `Rolling back to version ${result.target_version} (was ${result.previous_version})`,
+      );
+      queryClient.invalidateQueries({ queryKey: ["serving-endpoints"] });
+    },
+    onError: (error: Error) => {
+      toast.error("Rollback Failed", error.message);
+    },
   });
 
   const filteredEndpoints = (endpoints || []).filter((endpoint) => {
@@ -688,6 +707,23 @@ export function DeployPage({ mode = "browse" }: DeployPageProps) {
       onClick: setPlaygroundEndpoint,
       show: (endpoint) => endpoint.state === "READY",
       className: "text-cyan-600",
+    },
+    {
+      label: "Rollback Version",
+      icon: RotateCcw,
+      onClick: (endpoint) => {
+        const targetVersion = window.prompt(
+          `Rollback "${endpoint.name}" to which model version? (e.g., 1, 2, 3)`,
+        );
+        if (targetVersion) {
+          rollbackMutation.mutate({
+            endpointName: endpoint.name,
+            targetVersion: targetVersion.trim(),
+          });
+        }
+      },
+      show: (endpoint) => endpoint.state === "READY",
+      className: "text-amber-600",
     },
     {
       label: "Refresh Status",
