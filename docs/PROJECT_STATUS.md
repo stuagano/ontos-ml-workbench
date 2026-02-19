@@ -2,7 +2,7 @@
 
 **Last Updated:** February 18, 2026
 **PRD Version:** 2.3
-**Overall Progress:** ~80% backend, ~65% frontend
+**Overall Progress:** ~85% backend, ~75% frontend
 
 > This is the single source of truth for implementation status. It replaces the stale
 > `GAP_ANALYSIS_V2.md`, `SPRINT_PLAN.md`, `BACKLOG.md`, and `prd/v2.3-implementation-status.md`.
@@ -48,7 +48,7 @@
 | AI inference for response generation (FMAPI) | DONE | `POST /assemblies/{id}/generate`, `InferenceService` |
 | Training Sheet browse / preview Q&A pairs | DONE | `CuratePage.tsx` browse + detail modes |
 | Column mapping (template variables → sheet columns) | DONE | `ColumnMappingModal` with Jinja2 placeholder extraction |
-| Canonical label lookup during generation | BACKEND ONLY | Backend supports it; frontend doesn't show lookup status |
+| Canonical label lookup during generation | DONE | Coverage stats shown in SheetBuilder before generation |
 
 ### Stage 3: LABEL — DONE (Mode A); PARTIAL (Mode B)
 
@@ -72,14 +72,14 @@
 | Browse / create / manage label sets | DONE | `LabelSetsPage.tsx` with full CRUD |
 | Publish / archive lifecycle | DONE | Status-aware row actions |
 
-### Stage 4: TRAIN — PARTIAL
+### Stage 4: TRAIN — DONE (except evaluation)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Browse Training Sheets for training | DONE | `TrainPage.tsx` lists assemblies |
-| Configure and submit FMAPI training job | BACKEND ONLY | Full `TrainingService` with FMAPI integration, but `TrainPage` is read-only (no `createTrainingJob` call) |
-| Monitor training job progress | BACKEND ONLY | `poll_job_status`, events, metrics endpoints exist |
-| Dual quality gates (status + governance) | BACKEND ONLY | Export filters by status + usage constraints |
+| Configure and submit FMAPI training job | DONE | `TrainingJobCreateForm` → `createTrainingJob` API → `TrainingService` |
+| Monitor training job progress | DONE | `TrainingJobDetail` with auto-polling, events, metrics |
+| Dual quality gates (status + governance) | DONE | Export filters by status + usage constraints |
 | Model evaluation (MLflow Evaluate) | NOT STARTED | No evaluation harness |
 | Compare model versions A/B | NOT STARTED | |
 | Lineage recording | DONE | `model_training_lineage` table + API |
@@ -92,7 +92,7 @@
 | Create serving endpoint | DONE | Deploy mutation, full Databricks SDK integration |
 | Endpoint playground (query endpoint) | DONE | Query panel with JSON editor |
 | List / manage serving endpoints | DONE | Endpoint table with status |
-| Rollback to previous version | BACKEND ONLY | API exists, no UI button |
+| Rollback to previous version | DONE | "Rollback Version" row action in DeployPage |
 | Registries (Tools/Agents/Endpoints) | DONE | `RegistriesPage.tsx` — tabbed CRUD admin (just built) |
 | Guardrails configuration | NOT STARTED | PRD P1 feature, no implementation |
 
@@ -191,7 +191,7 @@
 
 3. ~~**Schema references stale**~~ — FIXED. `canonical_labels.py`, `feedback.py`, `training_service.py`, and `settings.py` now use `training_sheets`/`qa_pairs`.
 
-4. **TrainPage is read-only** — Backend has full training job lifecycle (create, poll, cancel, metrics), but the frontend only calls `listAssemblies`. No job creation or monitoring UI.
+~~4. **TrainPage is read-only**~~ — FIXED. `TrainingJobCreateForm`, `TrainingJobList`, and `TrainingJobDetail` components fully wire create, poll, cancel, metrics, events, and lineage endpoints.
 
 ~~6. **Labeling table schemas not in DDL**~~ — FIXED. DDL files `09_labeling_jobs.sql` through `12_workspace_users.sql` added to `schemas/`.
 
@@ -205,7 +205,7 @@
 
 | # | Feature | What's Missing | Effort |
 |---|---------|----------------|--------|
-| 1 | **Train Page — job creation UI** | Wire `createTrainingJob`, `pollJobStatus`, `cancelJob`, `getJobMetrics` from API. TrainPage currently only reads assemblies. | M |
+| ~~1~~ | ~~**Train Page — job creation UI**~~ | ~~DONE — `TrainingJobCreateForm`, `TrainingJobList`, `TrainingJobDetail` components fully wired to all 9 training endpoints~~ | ~~M~~ |
 | ~~2~~ | ~~**Fix stale schema references**~~ | ~~DONE — `canonical_labels.py`, `feedback.py`, `training_service.py`, `settings.py` updated~~ | ~~S~~ |
 | 2 | **Gap analysis — real implementation** | Replace `_simulate_*` functions with actual model evaluation using MLflow metrics. Persist gap updates to DB. | L |
 
@@ -213,7 +213,7 @@
 
 | # | Feature | What's Missing | Effort |
 |---|---------|----------------|--------|
-| 4 | **Canonical label lookup status in GENERATE** | Show "X% of items have canonical labels" during assembly. Backend supports bulk lookup. | S |
+| ~~4~~ | ~~**Canonical label lookup status in GENERATE**~~ | ~~DONE — Coverage % banner in SheetBuilder using `getCanonicalLabelStats`~~ | ~~S~~ |
 | ~~5~~ | ~~**Deploy — rollback UI**~~ | ~~DONE — `rollbackDeployment` API function + "Rollback Version" row action in DeployPage~~ | ~~XS~~ |
 | 6 | **Deploy — guardrails** | PRD P1 feature. No backend or frontend. Research Databricks Guardrails API first. | L |
 | 7 | **Monitor — dedicated metrics ingestion** | Currently derives metrics from feedback table. Need real Lakehouse Monitoring integration. | M |
@@ -248,6 +248,9 @@
 - Labeling DDL files (09–12) added to `schemas/` for `labeling_jobs`, `labeling_tasks`, `labeled_items`, `workspace_users`
 - Deploy: rollback version row action wired to `POST /endpoints/{name}/rollback`
 - Deleted 125+ stale docs from `docs/archive/`, `schemas/archive/`, `docs/planning/`, `docs/implementation/`, `docs/prd/`
+- Confirmed TrainPage fully wired (was incorrectly listed as read-only — all 9 training endpoints connected)
+- Canonical label coverage banner in SheetBuilder: shows "X% coverage" when template selected
+- Progress tracking rules added to all CLAUDE.md files
 
 ---
 

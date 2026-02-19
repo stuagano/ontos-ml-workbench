@@ -58,6 +58,7 @@ import {
   archiveSheet,
   deleteSheet,
   detachTemplateFromSheet,
+  getCanonicalLabelStats,
 } from "../services/api";
 import { useToast } from "../components/Toast";
 import { useWorkflow } from "../context/WorkflowContext";
@@ -617,6 +618,13 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
     enabled: step === "preview-data",
   });
 
+  // Fetch canonical label coverage stats when template selected
+  const { data: labelStats } = useQuery({
+    queryKey: ["canonical-label-stats", sheet?.id],
+    queryFn: () => getCanonicalLabelStats(sheet!.id),
+    enabled: !!sheet?.id && !!selectedTemplate,
+  });
+
   // Sync step with workflow state when navigating via breadcrumbs
   useEffect(() => {
     if (workflow.state.selectedSource && step === "no-sheet") {
@@ -1045,6 +1053,26 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
                 </div>
               )}
             </div>
+
+            {/* Canonical Label Coverage */}
+            {selectedTemplate && labelStats && labelStats.total_labels > 0 && (
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200 p-4">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-green-900">
+                      Canonical Label Coverage: {labelStats.coverage_percent != null
+                        ? `${Math.round(labelStats.coverage_percent)}%`
+                        : `${labelStats.total_labels} labels`}
+                    </h4>
+                    <p className="text-xs text-green-700 mt-0.5">
+                      {labelStats.total_labels} expert-validated label{labelStats.total_labels !== 1 ? "s" : ""} found for this dataset.
+                      Matching Q&A pairs will be auto-approved during generation.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Generate Button */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-6">

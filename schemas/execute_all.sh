@@ -30,6 +30,10 @@ SQL_FILES=(
     "06_qa_pairs.sql"
     "07_model_training_lineage.sql"
     "08_example_store.sql"
+    "09_labeling_jobs.sql"
+    "10_labeling_tasks.sql"
+    "11_labeled_items.sql"
+    "12_workspace_users.sql"
     "99_validate_and_seed.sql"
 )
 
