@@ -31,8 +31,7 @@ The workbench builds on two Databricks Labs projects for data quality and govern
 
 ### Prerequisites
 
-- Python 3.11+
-- Node.js 18+
+- Python 3.11+, Node.js 18+
 - Databricks CLI: `brew install databricks`
 - A Databricks workspace with Unity Catalog and a SQL Warehouse
 
@@ -47,36 +46,82 @@ cd ontos-ml-workbench
 git submodule update --init --recursive
 ```
 
-### Configure
+### Deploy to Databricks Apps
+
+This is the primary deployment path. The app runs as a managed Databricks App with its own service principal.
+
+**1. Authenticate and find your warehouse ID:**
 
 ```bash
-cd backend
-cp .env.example .env
+databricks auth login --host https://your-workspace.cloud.databricks.com --profile your-profile
+databricks warehouses list --profile your-profile
 ```
 
-Edit `backend/.env`:
-```bash
-DATABRICKS_HOST=https://your-workspace.cloud.databricks.com
-DATABRICKS_TOKEN=your-pat-token
-DATABRICKS_CATALOG=your_catalog
-DATABRICKS_SCHEMA=ontos_ml
-DATABRICKS_WAREHOUSE_ID=your-warehouse-id
+**2. Configure `databricks.yml`** — set your profile, catalog, schema, and warehouse ID:
+
+```yaml
+# In the 'dev' target section:
+targets:
+  dev:
+    workspace:
+      profile: your-profile          # ← your CLI profile
+    variables:
+      catalog: your_catalog           # ← your Unity Catalog catalog
+      schema: ontos_ml                # ← schema name (created automatically)
+      warehouse_id: "abc123def456"    # ← your SQL Warehouse ID
 ```
 
-Find your warehouse ID: `databricks warehouses list`
+> These values flow through `app.yaml` into the deployed app as environment variables. You do **not** need `backend/.env` for Databricks Apps — that file is only for local development.
 
-### Initialize Database
+**3. Initialize database** — create tables and seed sample data:
 
 ```bash
-# Option A: Bootstrap script (creates schema, tables, seeds sample data)
-./scripts/bootstrap.sh <workspace-name>
-
-# Option B: Manual — run schema files in order in Databricks SQL Editor
+# In Databricks SQL Editor, run these files in order:
 # schemas/01_create_catalog.sql through 08_example_store.sql
 # schemas/seed_sheets.sql
+
+# Or use the bootstrap script:
+./scripts/bootstrap.sh <workspace-name>
 ```
 
-### Run Locally
+**4. Build and deploy:**
+
+```bash
+cd frontend && npm install && npm run build && cd ..
+databricks bundle deploy -t dev
+```
+
+This creates the Databricks App, uploads the code, and starts it.
+
+**5. Grant the app's service principal access to your data:**
+
+```sql
+-- Get the service principal ID from:
+-- databricks apps get ontos-ml-workbench-dev --profile your-profile -o json | jq -r '.service_principal_id'
+
+GRANT USE CATALOG ON CATALOG your_catalog TO `<service-principal-id>`;
+GRANT USE SCHEMA ON SCHEMA your_catalog.ontos_ml TO `<service-principal-id>`;
+GRANT SELECT, MODIFY ON SCHEMA your_catalog.ontos_ml TO `<service-principal-id>`;
+```
+
+**6. Open the app:**
+
+```bash
+databricks apps get ontos-ml-workbench-dev --profile your-profile -o json | jq -r '.url'
+```
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the full guide and [RUNBOOK.md](RUNBOOK.md) for operations.
+
+### Run Locally (for development)
+
+For local development, configure `backend/.env` instead of `databricks.yml`:
+
+```bash
+cd backend && cp .env.example .env
+# Edit backend/.env with your host, token, catalog, schema, warehouse ID
+```
+
+Then start both servers:
 
 ```bash
 # Terminal 1: Backend
@@ -91,17 +136,6 @@ cd frontend && npm install && npm run dev
 
 > **Tip:** For a single-command dev experience with hot reload, use [APX](https://databricks-solutions.github.io/apx/):
 > `pip install apx --index-url https://databricks-solutions.github.io/apx/simple && apx dev start`
-
-### Deploy to Databricks
-
-```bash
-cd frontend && npm run build && cd ..
-databricks apps deploy <app-name> \
-  --source-code-path /Workspace/Users/<your-email>/Apps/ontos-ml-workbench \
-  --profile=<your-profile>
-```
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for full deployment guide and [RUNBOOK.md](RUNBOOK.md) for operations.
 
 ## Architecture
 
