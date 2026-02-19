@@ -250,22 +250,20 @@ async def analyze_coverage_distribution(
 
 async def analyze_quality_by_segment(
     template_id: str,
-    segment_by: str = "category",
 ) -> dict[str, Any]:
     """
-    Analyze quality scores broken down by data segments.
+    Analyze quality scores broken down by training sheet.
 
     Queries qa_pairs grouped by training_sheet name for quality scores.
 
     Args:
         template_id: Template to analyze
-        segment_by: How to segment (category, source, date, etc.)
 
     Returns:
         Quality analysis by segment with recommendations
     """
     tables = _get_tables()
-    logger.info(f"Analyzing quality by {segment_by} for template {template_id}")
+    logger.info(f"Analyzing quality by training sheet for template {template_id}")
 
     query = f"""
     SELECT
@@ -302,7 +300,7 @@ async def analyze_quality_by_segment(
 
         return {
             "template_id": template_id,
-            "segment_by": segment_by,
+            "segment_by": "training_sheet",
             "quality_gaps": [g.model_dump() for g in quality_gaps],
             "total_records_needing_review": sum(g.record_count for g in quality_gaps),
             "total_estimated_effort_hours": round(

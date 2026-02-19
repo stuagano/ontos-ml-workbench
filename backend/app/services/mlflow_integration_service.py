@@ -283,58 +283,6 @@ async def _log_analysis_to_mlflow(
         logger.error(f"Error logging to MLflow: {e}")
 
 
-async def log_attribution_to_mlflow(
-    model_name: str,
-    model_version: str,
-    attribution_result: dict,
-) -> str | None:
-    """Log attribution results to MLflow."""
-    try:
-        import mlflow
-
-        with mlflow.start_run(nested=True) as run:
-            mlflow.log_metric(
-                "attribution_compute_time",
-                attribution_result.get("compute_time_seconds", 0),
-            )
-            mlflow.log_metric("total_bits", attribution_result.get("total_bits", 0))
-            mlflow.log_metric(
-                "positive_contributors",
-                attribution_result.get("positive_contributors", 0),
-            )
-            mlflow.log_metric(
-                "negative_contributors",
-                attribution_result.get("negative_contributors", 0),
-            )
-
-            # Log top contributions
-            for i, contrib in enumerate(
-                attribution_result.get("contributions", [])[:5]
-            ):
-                mlflow.log_metric(
-                    f"bit_{i+1}_importance",
-                    contrib.get("importance_score", 0),
-                )
-
-            # Log full results as artifact
-            import tempfile
-
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".json", delete=False
-            ) as f:
-                json.dump(attribution_result, f, indent=2, default=str)
-                mlflow.log_artifact(f.name, "attribution")
-
-            return run.info.run_id
-
-    except ImportError:
-        logger.warning("MLflow not available")
-        return None
-    except Exception as e:
-        logger.error(f"Error logging attribution to MLflow: {e}")
-        return None
-
-
 # ============================================================================
 # Helper Functions
 # ============================================================================
@@ -355,8 +303,7 @@ async def _get_model_metrics(
     """
 
     try:
-        result = await execute_sql(query)
-        rows = result.get("data", [])
+        rows = await execute_sql(query)
         if rows:
             return {row["metric_name"]: row["metric_value"] for row in rows}
     except Exception:
@@ -419,8 +366,7 @@ async def _get_model_template(
     """
 
     try:
-        result = await execute_sql(query)
-        rows = result.get("data", [])
+        rows = await execute_sql(query)
         if rows:
             return rows[0].get("template_id")
     except Exception:
@@ -467,55 +413,3 @@ def _simulate_metrics(model_name: str, version: str) -> dict[str, float]:
         "precision": base_accuracy + variation - 0.02,
         "recall": base_f1 + variation + 0.01,
     }
-
-
-# ============================================================================
-# Databricks Job Configuration Generator
-# ============================================================================
-
-
-def generate_databricks_job_config(
-    models_to_watch: list[dict[str, str]],
-    schedule: str = "0 0 * * *",
-    cluster_id: str | None = None,
-) -> dict:
-    """
-    Generate Databricks Jobs config for scheduled gap analysis.
-
-    Args:
-        models_to_watch: List of {"name": ..., "version": ...} to monitor
-        schedule: Cron schedule (default: daily at midnight)
-        cluster_id: Cluster to use (or will use new job cluster)
-
-    Returns:
-        Job configuration dict for Databricks Jobs API
-    """
-    config = {
-        "name": "Ontos ML Gap Analysis - Scheduled",
-        "schedule": {
-            "quartz_cron_expression": schedule,
-            "timezone_id": "UTC",
-        },
-        "tasks": [
-            {
-                "task_key": "gap_analysis",
-                "notebook_task": {
-                    "notebook_path": "/Repos/ontos-ml/notebooks/scheduled_gap_analysis",
-                    "base_parameters": {"models": json.dumps(models_to_watch)},
-                },
-            }
-        ],
-        "email_notifications": {"on_failure": []},
-        "tags": {"team": "ml-platform", "system": "ontos-ml"},
-    }
-
-    if cluster_id:
-        config["tasks"][0]["existing_cluster_id"] = cluster_id
-    else:
-        config["tasks"][0]["new_cluster"] = {
-            "spark_version": "14.3.x-scala2.12",
-            "node_type_id": "i3.xlarge",
-            "num_workers": 0,
-        }
-
-    return config
