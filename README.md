@@ -8,15 +8,24 @@ DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
 
 ## What This Is
 
-Ontos ML Workbench is a Databricks App that gives domain experts, data scientists, and stewards a unified workflow for building and governing AI systems. It combines three open-source projects into a single platform:
+**Ontos ML Workbench** is a full-stack Databricks App (FastAPI + React) that gives domain experts, data scientists, and stewards a unified, no-code workflow for building and governing AI systems. It manages the complete ML lifecycle:
 
-| Component | Role | How It's Used |
-|-----------|------|---------------|
-| **Ontos** | Data governance & contracts | Git submodule (optional) — provides data product management, contracts (ODCS), compliance, and asset review workflows |
-| **[DQX](https://github.com/databrickslabs/dqx)** | Data quality | pip package (`databricks-labs-dqx[llm]`) — quality rules engine integrated into the workbench pipeline |
-| **[APX](https://databricks-solutions.github.io/apx/)** | Dev tooling | CLI tool — unified hot-reload dev server for backend + frontend |
+- **Prompt templates as reusable IP** — encode domain expertise once, apply across datasets
+- **Canonical labeling** — experts label source data once, labels reuse everywhere
+- **Training data generation** — combine datasets + templates to produce Q&A pairs at scale
+- **Fine-tuning orchestration** — dual quality gates (expert approval + usage governance)
+- **Production monitoring** — drift detection, latency tracking, feedback loops
 
-The workbench adds the ML lifecycle layer on top: prompt templates as reusable IP, canonical labeling, training data generation, fine-tuning orchestration, and production monitoring.
+### Integrated Open-Source Components
+
+The workbench builds on two Databricks Labs projects for data quality and governance:
+
+| Component | What It Does | Integration |
+|-----------|-------------|-------------|
+| **[DQX](https://github.com/databrickslabs/dqx)** | Automated data quality validation — applies quality rules to datasets, profiles data distributions, and flags issues before they reach training | pip package (`databricks-labs-dqx[llm]`). Quality checks run in the DATA and LABEL stages to ensure training data meets standards. |
+| **[Ontos](ontos/)** | Data governance platform — data product catalogs, contracts (ODCS format), compliance workflows, and asset review | Git submodule (optional). Adds governance dashboards and contract management. The workbench runs fully without it. |
+
+> **Naming note:** "Ontos ML Workbench" is this application. "Ontos" is the separate governance platform included as an optional submodule. They are independent projects that work well together.
 
 ## Getting Started
 
@@ -70,20 +79,18 @@ Find your warehouse ID: `databricks warehouses list`
 ### Run Locally
 
 ```bash
-# Option A: APX (recommended — single command, hot reload for both)
-pip install apx --index-url https://databricks-solutions.github.io/apx/simple
-apx dev start
-
-# Option B: Manual
-# Terminal 1
+# Terminal 1: Backend
 cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload
 
-# Terminal 2
+# Terminal 2: Frontend
 cd frontend && npm install && npm run dev
 ```
 
 - Frontend: http://localhost:5173
 - API docs: http://localhost:8000/docs
+
+> **Tip:** For a single-command dev experience with hot reload, use [APX](https://databricks-solutions.github.io/apx/):
+> `pip install apx --index-url https://databricks-solutions.github.io/apx/simple && apx dev start`
 
 ### Deploy to Databricks
 
@@ -124,18 +131,18 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for full deployment guide and [RUNBOOK.md](RU
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│                 Ontos ML Workbench                    │
-│  (This repo — ML lifecycle: templates, labeling,     │
-│   training, deployment, monitoring)                   │
+│              Ontos ML Workbench (this repo)           │
 │                                                       │
-│   ┌─────────────┐  ┌──────────┐  ┌───────────────┐  │
-│   │   Ontos     │  │   DQX    │  │     APX       │  │
-│   │ (submodule) │  │  (pip)   │  │  (dev tool)   │  │
-│   │             │  │          │  │               │  │
-│   │ Governance  │  │ Quality  │  │ Hot reload    │  │
-│   │ Contracts   │  │ Rules    │  │ Dev server    │  │
-│   │ Compliance  │  │ Profiling│  │               │  │
-│   └─────────────┘  └──────────┘  └───────────────┘  │
+│   React UI ←→ FastAPI Backend ←→ Databricks SDK      │
+│                                                       │
+│   ┌─────────────┐  ┌──────────────────────────────┐  │
+│   │    Ontos    │  │          DQX                 │  │
+│   │ (optional)  │  │  (data quality validation)   │  │
+│   │             │  │                              │  │
+│   │ Governance, │  │  Quality rules, profiling,   │  │
+│   │ contracts,  │  │  LLM-assisted data checks    │  │
+│   │ compliance  │  │                              │  │
+│   └─────────────┘  └──────────────────────────────┘  │
 │                                                       │
 │   ┌───────────────────────────────────────────────┐  │
 │   │            Databricks Platform                │  │
@@ -143,20 +150,24 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for full deployment guide and [RUNBOOK.md](RU
 │   │  MLflow · Serving Endpoints · Workflows       │  │
 │   └───────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────┘
+
+Development tooling (not part of deployed app):
+  APX — unified hot-reload dev server for backend + frontend
+  See: https://databricks-solutions.github.io/apx/
 ```
 
 ## Updating Dependencies
 
-**Ontos** (submodule — pull upstream features):
+**DQX** (pip package — data quality):
+```bash
+pip install --upgrade databricks-labs-dqx[llm]
+```
+
+**Ontos** (submodule — governance, optional):
 ```bash
 git submodule update --remote ontos
 git add ontos
 git commit -m "chore: update ontos submodule"
-```
-
-**DQX** (pip package):
-```bash
-pip install --upgrade databricks-labs-dqx[llm]
 ```
 
 ## Core Concepts
