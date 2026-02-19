@@ -349,7 +349,7 @@ async def _get_model_metrics(
     # First try to get from our evaluation table
     query = f"""
     SELECT metric_name, metric_value
-    FROM {settings.uc_catalog}.{settings.uc_schema}.model_evaluations
+    FROM {settings.get_table("model_evaluations")}
     WHERE model_name = '{model_name}'
       AND model_version = '{version}'
     """
@@ -412,7 +412,7 @@ async def _get_model_template(
 
     query = f"""
     SELECT template_id
-    FROM {settings.uc_catalog}.{settings.uc_schema}.model_bits
+    FROM {settings.get_table("model_training_lineage")}
     WHERE model_name = '{model_name}'
       AND model_version = '{model_version}'
     LIMIT 1

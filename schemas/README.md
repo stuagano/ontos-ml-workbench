@@ -28,6 +28,9 @@ databricks sql --file 09_labeling_jobs.sql
 databricks sql --file 10_labeling_tasks.sql
 databricks sql --file 11_labeled_items.sql
 databricks sql --file 12_workspace_users.sql
+databricks sql --file 13_model_evaluations.sql
+databricks sql --file 14_identified_gaps.sql
+databricks sql --file 15_annotation_tasks.sql
 
 # 3. Validate setup
 databricks sql --file 99_validate_and_seed.sql
@@ -305,6 +308,9 @@ GRANT ALL PRIVILEGES ON SCHEMA main.ontos_ml_workbench TO platform_admins;
 - `10_labeling_tasks.sql` - Labeling task batches
 - `11_labeled_items.sql` - Individual item annotations
 - `12_workspace_users.sql` - Labeling workspace users
+- `13_model_evaluations.sql` - Model evaluation results (mlflow.evaluate)
+- `14_identified_gaps.sql` - Gap analysis identified gaps
+- `15_annotation_tasks.sql` - Annotation tasks for gap remediation
 - `99_validate_and_seed.sql` - Validation queries
 
 ### Active Migrations

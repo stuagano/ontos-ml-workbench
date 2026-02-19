@@ -25,6 +25,7 @@ import {
   ExternalLink,
   Calendar,
   Zap,
+  FlaskConical,
 } from "lucide-react";
 import {
   getTrainingJob,
@@ -32,7 +33,10 @@ import {
   getTrainingJobMetrics,
   getTrainingJobEvents,
   getTrainingJobLineage,
+  evaluateTrainingJob,
+  getJobEvaluation,
 } from "../services/api";
+import type { EvaluationMetric } from "../types";
 import { useToast } from "./Toast";
 
 interface TrainingJobDetailProps {
@@ -44,7 +48,7 @@ export function TrainingJobDetail({ jobId, onBack }: TrainingJobDetailProps) {
   const { success: successToast, error: errorToast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<
-    "overview" | "metrics" | "events" | "lineage"
+    "overview" | "metrics" | "events" | "lineage" | "evaluate"
   >("overview");
 
   // Fetch job details with auto-refresh for active jobs
@@ -84,6 +88,25 @@ export function TrainingJobDetail({ jobId, onBack }: TrainingJobDetailProps) {
   const { data: lineage } = useQuery({
     queryKey: ["training-job-lineage", jobId],
     queryFn: () => getTrainingJobLineage(jobId),
+  });
+
+  // Fetch evaluation results (when job succeeded)
+  const { data: evalMetrics, refetch: refetchEval } = useQuery({
+    queryKey: ["training-job-eval", jobId],
+    queryFn: () => getJobEvaluation(jobId),
+    enabled: job?.status === "succeeded",
+  });
+
+  // Run evaluation mutation
+  const runEvaluation = useMutation({
+    mutationFn: () => evaluateTrainingJob(jobId),
+    onSuccess: () => {
+      successToast("Evaluation Complete", "Model evaluation finished");
+      refetchEval();
+    },
+    onError: (error: any) => {
+      errorToast("Evaluation Failed", error.message || "Unknown error");
+    },
   });
 
   // Cancel job mutation
@@ -263,6 +286,12 @@ export function TrainingJobDetail({ jobId, onBack }: TrainingJobDetailProps) {
             },
             { id: "events", label: "Events", icon: Calendar },
             { id: "lineage", label: "Lineage", icon: GitBranch },
+            {
+              id: "evaluate",
+              label: "Evaluate",
+              icon: FlaskConical,
+              disabled: job.status !== "succeeded",
+            },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -596,6 +625,79 @@ export function TrainingJobDetail({ jobId, onBack }: TrainingJobDetailProps) {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Evaluate Tab */}
+        {activeTab === "evaluate" && (
+          <div className="space-y-4">
+            {/* Run Evaluation Button */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-db-gray-900">
+                  Model Evaluation
+                </h3>
+                <p className="text-sm text-db-gray-500 mt-1">
+                  Run mlflow.evaluate() against validation Q&A pairs
+                </p>
+              </div>
+              <button
+                onClick={() => runEvaluation.mutate()}
+                disabled={runEvaluation.isPending}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+              >
+                {runEvaluation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FlaskConical className="w-4 h-4" />
+                )}
+                {runEvaluation.isPending ? "Evaluating..." : "Run Evaluation"}
+              </button>
+            </div>
+
+            {/* Evaluation Results */}
+            {evalMetrics && evalMetrics.length > 0 ? (
+              <div className="grid grid-cols-3 gap-4">
+                {evalMetrics.map((metric: EvaluationMetric) => (
+                  <div
+                    key={metric.metric_name}
+                    className="bg-white border border-db-gray-200 rounded-lg p-4"
+                  >
+                    <div className="text-sm text-db-gray-500 mb-1">
+                      {metric.metric_name.replace(/_/g, " ")}
+                    </div>
+                    <div className="text-2xl font-bold text-db-gray-900">
+                      {metric.metric_value < 1 && metric.metric_value >= 0
+                        ? `${(metric.metric_value * 100).toFixed(1)}%`
+                        : metric.metric_value.toFixed(4)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-db-gray-500 bg-white border border-db-gray-200 rounded-lg">
+                <FlaskConical className="w-8 h-8 mx-auto mb-2 text-db-gray-300" />
+                <p>No evaluation results yet</p>
+                <p className="text-xs mt-1">
+                  Click "Run Evaluation" to evaluate this model
+                </p>
+              </div>
+            )}
+
+            {/* MLflow Link */}
+            {runEvaluation.data?.mlflow_run_id && (
+              <div className="bg-white border border-db-gray-200 rounded-lg p-4">
+                <a
+                  href={`/mlflow/#/experiments/runs/${runEvaluation.data.mlflow_run_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-green-600 hover:text-green-700"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  View evaluation run in MLflow
+                </a>
               </div>
             )}
           </div>

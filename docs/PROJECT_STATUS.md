@@ -80,8 +80,8 @@
 | Configure and submit FMAPI training job | DONE | `TrainingJobCreateForm` → `createTrainingJob` API → `TrainingService` |
 | Monitor training job progress | DONE | `TrainingJobDetail` with auto-polling, events, metrics |
 | Dual quality gates (status + governance) | DONE | Export filters by status + usage constraints |
-| Model evaluation (MLflow Evaluate) | NOT STARTED | No evaluation harness |
-| Compare model versions A/B | NOT STARTED | |
+| Model evaluation (MLflow Evaluate) | DONE | `POST /training/jobs/{id}/evaluate`, `GET /training/jobs/{id}/evaluation`, Evaluate tab in TrainingJobDetail |
+| Compare model versions A/B | DONE | `GET /training/compare/{model_name}?version_a=X&version_b=Y` |
 | Lineage recording | DONE | `model_training_lineage` table + API |
 
 ### Stage 5: DEPLOY — DONE
@@ -113,7 +113,7 @@
 | User feedback capture (thumbs up/down) | DONE | `ImprovePage.tsx` + `POST /feedback` |
 | Feedback stats and trends | DONE | Stats endpoint wired to UI |
 | Convert feedback to training data | DONE | `POST /feedback/{id}/to-training` wired |
-| Gap analysis | SCAFFOLD | Backend uses **simulated** analysis functions (`_simulate_error_analysis`, etc.); CRUD for gap records is real and persists to DB |
+| Gap analysis | DONE | Real SQL queries against feedback_items, endpoints_registry, qa_pairs, model_evaluations; simulated fallback only when tables missing |
 | Annotation task creation from gaps | DONE | `POST /gaps/{id}/task` creates tasks; `GET /gaps/tasks` queries `annotation_tasks` table |
 | Trigger retraining | NOT STARTED | No UI to initiate retrain from gaps |
 
@@ -168,13 +168,13 @@
 | Labeling Workflow | 31 | Fully implemented |
 | Example Store | 12 | Fully implemented |
 | DSPy | 10 | Fully implemented |
-| Training | 9 | Fully implemented |
+| Training | 12 | Fully implemented (includes 3 evaluation endpoints) |
 | Deployment | 13 | Fully implemented |
 | Monitoring | 10 | Fully implemented |
 | Feedback | 10 | Fully implemented |
 | Registries | 15 | Fully implemented |
 | Unity Catalog | 6 | Fully implemented |
-| Gap Analysis | 10 | Partial — analysis is simulated, CRUD + annotation tasks persist to DB |
+| Gap Analysis | 10 | Fully implemented — real queries + CRUD + annotation tasks |
 | Attribution | 7 | Present — not fully verified |
 | Agents | 3 | Fully implemented |
 | Settings/Admin | 7 | Fully implemented |
@@ -185,7 +185,7 @@
 
 ## Known Issues
 
-1. **Gap analysis is simulated** — `gap_analysis_service.py` uses `_simulate_*` helper functions instead of real model evaluation. Gap CRUD (create/update/list) and annotation task endpoints now persist to DB correctly.
+~~1. **Gap analysis is simulated**~~ — FIXED. `gap_analysis_service.py` now uses real SQL queries against `feedback_items`, `endpoints_registry`, `qa_pairs`, `model_evaluations`. Simulated data kept as fallback only when tables don't exist. DDL added for `identified_gaps` and `annotation_tasks`.
 
 2. **Data quality results stub** — `GET /data-quality/sheets/{id}/results` returns empty results, no DB persistence.
 
@@ -207,7 +207,7 @@
 |---|---------|----------------|--------|
 | ~~1~~ | ~~**Train Page — job creation UI**~~ | ~~DONE — `TrainingJobCreateForm`, `TrainingJobList`, `TrainingJobDetail` components fully wired to all 9 training endpoints~~ | ~~M~~ |
 | ~~2~~ | ~~**Fix stale schema references**~~ | ~~DONE — `canonical_labels.py`, `feedback.py`, `training_service.py`, `settings.py` updated~~ | ~~S~~ |
-| 2 | **Gap analysis — real implementation** | Replace `_simulate_*` functions with actual model evaluation using MLflow metrics. Persist gap updates to DB. | L |
+| ~~2~~ | ~~**Gap analysis — real implementation**~~ | ~~DONE — Real SQL queries against feedback_items, endpoints_registry, qa_pairs, model_evaluations. DDL for identified_gaps + annotation_tasks.~~ | ~~L~~ |
 
 ### P1: High Value
 
@@ -226,7 +226,7 @@
 | # | Feature | What's Missing | Effort |
 |---|---------|----------------|--------|
 | 11 | **Lineage DAG visualization** | Backend has attribution/lineage traversal; no interactive frontend visualization | L |
-| 12 | **Model evaluation harness** | No MLflow Evaluate integration for A/B model comparison | L |
+| ~~12~~ | ~~**Model evaluation harness**~~ | ~~DONE — `evaluation_service.py` + 3 endpoints + `model_evaluations` DDL + Evaluate tab in TrainingJobDetail~~ | ~~L~~ |
 | 13 | **Synthetic data generation** | PRD P2. No backend or frontend. | L |
 | 14 | **Active learning** | PRD P2. No model-in-the-loop sampling. | L |
 | 15 | **Image annotation tools** | PRD P2. Bounding box / polygon labeling for vision use cases. | L |
@@ -237,6 +237,24 @@
 
 ## Recently Completed (Feb 18, 2026)
 
+- Gap analysis service: rewrote all 4 analysis functions with real SQL queries (was using hardcoded simulated data)
+  - `analyze_model_errors()` queries `model_evaluations` + `feedback_items` JOIN `endpoints_registry`
+  - `analyze_coverage_distribution()` queries `qa_pairs` JOIN `training_sheets`
+  - `analyze_quality_by_segment()` queries `qa_pairs` JOIN `training_sheets`
+  - `detect_emerging_topics()` queries `feedback_items` JOIN `endpoints_registry`
+- Fixed 4 bugs in gap_analysis_service.py: `settings.uc_catalog`/`uc_schema` (AttributeError), `result.get("data")` (AttributeError on list), wrong column names, nonexistent `curation_items` table
+- Fixed all persistence functions (create_gap_record, list_gaps, get_gap, update_gap_in_db, create_annotation_task, list_annotation_tasks) to use `settings.get_table()` and treat `execute_sql()` result as `list[dict]`
+- DDL: `schemas/14_identified_gaps.sql` — gap analysis persistence table
+- DDL: `schemas/15_annotation_tasks.sql` — annotation task tracking table
+- MLflow Evaluate integration: `evaluation_service.py` with `evaluate_model()`, `get_evaluation_results()`, `compare_evaluations()`
+- 3 new training endpoints: `POST /training/jobs/{id}/evaluate`, `GET /training/jobs/{id}/evaluation`, `GET /training/compare/{model_name}`
+- Evaluate tab in `TrainingJobDetail.tsx` with "Run Evaluation" button and metric cards
+- `model_evaluations` DDL (`schemas/13_model_evaluations.sql`) — per-metric evaluation storage
+- Pydantic models: `EvaluationRequest`, `EvaluationMetric`, `EvaluationResult`, `ComparisonResult`
+- Frontend types + API functions: `evaluateTrainingJob()`, `getJobEvaluation()`
+- Bug fix: `mlflow_integration_service.py` used `settings.uc_catalog`/`settings.uc_schema` (nonexistent) — now uses `settings.get_table()`
+- Bug fix: `mlflow_integration_service.py` referenced `model_bits` table (nonexistent) — now uses `model_training_lineage`
+- Added `mlflow>=2.12.0` to `requirements.txt`
 - Registries admin page (Tools/Agents/Endpoints CRUD with tabbed DataTable UI)
 - Example Store: copy-to-clipboard tracks usage via `trackExampleUsage`
 - Example Store: "Regenerate Embeddings" button wired

@@ -34,6 +34,9 @@ SQL_FILES=(
     "10_labeling_tasks.sql"
     "11_labeled_items.sql"
     "12_workspace_users.sql"
+    "13_model_evaluations.sql"
+    "14_identified_gaps.sql"
+    "15_annotation_tasks.sql"
     "99_validate_and_seed.sql"
 )
 

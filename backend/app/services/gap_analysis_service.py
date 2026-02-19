@@ -39,6 +39,20 @@ from app.services.sql_service import execute_sql
 logger = logging.getLogger(__name__)
 
 
+def _get_tables() -> dict[str, str]:
+    """Get fully qualified table names using settings.get_table()."""
+    settings = get_settings()
+    return {
+        "feedback": settings.get_table("feedback_items"),
+        "endpoints": settings.get_table("endpoints_registry"),
+        "qa_pairs": settings.get_table("qa_pairs"),
+        "training_sheets": settings.get_table("training_sheets"),
+        "evaluations": settings.get_table("model_evaluations"),
+        "gaps": settings.get_table("identified_gaps"),
+        "tasks": settings.get_table("annotation_tasks"),
+    }
+
+
 # ============================================================================
 # Gap Analysis Tools (LangGraph Compatible)
 # ============================================================================
@@ -53,9 +67,9 @@ async def analyze_model_errors(
     """
     Analyze model prediction errors to identify systematic failure patterns.
 
-    Clusters errors using embeddings to find topics/categories where the model
-    consistently fails. Returns error clusters with sample queries and suggested
-    actions.
+    Combines two data sources:
+    1. model_evaluations — metrics below threshold from mlflow.evaluate()
+    2. feedback_items JOIN endpoints_registry — user-reported errors (low rating or flagged)
 
     Args:
         model_name: Name of the model to analyze
@@ -66,29 +80,45 @@ async def analyze_model_errors(
     Returns:
         Dictionary with error clusters and recommendations
     """
-    settings = get_settings()
+    tables = _get_tables()
     logger.info(f"Analyzing errors for {model_name} v{model_version}")
 
-    # Query for model errors from feedback/evaluation tables
-    # In production, this would query actual MLflow traces or feedback data
-    query = f"""
+    # Source 1: Evaluation metrics below threshold
+    eval_query = f"""
+    SELECT metric_name as error_category, COUNT(*) as error_count
+    FROM {tables["evaluations"]}
+    WHERE model_name = '{_escape_sql(model_name)}'
+      AND model_version = '{_escape_sql(model_version)}'
+      AND metric_value < 0.7
+    GROUP BY metric_name
+    """
+
+    # Source 2: Negative user feedback joined to endpoints
+    feedback_query = f"""
     SELECT
-        COALESCE(category, 'uncategorized') as error_category,
+        er.endpoint_name as error_category,
         COUNT(*) as error_count,
-        COLLECT_LIST(query) as sample_queries
-    FROM {settings.uc_catalog}.{settings.uc_schema}.feedback_items
-    WHERE model_name = '{model_name}'
-      AND model_version = '{model_version}'
-      AND feedback_type = 'error'
-    GROUP BY category
+        COLLECT_LIST(SUBSTRING(fi.input_data, 1, 200)) as sample_queries
+    FROM {tables["feedback"]} fi
+    JOIN {tables["endpoints"]} er ON fi.endpoint_id = er.id
+    WHERE er.model_name = '{_escape_sql(model_name)}'
+      AND er.model_version = '{_escape_sql(model_version)}'
+      AND (CAST(fi.rating AS INT) < 3 OR fi.flagged = TRUE)
+    GROUP BY er.endpoint_name
     HAVING COUNT(*) >= {min_cluster_size}
-    ORDER BY error_count DESC
-    LIMIT 10
     """
 
     try:
-        result = await execute_sql(query)
-        rows = result.get("data", [])
+        # Try both sources, combine results
+        rows: list[dict] = []
+        try:
+            eval_rows = await execute_sql(eval_query)
+            rows.extend(eval_rows)
+        except Exception as eval_err:
+            logger.debug(f"Eval metrics query returned no results: {eval_err}")
+
+        feedback_rows = await execute_sql(feedback_query)
+        rows.extend(feedback_rows)
 
         # Transform to error clusters
         error_clusters = []
@@ -133,8 +163,8 @@ async def analyze_coverage_distribution(
     """
     Analyze how well training data covers expected topic/category distribution.
 
-    Compares actual distribution against expected distribution to identify
-    under-represented categories.
+    Queries qa_pairs joined to training_sheets to get distribution by
+    training sheet name (the closest proxy for "category" in the real data model).
 
     Args:
         template_id: Template to analyze
@@ -143,24 +173,23 @@ async def analyze_coverage_distribution(
     Returns:
         Coverage analysis with identified gaps
     """
-    settings = get_settings()
+    tables = _get_tables()
     logger.info(f"Analyzing coverage for template {template_id}")
 
-    # Query actual distribution from curation items
     query = f"""
     SELECT
-        COALESCE(JSON_EXTRACT_SCALAR(agent_label, '$.category'), 'uncategorized') as category,
+        ts.name as category,
         COUNT(*) as record_count
-    FROM {settings.uc_catalog}.{settings.uc_schema}.curation_items
-    WHERE template_id = '{template_id}'
-      AND status IN ('approved', 'auto_approved')
-    GROUP BY 1
-    ORDER BY 2 DESC
+    FROM {tables["qa_pairs"]} qp
+    JOIN {tables["training_sheets"]} ts ON qp.training_sheet_id = ts.id
+    WHERE ts.template_id = '{_escape_sql(template_id)}'
+      AND qp.review_status IN ('approved', 'edited')
+    GROUP BY ts.name
+    ORDER BY record_count DESC
     """
 
     try:
-        result = await execute_sql(query)
-        rows = result.get("data", [])
+        rows = await execute_sql(query)
 
         total_records = sum(row.get("record_count", 0) for row in rows)
         actual_distribution = {
@@ -171,7 +200,10 @@ async def analyze_coverage_distribution(
         # Default to uniform expected if not provided
         if not expected_distribution:
             categories = list(actual_distribution.keys())
-            expected_distribution = {c: 1.0 / len(categories) for c in categories}
+            if categories:
+                expected_distribution = {c: 1.0 / len(categories) for c in categories}
+            else:
+                expected_distribution = {}
 
         # Find coverage gaps
         coverage_gaps = []
@@ -223,7 +255,7 @@ async def analyze_quality_by_segment(
     """
     Analyze quality scores broken down by data segments.
 
-    Identifies segments with lower quality that may need curation or replacement.
+    Queries qa_pairs grouped by training_sheet name for quality scores.
 
     Args:
         template_id: Template to analyze
@@ -232,29 +264,30 @@ async def analyze_quality_by_segment(
     Returns:
         Quality analysis by segment with recommendations
     """
-    settings = get_settings()
+    tables = _get_tables()
     logger.info(f"Analyzing quality by {segment_by} for template {template_id}")
 
     query = f"""
     SELECT
-        COALESCE(JSON_EXTRACT_SCALAR(agent_label, '$.{segment_by}'), 'unknown') as segment,
+        ts.name as segment,
         COUNT(*) as record_count,
-        AVG(COALESCE(quality_score, agent_confidence * 5)) as avg_quality,
-        SUM(CASE WHEN status = 'flagged' THEN 1 ELSE 0 END) as flagged_count
-    FROM {settings.uc_catalog}.{settings.uc_schema}.curation_items
-    WHERE template_id = '{template_id}'
-    GROUP BY 1
+        AVG(COALESCE(qp.quality_score, 0.5)) as avg_quality,
+        SUM(CASE WHEN qp.review_status = 'flagged' THEN 1 ELSE 0 END) as flagged_count
+    FROM {tables["qa_pairs"]} qp
+    JOIN {tables["training_sheets"]} ts ON qp.training_sheet_id = ts.id
+    WHERE ts.template_id = '{_escape_sql(template_id)}'
+    GROUP BY ts.name
     HAVING COUNT(*) >= 10
     ORDER BY avg_quality ASC
     """
 
     try:
-        result = await execute_sql(query)
-        rows = result.get("data", [])
+        rows = await execute_sql(query)
 
         quality_gaps = []
         for row in rows:
-            quality = row.get("avg_quality", 0) / 5  # Normalize to 0-1
+            quality = row.get("avg_quality", 0)
+            # quality_score is already 0-1 range (not 0-5)
             if quality < 0.80:
                 gap = QualityGap(
                     segment=row.get("segment", "unknown"),
@@ -289,8 +322,8 @@ async def detect_emerging_topics(
     """
     Detect emerging topics from recent queries that may not be well covered.
 
-    Analyzes recent user queries to find new topics trending up that the model
-    may not have good training data for.
+    Queries recent feedback_items joined to endpoints_registry, grouped by
+    endpoint to find models with high negative feedback.
 
     Args:
         model_name: Model to analyze queries for
@@ -299,28 +332,27 @@ async def detect_emerging_topics(
     Returns:
         Emerging topics with coverage assessment
     """
-    settings = get_settings()
+    tables = _get_tables()
     logger.info(f"Detecting emerging topics for {model_name} (last {lookback_days} days)")
 
-    # Query recent feedback/queries
     query = f"""
     SELECT
-        COALESCE(category, 'unknown') as topic,
+        er.endpoint_name as topic,
         COUNT(*) as query_count,
-        SUM(CASE WHEN feedback_type = 'positive' THEN 1 ELSE 0 END) as positive_count,
-        SUM(CASE WHEN feedback_type = 'negative' THEN 1 ELSE 0 END) as negative_count
-    FROM {settings.uc_catalog}.{settings.uc_schema}.feedback_items
-    WHERE model_name = '{model_name}'
-      AND created_at >= DATE_SUB(CURRENT_DATE(), {lookback_days})
-    GROUP BY 1
+        SUM(CASE WHEN CAST(fi.rating AS INT) >= 3 THEN 1 ELSE 0 END) as positive_count,
+        SUM(CASE WHEN CAST(fi.rating AS INT) < 3 THEN 1 ELSE 0 END) as negative_count
+    FROM {tables["feedback"]} fi
+    JOIN {tables["endpoints"]} er ON fi.endpoint_id = er.id
+    WHERE er.model_name = '{_escape_sql(model_name)}'
+      AND fi.created_at >= DATE_SUB(CURRENT_DATE(), {lookback_days})
+    GROUP BY er.endpoint_name
     HAVING COUNT(*) >= 10
     ORDER BY query_count DESC
     LIMIT 20
     """
 
     try:
-        result = await execute_sql(query)
-        rows = result.get("data", [])
+        rows = await execute_sql(query)
 
         emerging_topics = []
         for row in rows:
@@ -362,7 +394,7 @@ async def detect_emerging_topics(
 
 async def create_gap_record(gap: GapCreate) -> GapResponse:
     """Create a gap record in the database."""
-    settings = get_settings()
+    tables = _get_tables()
     gap_id = f"gap_{uuid.uuid4().hex[:12]}"
 
     # Calculate priority score
@@ -380,7 +412,7 @@ async def create_gap_record(gap: GapCreate) -> GapResponse:
     priority = min(100, base_priority)
 
     query = f"""
-    INSERT INTO {settings.uc_catalog}.{settings.uc_schema}.identified_gaps
+    INSERT INTO {tables["gaps"]}
     (gap_id, model_name, template_id, gap_type, severity, description,
      evidence_type, evidence_summary, affected_queries_count, error_rate,
      suggested_action, suggested_bit_name, estimated_records_needed,
@@ -434,11 +466,11 @@ async def list_gaps(
     offset: int = 0,
 ) -> tuple[list[GapResponse], int]:
     """List gaps with optional filters."""
-    settings = get_settings()
+    tables = _get_tables()
 
     conditions = ["1=1"]
     if model_name:
-        conditions.append(f"model_name = '{model_name}'")
+        conditions.append(f"model_name = '{_escape_sql(model_name)}'")
     if severity:
         conditions.append(f"severity = '{severity.value}'")
     if status:
@@ -449,23 +481,22 @@ async def list_gaps(
     where_clause = " AND ".join(conditions)
 
     query = f"""
-    SELECT * FROM {settings.uc_catalog}.{settings.uc_schema}.identified_gaps
+    SELECT * FROM {tables["gaps"]}
     WHERE {where_clause}
     ORDER BY priority DESC, identified_at DESC
     LIMIT {limit} OFFSET {offset}
     """
 
     count_query = f"""
-    SELECT COUNT(*) as total FROM {settings.uc_catalog}.{settings.uc_schema}.identified_gaps
+    SELECT COUNT(*) as total FROM {tables["gaps"]}
     WHERE {where_clause}
     """
 
     try:
-        result = await execute_sql(query)
-        count_result = await execute_sql(count_query)
+        rows = await execute_sql(query)
+        count_rows = await execute_sql(count_query)
 
-        rows = result.get("data", [])
-        total = count_result.get("data", [{}])[0].get("total", 0)
+        total = count_rows[0].get("total", 0) if count_rows else 0
 
         gaps = [_row_to_gap_response(row) for row in rows]
         return gaps, total
@@ -477,16 +508,15 @@ async def list_gaps(
 
 async def get_gap(gap_id: str) -> GapResponse | None:
     """Get a specific gap by ID."""
-    settings = get_settings()
+    tables = _get_tables()
 
     query = f"""
-    SELECT * FROM {settings.uc_catalog}.{settings.uc_schema}.identified_gaps
-    WHERE gap_id = '{gap_id}'
+    SELECT * FROM {tables["gaps"]}
+    WHERE gap_id = '{_escape_sql(gap_id)}'
     """
 
     try:
-        result = await execute_sql(query)
-        rows = result.get("data", [])
+        rows = await execute_sql(query)
         if rows:
             return _row_to_gap_response(rows[0])
     except Exception as e:
@@ -504,11 +534,11 @@ async def create_annotation_task(
     task: AnnotationTaskCreate,
 ) -> AnnotationTaskResponse:
     """Create an annotation task to fill a gap."""
-    settings = get_settings()
+    tables = _get_tables()
     task_id = f"task_{uuid.uuid4().hex[:12]}"
 
     query = f"""
-    INSERT INTO {settings.uc_catalog}.{settings.uc_schema}.annotation_tasks
+    INSERT INTO {tables["tasks"]}
     (task_id, task_type, title, description, instructions,
      source_gap_id, target_record_count, assigned_team,
      priority, status, created_at, created_by)
@@ -534,9 +564,9 @@ async def create_annotation_task(
         # Update gap status if linked
         if task.source_gap_id:
             update_query = f"""
-            UPDATE {settings.uc_catalog}.{settings.uc_schema}.identified_gaps
+            UPDATE {tables["gaps"]}
             SET status = 'task_created', resolution_task_id = '{task_id}'
-            WHERE gap_id = '{task.source_gap_id}'
+            WHERE gap_id = '{_escape_sql(task.source_gap_id)}'
             """
             await execute_sql(update_query)
 
@@ -561,7 +591,7 @@ async def create_annotation_task(
 
 async def update_gap_in_db(gap_id: str, update: GapUpdate) -> GapResponse:
     """Persist gap updates to the identified_gaps table."""
-    settings = get_settings()
+    tables = _get_tables()
 
     set_clauses = []
     if update.status:
@@ -579,7 +609,7 @@ async def update_gap_in_db(gap_id: str, update: GapUpdate) -> GapResponse:
 
     if set_clauses:
         query = f"""
-        UPDATE {settings.uc_catalog}.{settings.uc_schema}.identified_gaps
+        UPDATE {tables["gaps"]}
         SET {', '.join(set_clauses)}
         WHERE gap_id = '{_escape_sql(gap_id)}'
         """
@@ -601,7 +631,7 @@ async def list_annotation_tasks(
     limit: int = 20,
 ) -> list[AnnotationTaskResponse]:
     """List annotation tasks from the database."""
-    settings = get_settings()
+    tables = _get_tables()
 
     where_clauses = []
     if status:
@@ -612,15 +642,14 @@ async def list_annotation_tasks(
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
     query = f"""
-    SELECT * FROM {settings.uc_catalog}.{settings.uc_schema}.annotation_tasks
+    SELECT * FROM {tables["tasks"]}
     {where_sql}
     ORDER BY created_at DESC
     LIMIT {limit}
     """
 
     try:
-        result = await execute_sql(query)
-        rows = result.get("data", [])
+        rows = await execute_sql(query)
         return [_row_to_annotation_task(row) for row in rows]
     except Exception as e:
         logger.warning(f"Failed to list annotation tasks: {e}")
@@ -858,12 +887,16 @@ def _row_to_gap_response(row: dict) -> GapResponse:
 
 
 # ============================================================================
-# Simulated Data (for development/demo)
+# Simulated Data (fallback when tables don't exist yet)
 # ============================================================================
 
 
 def _simulate_error_analysis(model_name: str, model_version: str) -> dict:
-    """Return simulated error analysis for demo purposes."""
+    """Return simulated error analysis when real data is unavailable."""
+    logger.warning(
+        "SIMULATED DATA: analyze_model_errors using hardcoded demo data. "
+        "Create feedback_items + endpoints_registry tables for real results."
+    )
     return {
         "model_name": model_name,
         "model_version": model_version,
@@ -905,7 +938,11 @@ def _simulate_error_analysis(model_name: str, model_version: str) -> dict:
 
 
 def _simulate_coverage_analysis(template_id: str) -> dict:
-    """Return simulated coverage analysis for demo purposes."""
+    """Return simulated coverage analysis when real data is unavailable."""
+    logger.warning(
+        "SIMULATED DATA: analyze_coverage_distribution using hardcoded demo data. "
+        "Create qa_pairs + training_sheets tables for real results."
+    )
     return {
         "template_id": template_id,
         "actual_distribution": {
@@ -950,7 +987,11 @@ def _simulate_coverage_analysis(template_id: str) -> dict:
 
 
 def _simulate_quality_analysis(template_id: str) -> dict:
-    """Return simulated quality analysis for demo purposes."""
+    """Return simulated quality analysis when real data is unavailable."""
+    logger.warning(
+        "SIMULATED DATA: analyze_quality_by_segment using hardcoded demo data. "
+        "Create qa_pairs + training_sheets tables for real results."
+    )
     return {
         "template_id": template_id,
         "segment_by": "category",
@@ -980,7 +1021,11 @@ def _simulate_quality_analysis(template_id: str) -> dict:
 
 
 def _simulate_emerging_topics(model_name: str) -> dict:
-    """Return simulated emerging topics for demo purposes."""
+    """Return simulated emerging topics when real data is unavailable."""
+    logger.warning(
+        "SIMULATED DATA: detect_emerging_topics using hardcoded demo data. "
+        "Create feedback_items + endpoints_registry tables for real results."
+    )
     return {
         "model_name": model_name,
         "analysis_period_days": 30,

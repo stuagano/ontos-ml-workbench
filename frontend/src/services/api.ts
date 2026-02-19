@@ -87,6 +87,9 @@ import type {
   TrainingJobMetrics,
   TrainingJobEventsResponse,
   TrainingJobLineage,
+  // Evaluation types
+  EvaluationMetric,
+  EvaluationResult,
   // Canonical Label types
   CanonicalLabel,
   CanonicalLabelCreateRequest,
@@ -2015,6 +2018,32 @@ export async function getActiveTrainingJobs(): Promise<TrainingJob[]> {
     `${API_BASE}/training/active`,
   );
   return response.jobs;
+}
+
+// ============================================================================
+// Model Evaluation API (MLflow Evaluate)
+// ============================================================================
+
+/**
+ * Run mlflow.evaluate() on a completed training job
+ */
+export async function evaluateTrainingJob(
+  jobId: string,
+  evalType: string = "post_training",
+): Promise<EvaluationResult> {
+  return fetchJson(`${API_BASE}/training/jobs/${jobId}/evaluate`, {
+    method: "POST",
+    body: JSON.stringify({ job_id: jobId, eval_type: evalType }),
+  });
+}
+
+/**
+ * Get stored evaluation results for a training job
+ */
+export async function getJobEvaluation(
+  jobId: string,
+): Promise<EvaluationMetric[]> {
+  return fetchJson(`${API_BASE}/training/jobs/${jobId}/evaluation`);
 }
 
 // ============================================================================

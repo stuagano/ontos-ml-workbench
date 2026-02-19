@@ -2286,6 +2286,24 @@ export interface TrainingJobCancelRequest {
   reason?: string;
 }
 
+// ============================================================================
+// Model Evaluation (MLflow Evaluate Integration)
+// ============================================================================
+
+export interface EvaluationMetric {
+  metric_name: string;
+  metric_value: number;
+}
+
+export interface EvaluationResult {
+  model_name: string;
+  model_version: string;
+  eval_type: string;
+  metrics: EvaluationMetric[];
+  mlflow_run_id: string | null;
+  created_at: string;
+}
+
 // Available base models for training
 export const AVAILABLE_TRAINING_MODELS = [
   {

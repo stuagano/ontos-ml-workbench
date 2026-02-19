@@ -6,6 +6,9 @@ python-multipart>=0.0.6
 # Databricks
 databricks-sdk>=0.20.0
 
+# MLflow
+mlflow>=2.12.0
+
 # DQX - Data Quality eXtended
 databricks-labs-dqx[llm]>=0.7.0
 databricks-connect~=15.4
