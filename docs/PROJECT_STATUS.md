@@ -363,10 +363,6 @@ The following stale docs have been **deleted** (Feb 18, 2026):
 - `docs/archive/` and `schemas/archive/` directories
 - `docs/DOCUMENTATION_INDEX.md`, `docs/INTEGRATION_GUIDE.md`
 
-The following docs are **deprecated** but kept for reference:
-
-- `docs/LAKEHOUSE_AI_PLATFORM_GAP_ANALYSIS.md` — Superseded by this file and the Ontos Governance Gap Analysis section. Deprecation notice added Feb 18, 2026.
-
 The following docs have been **updated** to use current terminology (Feb 18, 2026):
 
 - `docs/BUSINESS_CASE.md` — Fixed TEMPLATE→GENERATE, CURATE→LABEL, DataBit→Sheet
