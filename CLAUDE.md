@@ -138,15 +138,22 @@ Sample data for Acme Instruments use cases in `synthetic_data/`:
 | `model_training_lineage` | Tracks which models used which Training Sheets |
 | `example_store` | Managed few-shot examples for DSPy |
 
-**Domain-Specific Tables:**
+**Operations & Governance Tables:**
 
 | Table | Purpose |
 |-------|---------|
-| `defect_detections` | Defect detection results |
-| `maintenance_predictions` | Predictive maintenance outputs |
-| `anomaly_alerts` | Anomaly detection alerts |
-| `feedback_items` | Expert feedback for continuous improvement |
-| `job_runs` | Job execution history |
+| `feedback_items` | User feedback (ratings, comments, flags) |
+| `endpoints_registry` | Registered serving endpoints with model metadata |
+| `labeling_jobs` | Structured labeling job definitions |
+| `labeling_tasks` | Task batches within labeling jobs |
+| `labeled_items` | Individual item annotations |
+| `workspace_users` | Labeling workspace users |
+| `model_evaluations` | MLflow evaluation results (per-metric) |
+| `identified_gaps` | Gap analysis findings |
+| `annotation_tasks` | Gap remediation annotation tasks |
+| `bit_attribution` | Model attribution scores per training data |
+| `dqx_quality_results` | Data quality check results per sheet |
+| `endpoint_metrics` | Per-request endpoint performance metrics |
 
 **Key Schema Features:**
 - Multimodal support: Tables reference Unity Catalog volumes for images, PDFs, audio

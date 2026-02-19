@@ -361,6 +361,17 @@ The following stale docs have been **deleted** (Feb 18, 2026):
 - `docs/prd/` directory (including `v2.3-implementation-status.md`)
 - `docs/planning/` and `docs/implementation/` directories
 - `docs/archive/` and `schemas/archive/` directories
-- `docs/DOCUMENTATION_INDEX.md`, `docs/BUSINESS_CASE.md`, `docs/INTEGRATION_GUIDE.md`
+- `docs/DOCUMENTATION_INDEX.md`, `docs/INTEGRATION_GUIDE.md`
+
+The following docs are **deprecated** but kept for reference:
+
+- `docs/LAKEHOUSE_AI_PLATFORM_GAP_ANALYSIS.md` — Superseded by this file and the Ontos Governance Gap Analysis section. Deprecation notice added Feb 18, 2026.
+
+The following docs have been **updated** to use current terminology (Feb 18, 2026):
+
+- `docs/BUSINESS_CASE.md` — Fixed TEMPLATE→GENERATE, CURATE→LABEL, DataBit→Sheet
+- `docs/PRD.md` — Fixed broken file refs, old terminology in Stage 4 header, API layer, metrics, appendix
+- `docs/architecture/canonical-labels.md` — Fixed UNIQUE constraint to v2.3 composite key, updated implementation checklist
+- `docs/architecture/usage-constraints.md` — Updated implementation checklist
 
 This file (`PROJECT_STATUS.md`) is the single source of truth for implementation status.

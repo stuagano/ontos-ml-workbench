@@ -498,4 +498,4 @@ For issues or questions:
 
 - `CLAUDE.md` - Project overview and terminology
 - `docs/PRD.md` - Product requirements (v2.3)
-- `VALIDATION_SUMMARY.md` - Schema validation results
+- `docs/validation/` - Schema validation results

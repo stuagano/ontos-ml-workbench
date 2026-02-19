@@ -81,14 +81,14 @@ Teams build one-off Streamlit/Gradio apps:
 **One app for the entire journey:**
 
 ```
-DATA → TEMPLATE → CURATE → TRAIN → DEPLOY → MONITOR → IMPROVE
-  │        │         │        │        │         │         │
-  │        │         │        │        │         │         └─ Feedback loops
-  │        │         │        │        │         └─ Drift, metrics, alerts
-  │        │         │        │        └─ One-click serving
-  │        │         │        └─ Fine-tune with FMAPI
-  │        │         └─ AI-assisted labeling
-  │        └─ Prompt templates as artifacts
+DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
+  │        │         │       │        │         │         │
+  │        │         │       │        │         │         └─ Feedback loops
+  │        │         │       │        │         └─ Drift, metrics, alerts
+  │        │         │       │        └─ One-click serving
+  │        │         │       └─ Fine-tune with FMAPI
+  │        │         └─ Expert review + canonical labeling
+  │        └─ Q&A pair generation from templates
   └─ Extract, transform, enrich
 ```
 
@@ -96,7 +96,7 @@ DATA → TEMPLATE → CURATE → TRAIN → DEPLOY → MONITOR → IMPROVE
 
 | Before | After |
 |--------|-------|
-| Build labeling Streamlit app | Use Ontos ML Workbench curation queue |
+| Build labeling Streamlit app | Use Ontos ML Workbench labeling workflow |
 | Build review dashboard | Use Ontos ML Workbench pipeline view |
 | Build status tracker | Use Ontos ML Workbench job panel |
 | Build data preview tool | Deep link to UC Explorer |
@@ -162,35 +162,34 @@ DATA → TEMPLATE → CURATE → TRAIN → DEPLOY → MONITOR → IMPROVE
 | Vector Embeddings | Semantic search enablement |
 | AI Functions | classify, extract, summarize, translate, mask |
 
-### Stage 2: TEMPLATE
-**Ontos ML Workbench as first-class artifacts**
+### Stage 2: GENERATE
+**Q&A pair generation from Sheets + Templates**
 
 | Capability | Value |
 |------------|-------|
-| Schema Definition | Define input/output structure |
-| Prompt Engineering | Craft and version prompts |
-| Few-shot Examples | Store examples with template |
-| Version Control | Semantic versioning, diffs |
-| Publishing | Draft → Published → Archived |
+| Template Selection | Apply prompt templates to Sheets |
+| AI Inference | Generate responses via Foundation Model APIs |
+| Canonical Label Lookup | Auto-reuse expert labels (pre-approved) |
+| Column Mapping | Map template variables to Sheet columns |
+| Training Sheet Creation | Materialized Q&A dataset |
 
-### Stage 3: CURATE
-**AI-assisted human labeling**
+### Stage 3: LABEL
+**Expert review and canonical labeling**
 
 | Capability | Value |
 |------------|-------|
-| AI Pre-labeling | Agents suggest labels |
-| Confidence Thresholds | Auto-approve high-confidence |
-| Human Review | Approve, reject, correct |
-| Quality Scoring | Item-level quality metrics |
-| Deduplication | Remove near-duplicates |
-| Bulk Operations | Keyboard shortcuts, batch actions |
+| Training Sheet Review | Approve, edit, reject Q&A pairs |
+| Canonical Labeling Tool | Label source data directly (label once, reuse everywhere) |
+| Multiple Labelsets | Different label types per item via composite key |
+| Usage Constraints | PHI/NDA governance on labeled data |
+| Labeling Jobs | Structured annotation workflows with task assignment |
 
 ### Stage 4: TRAIN
 **Fine-tuning and evaluation**
 
 | Capability | Value |
 |------------|-------|
-| Data Assembly | Build training datasets |
+| Training Sheet Export | Build training datasets |
 | FMAPI Fine-tuning | One-click model training |
 | Custom Training | Advanced configurations |
 | Evaluation | Automated quality assessment |
@@ -339,8 +338,8 @@ Databricks has:
 
 **Full Lifecycle:**
 1. **DATA**: Images extracted from cameras, auto-captioned
-2. **TEMPLATE**: "Defect classifier" Databit with defect types
-3. **CURATE**: Inspectors verify AI suggestions
+2. **TEMPLATE**: "Defect classifier" Sheet with defect types
+3. **LABEL**: Inspectors verify AI suggestions
 4. **TRAIN**: Fine-tune vision model
 5. **DEPLOY**: Serve model on edge devices
 6. **MONITOR**: Track accuracy, alert on drift
@@ -356,8 +355,8 @@ Databricks has:
 
 **Full Lifecycle:**
 1. **DATA**: PDFs parsed, text extracted, PII masked
-2. **TEMPLATE**: "Contract clause extractor" Databit
-3. **CURATE**: Paralegals verify clause classifications
+2. **TEMPLATE**: "Contract clause extractor" Sheet
+3. **LABEL**: Paralegals verify clause classifications
 4. **TRAIN**: Fine-tune extraction model
 5. **DEPLOY**: Agent with contract tools
 6. **MONITOR**: Track extraction accuracy
@@ -373,8 +372,8 @@ Databricks has:
 
 **Full Lifecycle:**
 1. **DATA**: Tickets synced, good responses labeled
-2. **TEMPLATE**: "Support response" Databit with tone guidelines
-3. **CURATE**: Leads rate AI responses, add examples
+2. **TEMPLATE**: "Support response" Sheet with tone guidelines
+3. **LABEL**: Leads rate AI responses, add examples
 4. **TRAIN**: Fine-tune response model
 5. **DEPLOY**: Agent with knowledge base tools
 6. **MONITOR**: Track satisfaction, response quality
@@ -431,7 +430,7 @@ Databricks has:
 ### Phase 1: Foundation (Weeks 1-2)
 - DAB setup and deployment
 - Core Delta schema
-- Basic Databit CRUD
+- Basic Sheet CRUD
 - **Milestone:** App deploys to workspace
 
 ### Phase 2: Data Preparation (Weeks 3-4)
@@ -440,11 +439,11 @@ Databricks has:
 - Job execution framework
 - **Milestone:** Can process raw data
 
-### Phase 3: Curation (Weeks 5-6)
+### Phase 3: Labeling (Weeks 5-6)
 - AI pre-labeling
-- Human review queue
-- Quality scoring
-- **Milestone:** Can curate training data
+- Expert review workflow
+- Canonical labeling tool
+- **Milestone:** Can label and review training data
 
 ### Phase 4: Training (Weeks 7-8)
 - FMAPI integration

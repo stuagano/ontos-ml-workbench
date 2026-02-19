@@ -93,7 +93,7 @@ ontos_ml.workbench.canonical_labels (
   
   created_at TIMESTAMP,
   
-  UNIQUE(sheet_id, item_ref)  -- One canonical label per source item
+  UNIQUE(sheet_id, item_ref, label_type)  -- One canonical label per source item per label type
 )
 ```
 
@@ -220,10 +220,11 @@ def generate_training_sheet(sheet_id, template_id, mode):
   qa_pairs = []
   
   for item in sheet.get_items():
-    # CHECK FOR CANONICAL LABEL FIRST
+    # CHECK FOR CANONICAL LABEL FIRST (match by label_type from template)
     canonical_label = canonical_labels.get(
       sheet_id=sheet_id,
-      item_ref=item.ref
+      item_ref=item.ref,
+      label_type=template.label_type  # v2.3: composite key includes label_type
     )
     
     if canonical_label:
@@ -482,17 +483,18 @@ WHERE qa.item_ref = cl.item_ref
 ## Next Steps
 
 1. **Backend Implementation**
-   - [ ] Create `canonical_labels` table
-   - [ ] Add `canonical_label_id` to `qa_pairs`
-   - [ ] Implement canonical label CRUD APIs
-   - [ ] Update Q&A generation logic (canonical label lookup)
-   - [ ] Update approval logic (create canonical label)
+   - [x] Create `canonical_labels` table (`schemas/04_canonical_labels.sql`)
+   - [x] Add `canonical_label_id` to `qa_pairs` (`schemas/06_qa_pairs.sql`)
+   - [x] Implement canonical label CRUD APIs (13 endpoints under `/api/v1/canonical-labels`)
+   - [x] Update Q&A generation logic (canonical label lookup with coverage stats)
+   - [x] Update approval logic (create canonical label on approve/edit)
 
 2. **Frontend Implementation**
-   - [ ] Build Canonical Labeling Tool page
-   - [ ] Add canonical label indicators to Training Sheet review
-   - [ ] Show labeling progress with canonical label stats
-   - [ ] Add export functionality
+   - [x] Build Canonical Labeling Tool page (`CanonicalLabelingTool.tsx`)
+   - [x] Add canonical label indicators to Training Sheet review (coverage banner in SheetBuilder)
+   - [x] Show labeling progress with canonical label stats
+   - [x] Label version history UI (`LabelVersionHistory.tsx`)
+   - [ ] Export canonical labels as JSONL (not yet implemented)
 
 3. **Testing**
    - [ ] Test label reuse across Training Sheets

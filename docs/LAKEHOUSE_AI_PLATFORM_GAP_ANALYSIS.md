@@ -1,5 +1,19 @@
 # Lakehouse AI Platform: Gap Analysis & APX Integration Plan
 
+> **DEPRECATED (Feb 18, 2026):** This document is heavily outdated. Many features listed as "Missing"
+> below have been implemented. For the current, accurate project status, see
+> **[`docs/PROJECT_STATUS.md`](PROJECT_STATUS.md)** — the single source of truth.
+>
+> Key changes since this was written:
+> - Attribution DAG → DONE (`LineageDAG.tsx`)
+> - Agent Registry → DONE (`RegistriesPage.tsx` with Tools/Agents/Endpoints CRUD)
+> - MLflow tracking → DONE (evaluation service + training lineage)
+> - DSPy Optimization UI → DONE (`DSPyOptimizationPage.tsx`, 729 lines)
+> - Example Effectiveness tracking → DONE (`ExampleEffectivenessDashboard.tsx`)
+> - Quality scoring → DONE (quality scores on Q&A pairs + DQX persistence)
+> - Multimodal content → DONE (columns support text, image, metadata categories)
+> - APX migration was NOT pursued; the app uses its own sidebar layout with Tailwind CSS.
+
 **Date:** January 30, 2026
 **Source:** Lakehouse_AI_Platform_Pitch.pptx
 **Target Codebase:** ontos-ml-workbench

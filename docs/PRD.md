@@ -26,7 +26,7 @@
 - Medical invoice entity extraction (4 labelsets: extraction, classification, summarization, document_type)
 - PCB defect detection (4 labelsets: classification, localization, root_cause, pass_fail)
 
-See: `VALIDATION_SUMMARY.md`, `USE_CASE_VALIDATION_*.md`
+See: `docs/validation/entity-extraction.md`, `docs/validation/manufacturing-defects.md`
 
 ### v2.2 - Usage Constraints
 **Date:** February 4, 2026
@@ -37,7 +37,7 @@ See: `VALIDATION_SUMMARY.md`, `USE_CASE_VALIDATION_*.md`
 - Support for compliance scenarios (PHI, PII, proprietary data)
 - Unity Catalog tag inheritance for auto-detection
 
-See: `USAGE_CONSTRAINTS_DESIGN.md`
+See: `docs/architecture/usage-constraints.md`
 
 ### v2.1 - Workflow Terminology
 **Date:** February 3, 2026
@@ -100,7 +100,7 @@ The platform addresses a critical gap in enterprise AI workflows: the absence of
 - **Document AI**: Medical invoice entity extraction (multimodal: PDFs + structured billing data)
 - **Vision AI**: PCB defect detection (multimodal: images + real-time sensor fusion)
 
-No gaps or breaking changes identified. See **VALIDATION_SUMMARY.md** for complete validation results.
+No gaps or breaking changes identified. See `docs/validation/` for complete validation results.
 
 ---
 
@@ -461,7 +461,7 @@ A few-shot example is a labeled input-output pair demonstrating expected model b
 
 The Example Store is built on Databricks Vector Search with the following components:
 
-- **Example Registry:** Delta Lake table storing examples as specialized DataBits with input, expected_output, and search_keys fields
+- **Example Registry:** Delta Lake table storing examples with input, expected_output, and search_keys fields
 - **Vector Index:** Databricks Vector Search index on example embeddings for cosine similarity retrieval
 - **Retrieval API:** REST and Python SDK for querying examples with optional filtering by function name, domain, or quality threshold
 - **Agent Integration:** Native hooks for Mosaic AI Agent Framework to automatically retrieve and inject examples into prompts
@@ -470,7 +470,7 @@ The Example Store is built on Databricks Vector Search with the following compon
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `example_id` | UUID | Unique identifier (extends DataBit) |
+| `example_id` | UUID | Unique identifier |
 | `input` | VARIANT | User query or model input demonstrating the scenario |
 | `expected_output` | VARIANT | Expected model response or behavior |
 | `search_keys` | ARRAY<STRING> | Semantic keys for similarity matching |
@@ -513,9 +513,9 @@ The Workbench is designed as a **DSPy-native platform**, meaning curated dataset
 
 | Component | Integration |
 |-----------|-------------|
-| **Example Selection** | DataBits tagged as high-quality examples can be automatically surfaced as few-shot candidates for DSPy optimizers. The Example Store serves as the canonical source. |
+| **Example Selection** | Examples tagged as high-quality can be automatically surfaced as few-shot candidates for DSPy optimizers. The Example Store serves as the canonical source. |
 | **Evaluation Sets** | DataSets can be designated as evaluation ground truth, enabling DSPy metrics to score against curated benchmarks. |
-| **Optimization Feedback Loop** | DSPy optimization runs generate performance metrics that flow back into DataBit quality scores and Example Store effectiveness ratings. |
+| **Optimization Feedback Loop** | DSPy optimization runs generate performance metrics that flow back into example quality scores and Example Store effectiveness ratings. |
 | **Signature Alignment** | DataSet schemas can be validated against DSPy signature definitions to ensure compatibility before optimization runs. |
 
 ### DSPy + Example Store Synergy
@@ -530,11 +530,11 @@ The Example Store and DSPy serve complementary purposes:
 
 | Step | Workbench Action | DSPy Integration |
 |------|------------------|------------------|
-| 1 | Curate DataBits with task-specific labels | Labels map to DSPy signature fields |
+| 1 | Curate examples with task-specific labels | Labels map to DSPy signature fields |
 | 2 | Assemble DataSet with train/eval splits | Export as DSPy-compatible dataset object |
 | 3 | Define quality thresholds for example selection | Optimizer draws few-shot examples from Example Store |
 | 4 | Run DSPy optimization (logged to MLflow) | Optimizer evaluates against curated ground truth |
-| 5 | Ingest optimization metrics back to DataBits | Per-example performance scores update quality_scores |
+| 5 | Ingest optimization metrics back to examples | Per-example performance scores update quality_scores |
 
 ### Consumption Impact
 
@@ -631,7 +631,7 @@ ORDER BY eval.accuracy DESC;
 | Job | Description | Databricks Feature |
 |-----|-------------|-------------------|
 | Browse Catalogs | Explore Unity Catalog tables/volumes | Unity Catalog |
-| Create Sheet | Define dataset pointers | Custom (DataBits) |
+| Create Sheet | Define dataset pointers | Custom (Sheets) |
 | Join Sources | Multimodal data fusion | Spark SQL |
 | Ingest Files | Stream from cloud storage | AutoLoader |
 | OCR Extract | Text from images/PDFs | ai_query, Document AI |
@@ -1124,11 +1124,11 @@ This enables answering:
 
 ### Stage 4: TRAIN
 
-**Purpose:** Export curated Assembly and fine-tune model.
+**Purpose:** Export approved Training Sheet and fine-tune model.
 
 | Job | Description | Databricks Feature |
 |-----|-------------|-------------------|
-| Export Assembly | Format as JSONL training file | Spark job |
+| Export Training Sheet | Format as JSONL training file | Spark job |
 | Train/Val Split | Divide into train/validation sets | Spark job |
 | Fine-tune | Submit FMAPI training job | Foundation Model APIs |
 | Register Model | To UC Model Registry | MLflow |
@@ -1452,7 +1452,7 @@ February: Generate Training Sheet v2 → ALL 500 items pre-approved automaticall
 
 ### API Layer
 
-- REST API for programmatic access (create DataBits, query DataSets, retrieve examples)
+- REST API for programmatic access (create Sheets, query Training Sheets, retrieve examples)
 - Python SDK wrapping API with DSPy-native objects and Example Store client
 - SQL functions for DataSet queries within notebooks
 
@@ -1621,7 +1621,7 @@ ontos_ml.workbench.usage_constraint_audit (
 | Metric | Target (6mo) | Target (12mo) |
 |--------|--------------|---------------|
 | Active Workbench Projects | 100 | 500 |
-| DataBits Created (monthly) | 1M | 10M |
+| Training Pairs Created (monthly) | 1M | 10M |
 | Example Store Instances | 200 | 1,000 |
 | Example Retrievals (monthly) | 10M | 100M |
 | DSPy Optimization Runs (monthly) | 1,000 | 10,000 |
@@ -1647,7 +1647,7 @@ ontos_ml.workbench.usage_constraint_audit (
 
 | Phase | Timeline | Focus |
 |-------|----------|-------|
-| **Phase 1** | Q1 | Core DataBit/DataSet infrastructure, text annotation UI, basic import/export |
+| **Phase 1** | Q1 | Core Sheet/Training Sheet infrastructure, text annotation UI, basic import/export |
 | **Phase 2** | Q2 | Example Store with Vector Search, retrieval API, agent framework integration |
 | **Phase 3** | Q3 | DSPy export, MLflow integration, optimization run launcher, feedback loop |
 | **Phase 4** | Q4 | Multimodal annotation, synthetic data, active learning, example effectiveness analytics |
@@ -1704,4 +1704,4 @@ This Workbench instance is configured for Acme Instruments' Ontos ML (AI-powered
 - **Document Extraction:** Compliance docs → structured data
 - **Remaining Useful Life:** Equipment history → RUL estimate
 
-The platform leverages Acme Instruments' 60+ years of radiation safety expertise encoded as reusable DataBits and examples.
+The platform leverages Acme Instruments' 60+ years of radiation safety expertise encoded as reusable Templates, Canonical Labels, and Examples.

@@ -413,19 +413,19 @@ WHERE qa.training_sheet_id IN (
 ## Implementation Checklist
 
 ### Backend
-- [ ] Add fields to `qa_pairs` table
-- [ ] Create `usage_constraint_audit` table
-- [ ] Update Q&A pair creation to set default constraints
-- [ ] Add Unity Catalog tag detection
-- [ ] Update TRAIN export filter (dual gates)
-- [ ] Update Example Store sync filter
+- [x] Add fields to `qa_pairs` table (`schemas/06_qa_pairs.sql` — `allowed_uses`, `prohibited_uses`, `usage_reason`, `data_classification`)
+- [ ] Create `usage_constraint_audit` table (not yet implemented)
+- [x] Update Q&A pair creation to set default constraints
+- [ ] Add Unity Catalog tag detection (auto-detect PII/PHI tags)
+- [x] Update TRAIN export filter (dual gates — status + governance)
+- [ ] Update Example Store sync filter (respects usage constraints)
 - [ ] Add constraint validation API
 
 ### Frontend
-- [ ] Add constraint badges in LABEL stage
-- [ ] Add constraint editor UI
+- [x] Add constraint indicators in Q&A pair list (backend model supports it)
+- [ ] Add constraint editor UI (no dedicated UI yet)
 - [ ] Show export summary with exclusion reasons
-- [ ] Add constraint indicators in Q&A pair list
+- [ ] Add constraint badges in LABEL stage
 - [ ] Add audit trail viewer
 
 ### Documentation
