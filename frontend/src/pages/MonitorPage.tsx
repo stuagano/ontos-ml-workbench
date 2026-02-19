@@ -343,8 +343,28 @@ function DriftPanel({
             </div>
           </div>
 
-          {/* Affected Features */}
-          {driftData.affected_features && driftData.affected_features.length > 0 && (
+          {/* Per-Feature Breakdown */}
+          {driftData.feature_details && driftData.feature_details.length > 0 ? (
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-db-gray-700">
+                Feature Breakdown ({driftData.feature_details.length})
+              </div>
+              {driftData.feature_details.map((fd) => (
+                <div key={fd.feature} className="flex items-center justify-between p-2 bg-db-gray-50 rounded-lg text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className={clsx("w-1.5 h-1.5 rounded-full", fd.drifted ? "bg-red-500" : "bg-green-500")} />
+                    <span className="font-medium text-db-gray-700 capitalize">{fd.feature.replace("_", " ")}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-db-gray-500">
+                    <span>{fd.baseline_value.toFixed(1)} → {fd.recent_value.toFixed(1)}</span>
+                    <span className={clsx("font-medium", fd.drifted ? "text-red-600" : "text-green-600")}>
+                      {(fd.drift_score * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : driftData.affected_features && driftData.affected_features.length > 0 ? (
             <div className="p-3 bg-db-gray-50 rounded-lg">
               <div className="text-sm font-medium text-db-gray-700 mb-2">
                 Affected Features ({driftData.affected_features.length})
@@ -360,7 +380,7 @@ function DriftPanel({
                 ))}
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* Time Periods */}
           <div className="text-xs text-db-gray-500">

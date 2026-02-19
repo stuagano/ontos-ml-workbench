@@ -14,6 +14,9 @@ import {
   BarChart3,
   Eye,
   CheckCircle2,
+  Play,
+  ClipboardList,
+  X,
 } from "lucide-react";
 import { DataTable, Column, RowAction } from "../components/DataTable";
 import { StatsCard } from "../components/StatsCard";
@@ -27,6 +30,9 @@ import {
   listGaps,
   convertFeedbackToCuration,
   listTemplates,
+  createGapTask,
+  listAssemblies,
+  createTrainingJob,
 } from "../services/api";
 import { useToast } from "../components/Toast";
 import type { FeedbackItem, Gap } from "../services/api";
@@ -37,9 +43,11 @@ import type { FeedbackItem, Gap } from "../services/api";
 
 interface GapCardProps {
   gap: Gap;
+  onCreateTask?: (gapId: string) => void;
+  isCreatingTask?: boolean;
 }
 
-function GapCard({ gap }: GapCardProps) {
+function GapCard({ gap, onCreateTask, isCreatingTask }: GapCardProps) {
   const severityColors = {
     high: "bg-red-100 text-red-700 border-red-200",
     medium: "bg-amber-100 text-amber-700 border-amber-200",
@@ -59,6 +67,21 @@ function GapCard({ gap }: GapCardProps) {
         <p className="text-xs mt-2 opacity-75">
           Action: {gap.suggested_action}
         </p>
+      )}
+      {onCreateTask && gap.status !== "task_created" && gap.status !== "resolved" && (
+        <button
+          onClick={() => onCreateTask(gap.id)}
+          disabled={isCreatingTask}
+          className="mt-2 flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-white/60 hover:bg-white/80 transition-colors"
+        >
+          <ClipboardList className="w-3 h-3" />
+          Create Annotation Task
+        </button>
+      )}
+      {gap.status === "task_created" && (
+        <span className="mt-2 inline-flex items-center gap-1 text-xs opacity-75">
+          <CheckCircle2 className="w-3 h-3" /> Task created
+        </span>
       )}
     </div>
   );
@@ -135,6 +158,51 @@ export function ImprovePage({ mode = "browse", onModeChange }: ImprovePageProps)
   const { data: templatesData } = useQuery({
     queryKey: ["templates"],
     queryFn: () => listTemplates(),
+  });
+
+  // Fetch training sheets for retrain modal
+  const { data: trainingSheets = [] } = useQuery({
+    queryKey: ["assemblies"],
+    queryFn: () => listAssemblies({ status: "approved", limit: 50 }),
+  });
+
+  // Retrain state
+  const [showRetrain, setShowRetrain] = useState(false);
+  const [retrainSheetId, setRetrainSheetId] = useState("");
+  const [retrainModelName, setRetrainModelName] = useState("");
+
+  // Create annotation task from gap
+  const gapTaskMutation = useMutation({
+    mutationFn: (gapId: string) => createGapTask(gapId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["gaps"] });
+      toast.success("Task Created", "Annotation task created from gap");
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to create task", error.message);
+    },
+  });
+
+  // Trigger retrain
+  const retrainMutation = useMutation({
+    mutationFn: () =>
+      createTrainingJob({
+        training_sheet_id: retrainSheetId,
+        model_name: retrainModelName,
+        base_model: "databricks-meta-llama-3-1-70b-instruct",
+        training_config: { epochs: 3, learning_rate: 0.0001, batch_size: 4 },
+        train_val_split: 0.8,
+        register_to_uc: true,
+      }),
+    onSuccess: (data) => {
+      toast.success("Retraining Started", `Job ${data.id} is now queued. Monitor progress in the TRAIN stage.`);
+      setShowRetrain(false);
+      setRetrainSheetId("");
+      setRetrainModelName("");
+    },
+    onError: (error: Error) => {
+      toast.error("Retrain Failed", error.message);
+    },
   });
 
   // Convert feedback to curation mutation
@@ -428,7 +496,12 @@ export function ImprovePage({ mode = "browse", onModeChange }: ImprovePageProps)
                 ) : (
                   <div className="space-y-3">
                     {gaps.map((gap) => (
-                      <GapCard key={gap.id} gap={gap} />
+                      <GapCard
+                        key={gap.id}
+                        gap={gap}
+                        onCreateTask={(gapId) => gapTaskMutation.mutate(gapId)}
+                        isCreatingTask={gapTaskMutation.isPending}
+                      />
                     ))}
                   </div>
                 )}
@@ -466,10 +539,82 @@ export function ImprovePage({ mode = "browse", onModeChange }: ImprovePageProps)
                       <span>Retrain model in TRAIN stage</span>
                     </div>
                   </div>
-                  <button className="mt-4 w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium">
-                    Start Improvement Cycle
+                  <button
+                    onClick={() => setShowRetrain(true)}
+                    className="mt-4 w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                  >
+                    <Play className="w-4 h-4" />
+                    Trigger Retrain
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Retrain Modal */}
+        {showRetrain && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-md p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-db-gray-800 dark:text-white">
+                  Trigger Retrain
+                </h2>
+                <button
+                  onClick={() => setShowRetrain(false)}
+                  className="text-db-gray-400 hover:text-db-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-sm text-db-gray-600 dark:text-gray-400 mb-4">
+                Select a Training Sheet with approved Q&A pairs and name the new model version.
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Training Sheet</label>
+                  <select
+                    value={retrainSheetId}
+                    onChange={(e) => setRetrainSheetId(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                  >
+                    <option value="">Select training sheet...</option>
+                    {trainingSheets.map((ts) => (
+                      <option key={ts.id} value={ts.id}>
+                        {ts.sheet_name || ts.id} ({ts.human_verified_count || 0} verified)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Model Name</label>
+                  <input
+                    value={retrainModelName}
+                    onChange={(e) => setRetrainModelName(e.target.value)}
+                    placeholder="e.g. defect-detector-v3"
+                    className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={() => retrainSheetId && retrainModelName && retrainMutation.mutate()}
+                  disabled={!retrainSheetId || !retrainModelName || retrainMutation.isPending}
+                  className="flex-1 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  {retrainMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Play className="w-4 h-4" />
+                  )}
+                  Start Training
+                </button>
+                <button
+                  onClick={() => setShowRetrain(false)}
+                  className="px-4 py-2 text-sm text-db-gray-600 dark:text-gray-400 hover:text-db-gray-800 dark:hover:text-white"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>

@@ -585,7 +585,7 @@ export interface Gap {
   description: string;
   category: string;
   severity: "high" | "medium" | "low";
-  status: "open" | "in_progress" | "resolved" | "wont_fix";
+  status: "open" | "in_progress" | "resolved" | "wont_fix" | "task_created";
   occurrence_count: number;
   suggested_action?: string;
   created_at: string;
@@ -608,6 +608,14 @@ export async function listGaps(params?: {
 
   const query = searchParams.toString();
   return fetchJson(`${API_BASE}/gaps${query ? `?${query}` : ""}`);
+}
+
+export async function createGapTask(
+  gapId: string,
+): Promise<{ task_id: string; title: string; status: string }> {
+  return fetchJson(`${API_BASE}/gaps/${gapId}/task`, {
+    method: "POST",
+  });
 }
 
 // ============================================================================

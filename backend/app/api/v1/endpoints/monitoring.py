@@ -93,6 +93,16 @@ class AlertResponse(BaseModel):
     created_at: datetime
 
 
+class FeatureDrift(BaseModel):
+    """Drift metrics for a single feature."""
+
+    feature: str
+    baseline_value: float
+    recent_value: float
+    drift_score: float
+    drifted: bool
+
+
 class DriftReport(BaseModel):
     """Data drift detection report."""
 
@@ -104,6 +114,7 @@ class DriftReport(BaseModel):
     baseline_period: str
     comparison_period: str
     affected_features: list[str] | None = None
+    feature_details: list[FeatureDrift] | None = None
     severity: str  # low, medium, high, critical
 
 
@@ -736,59 +747,105 @@ async def detect_drift(
 
         endpoint_name = endpoint_result[0]["name"]
 
-        # Get baseline statistics
-        baseline_sql = f"""
-        SELECT
-            COUNT(*) as baseline_count,
-            AVG(rating) as baseline_avg_rating,
-            STDDEV(rating) as baseline_stddev_rating
-        FROM {FEEDBACK_TABLE}
-        WHERE endpoint_id = '{endpoint_id}'
-          AND created_at >= current_timestamp() - INTERVAL {baseline_days} DAY
-          AND created_at < current_timestamp() - INTERVAL {comparison_hours} HOUR
-        """
-        baseline_result = _sql.execute(baseline_sql)
+        no_data_report = DriftReport(
+            endpoint_id=endpoint_id,
+            endpoint_name=endpoint_name,
+            detection_time=datetime.utcnow(),
+            drift_detected=False,
+            drift_score=0.0,
+            baseline_period=f"{baseline_days}d",
+            comparison_period=f"{comparison_hours}h",
+            severity="low",
+        )
 
-        # Get recent statistics
-        recent_sql = f"""
-        SELECT
-            COUNT(*) as recent_count,
-            AVG(rating) as recent_avg_rating,
-            STDDEV(rating) as recent_stddev_rating
-        FROM {FEEDBACK_TABLE}
-        WHERE endpoint_id = '{endpoint_id}'
-          AND created_at >= current_timestamp() - INTERVAL {comparison_hours} HOUR
-        """
-        recent_result = _sql.execute(recent_sql)
+        # ── Feature 1: Latency, error rate, token count from endpoint_metrics ──
+        feature_details: list[FeatureDrift] = []
 
-        if not baseline_result or not recent_result:
-            return DriftReport(
-                endpoint_id=endpoint_id,
-                endpoint_name=endpoint_name,
-                detection_time=datetime.utcnow(),
-                drift_detected=False,
-                drift_score=0.0,
-                baseline_period=f"{baseline_days}d",
-                comparison_period=f"{comparison_hours}h",
-                severity="low",
-            )
+        try:
+            metrics_baseline_sql = f"""
+            SELECT
+                COUNT(*) as cnt,
+                AVG(latency_ms) as avg_latency,
+                AVG(CASE WHEN status_code >= 400 THEN 1.0 ELSE 0.0 END) as error_rate,
+                AVG(total_tokens) as avg_tokens
+            FROM {METRICS_TABLE}
+            WHERE endpoint_id = '{endpoint_id}'
+              AND created_at >= current_timestamp() - INTERVAL {baseline_days} DAY
+              AND created_at < current_timestamp() - INTERVAL {comparison_hours} HOUR
+            """
+            metrics_recent_sql = f"""
+            SELECT
+                COUNT(*) as cnt,
+                AVG(latency_ms) as avg_latency,
+                AVG(CASE WHEN status_code >= 400 THEN 1.0 ELSE 0.0 END) as error_rate,
+                AVG(total_tokens) as avg_tokens
+            FROM {METRICS_TABLE}
+            WHERE endpoint_id = '{endpoint_id}'
+              AND created_at >= current_timestamp() - INTERVAL {comparison_hours} HOUR
+            """
+            mb = _sql.execute(metrics_baseline_sql)
+            mr = _sql.execute(metrics_recent_sql)
 
-        baseline = baseline_result[0]
-        recent = recent_result[0]
+            if mb and mr and int(mb[0].get("cnt") or 0) > 0 and int(mr[0].get("cnt") or 0) > 0:
+                for feature_name, col in [("latency", "avg_latency"), ("error_rate", "error_rate"), ("token_count", "avg_tokens")]:
+                    b_val = float(mb[0].get(col) or 0)
+                    r_val = float(mr[0].get(col) or 0)
+                    score = abs(b_val - r_val) / (b_val + 0.001)
+                    feature_details.append(FeatureDrift(
+                        feature=feature_name,
+                        baseline_value=round(b_val, 3),
+                        recent_value=round(r_val, 3),
+                        drift_score=round(score, 4),
+                        drifted=score > 0.1,
+                    ))
+        except Exception as e:
+            logger.debug(f"Metrics drift check skipped (table may not exist): {e}")
 
-        # Calculate drift score (simplified - in production use statistical tests)
-        baseline_avg = float(baseline.get("baseline_avg_rating") or 0)
-        recent_avg = float(recent.get("recent_avg_rating") or 0)
+        # ── Feature 2: Feedback rating drift ──
+        try:
+            fb_baseline_sql = f"""
+            SELECT COUNT(*) as cnt, AVG(rating) as avg_rating
+            FROM {FEEDBACK_TABLE}
+            WHERE endpoint_id = '{endpoint_id}'
+              AND created_at >= current_timestamp() - INTERVAL {baseline_days} DAY
+              AND created_at < current_timestamp() - INTERVAL {comparison_hours} HOUR
+            """
+            fb_recent_sql = f"""
+            SELECT COUNT(*) as cnt, AVG(rating) as avg_rating
+            FROM {FEEDBACK_TABLE}
+            WHERE endpoint_id = '{endpoint_id}'
+              AND created_at >= current_timestamp() - INTERVAL {comparison_hours} HOUR
+            """
+            fb = _sql.execute(fb_baseline_sql)
+            fr = _sql.execute(fb_recent_sql)
 
-        drift_score = abs(baseline_avg - recent_avg) / (baseline_avg + 0.001)
+            if fb and fr and int(fb[0].get("cnt") or 0) > 0 and int(fr[0].get("cnt") or 0) > 0:
+                b_val = float(fb[0].get("avg_rating") or 0)
+                r_val = float(fr[0].get("avg_rating") or 0)
+                score = abs(b_val - r_val) / (b_val + 0.001)
+                feature_details.append(FeatureDrift(
+                    feature="rating",
+                    baseline_value=round(b_val, 3),
+                    recent_value=round(r_val, 3),
+                    drift_score=round(score, 4),
+                    drifted=score > 0.1,
+                ))
+        except Exception as e:
+            logger.debug(f"Feedback drift check skipped: {e}")
 
-        # Determine severity
-        drift_detected = drift_score > 0.1  # 10% threshold
-        if drift_score > 0.3:
+        if not feature_details:
+            return no_data_report
+
+        # ── Aggregate: max drift score across all features ──
+        max_score = max(fd.drift_score for fd in feature_details)
+        affected = [fd.feature for fd in feature_details if fd.drifted]
+        drift_detected = len(affected) > 0
+
+        if max_score > 0.3:
             severity = "critical"
-        elif drift_score > 0.2:
+        elif max_score > 0.2:
             severity = "high"
-        elif drift_score > 0.1:
+        elif max_score > 0.1:
             severity = "medium"
         else:
             severity = "low"
@@ -798,10 +855,11 @@ async def detect_drift(
             endpoint_name=endpoint_name,
             detection_time=datetime.utcnow(),
             drift_detected=drift_detected,
-            drift_score=drift_score,
+            drift_score=round(max_score, 4),
             baseline_period=f"{baseline_days}d",
             comparison_period=f"{comparison_hours}h",
-            affected_features=["rating"] if drift_detected else None,
+            affected_features=affected if affected else None,
+            feature_details=feature_details,
             severity=severity,
         )
 

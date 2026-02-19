@@ -2403,6 +2403,14 @@ export interface CreateAlertRequest {
 /**
  * Data drift detection report
  */
+export interface FeatureDrift {
+  feature: string;
+  baseline_value: number;
+  recent_value: number;
+  drift_score: number;
+  drifted: boolean;
+}
+
 export interface DriftDetection {
   endpoint_id: string;
   endpoint_name: string;
@@ -2412,6 +2420,7 @@ export interface DriftDetection {
   baseline_period: string;
   comparison_period: string;
   affected_features?: string[];
+  feature_details?: FeatureDrift[];
   severity: "low" | "medium" | "high" | "critical";
 }
 

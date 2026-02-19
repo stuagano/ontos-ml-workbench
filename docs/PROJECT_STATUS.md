@@ -99,17 +99,17 @@
 | Registries (Tools/Agents/Endpoints) | DONE | `RegistriesPage.tsx` — tabbed CRUD admin (just built) |
 | Guardrails configuration | DONE | `GuardrailsPanel` component, GET+PUT `/deployment/endpoints/{name}/guardrails`, Databricks AI Gateway SDK integration |
 
-### Stage 6: MONITOR — DONE (scaffold-level for some metrics)
+### Stage 6: MONITOR — DONE
 
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Endpoint performance metrics | DONE | `MonitorPage.tsx` queries real feedback data |
 | Real-time metrics (latency, errors) | DONE | `endpoint_metrics` table + ingestion endpoints + timeseries API; falls back to feedback-derived when empty |
-| Drift detection | PARTIAL | UI panel exists, backend endpoint works but analysis is basic |
+| Drift detection | DONE | Multi-feature analysis: latency, error rate, token count (from endpoint_metrics) + feedback rating. Per-feature breakdown in UI. |
 | Alert management (create/ack/resolve) | DONE | Full alert CRUD wired in MonitorPage |
 | Health dashboard | DONE | Combined health score endpoint |
 
-### Stage 7: IMPROVE — PARTIAL
+### Stage 7: IMPROVE — DONE
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -118,7 +118,7 @@
 | Convert feedback to training data | DONE | `POST /feedback/{id}/to-training` wired |
 | Gap analysis | DONE | Real SQL queries against feedback_items, endpoints_registry, qa_pairs, model_evaluations; simulated fallback only when tables missing |
 | Annotation task creation from gaps | DONE | `POST /gaps/{id}/task` creates tasks; `GET /gaps/tasks` queries `annotation_tasks` table |
-| Trigger retraining | NOT STARTED | No UI to initiate retrain from gaps |
+| Trigger retraining | DONE | "Trigger Retrain" modal in ImprovePage — select training sheet + model name, calls createTrainingJob. "Create Annotation Task" button on gap cards. |
 
 ---
 
@@ -304,6 +304,8 @@ Features for mature data governance organizations.
   - **Phase 4 (Frontend)**: `governance.ts` types, `governance.ts` service (20 API functions), `GovernancePage.tsx` (3 tabs: permission matrix + user assignment, team list/detail + member management, domain tree + create form), Admin sidebar section in `AppLayout.tsx` + `AppWithSidebar.tsx`
 - **Domain→asset association**: `25_add_domain_id_columns.sql` — adds `domain_id` FK column to sheets, templates, training_sheets tables
 - **Auth enforcement on governance endpoints**: `require_permission()` wired to all 13 mutation endpoints (role CRUD needs admin/admin, user assignment needs governance/admin, team+domain CRUD needs governance/write). Soft mode by default.
+- **Drift detection enhanced**: Multi-feature analysis — latency, error rate, token count from `endpoint_metrics` table + feedback rating. New `FeatureDrift` model with per-feature baseline/recent/score. DriftPanel shows per-feature breakdown with visual indicators.
+- **Trigger retraining from ImprovePage**: "Trigger Retrain" modal selects training sheet + model name, calls `createTrainingJob`. "Create Annotation Task" button on gap cards calls `POST /gaps/{id}/task`. All 7 pipeline stages now DONE.
 
 ## Previously Completed (Feb 18, 2026)
 
