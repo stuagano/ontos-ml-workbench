@@ -112,3 +112,33 @@ export interface AssetReview {
   created_at: string | null;
   updated_at: string | null;
 }
+
+// Projects (G8)
+
+export type ProjectType = "personal" | "team";
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string | null;
+  project_type: ProjectType;
+  team_id: string | null;
+  team_name: string | null;
+  owner_email: string;
+  is_active: boolean;
+  member_count: number;
+  created_at: string | null;
+  created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export interface ProjectMember {
+  id: string;
+  project_id: string;
+  user_email: string;
+  user_display_name: string | null;
+  role: string;
+  added_at: string | null;
+  added_by: string | null;
+}

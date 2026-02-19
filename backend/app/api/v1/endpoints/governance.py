@@ -14,6 +14,11 @@ from app.models.governance import (
     DataDomainResponse,
     DataDomainUpdate,
     DomainTreeNode,
+    ProjectCreate,
+    ProjectMemberAdd,
+    ProjectMemberResponse,
+    ProjectResponse,
+    ProjectUpdate,
     ReviewAssign,
     ReviewDecision,
     ReviewRequest,
@@ -318,3 +323,73 @@ async def delete_review(
     """Delete a review. Requires governance write."""
     svc = get_governance_service()
     svc.delete_review(review_id)
+
+
+# ============================================================================
+# Projects (G8)
+# ============================================================================
+
+
+@router.get("/projects", response_model=list[ProjectResponse])
+async def list_projects():
+    """List all projects."""
+    svc = get_governance_service()
+    return svc.list_projects()
+
+
+@router.post("/projects", response_model=ProjectResponse, status_code=201)
+async def create_project(project: ProjectCreate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Create a new project. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.create_project(project.model_dump(), user)
+
+
+@router.get("/projects/{project_id}", response_model=ProjectResponse)
+async def get_project(project_id: str):
+    """Get a project by ID."""
+    svc = get_governance_service()
+    result = svc.get_project(project_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return result
+
+
+@router.put("/projects/{project_id}", response_model=ProjectResponse)
+async def update_project(project_id: str, project: ProjectUpdate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Update a project. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.update_project(project_id, project.model_dump(exclude_unset=True), user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return result
+
+
+@router.delete("/projects/{project_id}", status_code=204)
+async def delete_project(project_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Delete a project and its members. Requires governance write."""
+    svc = get_governance_service()
+    svc.delete_project(project_id)
+
+
+@router.get("/projects/{project_id}/members", response_model=list[ProjectMemberResponse])
+async def list_project_members(project_id: str):
+    """List members of a project."""
+    svc = get_governance_service()
+    return svc.list_project_members(project_id)
+
+
+@router.post("/projects/{project_id}/members", response_model=ProjectMemberResponse, status_code=201)
+async def add_project_member(project_id: str, member: ProjectMemberAdd, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Add a member to a project. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.add_project_member(project_id, member.model_dump(), user)
+
+
+@router.delete("/projects/{project_id}/members/{member_id}", status_code=204)
+async def remove_project_member(project_id: str, member_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Remove a member from a project. Requires governance write."""
+    svc = get_governance_service()
+    svc.remove_project_member(member_id)

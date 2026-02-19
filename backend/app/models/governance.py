@@ -259,3 +259,64 @@ class AssetReviewResponse(BaseModel):
     decision_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+
+# ============================================================================
+# Projects (G8)
+# ============================================================================
+
+
+class ProjectType(str, Enum):
+    PERSONAL = "personal"
+    TEAM = "team"
+
+
+class ProjectCreate(BaseModel):
+    """Request body for creating a project."""
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = None
+    project_type: ProjectType = ProjectType.TEAM
+    team_id: str | None = Field(None, description="FK to teams.id (for team projects)")
+
+
+class ProjectUpdate(BaseModel):
+    """Request body for updating a project."""
+    name: str | None = None
+    description: str | None = None
+    team_id: str | None = None
+    is_active: bool | None = None
+
+
+class ProjectMemberAdd(BaseModel):
+    """Request body for adding a project member."""
+    user_email: str = Field(..., min_length=1)
+    user_display_name: str | None = None
+    role: str = Field("member", description="owner | admin | member | viewer")
+
+
+class ProjectMemberResponse(BaseModel):
+    """Project member response model."""
+    id: str
+    project_id: str
+    user_email: str
+    user_display_name: str | None = None
+    role: str = "member"
+    added_at: datetime | None = None
+    added_by: str | None = None
+
+
+class ProjectResponse(BaseModel):
+    """Project response model."""
+    id: str
+    name: str
+    description: str | None = None
+    project_type: str = "team"
+    team_id: str | None = None
+    team_name: str | None = None
+    owner_email: str
+    is_active: bool = True
+    member_count: int = 0
+    created_at: datetime | None = None
+    created_by: str | None = None
+    updated_at: datetime | None = None
+    updated_by: str | None = None

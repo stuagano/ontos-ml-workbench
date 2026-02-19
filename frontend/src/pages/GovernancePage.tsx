@@ -1,7 +1,7 @@
 /**
- * GovernancePage - Admin page for RBAC Roles, Teams, and Data Domains
+ * GovernancePage - Admin page for RBAC Roles, Teams, Data Domains, and Projects
  *
- * Three tabs: Roles | Teams | Domains
+ * Four tabs: Roles | Teams | Domains | Projects
  * Follows the RegistriesPage tabbed pattern.
  */
 
@@ -19,6 +19,7 @@ import {
   X,
   ChevronRight,
   Wrench,
+  Briefcase,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -36,6 +37,12 @@ import {
   getDomainTree,
   createDomain,
   deleteDomain,
+  listProjects,
+  createProject,
+  deleteProject,
+  listProjectMembers,
+  addProjectMember,
+  removeProjectMember,
 } from "../services/governance";
 import { useToast } from "../components/Toast";
 import type {
@@ -43,7 +50,7 @@ import type {
   DomainTreeNode,
 } from "../types/governance";
 
-type TabId = "roles" | "teams" | "domains";
+type TabId = "roles" | "teams" | "domains" | "projects";
 
 interface GovernancePageProps {
   onClose: () => void;
@@ -701,6 +708,291 @@ function DomainsTab() {
 }
 
 // ============================================================================
+// Projects Tab (G8)
+// ============================================================================
+
+function ProjectsTab() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [showCreate, setShowCreate] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newType, setNewType] = useState<"personal" | "team">("team");
+  const [newMemberEmail, setNewMemberEmail] = useState("");
+
+  const { data: projects = [], isLoading } = useQuery({
+    queryKey: ["governance-projects"],
+    queryFn: listProjects,
+  });
+
+  const { data: teams = [] } = useQuery({
+    queryKey: ["governance-teams"],
+    queryFn: listTeams,
+  });
+
+  const { data: members = [] } = useQuery({
+    queryKey: ["governance-project-members", selectedProject],
+    queryFn: () => listProjectMembers(selectedProject!),
+    enabled: !!selectedProject,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: { name: string; description?: string; project_type?: "personal" | "team" }) =>
+      createProject(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-projects"] });
+      toast.success("Project Created", "New project created successfully");
+      setShowCreate(false);
+      setNewName("");
+      setNewDesc("");
+      setNewType("team");
+    },
+    onError: (err: Error) => toast.error("Create Failed", err.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteProject,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-projects"] });
+      toast.success("Project Deleted", "Project removed successfully");
+      setSelectedProject(null);
+    },
+    onError: (err: Error) => toast.error("Delete Failed", err.message),
+  });
+
+  const addMemberMutation = useMutation({
+    mutationFn: (data: { user_email: string }) => addProjectMember(selectedProject!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-project-members", selectedProject] });
+      queryClient.invalidateQueries({ queryKey: ["governance-projects"] });
+      toast.success("Member Added", "Project member added");
+      setNewMemberEmail("");
+    },
+    onError: (err: Error) => toast.error("Add Failed", err.message),
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: (memberId: string) => removeProjectMember(selectedProject!, memberId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-project-members", selectedProject] });
+      queryClient.invalidateQueries({ queryKey: ["governance-projects"] });
+      toast.success("Member Removed", "Project member removed");
+    },
+    onError: (err: Error) => toast.error("Remove Failed", err.message),
+  });
+
+  if (isLoading) {
+    return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-db-orange" /></div>;
+  }
+
+  // Detail view
+  if (selectedProject) {
+    const project = projects.find((p) => p.id === selectedProject);
+    return (
+      <div className="space-y-6">
+        <button onClick={() => setSelectedProject(null)} className="flex items-center gap-2 text-sm text-db-gray-600 dark:text-gray-400 hover:text-db-gray-800 dark:hover:text-white">
+          <ArrowLeft className="w-4 h-4" /> Back to projects
+        </button>
+
+        {project && (
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-db-gray-800 dark:text-white flex items-center gap-2">
+                {project.name}
+                <span className={clsx(
+                  "px-2 py-0.5 text-xs rounded-full font-medium",
+                  project.project_type === "personal"
+                    ? "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400"
+                    : "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400",
+                )}>
+                  {project.project_type}
+                </span>
+              </h3>
+              {project.description && <p className="text-sm text-db-gray-500 dark:text-gray-500 mt-1">{project.description}</p>}
+              <p className="text-xs text-db-gray-400 dark:text-gray-600 mt-1">
+                Owner: {project.owner_email}
+                {project.team_name && <> · Team: {project.team_name}</>}
+              </p>
+            </div>
+            <button
+              onClick={() => { if (confirm("Delete this project?")) deleteMutation.mutate(project.id); }}
+              className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Add member */}
+        <div className="flex items-end gap-3 p-4 bg-db-gray-50 dark:bg-gray-800/50 rounded-lg">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Add Member</label>
+            <input
+              type="email"
+              value={newMemberEmail}
+              onChange={(e) => setNewMemberEmail(e.target.value)}
+              placeholder="user@example.com"
+              className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+            />
+          </div>
+          <button
+            onClick={() => newMemberEmail && addMemberMutation.mutate({ user_email: newMemberEmail })}
+            disabled={!newMemberEmail || addMemberMutation.isPending}
+            className="px-4 py-2 text-sm bg-db-orange text-white rounded-lg hover:bg-db-red disabled:opacity-50 transition-colors flex items-center gap-2"
+          >
+            <UserPlus className="w-4 h-4" />
+            Add
+          </button>
+        </div>
+
+        {/* Members list */}
+        {members.length === 0 ? (
+          <p className="text-sm text-db-gray-500 dark:text-gray-500 py-4">No members yet.</p>
+        ) : (
+          <div className="border border-db-gray-200 dark:border-gray-700 rounded-lg divide-y divide-db-gray-100 dark:divide-gray-800">
+            {members.map((m) => (
+              <div key={m.id} className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div>
+                    <div className="text-sm font-medium text-db-gray-800 dark:text-white">{m.user_email}</div>
+                  </div>
+                  <span className={clsx(
+                    "px-2 py-0.5 text-xs rounded-full font-medium",
+                    m.role === "owner" ? "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400"
+                      : m.role === "admin" ? "bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-400"
+                      : "bg-db-gray-100 dark:bg-gray-800 text-db-gray-600 dark:text-gray-400",
+                  )}>
+                    {m.role}
+                  </span>
+                </div>
+                {m.role !== "owner" && (
+                  <button
+                    onClick={() => removeMemberMutation.mutate(m.id)}
+                    className="p-1.5 text-db-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-db-gray-800 dark:text-white">Projects</h3>
+        <button
+          onClick={() => setShowCreate(!showCreate)}
+          className="px-3 py-1.5 text-sm bg-db-orange text-white rounded-lg hover:bg-db-red transition-colors flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" /> New Project
+        </button>
+      </div>
+
+      {showCreate && (
+        <div className="p-4 border border-db-gray-200 dark:border-gray-700 rounded-lg space-y-3">
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Project name"
+            className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+          />
+          <input
+            value={newDesc}
+            onChange={(e) => setNewDesc(e.target.value)}
+            placeholder="Description (optional)"
+            className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Type</label>
+              <select
+                value={newType}
+                onChange={(e) => setNewType(e.target.value as "personal" | "team")}
+                className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+              >
+                <option value="team">Team</option>
+                <option value="personal">Personal</option>
+              </select>
+            </div>
+            {newType === "team" && (
+              <div>
+                <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Team (optional)</label>
+                <select
+                  className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                  onChange={(e) => {/* team_id would be passed on create */}}
+                  defaultValue=""
+                >
+                  <option value="">None</option>
+                  {teams.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => newName && createMutation.mutate({ name: newName, description: newDesc || undefined, project_type: newType })}
+              disabled={!newName || createMutation.isPending}
+              className="px-4 py-2 text-sm bg-db-orange text-white rounded-lg hover:bg-db-red disabled:opacity-50"
+            >
+              Create
+            </button>
+            <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-db-gray-600 dark:text-gray-400">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {projects.length === 0 ? (
+        <p className="text-sm text-db-gray-500 dark:text-gray-500 py-8 text-center">No projects created yet.</p>
+      ) : (
+        <div className="border border-db-gray-200 dark:border-gray-700 rounded-lg divide-y divide-db-gray-100 dark:divide-gray-800">
+          {projects.map((project) => (
+            <button
+              key={project.id}
+              onClick={() => setSelectedProject(project.id)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-db-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+            >
+              <div>
+                <div className="text-sm font-medium text-db-gray-800 dark:text-white flex items-center gap-2">
+                  {project.name}
+                  <span className={clsx(
+                    "px-1.5 py-0.5 text-[10px] rounded font-medium",
+                    project.project_type === "personal"
+                      ? "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400"
+                      : "bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400",
+                  )}>
+                    {project.project_type}
+                  </span>
+                </div>
+                {project.description && (
+                  <div className="text-xs text-db-gray-500 dark:text-gray-500 mt-0.5">{project.description}</div>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {project.team_name && (
+                  <span className="text-xs text-db-gray-400 dark:text-gray-600">{project.team_name}</span>
+                )}
+                <span className="text-xs text-db-gray-500 dark:text-gray-500">{project.member_count} members</span>
+                <ChevronRight className="w-4 h-4 text-db-gray-400" />
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // Main Page
 // ============================================================================
 
@@ -708,6 +1000,7 @@ const TABS: { id: TabId; label: string; icon: typeof Shield }[] = [
   { id: "roles", label: "Roles", icon: Shield },
   { id: "teams", label: "Teams", icon: Users },
   { id: "domains", label: "Domains", icon: FolderTree },
+  { id: "projects", label: "Projects", icon: Briefcase },
 ];
 
 export function GovernancePage({ onClose }: GovernancePageProps) {
@@ -721,7 +1014,7 @@ export function GovernancePage({ onClose }: GovernancePageProps) {
           <div className="flex items-center gap-3">
             <Shield className="w-6 h-6 text-amber-600" />
             <h1 className="text-2xl font-bold text-db-gray-800 dark:text-white">
-              Governance
+              Governance & Projects
             </h1>
           </div>
           <button
@@ -761,6 +1054,7 @@ export function GovernancePage({ onClose }: GovernancePageProps) {
           {activeTab === "roles" && <RolesTab />}
           {activeTab === "teams" && <TeamsTab />}
           {activeTab === "domains" && <DomainsTab />}
+          {activeTab === "projects" && <ProjectsTab />}
         </div>
       </div>
     </div>

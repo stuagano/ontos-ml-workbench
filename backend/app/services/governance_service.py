@@ -489,6 +489,124 @@ class GovernanceService:
             f"DELETE FROM {self._table('asset_reviews')} WHERE id = '{_esc(review_id)}'"
         )
 
+    # ========================================================================
+    # Projects (G8)
+    # ========================================================================
+
+    def list_projects(self) -> list[dict]:
+        rows = self.sql.execute(f"""
+            SELECT p.*, t.name as team_name,
+                   (SELECT COUNT(*) FROM {self._table('project_members')} pm WHERE pm.project_id = p.id) as member_count
+            FROM {self._table('projects')} p
+            LEFT JOIN {self._table('teams')} t ON p.team_id = t.id
+            ORDER BY p.name
+        """)
+        return [self._parse_project(r) for r in rows]
+
+    def get_project(self, project_id: str) -> dict | None:
+        rows = self.sql.execute(f"""
+            SELECT p.*, t.name as team_name,
+                   (SELECT COUNT(*) FROM {self._table('project_members')} pm WHERE pm.project_id = p.id) as member_count
+            FROM {self._table('projects')} p
+            LEFT JOIN {self._table('teams')} t ON p.team_id = t.id
+            WHERE p.id = '{_esc(project_id)}'
+        """)
+        return self._parse_project(rows[0]) if rows else None
+
+    def create_project(self, data: dict, created_by: str) -> dict:
+        project_id = str(uuid.uuid4())
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('projects')}
+            (id, name, description, project_type, team_id, owner_email, is_active,
+             created_at, created_by, updated_at, updated_by)
+            VALUES (
+                '{project_id}', '{_esc(data["name"])}',
+                {f"'{_esc(data['description'])}'" if data.get('description') else 'NULL'},
+                '{_esc(data.get("project_type", "team"))}',
+                {f"'{_esc(data['team_id'])}'" if data.get('team_id') else 'NULL'},
+                '{_esc(created_by)}', true,
+                current_timestamp(), '{_esc(created_by)}',
+                current_timestamp(), '{_esc(created_by)}'
+            )
+        """)
+        # Auto-add creator as owner member
+        member_id = str(uuid.uuid4())
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('project_members')}
+            (id, project_id, user_email, role, added_at, added_by)
+            VALUES ('{member_id}', '{project_id}', '{_esc(created_by)}', 'owner',
+                    current_timestamp(), '{_esc(created_by)}')
+        """)
+        return self.get_project(project_id)
+
+    def update_project(self, project_id: str, data: dict, updated_by: str) -> dict | None:
+        updates = []
+        if data.get("name") is not None:
+            updates.append(f"name = '{_esc(data['name'])}'")
+        if data.get("description") is not None:
+            updates.append(f"description = '{_esc(data['description'])}'")
+        if "team_id" in data:
+            tid_sql = f"'{_esc(data['team_id'])}'" if data["team_id"] else "NULL"
+            updates.append(f"team_id = {tid_sql}")
+        if data.get("is_active") is not None:
+            updates.append(f"is_active = {str(data['is_active']).lower()}")
+
+        if updates:
+            updates.append(f"updated_by = '{_esc(updated_by)}'")
+            updates.append("updated_at = current_timestamp()")
+            self.sql.execute_update(
+                f"UPDATE {self._table('projects')} SET {', '.join(updates)} "
+                f"WHERE id = '{_esc(project_id)}'"
+            )
+        return self.get_project(project_id)
+
+    def delete_project(self, project_id: str) -> None:
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('project_members')} WHERE project_id = '{_esc(project_id)}'"
+        )
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('projects')} WHERE id = '{_esc(project_id)}'"
+        )
+
+    def _parse_project(self, row: dict) -> dict:
+        return {
+            **row,
+            "is_active": row.get("is_active") in (True, "true", "1"),
+            "member_count": int(row.get("member_count", 0)),
+        }
+
+    # Project Members
+
+    def list_project_members(self, project_id: str) -> list[dict]:
+        return self.sql.execute(
+            f"SELECT * FROM {self._table('project_members')} "
+            f"WHERE project_id = '{_esc(project_id)}' ORDER BY user_email"
+        )
+
+    def add_project_member(self, project_id: str, data: dict, added_by: str) -> dict:
+        member_id = str(uuid.uuid4())
+        display_name = f"'{_esc(data['user_display_name'])}'" if data.get("user_display_name") else "NULL"
+        role = _esc(data.get("role", "member"))
+
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('project_members')}
+            (id, project_id, user_email, user_display_name, role, added_at, added_by)
+            VALUES (
+                '{member_id}', '{_esc(project_id)}', '{_esc(data["user_email"])}',
+                {display_name}, '{role}',
+                current_timestamp(), '{_esc(added_by)}'
+            )
+        """)
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('project_members')} WHERE id = '{member_id}'"
+        )
+        return rows[0] if rows else {}
+
+    def remove_project_member(self, member_id: str) -> None:
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('project_members')} WHERE id = '{_esc(member_id)}'"
+        )
+
 
 # Singleton
 _governance_service: GovernanceService | None = None

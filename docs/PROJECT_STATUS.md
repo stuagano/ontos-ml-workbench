@@ -267,7 +267,7 @@ Features that make the ML Workbench enterprise-grade for regulated environments 
 | G5 | **Data Contracts (ODCS v3.0.2)** | Schema specifications with quality guarantees, SLOs, semantic linking. Lifecycle: Draft→Proposed→Under Review→Approved→Active→Certified→Deprecated→Retired. | Sheets define column schemas loosely. DQX checks exist but no contract abstraction. | Data contract entity (DDL + Pydantic model), contract editor UI, SLO definitions, contract↔dataset binding, ODCS YAML import/export. | L |
 | G6 | **Compliance Policies (DSL)** | SQL-like DSL for governance rules. Check across catalogs/schemas/tables. Tagging, notifications, validation failure actions. Scheduled + on-demand runs. | No policy engine. Governance is manual. | Policy DSL parser, policy CRUD, scheduled execution engine, results dashboard, integration with Unity Catalog asset metadata. | L |
 | G7 | **Process Workflows** | Event-driven automation with triggers, entity types, steps. Blocking/non-blocking execution. Approval pausing for human-in-the-loop. Visual workflow designer. | Labeling workflow has jobs→tasks→annotate→review state machine. No general-purpose workflow engine. | Generic workflow engine, trigger definitions, step library, visual designer UI, workflow execution + pause/resume. | L |
-| G8 | **Projects** | Workspace containers for team initiatives. Personal vs. Team types. Logical isolation for development. | No project concept. All assets are global within the Unity Catalog schema. | Projects CRUD, project membership, asset↔project scoping, project-level permissions. | M |
+| ~~G8~~ | ~~**Projects**~~ | ~~Workspace containers for team initiatives. Personal vs. Team types.~~ | ~~DONE — Projects CRUD + member management with roles (owner/admin/member/viewer). DDL: `27_projects.sql`, `28_project_members.sql`. Backend: 8 API endpoints. UI: Projects tab in GovernancePage with detail view + member management. Auto-adds creator as owner. Team association support.~~ | ~~Asset↔project scoping (project_id on sheets/templates/training_sheets). Project-level permissions.~~ | ~~M~~ |
 
 ### G-P2: Advanced Governance
 
@@ -289,7 +289,7 @@ Features for mature data governance organizations.
 
 **Phase 2 — Governance Core (G4–G6):** G4 (Asset Review) DONE. Data Contracts + Compliance Policies remaining. Asset review gives the ML pipeline a governance layer — reviewers can approve datasets before training. Contracts will guarantee data quality, policies will enforce standards.
 
-**Phase 3 — Orchestration (G7–G8):** Process Workflows + Projects. Automate the governance processes established in Phase 2. Projects provide logical isolation for team work.
+**Phase 3 — Orchestration (G7–G8):** G8 (Projects) DONE. Process Workflows remaining. Projects provide logical isolation for team work; workflow engine will automate governance processes.
 
 **Phase 4 — Platform (G9–G15):** Data Products, Semantic Models, MCP, Delivery Modes, Connectors, Marketplace, Naming. These extend governance across the full data ecosystem.
 

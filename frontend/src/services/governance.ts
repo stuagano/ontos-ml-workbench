@@ -14,6 +14,9 @@ import type {
   AssetReview,
   AssetType,
   ReviewStatus,
+  Project,
+  ProjectMember,
+  ProjectType,
 } from "../types/governance";
 
 const API_BASE = "/api/v1/governance";
@@ -279,4 +282,62 @@ export async function submitDecision(
 
 export async function deleteReview(reviewId: string): Promise<void> {
   return fetchJson(`${API_BASE}/reviews/${reviewId}`, { method: "DELETE" });
+}
+
+// ============================================================================
+// Projects (G8)
+// ============================================================================
+
+export async function listProjects(): Promise<Project[]> {
+  return fetchJson(`${API_BASE}/projects`);
+}
+
+export async function getProject(projectId: string): Promise<Project> {
+  return fetchJson(`${API_BASE}/projects/${projectId}`);
+}
+
+export async function createProject(
+  data: { name: string; description?: string; project_type?: ProjectType; team_id?: string },
+): Promise<Project> {
+  return fetchJson(`${API_BASE}/projects`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateProject(
+  projectId: string,
+  data: Partial<Project>,
+): Promise<Project> {
+  return fetchJson(`${API_BASE}/projects/${projectId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteProject(projectId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/projects/${projectId}`, { method: "DELETE" });
+}
+
+export async function listProjectMembers(projectId: string): Promise<ProjectMember[]> {
+  return fetchJson(`${API_BASE}/projects/${projectId}/members`);
+}
+
+export async function addProjectMember(
+  projectId: string,
+  data: { user_email: string; user_display_name?: string; role?: string },
+): Promise<ProjectMember> {
+  return fetchJson(`${API_BASE}/projects/${projectId}/members`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function removeProjectMember(
+  projectId: string,
+  memberId: string,
+): Promise<void> {
+  return fetchJson(`${API_BASE}/projects/${projectId}/members/${memberId}`, {
+    method: "DELETE",
+  });
 }
