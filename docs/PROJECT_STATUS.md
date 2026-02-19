@@ -256,7 +256,7 @@ These features are prerequisites for the ML Workbench to participate in an Ontos
 | ~~G1~~ | ~~**RBAC Roles & Permissions**~~ | ~~6-role system with per-feature permission levels. Auth middleware with soft/hard enforcement.~~ | ~~DONE — `auth.py` (get_current_user, require_permission, require_role), 6 default roles with 11-feature permission matrix, user assignment CRUD, `enforce_auth` toggle. DDL: `19_app_roles.sql`, `20_user_role_assignments.sql`, `24_seed_default_roles.sql`. UI: Roles tab in GovernancePage.~~ | ~~Enforce auth on individual endpoints (opt-in per route).~~ | ~~L~~ |
 | ~~G2~~ | ~~**Teams**~~ | ~~User collections with role assignments, domain association, leads.~~ | ~~DONE — Teams CRUD + member management with role overrides + tools metadata. DDL: `21_teams.sql` (with `metadata` JSON column), `22_team_members.sql`. UI: Teams tab with detail view, member add/remove, tools tag management.~~ | ~~None — team metadata (tools) implemented.~~ | ~~M~~ |
 | ~~G3~~ | ~~**Domains**~~ | ~~Hierarchical business area groupings (parent-child). Ownership boundaries.~~ | ~~DONE — Domains CRUD + tree hierarchy. DDL: `23_data_domains.sql`. UI: Domains tab with tree view + create form + color picker.~~ | ~~Domain→asset association (domain_id on sheets/templates).~~ | ~~M~~ |
-| G4 | **Asset Review Workflow** | Steward review/approval process for data assets. AI-assisted review. Review history tracking. | Q&A pair review (approve/edit/reject) in CuratePage. No asset-level review. | Generalized review request system, steward assignment, review status tracking, approval gating on publish/deploy actions. | L |
+| ~~G4~~ | ~~**Asset Review Workflow**~~ | ~~Steward review/approval process for data assets. Review history tracking.~~ | ~~DONE — Generalized review system for any asset type (sheet, template, training_sheet). DDL: `26_asset_reviews.sql`. Backend: 7 API endpoints (list, get, request, assign, decide, delete) with filter support. UI: `ReviewPanel` component embedded in SheetBuilder, CuratePage, and TemplatePage. Workflow: request → assign reviewer → approve/reject/changes_requested.~~ | ~~AI-assisted review suggestions. Approval gating on publish/deploy actions.~~ | ~~L~~ |
 
 ### G-P1: High Value Governance Features
 
@@ -287,7 +287,7 @@ Features for mature data governance organizations.
 
 **Phase 1 — Foundation (G1–G3): DONE.** RBAC + Teams + Domains. 6 DDL files, auth core (`auth.py`), governance service (23 endpoints), GovernancePage with 3 tabs. `enforce_auth=false` default preserves existing functionality.
 
-**Phase 2 — Governance Core (G4–G6):** Asset Review + Data Contracts + Compliance Policies. These give the ML pipeline a governance layer — reviewers can approve datasets before training, contracts guarantee data quality, policies enforce standards.
+**Phase 2 — Governance Core (G4–G6):** G4 (Asset Review) DONE. Data Contracts + Compliance Policies remaining. Asset review gives the ML pipeline a governance layer — reviewers can approve datasets before training. Contracts will guarantee data quality, policies will enforce standards.
 
 **Phase 3 — Orchestration (G7–G8):** Process Workflows + Projects. Automate the governance processes established in Phase 2. Projects provide logical isolation for team work.
 

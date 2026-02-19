@@ -33,6 +33,7 @@ import {
   createTemplateVersion,
 } from "../services/api";
 import { useToast } from "../components/Toast";
+import { ReviewPanel } from "../components/ReviewPanel";
 import { useWorkflow } from "../context/WorkflowContext";
 import { DSPyOptimizationPage } from "./DSPyOptimizationPage";
 import { DataTable, Column, RowAction } from "../components/DataTable";
@@ -410,6 +411,17 @@ export function TemplatePage({ onEditTemplate, onClose }: TemplatePageProps) {
                 Continue to Curate
                 <ArrowRight className="w-4 h-4" />
               </button>
+            </div>
+          )}
+
+          {/* Asset Review */}
+          {state.selectedTemplate && (
+            <div className="mb-4">
+              <ReviewPanel
+                assetType="template"
+                assetId={state.selectedTemplate.id}
+                assetName={state.selectedTemplate.name}
+              />
             </div>
           )}
         </div>

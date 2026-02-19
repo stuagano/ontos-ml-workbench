@@ -1,5 +1,5 @@
 /**
- * Governance types - Roles, Teams, and Data Domains
+ * Governance types - Roles, Teams, Data Domains, and Asset Reviews
  */
 
 export type AccessLevel = "none" | "read" | "write" | "admin";
@@ -91,4 +91,24 @@ export interface DomainTreeNode {
   color: string | null;
   is_active: boolean;
   children: DomainTreeNode[];
+}
+
+// Asset Reviews (G4)
+
+export type ReviewStatus = "pending" | "in_review" | "approved" | "rejected" | "changes_requested";
+
+export type AssetType = "sheet" | "template" | "training_sheet";
+
+export interface AssetReview {
+  id: string;
+  asset_type: AssetType;
+  asset_id: string;
+  asset_name: string | null;
+  status: ReviewStatus;
+  requested_by: string;
+  reviewer_email: string | null;
+  review_notes: string | null;
+  decision_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
 }

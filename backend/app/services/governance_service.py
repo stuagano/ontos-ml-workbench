@@ -401,6 +401,94 @@ class GovernanceService:
             "is_active": row.get("is_active") in (True, "true", "1"),
         }
 
+    # ========================================================================
+    # Asset Reviews (G4)
+    # ========================================================================
+
+    def list_reviews(
+        self,
+        asset_type: str | None = None,
+        asset_id: str | None = None,
+        status: str | None = None,
+        reviewer_email: str | None = None,
+    ) -> list[dict]:
+        where = []
+        if asset_type:
+            where.append(f"asset_type = '{_esc(asset_type)}'")
+        if asset_id:
+            where.append(f"asset_id = '{_esc(asset_id)}'")
+        if status:
+            where.append(f"status = '{_esc(status)}'")
+        if reviewer_email:
+            where.append(f"reviewer_email = '{_esc(reviewer_email)}'")
+
+        where_clause = f"WHERE {' AND '.join(where)}" if where else ""
+        return self.sql.execute(
+            f"SELECT * FROM {self._table('asset_reviews')} "
+            f"{where_clause} ORDER BY created_at DESC"
+        )
+
+    def get_review(self, review_id: str) -> dict | None:
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('asset_reviews')} "
+            f"WHERE id = '{_esc(review_id)}'"
+        )
+        return rows[0] if rows else None
+
+    def get_latest_review(self, asset_type: str, asset_id: str) -> dict | None:
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('asset_reviews')} "
+            f"WHERE asset_type = '{_esc(asset_type)}' AND asset_id = '{_esc(asset_id)}' "
+            f"ORDER BY created_at DESC LIMIT 1"
+        )
+        return rows[0] if rows else None
+
+    def request_review(self, data: dict, requested_by: str) -> dict:
+        review_id = str(uuid.uuid4())
+        status = "in_review" if data.get("reviewer_email") else "pending"
+
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('asset_reviews')}
+            (id, asset_type, asset_id, asset_name, status, requested_by,
+             reviewer_email, created_at, updated_at)
+            VALUES (
+                '{review_id}', '{_esc(data["asset_type"])}',
+                '{_esc(data["asset_id"])}',
+                {f"'{_esc(data['asset_name'])}'" if data.get('asset_name') else 'NULL'},
+                '{status}', '{_esc(requested_by)}',
+                {f"'{_esc(data['reviewer_email'])}'" if data.get('reviewer_email') else 'NULL'},
+                current_timestamp(), current_timestamp()
+            )
+        """)
+        return self.get_review(review_id)
+
+    def assign_reviewer(self, review_id: str, reviewer_email: str) -> dict | None:
+        self.sql.execute_update(
+            f"UPDATE {self._table('asset_reviews')} "
+            f"SET reviewer_email = '{_esc(reviewer_email)}', "
+            f"    status = 'in_review', "
+            f"    updated_at = current_timestamp() "
+            f"WHERE id = '{_esc(review_id)}'"
+        )
+        return self.get_review(review_id)
+
+    def submit_decision(self, review_id: str, status: str, review_notes: str | None) -> dict | None:
+        notes_sql = f"'{_esc(review_notes)}'" if review_notes else "NULL"
+        self.sql.execute_update(
+            f"UPDATE {self._table('asset_reviews')} "
+            f"SET status = '{_esc(status)}', "
+            f"    review_notes = {notes_sql}, "
+            f"    decision_at = current_timestamp(), "
+            f"    updated_at = current_timestamp() "
+            f"WHERE id = '{_esc(review_id)}'"
+        )
+        return self.get_review(review_id)
+
+    def delete_review(self, review_id: str) -> None:
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('asset_reviews')} WHERE id = '{_esc(review_id)}'"
+        )
+
 
 # Singleton
 _governance_service: GovernanceService | None = None

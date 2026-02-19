@@ -1,6 +1,7 @@
-"""Pydantic models for Governance (Roles, Teams, Domains)."""
+"""Pydantic models for Governance (Roles, Teams, Domains, Asset Reviews)."""
 
 from datetime import datetime
+from enum import Enum
 
 from pydantic import BaseModel, Field
 
@@ -205,3 +206,56 @@ class DomainTreeNode(BaseModel):
     color: str | None = None
     is_active: bool = True
     children: list["DomainTreeNode"] = Field(default_factory=list)
+
+
+# ============================================================================
+# Asset Reviews (G4)
+# ============================================================================
+
+
+class ReviewStatus(str, Enum):
+    PENDING = "pending"
+    IN_REVIEW = "in_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    CHANGES_REQUESTED = "changes_requested"
+
+
+class AssetType(str, Enum):
+    SHEET = "sheet"
+    TEMPLATE = "template"
+    TRAINING_SHEET = "training_sheet"
+
+
+class ReviewRequest(BaseModel):
+    """Request body for submitting an asset for review."""
+    asset_type: AssetType
+    asset_id: str = Field(..., min_length=1)
+    asset_name: str | None = None
+    reviewer_email: str | None = Field(None, description="Optionally assign a reviewer upfront")
+
+
+class ReviewDecision(BaseModel):
+    """Request body for a reviewer making a decision."""
+    status: ReviewStatus = Field(..., description="Decision: approved, rejected, or changes_requested")
+    review_notes: str | None = None
+
+
+class ReviewAssign(BaseModel):
+    """Request body for assigning a reviewer."""
+    reviewer_email: str = Field(..., min_length=1)
+
+
+class AssetReviewResponse(BaseModel):
+    """Asset review response model."""
+    id: str
+    asset_type: str
+    asset_id: str
+    asset_name: str | None = None
+    status: str
+    requested_by: str
+    reviewer_email: str | None = None
+    review_notes: str | None = None
+    decision_at: datetime | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None

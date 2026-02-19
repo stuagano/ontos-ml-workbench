@@ -1,5 +1,5 @@
 /**
- * Governance API service - Roles, Teams, and Data Domains
+ * Governance API service - Roles, Teams, Data Domains, and Asset Reviews
  */
 
 import type {
@@ -11,6 +11,9 @@ import type {
   TeamMetadata,
   DataDomain,
   DomainTreeNode,
+  AssetReview,
+  AssetType,
+  ReviewStatus,
 } from "../types/governance";
 
 const API_BASE = "/api/v1/governance";
@@ -217,4 +220,63 @@ export async function deleteDomain(domainId: string): Promise<void> {
 
 export async function getDomainTree(): Promise<DomainTreeNode[]> {
   return fetchJson(`${API_BASE}/domains/tree`);
+}
+
+// ============================================================================
+// Asset Reviews (G4)
+// ============================================================================
+
+export async function listReviews(filters?: {
+  asset_type?: AssetType;
+  asset_id?: string;
+  status?: ReviewStatus;
+  reviewer_email?: string;
+}): Promise<AssetReview[]> {
+  const params = new URLSearchParams();
+  if (filters?.asset_type) params.set("asset_type", filters.asset_type);
+  if (filters?.asset_id) params.set("asset_id", filters.asset_id);
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.reviewer_email) params.set("reviewer_email", filters.reviewer_email);
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/reviews${qs ? `?${qs}` : ""}`);
+}
+
+export async function getReview(reviewId: string): Promise<AssetReview> {
+  return fetchJson(`${API_BASE}/reviews/${reviewId}`);
+}
+
+export async function requestReview(data: {
+  asset_type: AssetType;
+  asset_id: string;
+  asset_name?: string;
+  reviewer_email?: string;
+}): Promise<AssetReview> {
+  return fetchJson(`${API_BASE}/reviews`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function assignReviewer(
+  reviewId: string,
+  reviewerEmail: string,
+): Promise<AssetReview> {
+  return fetchJson(`${API_BASE}/reviews/${reviewId}/assign`, {
+    method: "PUT",
+    body: JSON.stringify({ reviewer_email: reviewerEmail }),
+  });
+}
+
+export async function submitDecision(
+  reviewId: string,
+  data: { status: "approved" | "rejected" | "changes_requested"; review_notes?: string },
+): Promise<AssetReview> {
+  return fetchJson(`${API_BASE}/reviews/${reviewId}/decide`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteReview(reviewId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/reviews/${reviewId}`, { method: "DELETE" });
 }

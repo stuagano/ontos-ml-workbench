@@ -61,6 +61,7 @@ import {
   getCanonicalLabelStats,
 } from "../services/api";
 import { useToast } from "../components/Toast";
+import { ReviewPanel } from "../components/ReviewPanel";
 import { useWorkflow } from "../context/WorkflowContext";
 import { useModules } from "../hooks/useModules";
 import { ColumnMappingModal, extractPlaceholders } from "../components/ColumnMappingModal";
@@ -936,6 +937,13 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
         {/* Content */}
         <div className="flex-1 overflow-auto p-6">
           <div className="max-w-7xl mx-auto space-y-6">
+            {/* Asset Review */}
+            <ReviewPanel
+              assetType="sheet"
+              assetId={sheet.id}
+              assetName={sheet.name}
+            />
+
             {/* Data Preview Section */}
             <div className="bg-white rounded-lg border border-db-gray-200 shadow-sm overflow-hidden">
               <div className="px-6 py-4 border-b border-db-gray-200">

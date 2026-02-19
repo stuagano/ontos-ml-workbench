@@ -1,6 +1,6 @@
-"""Governance API endpoints (Roles, Teams, Domains)."""
+"""Governance API endpoints (Roles, Teams, Domains, Asset Reviews)."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.auth import CurrentUser, get_current_user, require_permission
 from app.core.databricks import get_current_user as get_db_user
@@ -8,11 +8,15 @@ from app.models.governance import (
     AppRoleCreate,
     AppRoleResponse,
     AppRoleUpdate,
+    AssetReviewResponse,
     CurrentUserResponse,
     DataDomainCreate,
     DataDomainResponse,
     DataDomainUpdate,
     DomainTreeNode,
+    ReviewAssign,
+    ReviewDecision,
+    ReviewRequest,
     TeamCreate,
     TeamMemberAdd,
     TeamMemberResponse,
@@ -238,3 +242,79 @@ async def delete_domain(domain_id: str, _auth: CurrentUser = Depends(require_per
     """Delete a data domain. Requires write permission on governance feature."""
     svc = get_governance_service()
     svc.delete_domain(domain_id)
+
+
+# ============================================================================
+# Asset Reviews (G4)
+# ============================================================================
+
+
+@router.get("/reviews", response_model=list[AssetReviewResponse])
+async def list_reviews(
+    asset_type: str | None = Query(None),
+    asset_id: str | None = Query(None),
+    status: str | None = Query(None),
+    reviewer_email: str | None = Query(None),
+):
+    """List asset reviews with optional filters."""
+    svc = get_governance_service()
+    return svc.list_reviews(
+        asset_type=asset_type,
+        asset_id=asset_id,
+        status=status,
+        reviewer_email=reviewer_email,
+    )
+
+
+@router.get("/reviews/{review_id}", response_model=AssetReviewResponse)
+async def get_review(review_id: str):
+    """Get a review by ID."""
+    svc = get_governance_service()
+    result = svc.get_review(review_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Review not found")
+    return result
+
+
+@router.post("/reviews", response_model=AssetReviewResponse, status_code=201)
+async def request_review(req: ReviewRequest):
+    """Submit an asset for review."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.request_review(req.model_dump(), user)
+
+
+@router.put("/reviews/{review_id}/assign", response_model=AssetReviewResponse)
+async def assign_reviewer(
+    review_id: str,
+    assignment: ReviewAssign,
+    _auth: CurrentUser = Depends(require_permission("governance", "write")),
+):
+    """Assign a reviewer to a pending review. Requires governance write."""
+    svc = get_governance_service()
+    result = svc.assign_reviewer(review_id, assignment.reviewer_email)
+    if not result:
+        raise HTTPException(status_code=404, detail="Review not found")
+    return result
+
+
+@router.put("/reviews/{review_id}/decide", response_model=AssetReviewResponse)
+async def submit_decision(review_id: str, decision: ReviewDecision):
+    """Submit a review decision (approve, reject, or request changes)."""
+    if decision.status not in ("approved", "rejected", "changes_requested"):
+        raise HTTPException(status_code=400, detail="Decision must be approved, rejected, or changes_requested")
+    svc = get_governance_service()
+    review = svc.get_review(review_id)
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+    return svc.submit_decision(review_id, decision.status, decision.review_notes)
+
+
+@router.delete("/reviews/{review_id}", status_code=204)
+async def delete_review(
+    review_id: str,
+    _auth: CurrentUser = Depends(require_permission("governance", "write")),
+):
+    """Delete a review. Requires governance write."""
+    svc = get_governance_service()
+    svc.delete_review(review_id)
