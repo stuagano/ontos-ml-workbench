@@ -1,5 +1,5 @@
 /**
- * Governance API service - Roles, Teams, and Data Domains
+ * Governance API service - Roles, Teams, Data Domains, and Asset Reviews
  */
 
 import type {
@@ -8,8 +8,40 @@ import type {
   CurrentUserInfo,
   Team,
   TeamMember,
+  TeamMetadata,
   DataDomain,
   DomainTreeNode,
+  AssetReview,
+  AssetType,
+  ReviewStatus,
+  Project,
+  ProjectMember,
+  ProjectType,
+  DataContract,
+  ContractStatus,
+  ContractColumnSpec,
+  ContractQualityRule,
+  ContractTerms,
+  CompliancePolicy,
+  PolicyCategory,
+  PolicyRuleCondition,
+  PolicyScope,
+  PolicyEvaluation,
+  Workflow,
+  WorkflowStep,
+  WorkflowTriggerConfig,
+  WorkflowTriggerType,
+  WorkflowExecution,
+  DataProduct,
+  DataProductPort,
+  DataProductType,
+  DataProductStatus,
+  DataProductSubscription,
+  SemanticModel,
+  SemanticModelStatus,
+  SemanticConcept,
+  SemanticProperty,
+  SemanticLink,
 } from "../types/governance";
 
 const API_BASE = "/api/v1/governance";
@@ -123,7 +155,7 @@ export async function getTeam(teamId: string): Promise<Team> {
 }
 
 export async function createTeam(
-  data: { name: string; description?: string; domain_id?: string; leads?: string[] },
+  data: { name: string; description?: string; domain_id?: string; leads?: string[]; metadata?: TeamMetadata },
 ): Promise<Team> {
   return fetchJson(`${API_BASE}/teams`, {
     method: "POST",
@@ -216,4 +248,538 @@ export async function deleteDomain(domainId: string): Promise<void> {
 
 export async function getDomainTree(): Promise<DomainTreeNode[]> {
   return fetchJson(`${API_BASE}/domains/tree`);
+}
+
+// ============================================================================
+// Asset Reviews (G4)
+// ============================================================================
+
+export async function listReviews(filters?: {
+  asset_type?: AssetType;
+  asset_id?: string;
+  status?: ReviewStatus;
+  reviewer_email?: string;
+}): Promise<AssetReview[]> {
+  const params = new URLSearchParams();
+  if (filters?.asset_type) params.set("asset_type", filters.asset_type);
+  if (filters?.asset_id) params.set("asset_id", filters.asset_id);
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.reviewer_email) params.set("reviewer_email", filters.reviewer_email);
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/reviews${qs ? `?${qs}` : ""}`);
+}
+
+export async function getReview(reviewId: string): Promise<AssetReview> {
+  return fetchJson(`${API_BASE}/reviews/${reviewId}`);
+}
+
+export async function requestReview(data: {
+  asset_type: AssetType;
+  asset_id: string;
+  asset_name?: string;
+  reviewer_email?: string;
+}): Promise<AssetReview> {
+  return fetchJson(`${API_BASE}/reviews`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function assignReviewer(
+  reviewId: string,
+  reviewerEmail: string,
+): Promise<AssetReview> {
+  return fetchJson(`${API_BASE}/reviews/${reviewId}/assign`, {
+    method: "PUT",
+    body: JSON.stringify({ reviewer_email: reviewerEmail }),
+  });
+}
+
+export async function submitDecision(
+  reviewId: string,
+  data: { status: "approved" | "rejected" | "changes_requested"; review_notes?: string },
+): Promise<AssetReview> {
+  return fetchJson(`${API_BASE}/reviews/${reviewId}/decide`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteReview(reviewId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/reviews/${reviewId}`, { method: "DELETE" });
+}
+
+// ============================================================================
+// Projects (G8)
+// ============================================================================
+
+export async function listProjects(): Promise<Project[]> {
+  return fetchJson(`${API_BASE}/projects`);
+}
+
+export async function getProject(projectId: string): Promise<Project> {
+  return fetchJson(`${API_BASE}/projects/${projectId}`);
+}
+
+export async function createProject(
+  data: { name: string; description?: string; project_type?: ProjectType; team_id?: string },
+): Promise<Project> {
+  return fetchJson(`${API_BASE}/projects`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateProject(
+  projectId: string,
+  data: Partial<Project>,
+): Promise<Project> {
+  return fetchJson(`${API_BASE}/projects/${projectId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteProject(projectId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/projects/${projectId}`, { method: "DELETE" });
+}
+
+export async function listProjectMembers(projectId: string): Promise<ProjectMember[]> {
+  return fetchJson(`${API_BASE}/projects/${projectId}/members`);
+}
+
+export async function addProjectMember(
+  projectId: string,
+  data: { user_email: string; user_display_name?: string; role?: string },
+): Promise<ProjectMember> {
+  return fetchJson(`${API_BASE}/projects/${projectId}/members`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function removeProjectMember(
+  projectId: string,
+  memberId: string,
+): Promise<void> {
+  return fetchJson(`${API_BASE}/projects/${projectId}/members/${memberId}`, {
+    method: "DELETE",
+  });
+}
+
+// ============================================================================
+// Data Contracts (G5)
+// ============================================================================
+
+export async function listContracts(filters?: {
+  status?: ContractStatus;
+  domain_id?: string;
+}): Promise<DataContract[]> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.domain_id) params.set("domain_id", filters.domain_id);
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/contracts${qs ? `?${qs}` : ""}`);
+}
+
+export async function getContract(contractId: string): Promise<DataContract> {
+  return fetchJson(`${API_BASE}/contracts/${contractId}`);
+}
+
+export async function createContract(data: {
+  name: string;
+  description?: string;
+  version?: string;
+  dataset_id?: string;
+  dataset_name?: string;
+  domain_id?: string;
+  owner_email?: string;
+  schema_definition?: ContractColumnSpec[];
+  quality_rules?: ContractQualityRule[];
+  terms?: ContractTerms;
+}): Promise<DataContract> {
+  return fetchJson(`${API_BASE}/contracts`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateContract(
+  contractId: string,
+  data: Partial<DataContract>,
+): Promise<DataContract> {
+  return fetchJson(`${API_BASE}/contracts/${contractId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function transitionContractStatus(
+  contractId: string,
+  newStatus: "active" | "deprecated" | "retired",
+): Promise<DataContract> {
+  return fetchJson(`${API_BASE}/contracts/${contractId}/status?new_status=${newStatus}`, {
+    method: "PUT",
+  });
+}
+
+export async function deleteContract(contractId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/contracts/${contractId}`, { method: "DELETE" });
+}
+
+// ============================================================================
+// Compliance Policies (G6)
+// ============================================================================
+
+export async function listPolicies(filters?: {
+  category?: PolicyCategory;
+  status?: "enabled" | "disabled";
+}): Promise<CompliancePolicy[]> {
+  const params = new URLSearchParams();
+  if (filters?.category) params.set("category", filters.category);
+  if (filters?.status) params.set("status", filters.status);
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/policies${qs ? `?${qs}` : ""}`);
+}
+
+export async function getPolicy(policyId: string): Promise<CompliancePolicy> {
+  return fetchJson(`${API_BASE}/policies/${policyId}`);
+}
+
+export async function createPolicy(data: {
+  name: string;
+  description?: string;
+  category?: string;
+  severity?: string;
+  rules: PolicyRuleCondition[];
+  scope?: PolicyScope;
+  schedule?: string;
+  owner_email?: string;
+}): Promise<CompliancePolicy> {
+  return fetchJson(`${API_BASE}/policies`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updatePolicy(
+  policyId: string,
+  data: Partial<CompliancePolicy>,
+): Promise<CompliancePolicy> {
+  return fetchJson(`${API_BASE}/policies/${policyId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function togglePolicy(
+  policyId: string,
+  enabled: boolean,
+): Promise<CompliancePolicy> {
+  return fetchJson(`${API_BASE}/policies/${policyId}/toggle?enabled=${enabled}`, {
+    method: "PUT",
+  });
+}
+
+export async function deletePolicy(policyId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/policies/${policyId}`, { method: "DELETE" });
+}
+
+export async function listEvaluations(policyId: string): Promise<PolicyEvaluation[]> {
+  return fetchJson(`${API_BASE}/policies/${policyId}/evaluations`);
+}
+
+export async function runEvaluation(policyId: string): Promise<PolicyEvaluation> {
+  return fetchJson(`${API_BASE}/policies/${policyId}/evaluate`, {
+    method: "POST",
+  });
+}
+
+// ============================================================================
+// Process Workflows (G7)
+// ============================================================================
+
+export async function listWorkflows(filters?: {
+  status?: string;
+}): Promise<Workflow[]> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.set("status", filters.status);
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/workflows${qs ? `?${qs}` : ""}`);
+}
+
+export async function getWorkflow(workflowId: string): Promise<Workflow> {
+  return fetchJson(`${API_BASE}/workflows/${workflowId}`);
+}
+
+export async function createWorkflow(data: {
+  name: string;
+  description?: string;
+  trigger_type?: WorkflowTriggerType;
+  trigger_config?: WorkflowTriggerConfig;
+  steps: WorkflowStep[];
+  owner_email?: string;
+}): Promise<Workflow> {
+  return fetchJson(`${API_BASE}/workflows`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateWorkflow(
+  workflowId: string,
+  data: Partial<Workflow>,
+): Promise<Workflow> {
+  return fetchJson(`${API_BASE}/workflows/${workflowId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function activateWorkflow(workflowId: string): Promise<Workflow> {
+  return fetchJson(`${API_BASE}/workflows/${workflowId}/activate`, {
+    method: "PUT",
+  });
+}
+
+export async function disableWorkflow(workflowId: string): Promise<Workflow> {
+  return fetchJson(`${API_BASE}/workflows/${workflowId}/disable`, {
+    method: "PUT",
+  });
+}
+
+export async function deleteWorkflow(workflowId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/workflows/${workflowId}`, { method: "DELETE" });
+}
+
+export async function listWorkflowExecutions(workflowId: string): Promise<WorkflowExecution[]> {
+  return fetchJson(`${API_BASE}/workflows/${workflowId}/executions`);
+}
+
+export async function startWorkflowExecution(workflowId: string): Promise<WorkflowExecution> {
+  return fetchJson(`${API_BASE}/workflows/${workflowId}/execute`, {
+    method: "POST",
+  });
+}
+
+export async function cancelWorkflowExecution(executionId: string): Promise<WorkflowExecution> {
+  return fetchJson(`${API_BASE}/workflows/executions/${executionId}/cancel`, {
+    method: "PUT",
+  });
+}
+
+// ============================================================================
+// Data Products (G9)
+// ============================================================================
+
+export async function listDataProducts(filters?: {
+  product_type?: DataProductType;
+  status?: DataProductStatus;
+}): Promise<DataProduct[]> {
+  const params = new URLSearchParams();
+  if (filters?.product_type) params.set("product_type", filters.product_type);
+  if (filters?.status) params.set("status", filters.status);
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/products${qs ? `?${qs}` : ""}`);
+}
+
+export async function getDataProduct(productId: string): Promise<DataProduct> {
+  return fetchJson(`${API_BASE}/products/${productId}`);
+}
+
+export async function createDataProduct(data: {
+  name: string;
+  description?: string;
+  product_type?: string;
+  domain_id?: string;
+  owner_email?: string;
+  team_id?: string;
+  tags?: string[];
+  metadata?: Record<string, unknown>;
+  ports?: { name: string; description?: string; port_type?: string; entity_type?: string; entity_id?: string; entity_name?: string }[];
+}): Promise<DataProduct> {
+  return fetchJson(`${API_BASE}/products`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateDataProduct(
+  productId: string,
+  data: Partial<DataProduct>,
+): Promise<DataProduct> {
+  return fetchJson(`${API_BASE}/products/${productId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function transitionProductStatus(
+  productId: string,
+  newStatus: "published" | "deprecated" | "retired",
+): Promise<DataProduct> {
+  return fetchJson(`${API_BASE}/products/${productId}/status?new_status=${newStatus}`, {
+    method: "PUT",
+  });
+}
+
+export async function deleteDataProduct(productId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/products/${productId}`, { method: "DELETE" });
+}
+
+export async function listProductPorts(productId: string): Promise<DataProductPort[]> {
+  return fetchJson(`${API_BASE}/products/${productId}/ports`);
+}
+
+export async function addProductPort(
+  productId: string,
+  data: { name: string; description?: string; port_type?: string; entity_type?: string; entity_id?: string; entity_name?: string },
+): Promise<DataProductPort> {
+  return fetchJson(`${API_BASE}/products/${productId}/ports`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function removeProductPort(portId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/products/ports/${portId}`, { method: "DELETE" });
+}
+
+export async function listProductSubscriptions(productId: string): Promise<DataProductSubscription[]> {
+  return fetchJson(`${API_BASE}/products/${productId}/subscriptions`);
+}
+
+export async function subscribeToProduct(
+  productId: string,
+  data: { purpose?: string; subscriber_team_id?: string },
+): Promise<DataProductSubscription> {
+  return fetchJson(`${API_BASE}/products/${productId}/subscribe`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function approveSubscription(subscriptionId: string): Promise<DataProductSubscription> {
+  return fetchJson(`${API_BASE}/products/subscriptions/${subscriptionId}/approve`, {
+    method: "PUT",
+  });
+}
+
+export async function rejectSubscription(subscriptionId: string): Promise<DataProductSubscription> {
+  return fetchJson(`${API_BASE}/products/subscriptions/${subscriptionId}/reject`, {
+    method: "PUT",
+  });
+}
+
+export async function revokeSubscription(subscriptionId: string): Promise<DataProductSubscription> {
+  return fetchJson(`${API_BASE}/products/subscriptions/${subscriptionId}/revoke`, {
+    method: "PUT",
+  });
+}
+
+// ============================================================================
+// Semantic Models (G10)
+// ============================================================================
+
+export async function listSemanticModels(filters?: {
+  status?: SemanticModelStatus;
+}): Promise<SemanticModel[]> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.set("status", filters.status);
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/semantic-models${qs ? `?${qs}` : ""}`);
+}
+
+export async function getSemanticModel(modelId: string): Promise<SemanticModel> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}`);
+}
+
+export async function createSemanticModel(data: {
+  name: string;
+  description?: string;
+  domain_id?: string;
+  owner_email?: string;
+  version?: string;
+}): Promise<SemanticModel> {
+  return fetchJson(`${API_BASE}/semantic-models`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateSemanticModel(
+  modelId: string,
+  data: Partial<SemanticModel>,
+): Promise<SemanticModel> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function publishSemanticModel(modelId: string): Promise<SemanticModel> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}/publish`, {
+    method: "PUT",
+  });
+}
+
+export async function archiveSemanticModel(modelId: string): Promise<SemanticModel> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}/archive`, {
+    method: "PUT",
+  });
+}
+
+export async function deleteSemanticModel(modelId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}`, { method: "DELETE" });
+}
+
+export async function listConcepts(modelId: string): Promise<SemanticConcept[]> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}/concepts`);
+}
+
+export async function createConcept(
+  modelId: string,
+  data: { name: string; description?: string; parent_id?: string; concept_type?: string; tags?: string[] },
+): Promise<SemanticConcept> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}/concepts`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteConcept(conceptId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/semantic-models/concepts/${conceptId}`, { method: "DELETE" });
+}
+
+export async function addConceptProperty(
+  modelId: string,
+  conceptId: string,
+  data: { name: string; description?: string; data_type?: string; is_required?: boolean; enum_values?: string[] },
+): Promise<SemanticProperty> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}/concepts/${conceptId}/properties`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function removeConceptProperty(propertyId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/semantic-models/properties/${propertyId}`, { method: "DELETE" });
+}
+
+export async function listSemanticLinks(modelId: string): Promise<SemanticLink[]> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}/links`);
+}
+
+export async function createSemanticLink(
+  modelId: string,
+  data: { source_type: string; source_id: string; target_type: string; target_id?: string; target_name?: string; link_type?: string; confidence?: number; notes?: string },
+): Promise<SemanticLink> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}/links`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteSemanticLink(linkId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/semantic-models/links/${linkId}`, { method: "DELETE" });
 }

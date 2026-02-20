@@ -1,24 +1,24 @@
 -- ============================================================================
--- Teams - Organizational groups for data governance
+-- Projects - Workspace containers for team initiatives
 -- ============================================================================
--- Part of Ontos Governance G2: Team Management
--- Teams can be associated with a data domain and have designated leads
+-- Part of Ontos Governance G8: Projects
+-- Projects provide logical isolation for development work.
+-- Types: personal (single user) or team (shared workspace).
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.teams (
+CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.projects (
   id STRING NOT NULL,
   name STRING NOT NULL,
   description STRING,
-  domain_id STRING COMMENT 'FK to data_domains.id',
-  leads STRING COMMENT 'JSON array of team lead emails',
-  metadata STRING COMMENT 'JSON object for team metadata (tools, integrations, etc.)',
+  project_type STRING NOT NULL DEFAULT 'team' COMMENT 'personal | team',
+  team_id STRING COMMENT 'FK to teams.id (for team projects)',
+  owner_email STRING NOT NULL COMMENT 'Project owner/creator',
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP(),
   created_by STRING NOT NULL,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP(),
   updated_by STRING NOT NULL,
-  CONSTRAINT pk_teams PRIMARY KEY (id),
-  CONSTRAINT uq_teams_name UNIQUE (name)
+  CONSTRAINT pk_projects PRIMARY KEY (id)
 )
 USING DELTA
 TBLPROPERTIES (

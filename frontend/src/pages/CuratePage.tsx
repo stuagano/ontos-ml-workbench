@@ -66,6 +66,7 @@ import { useSheetCanonicalStats } from "../hooks/useCanonicalLabels";
 import { PromoteToCanonicalModal } from "../components/PromoteToCanonicalModal";
 import { QualityGatePanel } from "../components/QualityGatePanel";
 import { LabelVersionHistory } from "../components/LabelVersionHistory";
+import { ReviewPanel } from "../components/ReviewPanel";
 import { getConfig } from "../services/api";
 import type { AssembledDataset, AssembledRow, ResponseSource } from "../types";
 
@@ -1320,6 +1321,17 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
 
               {/* Stats */}
               <StatsBar assembly={assembly} />
+            </div>
+          )}
+
+          {/* Asset Review */}
+          {assembly && (
+            <div className="mb-6">
+              <ReviewPanel
+                assetType="training_sheet"
+                assetId={assembly.id}
+                assetName={assembly.template_config.name || "Training Data"}
+              />
             </div>
           )}
 
