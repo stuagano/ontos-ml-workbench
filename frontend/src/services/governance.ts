@@ -32,6 +32,11 @@ import type {
   WorkflowTriggerConfig,
   WorkflowTriggerType,
   WorkflowExecution,
+  DataProduct,
+  DataProductPort,
+  DataProductType,
+  DataProductStatus,
+  DataProductSubscription,
 } from "../types/governance";
 
 const API_BASE = "/api/v1/governance";
@@ -554,6 +559,115 @@ export async function startWorkflowExecution(workflowId: string): Promise<Workfl
 
 export async function cancelWorkflowExecution(executionId: string): Promise<WorkflowExecution> {
   return fetchJson(`${API_BASE}/workflows/executions/${executionId}/cancel`, {
+    method: "PUT",
+  });
+}
+
+// ============================================================================
+// Data Products (G9)
+// ============================================================================
+
+export async function listDataProducts(filters?: {
+  product_type?: DataProductType;
+  status?: DataProductStatus;
+}): Promise<DataProduct[]> {
+  const params = new URLSearchParams();
+  if (filters?.product_type) params.set("product_type", filters.product_type);
+  if (filters?.status) params.set("status", filters.status);
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/products${qs ? `?${qs}` : ""}`);
+}
+
+export async function getDataProduct(productId: string): Promise<DataProduct> {
+  return fetchJson(`${API_BASE}/products/${productId}`);
+}
+
+export async function createDataProduct(data: {
+  name: string;
+  description?: string;
+  product_type?: string;
+  domain_id?: string;
+  owner_email?: string;
+  team_id?: string;
+  tags?: string[];
+  metadata?: Record<string, unknown>;
+  ports?: { name: string; description?: string; port_type?: string; entity_type?: string; entity_id?: string; entity_name?: string }[];
+}): Promise<DataProduct> {
+  return fetchJson(`${API_BASE}/products`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateDataProduct(
+  productId: string,
+  data: Partial<DataProduct>,
+): Promise<DataProduct> {
+  return fetchJson(`${API_BASE}/products/${productId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function transitionProductStatus(
+  productId: string,
+  newStatus: "published" | "deprecated" | "retired",
+): Promise<DataProduct> {
+  return fetchJson(`${API_BASE}/products/${productId}/status?new_status=${newStatus}`, {
+    method: "PUT",
+  });
+}
+
+export async function deleteDataProduct(productId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/products/${productId}`, { method: "DELETE" });
+}
+
+export async function listProductPorts(productId: string): Promise<DataProductPort[]> {
+  return fetchJson(`${API_BASE}/products/${productId}/ports`);
+}
+
+export async function addProductPort(
+  productId: string,
+  data: { name: string; description?: string; port_type?: string; entity_type?: string; entity_id?: string; entity_name?: string },
+): Promise<DataProductPort> {
+  return fetchJson(`${API_BASE}/products/${productId}/ports`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function removeProductPort(portId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/products/ports/${portId}`, { method: "DELETE" });
+}
+
+export async function listProductSubscriptions(productId: string): Promise<DataProductSubscription[]> {
+  return fetchJson(`${API_BASE}/products/${productId}/subscriptions`);
+}
+
+export async function subscribeToProduct(
+  productId: string,
+  data: { purpose?: string; subscriber_team_id?: string },
+): Promise<DataProductSubscription> {
+  return fetchJson(`${API_BASE}/products/${productId}/subscribe`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function approveSubscription(subscriptionId: string): Promise<DataProductSubscription> {
+  return fetchJson(`${API_BASE}/products/subscriptions/${subscriptionId}/approve`, {
+    method: "PUT",
+  });
+}
+
+export async function rejectSubscription(subscriptionId: string): Promise<DataProductSubscription> {
+  return fetchJson(`${API_BASE}/products/subscriptions/${subscriptionId}/reject`, {
+    method: "PUT",
+  });
+}
+
+export async function revokeSubscription(subscriptionId: string): Promise<DataProductSubscription> {
+  return fetchJson(`${API_BASE}/products/subscriptions/${subscriptionId}/revoke`, {
     method: "PUT",
   });
 }

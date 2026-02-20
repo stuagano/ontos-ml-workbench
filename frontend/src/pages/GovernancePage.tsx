@@ -34,6 +34,13 @@ import {
   CircleDot,
   PlayCircle,
   StopCircle,
+  Package,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Tag,
+  UserCheck,
+  XOctagon,
+  Ban,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -77,6 +84,17 @@ import {
   listWorkflowExecutions,
   startWorkflowExecution,
   cancelWorkflowExecution,
+  listDataProducts,
+  createDataProduct,
+  updateDataProduct,
+  transitionProductStatus,
+  deleteDataProduct,
+  addProductPort,
+  removeProductPort,
+  listProductSubscriptions,
+  approveSubscription,
+  rejectSubscription,
+  revokeSubscription,
 } from "../services/governance";
 import { useToast } from "../components/Toast";
 import type {
@@ -91,9 +109,13 @@ import type {
   WorkflowStep,
   WorkflowTriggerType,
   WorkflowStepType,
+  DataProductType,
+  DataProductStatus,
+  DataProductPort,
+  DataProductSubscription,
 } from "../types/governance";
 
-type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows";
+type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows" | "products";
 
 interface GovernancePageProps {
   onClose: () => void;
@@ -2618,6 +2640,632 @@ function WorkflowsTab() {
 }
 
 // ============================================================================
+// Data Products Tab (G9)
+// ============================================================================
+
+const PRODUCT_TYPE_LABELS: Record<DataProductType, string> = {
+  source: "Source",
+  source_aligned: "Source-Aligned",
+  aggregate: "Aggregate",
+  consumer_aligned: "Consumer-Aligned",
+};
+
+const PRODUCT_STATUS_COLORS: Record<DataProductStatus, string> = {
+  draft: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  published: "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400",
+  deprecated: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400",
+  retired: "bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400",
+};
+
+const PRODUCT_TYPE_COLORS: Record<DataProductType, string> = {
+  source: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400",
+  source_aligned: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400",
+  aggregate: "bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-400",
+  consumer_aligned: "bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-400",
+};
+
+const ENTITY_TYPES = ["dataset", "contract", "model", "endpoint"];
+
+function DataProductsTab() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [showCreate, setShowCreate] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<string>("");
+  const [filterStatus, setFilterStatus] = useState<string>("");
+
+  // Create form state
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newType, setNewType] = useState<string>("source");
+  const [newOwner, setNewOwner] = useState("");
+  const [newTagInput, setNewTagInput] = useState("");
+  const [newTags, setNewTags] = useState<string[]>([]);
+
+  // Port editor state (for detail view)
+  const [showAddPort, setShowAddPort] = useState(false);
+  const [portName, setPortName] = useState("");
+  const [portDesc, setPortDesc] = useState("");
+  const [portType, setPortType] = useState<string>("output");
+  const [portEntityType, setPortEntityType] = useState<string>("");
+  const [portEntityName, setPortEntityName] = useState("");
+
+  // Subscription view
+  const [showSubs, setShowSubs] = useState(false);
+
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ["governance-products", filterType, filterStatus],
+    queryFn: () => listDataProducts({
+      ...(filterType ? { product_type: filterType as DataProductType } : {}),
+      ...(filterStatus ? { status: filterStatus as DataProductStatus } : {}),
+    }),
+  });
+
+  const { data: domains = [] } = useQuery({
+    queryKey: ["governance-domains"],
+    queryFn: listDomains,
+  });
+
+  const { data: teams = [] } = useQuery({
+    queryKey: ["governance-teams"],
+    queryFn: listTeams,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: { name: string; description?: string; product_type?: string; owner_email?: string; tags?: string[] }) =>
+      createDataProduct(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-products"] });
+      toast.success("Product Created", "New data product created as draft");
+      setShowCreate(false);
+      setNewName("");
+      setNewDesc("");
+      setNewType("source");
+      setNewOwner("");
+      setNewTags([]);
+    },
+    onError: (err: Error) => toast.error("Create Failed", err.message),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      updateDataProduct(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-products"] });
+      toast.success("Product Updated", "Data product updated");
+    },
+    onError: (err: Error) => toast.error("Update Failed", err.message),
+  });
+
+  const transitionMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "published" | "deprecated" | "retired" }) =>
+      transitionProductStatus(id, status),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["governance-products"] });
+      toast.success("Status Changed", `Product is now ${vars.status}`);
+    },
+    onError: (err: Error) => toast.error("Transition Failed", err.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteDataProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-products"] });
+      toast.success("Product Deleted", "Data product removed");
+      setSelectedProduct(null);
+    },
+    onError: (err: Error) => toast.error("Delete Failed", err.message),
+  });
+
+  const addPortMutation = useMutation({
+    mutationFn: ({ productId, data }: { productId: string; data: { name: string; description?: string; port_type?: string; entity_type?: string; entity_name?: string } }) =>
+      addProductPort(productId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-products"] });
+      toast.success("Port Added", "Port added to data product");
+      setShowAddPort(false);
+      setPortName("");
+      setPortDesc("");
+      setPortType("output");
+      setPortEntityType("");
+      setPortEntityName("");
+    },
+    onError: (err: Error) => toast.error("Add Port Failed", err.message),
+  });
+
+  const removePortMutation = useMutation({
+    mutationFn: removeProductPort,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-products"] });
+      toast.success("Port Removed", "Port removed from data product");
+    },
+    onError: (err: Error) => toast.error("Remove Port Failed", err.message),
+  });
+
+  if (isLoading) {
+    return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-db-orange" /></div>;
+  }
+
+  // Detail view
+  if (selectedProduct) {
+    const product = products.find((p) => p.id === selectedProduct);
+    if (!product) return null;
+
+    const inputPorts = (product.ports || []).filter((p) => p.port_type === "input");
+    const outputPorts = (product.ports || []).filter((p) => p.port_type === "output");
+
+    return (
+      <div className="space-y-6">
+        <button onClick={() => { setSelectedProduct(null); setShowSubs(false); }} className="flex items-center gap-2 text-sm text-db-gray-600 dark:text-gray-400 hover:text-db-gray-800 dark:hover:text-white">
+          <ArrowLeft className="w-4 h-4" /> Back to products
+        </button>
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-db-gray-800 dark:text-white flex items-center gap-2">
+              <Package className="w-5 h-5 text-purple-500" />
+              {product.name}
+              <span className={clsx("px-2 py-0.5 text-xs rounded-full font-medium", PRODUCT_TYPE_COLORS[product.product_type])}>
+                {PRODUCT_TYPE_LABELS[product.product_type]}
+              </span>
+              <span className={clsx("px-2 py-0.5 text-xs rounded-full font-medium", PRODUCT_STATUS_COLORS[product.status])}>
+                {product.status}
+              </span>
+            </h3>
+            {product.description && <p className="text-sm text-db-gray-500 dark:text-gray-500 mt-1">{product.description}</p>}
+            <p className="text-xs text-db-gray-400 dark:text-gray-600 mt-1">
+              {product.owner_email && <>Owner: {product.owner_email}</>}
+              {product.domain_name && <> · Domain: {product.domain_name}</>}
+              {product.team_name && <> · Team: {product.team_name}</>}
+            </p>
+            {product.tags.length > 0 && (
+              <div className="flex gap-1 mt-2">
+                {product.tags.map((tag) => (
+                  <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-db-gray-100 dark:bg-gray-800 text-db-gray-600 dark:text-gray-400 rounded">
+                    <Tag className="w-3 h-3" />{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {product.status === "draft" && (
+              <button
+                onClick={() => transitionMutation.mutate({ id: product.id, status: "published" })}
+                className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center gap-1"
+              >
+                <Play className="w-3 h-3" /> Publish
+              </button>
+            )}
+            {product.status === "published" && (
+              <button
+                onClick={() => transitionMutation.mutate({ id: product.id, status: "deprecated" })}
+                className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 flex items-center gap-1"
+              >
+                <Archive className="w-3 h-3" /> Deprecate
+              </button>
+            )}
+            {(product.status === "deprecated" || product.status === "published") && (
+              <button
+                onClick={() => transitionMutation.mutate({ id: product.id, status: "retired" })}
+                className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 flex items-center gap-1"
+              >
+                <XCircle className="w-3 h-3" /> Retire
+              </button>
+            )}
+            <button
+              onClick={() => setShowSubs(!showSubs)}
+              className={clsx("px-3 py-1.5 text-sm rounded-lg flex items-center gap-1 border",
+                showSubs ? "bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800" : "border-db-gray-200 dark:border-gray-700 text-db-gray-600 dark:text-gray-400 hover:bg-db-gray-50 dark:hover:bg-gray-800"
+              )}
+            >
+              <Users className="w-3 h-3" /> Subscriptions ({product.subscription_count})
+            </button>
+            <button
+              onClick={() => { if (confirm("Delete this data product?")) deleteMutation.mutate(product.id); }}
+              className="px-3 py-1.5 text-red-600 dark:text-red-400 text-sm rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950 flex items-center gap-1"
+            >
+              <Trash2 className="w-3 h-3" /> Delete
+            </button>
+          </div>
+        </div>
+
+        {/* Subscriptions Panel */}
+        {showSubs && <SubscriptionsPanel productId={product.id} />}
+
+        {/* Ports Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-db-gray-700 dark:text-gray-300">Input/Output Ports</h4>
+            <button
+              onClick={() => setShowAddPort(!showAddPort)}
+              className="px-3 py-1.5 bg-db-orange text-white text-sm rounded-lg hover:bg-db-orange/90 flex items-center gap-1"
+            >
+              <Plus className="w-3 h-3" /> Add Port
+            </button>
+          </div>
+
+          {showAddPort && (
+            <div className="bg-db-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3 border border-db-gray-200 dark:border-gray-700">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Port Name *</label>
+                  <input value={portName} onChange={(e) => setPortName(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Direction</label>
+                  <select value={portType} onChange={(e) => setPortType(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white">
+                    <option value="input">Input</option>
+                    <option value="output">Output</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Description</label>
+                <input value={portDesc} onChange={(e) => setPortDesc(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Entity Type</label>
+                  <select value={portEntityType} onChange={(e) => setPortEntityType(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white">
+                    <option value="">None</option>
+                    {ENTITY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Entity Name</label>
+                  <input value={portEntityName} onChange={(e) => setPortEntityName(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white" placeholder="e.g., sensor_readings" />
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  if (!portName.trim()) return;
+                  addPortMutation.mutate({
+                    productId: product.id,
+                    data: {
+                      name: portName.trim(),
+                      description: portDesc || undefined,
+                      port_type: portType,
+                      entity_type: portEntityType || undefined,
+                      entity_name: portEntityName || undefined,
+                    },
+                  });
+                }}
+                disabled={!portName.trim()}
+                className="px-4 py-1.5 bg-db-orange text-white text-sm rounded-lg hover:bg-db-orange/90 disabled:opacity-50"
+              >
+                Add Port
+              </button>
+            </div>
+          )}
+
+          {/* Input Ports */}
+          {inputPorts.length > 0 && (
+            <div>
+              <h5 className="text-xs font-medium text-db-gray-500 dark:text-gray-500 mb-2 flex items-center gap-1">
+                <ArrowDownToLine className="w-3 h-3" /> Input Ports ({inputPorts.length})
+              </h5>
+              <div className="space-y-1">
+                {inputPorts.map((port) => (
+                  <PortRow key={port.id} port={port} onRemove={() => removePortMutation.mutate(port.id)} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Output Ports */}
+          {outputPorts.length > 0 && (
+            <div>
+              <h5 className="text-xs font-medium text-db-gray-500 dark:text-gray-500 mb-2 flex items-center gap-1">
+                <ArrowUpFromLine className="w-3 h-3" /> Output Ports ({outputPorts.length})
+              </h5>
+              <div className="space-y-1">
+                {outputPorts.map((port) => (
+                  <PortRow key={port.id} port={port} onRemove={() => removePortMutation.mutate(port.id)} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {inputPorts.length === 0 && outputPorts.length === 0 && (
+            <p className="text-sm text-db-gray-400 dark:text-gray-600 italic">No ports defined yet. Add input/output ports to describe data flow.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // List view
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-700 dark:text-gray-300"
+          >
+            <option value="">All Types</option>
+            {(Object.keys(PRODUCT_TYPE_LABELS) as DataProductType[]).map((t) => (
+              <option key={t} value={t}>{PRODUCT_TYPE_LABELS[t]}</option>
+            ))}
+          </select>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-700 dark:text-gray-300"
+          >
+            <option value="">All Statuses</option>
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+            <option value="deprecated">Deprecated</option>
+            <option value="retired">Retired</option>
+          </select>
+        </div>
+        <button
+          onClick={() => setShowCreate(!showCreate)}
+          className="flex items-center gap-2 px-4 py-2 bg-db-orange text-white text-sm rounded-lg hover:bg-db-orange/90"
+        >
+          <Plus className="w-4 h-4" /> New Product
+        </button>
+      </div>
+
+      {showCreate && (
+        <div className="bg-db-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3 border border-db-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Name *</label>
+              <input value={newName} onChange={(e) => setNewName(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Type</label>
+              <select value={newType} onChange={(e) => setNewType(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white">
+                {(Object.keys(PRODUCT_TYPE_LABELS) as DataProductType[]).map((t) => (
+                  <option key={t} value={t}>{PRODUCT_TYPE_LABELS[t]}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Description</label>
+            <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Owner Email</label>
+              <input value={newOwner} onChange={(e) => setNewOwner(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Tags</label>
+              <div className="flex items-center gap-1">
+                <input
+                  value={newTagInput}
+                  onChange={(e) => setNewTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newTagInput.trim()) {
+                      setNewTags([...newTags, newTagInput.trim()]);
+                      setNewTagInput("");
+                    }
+                  }}
+                  placeholder="Press Enter to add"
+                  className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                />
+              </div>
+              {newTags.length > 0 && (
+                <div className="flex gap-1 mt-1 flex-wrap">
+                  {newTags.map((tag, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-db-gray-200 dark:bg-gray-700 text-db-gray-600 dark:text-gray-400 rounded">
+                      {tag}
+                      <button onClick={() => setNewTags(newTags.filter((_, j) => j !== i))} className="hover:text-red-500"><X className="w-3 h-3" /></button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => createMutation.mutate({
+              name: newName.trim(),
+              description: newDesc || undefined,
+              product_type: newType,
+              owner_email: newOwner || undefined,
+              tags: newTags.length > 0 ? newTags : undefined,
+            })}
+            disabled={!newName.trim() || createMutation.isPending}
+            className="px-4 py-2 bg-db-orange text-white text-sm rounded-lg hover:bg-db-orange/90 disabled:opacity-50"
+          >
+            {createMutation.isPending ? "Creating..." : "Create Product"}
+          </button>
+        </div>
+      )}
+
+      {/* Product List */}
+      {products.length === 0 ? (
+        <p className="text-center text-sm text-db-gray-400 dark:text-gray-600 py-8">No data products found.</p>
+      ) : (
+        <div className="space-y-2">
+          {products.map((product) => (
+            <div
+              key={product.id}
+              onClick={() => setSelectedProduct(product.id)}
+              className="p-4 bg-white dark:bg-gray-900 rounded-lg border border-db-gray-200 dark:border-gray-700 cursor-pointer hover:border-db-orange/50 dark:hover:border-db-orange/50 transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                    <span className="font-medium text-sm text-db-gray-800 dark:text-white truncate">{product.name}</span>
+                    <span className={clsx("px-1.5 py-0.5 text-[10px] rounded font-medium", PRODUCT_TYPE_COLORS[product.product_type])}>
+                      {PRODUCT_TYPE_LABELS[product.product_type]}
+                    </span>
+                    <span className={clsx("px-1.5 py-0.5 text-[10px] rounded font-medium", PRODUCT_STATUS_COLORS[product.status])}>
+                      {product.status}
+                    </span>
+                  </div>
+                  {product.description && (
+                    <div className="text-xs text-db-gray-500 dark:text-gray-500 mt-0.5 ml-6">{product.description}</div>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {product.port_count > 0 && (
+                    <span className="text-xs text-db-gray-400 dark:text-gray-600">{product.port_count} port{product.port_count !== 1 ? "s" : ""}</span>
+                  )}
+                  {product.subscription_count > 0 && (
+                    <span className="text-xs text-db-gray-400 dark:text-gray-600">{product.subscription_count} sub{product.subscription_count !== 1 ? "s" : ""}</span>
+                  )}
+                  {product.tags.length > 0 && (
+                    <div className="flex gap-1">
+                      {product.tags.slice(0, 3).map((tag) => (
+                        <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-db-gray-100 dark:bg-gray-800 text-db-gray-500 dark:text-gray-500 rounded">{tag}</span>
+                      ))}
+                      {product.tags.length > 3 && <span className="text-[10px] text-db-gray-400">+{product.tags.length - 3}</span>}
+                    </div>
+                  )}
+                  <ChevronRight className="w-4 h-4 text-db-gray-400 dark:text-gray-600" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PortRow({ port, onRemove }: { port: DataProductPort; onRemove: () => void }) {
+  return (
+    <div className="flex items-center justify-between p-2 bg-white dark:bg-gray-900 rounded border border-db-gray-200 dark:border-gray-700">
+      <div className="flex items-center gap-2">
+        {port.port_type === "input" ? (
+          <ArrowDownToLine className="w-4 h-4 text-blue-500" />
+        ) : (
+          <ArrowUpFromLine className="w-4 h-4 text-green-500" />
+        )}
+        <span className="text-sm font-medium text-db-gray-800 dark:text-white">{port.name}</span>
+        {port.entity_type && (
+          <span className="text-[10px] px-1.5 py-0.5 bg-db-gray-100 dark:bg-gray-800 text-db-gray-500 dark:text-gray-500 rounded">{port.entity_type}</span>
+        )}
+        {port.entity_name && (
+          <span className="text-xs text-db-gray-400 dark:text-gray-600">{port.entity_name}</span>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        {port.description && <span className="text-xs text-db-gray-400 dark:text-gray-600 max-w-xs truncate">{port.description}</span>}
+        <button onClick={onRemove} className="text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+      </div>
+    </div>
+  );
+}
+
+function SubscriptionsPanel({ productId }: { productId: string }) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+
+  const { data: subs = [], isLoading } = useQuery({
+    queryKey: ["governance-product-subs", productId],
+    queryFn: () => listProductSubscriptions(productId),
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: approveSubscription,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-product-subs", productId] });
+      queryClient.invalidateQueries({ queryKey: ["governance-products"] });
+      toast.success("Subscription Approved", "Consumer access granted");
+    },
+    onError: (err: Error) => toast.error("Approve Failed", err.message),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: rejectSubscription,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-product-subs", productId] });
+      queryClient.invalidateQueries({ queryKey: ["governance-products"] });
+      toast.success("Subscription Rejected", "Access request denied");
+    },
+    onError: (err: Error) => toast.error("Reject Failed", err.message),
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: revokeSubscription,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-product-subs", productId] });
+      queryClient.invalidateQueries({ queryKey: ["governance-products"] });
+      toast.success("Subscription Revoked", "Consumer access revoked");
+    },
+    onError: (err: Error) => toast.error("Revoke Failed", err.message),
+  });
+
+  const SUB_STATUS_COLORS: Record<string, string> = {
+    pending: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400",
+    approved: "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400",
+    rejected: "bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400",
+    revoked: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  };
+
+  if (isLoading) {
+    return <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-db-orange" /></div>;
+  }
+
+  return (
+    <div className="bg-purple-50/50 dark:bg-purple-950/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
+      <h4 className="text-sm font-semibold text-purple-800 dark:text-purple-300 mb-3 flex items-center gap-1">
+        <Users className="w-4 h-4" /> Subscriptions ({subs.length})
+      </h4>
+      {subs.length === 0 ? (
+        <p className="text-xs text-db-gray-400 dark:text-gray-600 italic">No subscriptions yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {subs.map((sub) => (
+            <div key={sub.id} className="flex items-center justify-between p-2 bg-white dark:bg-gray-900 rounded border border-db-gray-200 dark:border-gray-700">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-db-gray-800 dark:text-white">{sub.subscriber_email}</span>
+                  <span className={clsx("px-1.5 py-0.5 text-[10px] rounded font-medium", SUB_STATUS_COLORS[sub.status])}>
+                    {sub.status}
+                  </span>
+                </div>
+                {sub.purpose && <p className="text-xs text-db-gray-400 dark:text-gray-600 mt-0.5">{sub.purpose}</p>}
+              </div>
+              <div className="flex items-center gap-1">
+                {sub.status === "pending" && (
+                  <>
+                    <button
+                      onClick={() => approveMutation.mutate(sub.id)}
+                      className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
+                    >
+                      <UserCheck className="w-3 h-3" /> Approve
+                    </button>
+                    <button
+                      onClick={() => rejectMutation.mutate(sub.id)}
+                      className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 flex items-center gap-1"
+                    >
+                      <XOctagon className="w-3 h-3" /> Reject
+                    </button>
+                  </>
+                )}
+                {sub.status === "approved" && (
+                  <button
+                    onClick={() => revokeMutation.mutate(sub.id)}
+                    className="px-2 py-1 text-xs text-red-600 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-950 flex items-center gap-1"
+                  >
+                    <Ban className="w-3 h-3" /> Revoke
+                  </button>
+                )}
+                {sub.approved_by && sub.status === "approved" && (
+                  <span className="text-[10px] text-db-gray-400 dark:text-gray-600 ml-2">by {sub.approved_by}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // Main Page
 // ============================================================================
 
@@ -2629,6 +3277,7 @@ const TABS: { id: TabId; label: string; icon: typeof Shield }[] = [
   { id: "contracts", label: "Contracts", icon: FileCheck },
   { id: "policies", label: "Policies", icon: ShieldAlert },
   { id: "workflows", label: "Workflows", icon: GitBranch },
+  { id: "products", label: "Products", icon: Package },
 ];
 
 export function GovernancePage({ onClose }: GovernancePageProps) {
@@ -2686,6 +3335,7 @@ export function GovernancePage({ onClose }: GovernancePageProps) {
           {activeTab === "contracts" && <ContractsTab />}
           {activeTab === "policies" && <PoliciesTab />}
           {activeTab === "workflows" && <WorkflowsTab />}
+          {activeTab === "products" && <DataProductsTab />}
         </div>
       </div>
     </div>

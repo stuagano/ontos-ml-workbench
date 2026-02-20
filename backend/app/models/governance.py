@@ -605,3 +605,128 @@ class WorkflowExecutionResponse(BaseModel):
     started_at: datetime | None = None
     started_by: str | None = None
     completed_at: datetime | None = None
+
+
+# ============================================================================
+# Data Products (G9)
+# ============================================================================
+
+
+class DataProductType(str, Enum):
+    SOURCE = "source"
+    SOURCE_ALIGNED = "source_aligned"
+    AGGREGATE = "aggregate"
+    CONSUMER_ALIGNED = "consumer_aligned"
+
+
+class DataProductStatus(str, Enum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    DEPRECATED = "deprecated"
+    RETIRED = "retired"
+
+
+class PortType(str, Enum):
+    INPUT = "input"
+    OUTPUT = "output"
+
+
+class SubscriptionStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    REVOKED = "revoked"
+
+
+class DataProductPortSpec(BaseModel):
+    """A port (input/output) on a data product."""
+    name: str = Field(..., min_length=1)
+    description: str | None = None
+    port_type: str = Field("output", description="input | output")
+    entity_type: str | None = Field(None, description="dataset | contract | model | endpoint")
+    entity_id: str | None = None
+    entity_name: str | None = None
+    config: dict | None = Field(None, description="Port configuration (format, schema, SLA)")
+
+
+class DataProductCreate(BaseModel):
+    """Request body for creating a data product."""
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = None
+    product_type: str = "source"
+    domain_id: str | None = Field(None, description="FK to data_domains.id")
+    owner_email: str | None = None
+    team_id: str | None = Field(None, description="FK to teams.id")
+    tags: list[str] = Field(default_factory=list)
+    metadata: dict | None = None
+    ports: list[DataProductPortSpec] = Field(default_factory=list)
+
+
+class DataProductUpdate(BaseModel):
+    """Request body for updating a data product."""
+    name: str | None = None
+    description: str | None = None
+    product_type: str | None = None
+    domain_id: str | None = None
+    owner_email: str | None = None
+    team_id: str | None = None
+    tags: list[str] | None = None
+    metadata: dict | None = None
+
+
+class DataProductPortResponse(BaseModel):
+    """Data product port response."""
+    id: str
+    product_id: str
+    name: str
+    description: str | None = None
+    port_type: str = "output"
+    entity_type: str | None = None
+    entity_id: str | None = None
+    entity_name: str | None = None
+    config: dict | None = None
+    created_at: datetime | None = None
+    created_by: str | None = None
+
+
+class SubscriptionRequest(BaseModel):
+    """Request body for subscribing to a data product."""
+    purpose: str | None = Field(None, description="Reason for subscription")
+    subscriber_team_id: str | None = None
+
+
+class SubscriptionResponse(BaseModel):
+    """Data product subscription response."""
+    id: str
+    product_id: str
+    subscriber_email: str
+    subscriber_team_id: str | None = None
+    status: str = "pending"
+    purpose: str | None = None
+    approved_by: str | None = None
+    approved_at: datetime | None = None
+    created_at: datetime | None = None
+
+
+class DataProductResponse(BaseModel):
+    """Data product response model."""
+    id: str
+    name: str
+    description: str | None = None
+    product_type: str = "source"
+    status: str = "draft"
+    domain_id: str | None = None
+    domain_name: str | None = None
+    owner_email: str | None = None
+    team_id: str | None = None
+    team_name: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    metadata: dict | None = None
+    port_count: int = 0
+    subscription_count: int = 0
+    ports: list[DataProductPortResponse] = Field(default_factory=list)
+    created_at: datetime | None = None
+    created_by: str | None = None
+    updated_at: datetime | None = None
+    updated_by: str | None = None
+    published_at: datetime | None = None

@@ -302,3 +302,59 @@ export interface WorkflowExecution {
   started_by: string | null;
   completed_at: string | null;
 }
+
+// Data Products (G9)
+
+export type DataProductType = "source" | "source_aligned" | "aggregate" | "consumer_aligned";
+export type DataProductStatus = "draft" | "published" | "deprecated" | "retired";
+export type PortType = "input" | "output";
+export type SubscriptionStatus = "pending" | "approved" | "rejected" | "revoked";
+
+export interface DataProductPort {
+  id: string;
+  product_id: string;
+  name: string;
+  description: string | null;
+  port_type: PortType;
+  entity_type: string | null;
+  entity_id: string | null;
+  entity_name: string | null;
+  config: Record<string, unknown> | null;
+  created_at: string | null;
+  created_by: string | null;
+}
+
+export interface DataProductSubscription {
+  id: string;
+  product_id: string;
+  subscriber_email: string;
+  subscriber_team_id: string | null;
+  status: SubscriptionStatus;
+  purpose: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  created_at: string | null;
+}
+
+export interface DataProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  product_type: DataProductType;
+  status: DataProductStatus;
+  domain_id: string | null;
+  domain_name: string | null;
+  owner_email: string | null;
+  team_id: string | null;
+  team_name: string | null;
+  tags: string[];
+  metadata: Record<string, unknown> | null;
+  port_count: number;
+  subscription_count: number;
+  ports: DataProductPort[];
+  created_at: string | null;
+  created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+  published_at: string | null;
+}

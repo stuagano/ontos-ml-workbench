@@ -1152,6 +1152,274 @@ class GovernanceService:
             "step_results": json.loads(results_raw) if results_raw else [],
         }
 
+    # ========================================================================
+    # Data Products (G9)
+    # ========================================================================
+
+    def list_data_products(self, product_type: str | None = None, status: str | None = None) -> list[dict]:
+        where = []
+        if product_type:
+            where.append(f"p.product_type = '{_esc(product_type)}'")
+        if status:
+            where.append(f"p.status = '{_esc(status)}'")
+        where_clause = f"WHERE {' AND '.join(where)}" if where else ""
+        rows = self.sql.execute(f"""
+            SELECT p.*,
+                   d.name AS domain_name,
+                   t.name AS team_name
+            FROM {self._table('data_products')} p
+            LEFT JOIN {self._table('data_domains')} d ON p.domain_id = d.id
+            LEFT JOIN {self._table('teams')} t ON p.team_id = t.id
+            {where_clause}
+            ORDER BY p.updated_at DESC
+        """)
+        products = [self._parse_product(r) for r in rows]
+        # Attach port and subscription counts
+        for prod in products:
+            prod["port_count"] = self._count_ports(prod["id"])
+            prod["subscription_count"] = self._count_subscriptions(prod["id"])
+        return products
+
+    def get_data_product(self, product_id: str) -> dict | None:
+        rows = self.sql.execute(f"""
+            SELECT p.*,
+                   d.name AS domain_name,
+                   t.name AS team_name
+            FROM {self._table('data_products')} p
+            LEFT JOIN {self._table('data_domains')} d ON p.domain_id = d.id
+            LEFT JOIN {self._table('teams')} t ON p.team_id = t.id
+            WHERE p.id = '{_esc(product_id)}'
+        """)
+        if not rows:
+            return None
+        prod = self._parse_product(rows[0])
+        prod["port_count"] = self._count_ports(product_id)
+        prod["subscription_count"] = self._count_subscriptions(product_id)
+        prod["ports"] = self.list_product_ports(product_id)
+        return prod
+
+    def create_data_product(self, data: dict, created_by: str) -> dict:
+        product_id = str(uuid.uuid4())
+        tags_json = json.dumps(data.get("tags", [])).replace("'", "''")
+        meta_json = json.dumps(data["metadata"]).replace("'", "''") if data.get("metadata") else None
+
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('data_products')}
+            (id, name, description, product_type, status, domain_id, owner_email, team_id,
+             tags, metadata, created_at, created_by, updated_at, updated_by)
+            VALUES (
+                '{product_id}', '{_esc(data["name"])}',
+                {f"'{_esc(data['description'])}'" if data.get('description') else 'NULL'},
+                '{_esc(data.get("product_type", "source"))}',
+                'draft',
+                {f"'{_esc(data['domain_id'])}'" if data.get('domain_id') else 'NULL'},
+                {f"'{_esc(data['owner_email'])}'" if data.get('owner_email') else f"'{_esc(created_by)}'"},
+                {f"'{_esc(data['team_id'])}'" if data.get('team_id') else 'NULL'},
+                '{tags_json}',
+                {f"'{meta_json}'" if meta_json else 'NULL'},
+                current_timestamp(), '{_esc(created_by)}',
+                current_timestamp(), '{_esc(created_by)}'
+            )
+        """)
+
+        # Create ports if provided
+        for port in data.get("ports", []):
+            self.add_product_port(product_id, port, created_by)
+
+        return self.get_data_product(product_id)
+
+    def update_data_product(self, product_id: str, data: dict, updated_by: str) -> dict | None:
+        updates = []
+        if data.get("name") is not None:
+            updates.append(f"name = '{_esc(data['name'])}'")
+        if data.get("description") is not None:
+            updates.append(f"description = '{_esc(data['description'])}'")
+        if data.get("product_type") is not None:
+            updates.append(f"product_type = '{_esc(data['product_type'])}'")
+        if data.get("domain_id") is not None:
+            updates.append(f"domain_id = '{_esc(data['domain_id'])}'")
+        if data.get("owner_email") is not None:
+            updates.append(f"owner_email = '{_esc(data['owner_email'])}'")
+        if data.get("team_id") is not None:
+            updates.append(f"team_id = '{_esc(data['team_id'])}'")
+        if data.get("tags") is not None:
+            tags_json = json.dumps(data["tags"]).replace("'", "''")
+            updates.append(f"tags = '{tags_json}'")
+        if data.get("metadata") is not None:
+            meta_json = json.dumps(data["metadata"]).replace("'", "''")
+            updates.append(f"metadata = '{meta_json}'")
+
+        if updates:
+            updates.append(f"updated_by = '{_esc(updated_by)}'")
+            updates.append("updated_at = current_timestamp()")
+            self.sql.execute_update(
+                f"UPDATE {self._table('data_products')} SET {', '.join(updates)} "
+                f"WHERE id = '{_esc(product_id)}'"
+            )
+        return self.get_data_product(product_id)
+
+    def publish_data_product(self, product_id: str, updated_by: str) -> dict | None:
+        self.sql.execute_update(
+            f"UPDATE {self._table('data_products')} "
+            f"SET status = 'published', published_at = current_timestamp(), "
+            f"    updated_by = '{_esc(updated_by)}', updated_at = current_timestamp() "
+            f"WHERE id = '{_esc(product_id)}'"
+        )
+        return self.get_data_product(product_id)
+
+    def transition_data_product(self, product_id: str, new_status: str, updated_by: str) -> dict | None:
+        extra = ""
+        if new_status == "published":
+            extra = "published_at = current_timestamp(), "
+        self.sql.execute_update(
+            f"UPDATE {self._table('data_products')} "
+            f"SET status = '{_esc(new_status)}', {extra}"
+            f"    updated_by = '{_esc(updated_by)}', updated_at = current_timestamp() "
+            f"WHERE id = '{_esc(product_id)}'"
+        )
+        return self.get_data_product(product_id)
+
+    def delete_data_product(self, product_id: str) -> None:
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('data_product_subscriptions')} WHERE product_id = '{_esc(product_id)}'"
+        )
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('data_product_ports')} WHERE product_id = '{_esc(product_id)}'"
+        )
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('data_products')} WHERE id = '{_esc(product_id)}'"
+        )
+
+    def _parse_product(self, row: dict) -> dict:
+        tags_raw = row.get("tags")
+        meta_raw = row.get("metadata")
+        return {
+            **row,
+            "tags": json.loads(tags_raw) if tags_raw else [],
+            "metadata": json.loads(meta_raw) if meta_raw else None,
+        }
+
+    def _count_ports(self, product_id: str) -> int:
+        rows = self.sql.execute(
+            f"SELECT COUNT(*) AS cnt FROM {self._table('data_product_ports')} "
+            f"WHERE product_id = '{_esc(product_id)}'"
+        )
+        return rows[0]["cnt"] if rows else 0
+
+    def _count_subscriptions(self, product_id: str) -> int:
+        rows = self.sql.execute(
+            f"SELECT COUNT(*) AS cnt FROM {self._table('data_product_subscriptions')} "
+            f"WHERE product_id = '{_esc(product_id)}'"
+        )
+        return rows[0]["cnt"] if rows else 0
+
+    # Data Product Ports
+
+    def list_product_ports(self, product_id: str) -> list[dict]:
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('data_product_ports')} "
+            f"WHERE product_id = '{_esc(product_id)}' ORDER BY port_type, name"
+        )
+        return [self._parse_port(r) for r in rows]
+
+    def add_product_port(self, product_id: str, data: dict, created_by: str) -> dict:
+        port_id = str(uuid.uuid4())
+        config_json = json.dumps(data["config"]).replace("'", "''") if data.get("config") else None
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('data_product_ports')}
+            (id, product_id, name, description, port_type, entity_type, entity_id, entity_name,
+             config, created_at, created_by)
+            VALUES (
+                '{port_id}', '{_esc(product_id)}',
+                '{_esc(data["name"])}',
+                {f"'{_esc(data['description'])}'" if data.get('description') else 'NULL'},
+                '{_esc(data.get("port_type", "output"))}',
+                {f"'{_esc(data['entity_type'])}'" if data.get('entity_type') else 'NULL'},
+                {f"'{_esc(data['entity_id'])}'" if data.get('entity_id') else 'NULL'},
+                {f"'{_esc(data['entity_name'])}'" if data.get('entity_name') else 'NULL'},
+                {f"'{config_json}'" if config_json else 'NULL'},
+                current_timestamp(), '{_esc(created_by)}'
+            )
+        """)
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('data_product_ports')} WHERE id = '{port_id}'"
+        )
+        return self._parse_port(rows[0]) if rows else {}
+
+    def remove_product_port(self, port_id: str) -> None:
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('data_product_ports')} WHERE id = '{_esc(port_id)}'"
+        )
+
+    def _parse_port(self, row: dict) -> dict:
+        config_raw = row.get("config")
+        return {
+            **row,
+            "config": json.loads(config_raw) if config_raw else None,
+        }
+
+    # Data Product Subscriptions
+
+    def list_subscriptions(self, product_id: str) -> list[dict]:
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('data_product_subscriptions')} "
+            f"WHERE product_id = '{_esc(product_id)}' ORDER BY created_at DESC"
+        )
+        return rows
+
+    def create_subscription(self, product_id: str, subscriber_email: str, data: dict) -> dict:
+        sub_id = str(uuid.uuid4())
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('data_product_subscriptions')}
+            (id, product_id, subscriber_email, subscriber_team_id, status, purpose, created_at)
+            VALUES (
+                '{sub_id}', '{_esc(product_id)}',
+                '{_esc(subscriber_email)}',
+                {f"'{_esc(data['subscriber_team_id'])}'" if data.get('subscriber_team_id') else 'NULL'},
+                'pending',
+                {f"'{_esc(data['purpose'])}'" if data.get('purpose') else 'NULL'},
+                current_timestamp()
+            )
+        """)
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('data_product_subscriptions')} WHERE id = '{sub_id}'"
+        )
+        return rows[0] if rows else {}
+
+    def approve_subscription(self, subscription_id: str, approved_by: str) -> dict | None:
+        self.sql.execute_update(
+            f"UPDATE {self._table('data_product_subscriptions')} "
+            f"SET status = 'approved', approved_by = '{_esc(approved_by)}', "
+            f"    approved_at = current_timestamp() "
+            f"WHERE id = '{_esc(subscription_id)}'"
+        )
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('data_product_subscriptions')} WHERE id = '{_esc(subscription_id)}'"
+        )
+        return rows[0] if rows else None
+
+    def reject_subscription(self, subscription_id: str) -> dict | None:
+        self.sql.execute_update(
+            f"UPDATE {self._table('data_product_subscriptions')} "
+            f"SET status = 'rejected' "
+            f"WHERE id = '{_esc(subscription_id)}'"
+        )
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('data_product_subscriptions')} WHERE id = '{_esc(subscription_id)}'"
+        )
+        return rows[0] if rows else None
+
+    def revoke_subscription(self, subscription_id: str) -> dict | None:
+        self.sql.execute_update(
+            f"UPDATE {self._table('data_product_subscriptions')} "
+            f"SET status = 'revoked' "
+            f"WHERE id = '{_esc(subscription_id)}'"
+        )
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('data_product_subscriptions')} WHERE id = '{_esc(subscription_id)}'"
+        )
+        return rows[0] if rows else None
+
 
 # Singleton
 _governance_service: GovernanceService | None = None

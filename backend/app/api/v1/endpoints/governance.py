@@ -41,6 +41,13 @@ from app.models.governance import (
     WorkflowExecutionResponse,
     WorkflowResponse,
     WorkflowUpdate,
+    DataProductCreate,
+    DataProductResponse,
+    DataProductUpdate,
+    DataProductPortResponse,
+    DataProductPortSpec,
+    SubscriptionRequest,
+    SubscriptionResponse,
 )
 from app.services.governance_service import get_governance_service
 
@@ -654,4 +661,144 @@ async def cancel_workflow_execution(execution_id: str, _auth: CurrentUser = Depe
     result = svc.cancel_execution(execution_id)
     if not result:
         raise HTTPException(status_code=404, detail="Execution not found")
+    return result
+
+
+# ============================================================================
+# Data Products (G9)
+# ============================================================================
+
+
+@router.get("/products", response_model=list[DataProductResponse])
+async def list_data_products(
+    product_type: str | None = Query(None),
+    status: str | None = Query(None),
+):
+    """List data products with optional filters."""
+    svc = get_governance_service()
+    return svc.list_data_products(product_type=product_type, status=status)
+
+
+@router.get("/products/{product_id}", response_model=DataProductResponse)
+async def get_data_product(product_id: str):
+    """Get a data product by ID (includes ports)."""
+    svc = get_governance_service()
+    result = svc.get_data_product(product_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Data product not found")
+    return result
+
+
+@router.post("/products", response_model=DataProductResponse, status_code=201)
+async def create_data_product(data: DataProductCreate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Create a data product. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.create_data_product(data.model_dump(), user)
+
+
+@router.put("/products/{product_id}", response_model=DataProductResponse)
+async def update_data_product(product_id: str, data: DataProductUpdate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Update a data product. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.update_data_product(product_id, data.model_dump(exclude_none=True), user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Data product not found")
+    return result
+
+
+@router.put("/products/{product_id}/status", response_model=DataProductResponse)
+async def transition_product_status(
+    product_id: str,
+    new_status: str = Query(...),
+    _auth: CurrentUser = Depends(require_permission("governance", "write")),
+):
+    """Transition a data product's status (publish, deprecate, retire). Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.transition_data_product(product_id, new_status, user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Data product not found")
+    return result
+
+
+@router.delete("/products/{product_id}", status_code=204)
+async def delete_data_product(product_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Delete a data product and its ports/subscriptions. Requires governance write."""
+    svc = get_governance_service()
+    svc.delete_data_product(product_id)
+
+
+# Data Product Ports
+
+
+@router.get("/products/{product_id}/ports", response_model=list[DataProductPortResponse])
+async def list_product_ports(product_id: str):
+    """List ports for a data product."""
+    svc = get_governance_service()
+    return svc.list_product_ports(product_id)
+
+
+@router.post("/products/{product_id}/ports", response_model=DataProductPortResponse, status_code=201)
+async def add_product_port(product_id: str, data: DataProductPortSpec, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Add a port to a data product. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.add_product_port(product_id, data.model_dump(), user)
+
+
+@router.delete("/products/ports/{port_id}", status_code=204)
+async def remove_product_port(port_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Remove a port from a data product. Requires governance write."""
+    svc = get_governance_service()
+    svc.remove_product_port(port_id)
+
+
+# Data Product Subscriptions
+
+
+@router.get("/products/{product_id}/subscriptions", response_model=list[SubscriptionResponse])
+async def list_product_subscriptions(product_id: str):
+    """List subscriptions for a data product."""
+    svc = get_governance_service()
+    return svc.list_subscriptions(product_id)
+
+
+@router.post("/products/{product_id}/subscribe", response_model=SubscriptionResponse, status_code=201)
+async def subscribe_to_product(product_id: str, data: SubscriptionRequest):
+    """Subscribe to a data product."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.create_subscription(product_id, user, data.model_dump())
+
+
+@router.put("/products/subscriptions/{subscription_id}/approve", response_model=SubscriptionResponse)
+async def approve_subscription(subscription_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Approve a subscription request. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.approve_subscription(subscription_id, user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    return result
+
+
+@router.put("/products/subscriptions/{subscription_id}/reject", response_model=SubscriptionResponse)
+async def reject_subscription(subscription_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Reject a subscription request. Requires governance write."""
+    svc = get_governance_service()
+    result = svc.reject_subscription(subscription_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    return result
+
+
+@router.put("/products/subscriptions/{subscription_id}/revoke", response_model=SubscriptionResponse)
+async def revoke_subscription(subscription_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Revoke an approved subscription. Requires governance write."""
+    svc = get_governance_service()
+    result = svc.revoke_subscription(subscription_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Subscription not found")
     return result

@@ -134,7 +134,7 @@
 | Labeling Jobs | Yes | `LabelingJobsPage.tsx` (1099 lines) | Yes | Create, Start, Pause, Resume, Delete | DONE |
 | Label Sets | Yes | `LabelSetsPage.tsx` (619 lines) | Yes | Full CRUD + Publish/Archive | DONE |
 | Registries | Yes | `RegistriesPage.tsx` (1050 lines) | Yes | Full CRUD for Tools/Agents/Endpoints | DONE |
-| Governance | Yes (Admin) | `GovernancePage.tsx` (~2600 lines) | Yes | Roles, teams, domains, projects, contracts, policies, workflows | DONE |
+| Governance | Yes (Admin) | `GovernancePage.tsx` (~3340 lines) | Yes | Roles, teams, domains, projects, contracts, policies, workflows, data products | DONE |
 | Example Effectiveness | No sidebar entry | `ExampleEffectivenessDashboard.tsx` (548 lines) | Yes (read) | None | DONE (read-only dashboard, embedded in Example Store module) |
 
 ---
@@ -183,7 +183,7 @@
 | Agents | 3 | Fully implemented |
 | Settings/Admin | 7 | Fully implemented |
 | Data Quality (DQX) | 4 | Fully implemented — results persisted to `dqx_quality_results` table |
-| Governance | 48 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree, reviews, projects, contracts, policies, evaluations, workflows, executions |
+| Governance | 63 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree, reviews, projects, contracts, policies, evaluations, workflows, executions, data products, ports, subscriptions |
 | Auth Core | 0 (middleware) | `get_current_user`, `require_permission`, `require_role` dependencies; `enforce_auth=false` default |
 | Quality Proxy | 1 | Fully implemented |
 
@@ -275,7 +275,7 @@ Features for mature data governance organizations.
 
 | # | Feature | Description | What We Have | What's Missing | Effort |
 |---|---------|-------------|-------------|----------------|--------|
-| G9 | **Data Products** | Curated asset collections (Source, Source-Aligned, Aggregate, Consumer-Aligned). Input/Output ports. Marketplace publishing, subscriptions. | No data product abstraction. Individual datasets only. | Data product entity, product types, port definitions, marketplace UI, subscription system. | L |
+| ~~G9~~ | ~~**Data Products**~~ | ~~Curated asset collections (Source, Source-Aligned, Aggregate, Consumer-Aligned). Input/Output ports. Marketplace publishing, subscriptions.~~ | ~~DONE — Data product entity with 4 product types, input/output ports with entity linking, subscription system with approve/reject/revoke lifecycle. DDL: `32_data_products.sql` (data_products + data_product_ports + data_product_subscriptions). Backend: 15 API endpoints (CRUD, status transitions, port management, subscription workflow). UI: Products tab in GovernancePage with type/status filters, port editor (input/output with entity type), tag management, subscription panel with approve/reject/revoke actions, lifecycle buttons (Publish/Deprecate/Retire).~~ | ~~Full marketplace search/discovery. Cross-product lineage visualization.~~ | ~~L~~ |
 | G10 | **Semantic Models** | Knowledge graphs connecting technical assets to business concepts (RDF/RDFS). Business Concepts, Business Properties, three-tier semantic linking. | Templates encode domain knowledge as prompts, but no formal ontology. | Semantic model CRUD, concept/property graph, semantic linking to datasets/contracts, graph visualization UI. | L |
 | G11 | **MCP Integration** | Model Context Protocol for AI assistant access. Token management, scoped access (read/write/special), tool discovery. | No MCP server. Backend is REST-only. | MCP server implementation, token CRUD, scope management, tool registration, AI assistant integration. | L |
 | G12 | **Delivery Modes** | Direct (immediate), Indirect (GitOps), Manual deployment. Git repository setup, YAML configs, version control integration. | Single deployment mode (Databricks Serving Endpoints via SDK). | Git-based deployment pipeline, YAML configuration generation, multi-mode deployment UI, approval gates per mode. | M |
@@ -291,11 +291,20 @@ Features for mature data governance organizations.
 
 **Phase 3 — Orchestration (G7–G8):** All DONE. G7 (Process Workflows) and G8 (Projects) complete. Projects provide logical isolation for team work; workflow engine automates governance processes with triggers, steps, approvals, and execution tracking.
 
-**Phase 4 — Platform (G9–G15):** Data Products, Semantic Models, MCP, Delivery Modes, Connectors, Marketplace, Naming. These extend governance across the full data ecosystem.
+**Phase 4 — Platform (G9–G15):** G9 (Data Products) DONE. Remaining: Semantic Models, MCP, Delivery Modes, Connectors, Marketplace, Naming. These extend governance across the full data ecosystem.
 
 ---
 
 ## Recently Completed (Feb 20, 2026)
+
+- **Ontos Governance G9 (Data Products)**: Full-stack implementation across 8 files:
+  - **DDL**: `32_data_products.sql` — data_products (product_type, status, tags JSON, metadata JSON, domain/team FKs) + data_product_ports (name, port_type input/output, entity_type/id linking, config JSON) + data_product_subscriptions (subscriber_email, status lifecycle pending→approved→rejected→revoked, purpose, approval tracking)
+  - **Backend models**: `DataProductType`, `DataProductStatus`, `PortType`, `SubscriptionStatus` enums, `DataProductPortSpec`, `DataProductCreate/Update/Response`, `DataProductPortResponse`, `SubscriptionRequest/Response`
+  - **Service**: `list_data_products` (type/status filters + domain/team joins), `get_data_product` (with ports), `create_data_product` (with inline port creation), `update_data_product`, `publish_data_product`, `transition_data_product`, `delete_data_product`, `list_product_ports`, `add_product_port`, `remove_product_port`, `list_subscriptions`, `create_subscription`, `approve_subscription`, `reject_subscription`, `revoke_subscription`
+  - **API**: 15 endpoints — GET/POST /products, GET/PUT/DELETE /products/{id}, PUT status, GET/POST ports, DELETE port, GET subscriptions, POST subscribe, PUT approve/reject/revoke
+  - **Frontend types**: `DataProductType`, `DataProductStatus`, `PortType`, `SubscriptionStatus`, `DataProductPort`, `DataProductSubscription`, `DataProduct`
+  - **Frontend API**: `listDataProducts`, `getDataProduct`, `createDataProduct`, `updateDataProduct`, `transitionProductStatus`, `deleteDataProduct`, `addProductPort`, `removeProductPort`, `listProductSubscriptions`, `approveSubscription`, `rejectSubscription`, `revokeSubscription`
+  - **UI**: `DataProductsTab` in GovernancePage — type/status filter dropdowns, product type color badges (Source=blue, Source-Aligned=indigo, Aggregate=purple, Consumer-Aligned=teal), tag management with Enter-to-add, port editor with input/output direction + entity type linking, `SubscriptionsPanel` sub-component with approve/reject/revoke actions, lifecycle buttons (Publish/Deprecate/Retire)
 
 - **Ontos Governance G7 (Process Workflows)**: Full-stack implementation across 7 files:
   - **DDL**: `31_workflows.sql` — workflows (steps JSON, trigger_config JSON, trigger_type, status) + workflow_executions (step_results JSON, current_step, trigger_event, status lifecycle)
