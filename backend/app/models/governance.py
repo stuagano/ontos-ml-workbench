@@ -931,4 +931,63 @@ class NamingValidationResult(BaseModel):
     name: str
     valid: bool
     violations: list[dict] = Field(default_factory=list, description="List of {convention_id, convention_name, pattern, error_message}")
+
+
+# ============================================================================
+# Dataset Marketplace (G14)
+# ============================================================================
+
+
+class MarketplaceSearchParams(BaseModel):
+    """Parameters for marketplace search."""
+    query: str | None = Field(None, description="Full-text search across name and description")
+    product_type: str | None = Field(None, description="Filter by product type")
+    domain_id: str | None = Field(None, description="Filter by domain")
+    team_id: str | None = Field(None, description="Filter by team")
+    tags: list[str] | None = Field(None, description="Filter by tags (any match)")
+    owner_email: str | None = Field(None, description="Filter by owner")
+    sort_by: str = Field("updated_at", description="Sort field: updated_at, name, subscription_count")
+    limit: int = Field(20, ge=1, le=100)
+    offset: int = Field(0, ge=0)
+
+
+class MarketplaceProductResponse(BaseModel):
+    """Marketplace product card data."""
+    id: str
+    name: str
+    description: str | None = None
+    product_type: str
+    status: str
+    domain_id: str | None = None
+    domain_name: str | None = None
+    team_id: str | None = None
+    team_name: str | None = None
+    owner_email: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    port_count: int = 0
+    subscription_count: int = 0
+    ports: list[dict] = Field(default_factory=list)
+    created_at: datetime | None = None
+    created_by: str | None = None
+    updated_at: datetime | None = None
+    published_at: datetime | None = None
+
+
+class MarketplaceSearchResult(BaseModel):
+    """Paginated marketplace search results."""
+    products: list[MarketplaceProductResponse] = Field(default_factory=list)
+    total: int = 0
+    limit: int = 20
+    offset: int = 0
+    facets: dict = Field(default_factory=dict, description="Facet counts for filters")
+
+
+class MarketplaceStatsResponse(BaseModel):
+    """Marketplace overview statistics."""
+    total_products: int = 0
+    published_products: int = 0
+    total_subscriptions: int = 0
+    products_by_type: dict[str, int] = Field(default_factory=dict)
+    products_by_domain: list[dict] = Field(default_factory=list)
+    recent_products: list[MarketplaceProductResponse] = Field(default_factory=list)
     conventions_checked: int = 0

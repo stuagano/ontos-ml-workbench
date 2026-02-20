@@ -45,6 +45,10 @@ import type {
   NamingConvention,
   NamingEntityType,
   NamingValidationResult,
+  MarketplaceProduct,
+  MarketplaceSearchResult,
+  MarketplaceSearchParams,
+  MarketplaceStats,
 } from "../types/governance";
 
 const API_BASE = "/api/v1/governance";
@@ -838,4 +842,35 @@ export async function toggleNamingConvention(conventionId: string, isActive: boo
 
 export async function validateName(entityType: string, name: string): Promise<NamingValidationResult> {
   return fetchJson(`${API_BASE}/naming/validate?entity_type=${encodeURIComponent(entityType)}&name=${encodeURIComponent(name)}`);
+}
+
+// ============================================================================
+// Dataset Marketplace (G14)
+// ============================================================================
+
+export async function searchMarketplace(params: MarketplaceSearchParams = {}): Promise<MarketplaceSearchResult> {
+  const searchParams = new URLSearchParams();
+  if (params.query) searchParams.set("query", params.query);
+  if (params.product_type) searchParams.set("product_type", params.product_type);
+  if (params.domain_id) searchParams.set("domain_id", params.domain_id);
+  if (params.team_id) searchParams.set("team_id", params.team_id);
+  if (params.tags) searchParams.set("tags", params.tags);
+  if (params.owner_email) searchParams.set("owner_email", params.owner_email);
+  if (params.sort_by) searchParams.set("sort_by", params.sort_by);
+  if (params.limit) searchParams.set("limit", String(params.limit));
+  if (params.offset) searchParams.set("offset", String(params.offset));
+  const qs = searchParams.toString();
+  return fetchJson(`${API_BASE}/marketplace/search${qs ? `?${qs}` : ""}`);
+}
+
+export async function getMarketplaceStats(): Promise<MarketplaceStats> {
+  return fetchJson(`${API_BASE}/marketplace/stats`);
+}
+
+export async function getMarketplaceProduct(productId: string): Promise<MarketplaceProduct> {
+  return fetchJson(`${API_BASE}/marketplace/products/${productId}`);
+}
+
+export async function getMySubscriptions(): Promise<unknown[]> {
+  return fetchJson(`${API_BASE}/marketplace/my-subscriptions`);
 }

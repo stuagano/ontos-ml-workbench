@@ -454,3 +454,63 @@ export interface NamingValidationResult {
   violations: { convention_id: string; convention_name: string; pattern: string; error_message: string }[];
   conventions_checked: number;
 }
+
+// ============================================================================
+// Dataset Marketplace (G14)
+// ============================================================================
+
+export interface MarketplaceProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  product_type: string;
+  status: string;
+  domain_id: string | null;
+  domain_name: string | null;
+  team_id: string | null;
+  team_name: string | null;
+  owner_email: string | null;
+  tags: string[];
+  port_count: number;
+  subscription_count: number;
+  ports: DataProductPort[];
+  created_at: string | null;
+  created_by: string | null;
+  updated_at: string | null;
+  published_at: string | null;
+}
+
+export interface MarketplaceFacets {
+  product_types: Record<string, number>;
+  domains: { id: string; name: string; count: number }[];
+  teams: { id: string; name: string; count: number }[];
+}
+
+export interface MarketplaceSearchResult {
+  products: MarketplaceProduct[];
+  total: number;
+  limit: number;
+  offset: number;
+  facets: MarketplaceFacets;
+}
+
+export interface MarketplaceStats {
+  total_products: number;
+  published_products: number;
+  total_subscriptions: number;
+  products_by_type: Record<string, number>;
+  products_by_domain: { name: string; count: number }[];
+  recent_products: MarketplaceProduct[];
+}
+
+export interface MarketplaceSearchParams {
+  query?: string;
+  product_type?: string;
+  domain_id?: string;
+  team_id?: string;
+  tags?: string;
+  owner_email?: string;
+  sort_by?: string;
+  limit?: number;
+  offset?: number;
+}

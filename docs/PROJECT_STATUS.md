@@ -2,7 +2,7 @@
 
 **Last Updated:** February 20, 2026
 **PRD Version:** 2.3
-**Overall Progress:** ~90% backend, ~80% frontend (ML Pipeline); Ontos Governance G1–G10 + G15 complete
+**Overall Progress:** ~90% backend, ~80% frontend (ML Pipeline); Ontos Governance G1–G10 + G14–G15 complete
 
 > This is the single source of truth for implementation status. It replaces the stale
 > `GAP_ANALYSIS_V2.md`, `SPRINT_PLAN.md`, `BACKLOG.md`, and `prd/v2.3-implementation-status.md`.
@@ -135,6 +135,7 @@
 | Label Sets | Yes | `LabelSetsPage.tsx` (619 lines) | Yes | Full CRUD + Publish/Archive | DONE |
 | Registries | Yes | `RegistriesPage.tsx` (1050 lines) | Yes | Full CRUD for Tools/Agents/Endpoints | DONE |
 | Governance | Yes (Admin) | `GovernancePage.tsx` (~4200 lines) | Yes | Roles, teams, domains, projects, contracts, policies, workflows, data products, semantic models, naming conventions | DONE |
+| Marketplace | Yes (Tools) | `MarketplacePage.tsx` (~500 lines) | Yes | Search, filter, detail, subscribe to published data products | DONE |
 | Example Effectiveness | No sidebar entry | `ExampleEffectivenessDashboard.tsx` (548 lines) | Yes (read) | None | DONE (read-only dashboard, embedded in Example Store module) |
 
 ---
@@ -183,7 +184,7 @@
 | Agents | 3 | Fully implemented |
 | Settings/Admin | 7 | Fully implemented |
 | Data Quality (DQX) | 4 | Fully implemented — results persisted to `dqx_quality_results` table |
-| Governance | 97 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree, reviews, projects, contracts, policies, evaluations, workflows, executions, data products, ports, subscriptions, semantic models, concepts, properties, links, naming conventions (CRUD + validate + toggle) |
+| Governance | 101 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree, reviews, projects, contracts, policies, evaluations, workflows, executions, data products, ports, subscriptions, semantic models, concepts, properties, links, naming conventions (CRUD + validate + toggle), marketplace (search + stats + detail + subscriptions) |
 | Auth Core | 0 (middleware) | `get_current_user`, `require_permission`, `require_role` dependencies; `enforce_auth=false` default |
 | Quality Proxy | 1 | Fully implemented |
 
@@ -280,7 +281,7 @@ Features for mature data governance organizations.
 | G11 | **MCP Integration** | Model Context Protocol for AI assistant access. Token management, scoped access (read/write/special), tool discovery. | No MCP server. Backend is REST-only. | MCP server implementation, token CRUD, scope management, tool registration, AI assistant integration. | L |
 | G12 | **Delivery Modes** | Direct (immediate), Indirect (GitOps), Manual deployment. Git repository setup, YAML configs, version control integration. | Single deployment mode (Databricks Serving Endpoints via SDK). | Git-based deployment pipeline, YAML configuration generation, multi-mode deployment UI, approval gates per mode. | M |
 | G13 | **Multi-Platform Connectors** | Pluggable platform adapters (Unity Catalog, Snowflake, Kafka, Power BI). Unified governance across platforms. | Databricks-only (Unity Catalog + Serving Endpoints + FMAPI). | Connector abstraction layer, Snowflake/Kafka adapters, unified asset discovery across platforms. | L |
-| G14 | **Dataset Marketplace** | Publishing datasets for discovery, subscriptions, access requests. | Sheets can be published/archived but not discoverable by external consumers. | Marketplace catalog UI, subscription requests, access approval workflow, usage analytics. | M |
+| ~~G14~~ | ~~**Dataset Marketplace**~~ | ~~Publishing datasets for discovery, subscriptions, access requests.~~ | ~~DONE — Marketplace search/discovery with full-text search, faceted filtering (product type, domain, team, tags), paginated results, overview stats. Backend: 4 API endpoints (`/marketplace/search`, `/marketplace/stats`, `/marketplace/products/{id}`, `/marketplace/my-subscriptions`). Frontend: standalone `MarketplacePage.tsx` with card-based product catalog, filter sidebar with facet counts, product detail with ports display, subscription request form. Sidebar entry in Tools section.~~ | ~~Usage analytics. Product recommendations. Cross-product lineage visualization.~~ | ~~M~~ |
 | ~~G15~~ | ~~**Naming Conventions**~~ | ~~Enforced naming rules per entity type. Validation on create/update.~~ | ~~DONE — Naming convention CRUD (create, update, delete, toggle enable/disable), per-entity-type regex patterns with priority, live validation endpoint (`POST /governance/naming/validate`), 6 seeded default conventions for radiation safety domain. DDL: `34_naming_conventions.sql`. Backend: 8 API endpoints. UI: Naming tab in GovernancePage with grouped convention list, create form, inline toggle, and interactive Name Validator panel.~~ | ~~None.~~ | ~~S~~ |
 
 ### Implementation Strategy
@@ -291,7 +292,7 @@ Features for mature data governance organizations.
 
 **Phase 3 — Orchestration (G7–G8):** All DONE. G7 (Process Workflows) and G8 (Projects) complete. Projects provide logical isolation for team work; workflow engine automates governance processes with triggers, steps, approvals, and execution tracking.
 
-**Phase 4 — Platform (G9–G15):** G9 (Data Products), G10 (Semantic Models), and G15 (Naming Conventions) DONE. Remaining: G11 (MCP Integration), G12 (Delivery Modes), G13 (Multi-Platform Connectors), G14 (Dataset Marketplace). These extend governance across the full data ecosystem.
+**Phase 4 — Platform (G9–G15):** G9 (Data Products), G10 (Semantic Models), G14 (Dataset Marketplace), and G15 (Naming Conventions) DONE. Remaining: G11 (MCP Integration), G12 (Delivery Modes), G13 (Multi-Platform Connectors). These extend governance across the full data ecosystem.
 
 ---
 
@@ -301,6 +302,14 @@ Features for mature data governance organizations.
   - **DDL**: `34_naming_conventions.sql` — naming_conventions table (entity_type, pattern regex, priority, is_active toggle, example_valid/invalid, error_message) + 6 seeded default conventions for radiation safety domain
   - **Backend**: `NamingEntityType` enum (10 types), `NamingConventionCreate/Update/Response`, `NamingValidationResult` models. Service methods: list, get, create, update, delete, toggle, validate (regex matching). 8 API endpoints: CRUD + toggle + validate
   - **Frontend**: Types, 7 API functions, `NamingConventionsTab` in GovernancePage — interactive Name Validator panel (entity type selector + name input + live validation), convention list grouped by entity type with toggle/delete, create form
+
+- **Ontos Governance G14 (Dataset Marketplace)**: Full-stack implementation across 7 files:
+  - **Backend service**: `search_marketplace` (full-text + domain/team/tags/type filters, paginated, faceted), `get_marketplace_stats` (overview counts by type/domain + recent products), `get_marketplace_product` (detail with ports), `get_user_subscriptions`
+  - **Backend endpoints**: 4 new routes under `/governance/marketplace/` — search, stats, product detail, my-subscriptions (101 governance routes total)
+  - **Frontend types**: `MarketplaceProduct`, `MarketplaceFacets`, `MarketplaceSearchResult`, `MarketplaceStats`, `MarketplaceSearchParams`
+  - **Frontend API**: `searchMarketplace`, `getMarketplaceStats`, `getMarketplaceProduct`, `getMySubscriptions`
+  - **Frontend page**: `MarketplacePage.tsx` — stats overview (4 metric cards), search bar with clear, filter sidebar with faceted counts (product type, domain, team), sort dropdown, responsive card grid, product detail view with ports and subscription request form
+  - **Sidebar**: Added under Tools section with Store icon
 
 - **Auth enforcement expansion**: Wired `require_permission()` across 7 additional endpoint files (~42 mutation endpoints):
   - sheets_v2.py (5), templates.py (6), training.py (4), deployment.py (7), monitoring.py (6), feedback.py (5), registries.py (9)

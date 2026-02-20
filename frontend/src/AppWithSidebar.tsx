@@ -79,6 +79,11 @@ const GovernancePage = lazy(() =>
     default: m.GovernancePage,
   })),
 );
+const MarketplacePage = lazy(() =>
+  import("./pages/MarketplacePage").then((m) => ({
+    default: m.MarketplacePage,
+  })),
+);
 import { getConfig, listTemplates } from "./services/api";
 import { setWorkspaceUrl } from "./services/databricksLinks";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -106,6 +111,7 @@ function AppContent() {
   const [showLabelingJobs, setShowLabelingJobs] = useState(false);
   const [showLabelSets, setShowLabelSets] = useState(false);
   const [showRegistries, setShowRegistries] = useState(false);
+  const [showMarketplace, setShowMarketplace] = useState(false);
   const [showGovernance, setShowGovernance] = useState(false);
   const [selectedDSPyTemplate, setSelectedDSPyTemplate] = useState<Template | null>(null);
   const [datasetContext, setDatasetContext] = useState<{
@@ -193,8 +199,9 @@ function AppContent() {
     if (showLabelingJobs) setShowLabelingJobs(false);
     if (showLabelSets) setShowLabelSets(false);
     if (showRegistries) setShowRegistries(false);
+    if (showMarketplace) setShowMarketplace(false);
     if (showGovernance) setShowGovernance(false);
-  }, [showEditor, showPromptTemplates, showExampleStore, showDSPyOptimizer, showCanonicalLabeling, showDataQuality, showLabelingJobs, showLabelSets, showRegistries, showGovernance]);
+  }, [showEditor, showPromptTemplates, showExampleStore, showDSPyOptimizer, showCanonicalLabeling, showDataQuality, showLabelingJobs, showLabelSets, showRegistries, showMarketplace, showGovernance]);
 
   // Register keyboard shortcuts
   useKeyboardShortcuts([
@@ -339,6 +346,8 @@ function AppContent() {
       onToggleLabelSets={() => setShowLabelSets(!showLabelSets)}
       showRegistries={showRegistries}
       onToggleRegistries={() => setShowRegistries(!showRegistries)}
+      showMarketplace={showMarketplace}
+      onToggleMarketplace={() => setShowMarketplace(!showMarketplace)}
       showGovernance={showGovernance}
       onToggleGovernance={() => setShowGovernance(!showGovernance)}
     >
@@ -583,6 +592,23 @@ function AppContent() {
           >
             <RegistriesPage
               onClose={() => setShowRegistries(false)}
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {/* Marketplace (overlays entire view) */}
+      {showMarketplace && (
+        <div className="fixed inset-0 z-50 bg-db-gray-50 dark:bg-gray-950 overflow-auto">
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-screen">
+                <Loader2 className="w-10 h-10 animate-spin text-db-orange" />
+              </div>
+            }
+          >
+            <MarketplacePage
+              onClose={() => setShowMarketplace(false)}
             />
           </Suspense>
         </div>

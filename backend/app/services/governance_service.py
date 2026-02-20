@@ -1778,6 +1778,224 @@ class GovernanceService:
         )
         return self.get_naming_convention(convention_id)
 
+    # ========================================================================
+    # Dataset Marketplace (G14)
+    # ========================================================================
+
+    def search_marketplace(
+        self,
+        query: str | None = None,
+        product_type: str | None = None,
+        domain_id: str | None = None,
+        team_id: str | None = None,
+        tags: list[str] | None = None,
+        owner_email: str | None = None,
+        sort_by: str = "updated_at",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> dict:
+        """Search published data products for marketplace discovery."""
+        where = ["p.status = 'published'"]
+        if query:
+            q = _esc(query)
+            where.append(f"(p.name LIKE '%{q}%' OR p.description LIKE '%{q}%')")
+        if product_type:
+            where.append(f"p.product_type = '{_esc(product_type)}'")
+        if domain_id:
+            where.append(f"p.domain_id = '{_esc(domain_id)}'")
+        if team_id:
+            where.append(f"p.team_id = '{_esc(team_id)}'")
+        if owner_email:
+            where.append(f"p.owner_email = '{_esc(owner_email)}'")
+        if tags:
+            # Match any tag — check if tags JSON array contains any of the given tags
+            tag_conditions = [f"p.tags LIKE '%{_esc(t)}%'" for t in tags]
+            where.append(f"({' OR '.join(tag_conditions)})")
+
+        where_clause = f"WHERE {' AND '.join(where)}"
+
+        # Sortable columns
+        sort_col = {
+            "name": "p.name",
+            "updated_at": "p.updated_at",
+            "published_at": "p.published_at",
+            "created_at": "p.created_at",
+        }.get(sort_by, "p.updated_at")
+
+        # Get total count
+        count_rows = self.sql.execute(
+            f"SELECT COUNT(*) AS cnt FROM {self._table('data_products')} p {where_clause}"
+        )
+        total = int(count_rows[0].get("cnt", 0)) if count_rows else 0
+
+        # Get paginated results
+        rows = self.sql.execute(f"""
+            SELECT p.*,
+                   d.name AS domain_name,
+                   t.name AS team_name
+            FROM {self._table('data_products')} p
+            LEFT JOIN {self._table('data_domains')} d ON p.domain_id = d.id
+            LEFT JOIN {self._table('teams')} t ON p.team_id = t.id
+            {where_clause}
+            ORDER BY {sort_col} DESC
+            LIMIT {limit} OFFSET {offset}
+        """)
+        products = [self._parse_product(r) for r in rows]
+        for prod in products:
+            prod["port_count"] = self._count_ports(prod["id"])
+            prod["subscription_count"] = self._count_subscriptions(prod["id"])
+
+        # Build facets (counts for filter dropdowns)
+        facets = self._build_marketplace_facets()
+
+        return {
+            "products": products,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "facets": facets,
+        }
+
+    def _build_marketplace_facets(self) -> dict:
+        """Build facet counts for marketplace filters."""
+        facets: dict = {}
+
+        # Product type counts
+        type_rows = self.sql.execute(f"""
+            SELECT product_type, COUNT(*) AS cnt
+            FROM {self._table('data_products')}
+            WHERE status = 'published'
+            GROUP BY product_type
+        """)
+        facets["product_types"] = {r["product_type"]: int(r["cnt"]) for r in type_rows}
+
+        # Domain counts
+        domain_rows = self.sql.execute(f"""
+            SELECT d.id, d.name, COUNT(*) AS cnt
+            FROM {self._table('data_products')} p
+            JOIN {self._table('data_domains')} d ON p.domain_id = d.id
+            WHERE p.status = 'published'
+            GROUP BY d.id, d.name
+        """)
+        facets["domains"] = [
+            {"id": r["id"], "name": r["name"], "count": int(r["cnt"])}
+            for r in domain_rows
+        ]
+
+        # Team counts
+        team_rows = self.sql.execute(f"""
+            SELECT t.id, t.name, COUNT(*) AS cnt
+            FROM {self._table('data_products')} p
+            JOIN {self._table('teams')} t ON p.team_id = t.id
+            WHERE p.status = 'published'
+            GROUP BY t.id, t.name
+        """)
+        facets["teams"] = [
+            {"id": r["id"], "name": r["name"], "count": int(r["cnt"])}
+            for r in team_rows
+        ]
+
+        return facets
+
+    def get_marketplace_stats(self) -> dict:
+        """Get marketplace overview statistics."""
+        # Total and published counts
+        count_rows = self.sql.execute(f"""
+            SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) AS published
+            FROM {self._table('data_products')}
+        """)
+        total = int(count_rows[0].get("total", 0)) if count_rows else 0
+        published = int(count_rows[0].get("published", 0)) if count_rows else 0
+
+        # Subscription count
+        sub_rows = self.sql.execute(
+            f"SELECT COUNT(*) AS cnt FROM {self._table('data_product_subscriptions')}"
+        )
+        total_subs = int(sub_rows[0].get("cnt", 0)) if sub_rows else 0
+
+        # By type
+        type_rows = self.sql.execute(f"""
+            SELECT product_type, COUNT(*) AS cnt
+            FROM {self._table('data_products')}
+            WHERE status = 'published'
+            GROUP BY product_type
+        """)
+        by_type = {r["product_type"]: int(r["cnt"]) for r in type_rows}
+
+        # By domain (top 10)
+        domain_rows = self.sql.execute(f"""
+            SELECT d.name, COUNT(*) AS cnt
+            FROM {self._table('data_products')} p
+            JOIN {self._table('data_domains')} d ON p.domain_id = d.id
+            WHERE p.status = 'published'
+            GROUP BY d.name
+            ORDER BY cnt DESC
+            LIMIT 10
+        """)
+        by_domain = [{"name": r["name"], "count": int(r["cnt"])} for r in domain_rows]
+
+        # Recent products (last 5 published)
+        recent_rows = self.sql.execute(f"""
+            SELECT p.*,
+                   d.name AS domain_name,
+                   t.name AS team_name
+            FROM {self._table('data_products')} p
+            LEFT JOIN {self._table('data_domains')} d ON p.domain_id = d.id
+            LEFT JOIN {self._table('teams')} t ON p.team_id = t.id
+            WHERE p.status = 'published'
+            ORDER BY p.published_at DESC
+            LIMIT 5
+        """)
+        recent = [self._parse_product(r) for r in recent_rows]
+        for prod in recent:
+            prod["port_count"] = self._count_ports(prod["id"])
+            prod["subscription_count"] = self._count_subscriptions(prod["id"])
+
+        return {
+            "total_products": total,
+            "published_products": published,
+            "total_subscriptions": total_subs,
+            "products_by_type": by_type,
+            "products_by_domain": by_domain,
+            "recent_products": recent,
+        }
+
+    def get_marketplace_product(self, product_id: str) -> dict | None:
+        """Get a marketplace product detail (published only, with ports and subscription count)."""
+        rows = self.sql.execute(f"""
+            SELECT p.*,
+                   d.name AS domain_name,
+                   t.name AS team_name
+            FROM {self._table('data_products')} p
+            LEFT JOIN {self._table('data_domains')} d ON p.domain_id = d.id
+            LEFT JOIN {self._table('teams')} t ON p.team_id = t.id
+            WHERE p.id = '{_esc(product_id)}'
+        """)
+        if not rows:
+            return None
+        prod = self._parse_product(rows[0])
+        prod["port_count"] = self._count_ports(product_id)
+        prod["subscription_count"] = self._count_subscriptions(product_id)
+        prod["ports"] = self.list_product_ports(product_id)
+        return prod
+
+    def get_user_subscriptions(self, user_email: str) -> list[dict]:
+        """Get all subscriptions for a given user across products."""
+        rows = self.sql.execute(f"""
+            SELECT s.*, p.name AS product_name, p.product_type, p.description AS product_description
+            FROM {self._table('data_product_subscriptions')} s
+            JOIN {self._table('data_products')} p ON s.product_id = p.id
+            WHERE s.subscriber_email = '{_esc(user_email)}'
+            ORDER BY s.created_at DESC
+        """)
+        return [dict(r) for r in rows]
+
+    # ========================================================================
+    # Naming Conventions (G15)
+    # ========================================================================
+
     def validate_name(self, entity_type: str, name: str) -> dict:
         """Validate a name against all active conventions for the given entity type."""
         import re

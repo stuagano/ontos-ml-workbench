@@ -61,6 +61,10 @@ from app.models.governance import (
     NamingConventionResponse,
     NamingConventionUpdate,
     NamingValidationResult,
+    MarketplaceSearchParams,
+    MarketplaceSearchResult,
+    MarketplaceProductResponse,
+    MarketplaceStatsResponse,
 )
 from app.services.governance_service import get_governance_service
 
@@ -1019,3 +1023,61 @@ async def validate_name(entity_type: str = Query(...), name: str = Query(...)):
     """Validate a name against active naming conventions for an entity type."""
     svc = get_governance_service()
     return svc.validate_name(entity_type, name)
+
+
+# ============================================================================
+# Dataset Marketplace (G14)
+# ============================================================================
+
+
+@router.get("/marketplace/search", response_model=MarketplaceSearchResult)
+async def search_marketplace(
+    query: str | None = Query(None, description="Full-text search"),
+    product_type: str | None = Query(None),
+    domain_id: str | None = Query(None),
+    team_id: str | None = Query(None),
+    tags: str | None = Query(None, description="Comma-separated tag list"),
+    owner_email: str | None = Query(None),
+    sort_by: str = Query("updated_at"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    """Search published data products for marketplace discovery."""
+    svc = get_governance_service()
+    tag_list = [t.strip() for t in tags.split(",")] if tags else None
+    return svc.search_marketplace(
+        query=query,
+        product_type=product_type,
+        domain_id=domain_id,
+        team_id=team_id,
+        tags=tag_list,
+        owner_email=owner_email,
+        sort_by=sort_by,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/marketplace/stats", response_model=MarketplaceStatsResponse)
+async def get_marketplace_stats():
+    """Get marketplace overview statistics."""
+    svc = get_governance_service()
+    return svc.get_marketplace_stats()
+
+
+@router.get("/marketplace/products/{product_id}", response_model=MarketplaceProductResponse)
+async def get_marketplace_product(product_id: str):
+    """Get a marketplace product detail (includes ports)."""
+    svc = get_governance_service()
+    result = svc.get_marketplace_product(product_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return result
+
+
+@router.get("/marketplace/my-subscriptions")
+async def get_my_subscriptions():
+    """Get the current user's subscriptions across all products."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.get_user_subscriptions(user)

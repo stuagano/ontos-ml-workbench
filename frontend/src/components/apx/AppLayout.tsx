@@ -29,6 +29,7 @@ import {
   Package,
   Shield,
   GraduationCap,
+  Store,
 } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -171,6 +172,13 @@ const TOOLS_CONFIG = {
     icon: Package,
     color: "text-slate-500",
     description: "Manage tools, agents, and endpoints",
+  },
+  marketplace: {
+    id: "marketplace",
+    label: "Marketplace",
+    icon: Store,
+    color: "text-amber-500",
+    description: "Discover and subscribe to data products",
   },
 };
 
@@ -337,6 +345,8 @@ interface ToolsNavProps {
   onToggleLabelSets: () => void;
   showRegistries: boolean;
   onToggleRegistries: () => void;
+  showMarketplace: boolean;
+  onToggleMarketplace: () => void;
 }
 
 // Admin section config
@@ -367,6 +377,8 @@ function ToolsNav({
   onToggleLabelSets,
   showRegistries,
   onToggleRegistries,
+  showMarketplace,
+  onToggleMarketplace,
 }: ToolsNavProps) {
   const { open } = useSidebar();
   const PromptTemplatesIcon = TOOLS_CONFIG.promptTemplates.icon;
@@ -377,6 +389,7 @@ function ToolsNav({
   const LabelingJobsIcon = TOOLS_CONFIG.labelingJobs.icon;
   const LabelSetsIcon = TOOLS_CONFIG.labelSets.icon;
   const RegistriesIcon = TOOLS_CONFIG.registries.icon;
+  const MarketplaceIcon = TOOLS_CONFIG.marketplace.icon;
 
   return (
     <SidebarGroup>
@@ -531,6 +544,25 @@ function ToolsNav({
               )}
             />
             {open && <span>{TOOLS_CONFIG.registries.label}</span>}
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+
+        {/* Marketplace */}
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            isActive={showMarketplace}
+            tooltip={TOOLS_CONFIG.marketplace.description}
+            onClick={onToggleMarketplace}
+          >
+            <MarketplaceIcon
+              className={clsx(
+                "w-5 h-5 flex-shrink-0",
+                showMarketplace
+                  ? TOOLS_CONFIG.marketplace.color
+                  : "text-db-gray-500",
+              )}
+            />
+            {open && <span>{TOOLS_CONFIG.marketplace.label}</span>}
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>
@@ -711,6 +743,8 @@ interface AppLayoutProps {
   onToggleLabelSets: () => void;
   showRegistries: boolean;
   onToggleRegistries: () => void;
+  showMarketplace: boolean;
+  onToggleMarketplace: () => void;
   showGovernance: boolean;
   onToggleGovernance: () => void;
 }
@@ -739,6 +773,8 @@ export function AppLayout({
   onToggleLabelSets,
   showRegistries,
   onToggleRegistries,
+  showMarketplace,
+  onToggleMarketplace,
   showGovernance,
   onToggleGovernance,
 }: AppLayoutProps) {
@@ -772,6 +808,8 @@ export function AppLayout({
             onToggleLabelSets={onToggleLabelSets}
             showRegistries={showRegistries}
             onToggleRegistries={onToggleRegistries}
+            showMarketplace={showMarketplace}
+            onToggleMarketplace={onToggleMarketplace}
           />
           <AdminNav
             showGovernance={showGovernance}
