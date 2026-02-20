@@ -862,3 +862,73 @@ class SemanticModelResponse(BaseModel):
     created_by: str | None = None
     updated_at: datetime | None = None
     updated_by: str | None = None
+
+
+# ============================================================================
+# Naming Conventions (G15)
+# ============================================================================
+
+
+class NamingEntityType(str, Enum):
+    SHEET = "sheet"
+    TEMPLATE = "template"
+    TRAINING_SHEET = "training_sheet"
+    DOMAIN = "domain"
+    TEAM = "team"
+    PROJECT = "project"
+    CONTRACT = "contract"
+    PRODUCT = "product"
+    SEMANTIC_MODEL = "semantic_model"
+    ROLE = "role"
+
+
+class NamingConventionCreate(BaseModel):
+    """Request body for creating a naming convention."""
+    entity_type: str = Field(..., description="Entity type this convention applies to")
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = None
+    pattern: str = Field(..., min_length=1, description="Regex pattern that names must match")
+    example_valid: str | None = None
+    example_invalid: str | None = None
+    error_message: str | None = None
+    is_active: bool = True
+    priority: int = 0
+
+
+class NamingConventionUpdate(BaseModel):
+    """Request body for updating a naming convention."""
+    name: str | None = None
+    description: str | None = None
+    pattern: str | None = None
+    example_valid: str | None = None
+    example_invalid: str | None = None
+    error_message: str | None = None
+    is_active: bool | None = None
+    priority: int | None = None
+
+
+class NamingConventionResponse(BaseModel):
+    """Naming convention response model."""
+    id: str
+    entity_type: str
+    name: str
+    description: str | None = None
+    pattern: str
+    example_valid: str | None = None
+    example_invalid: str | None = None
+    error_message: str | None = None
+    is_active: bool = True
+    priority: int = 0
+    created_at: datetime | None = None
+    created_by: str | None = None
+    updated_at: datetime | None = None
+    updated_by: str | None = None
+
+
+class NamingValidationResult(BaseModel):
+    """Result of validating a name against conventions."""
+    entity_type: str
+    name: str
+    valid: bool
+    violations: list[dict] = Field(default_factory=list, description="List of {convention_id, convention_name, pattern, error_message}")
+    conventions_checked: int = 0

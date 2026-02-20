@@ -2,7 +2,7 @@
 
 **Last Updated:** February 20, 2026
 **PRD Version:** 2.3
-**Overall Progress:** ~85% backend, ~75% frontend (ML Pipeline); Phase 1 (G1–G3) Ontos Governance complete
+**Overall Progress:** ~90% backend, ~80% frontend (ML Pipeline); Ontos Governance G1–G10 + G15 complete
 
 > This is the single source of truth for implementation status. It replaces the stale
 > `GAP_ANALYSIS_V2.md`, `SPRINT_PLAN.md`, `BACKLOG.md`, and `prd/v2.3-implementation-status.md`.
@@ -134,7 +134,7 @@
 | Labeling Jobs | Yes | `LabelingJobsPage.tsx` (1099 lines) | Yes | Create, Start, Pause, Resume, Delete | DONE |
 | Label Sets | Yes | `LabelSetsPage.tsx` (619 lines) | Yes | Full CRUD + Publish/Archive | DONE |
 | Registries | Yes | `RegistriesPage.tsx` (1050 lines) | Yes | Full CRUD for Tools/Agents/Endpoints | DONE |
-| Governance | Yes (Admin) | `GovernancePage.tsx` (~3950 lines) | Yes | Roles, teams, domains, projects, contracts, policies, workflows, data products, semantic models | DONE |
+| Governance | Yes (Admin) | `GovernancePage.tsx` (~4200 lines) | Yes | Roles, teams, domains, projects, contracts, policies, workflows, data products, semantic models, naming conventions | DONE |
 | Example Effectiveness | No sidebar entry | `ExampleEffectivenessDashboard.tsx` (548 lines) | Yes (read) | None | DONE (read-only dashboard, embedded in Example Store module) |
 
 ---
@@ -183,7 +183,7 @@
 | Agents | 3 | Fully implemented |
 | Settings/Admin | 7 | Fully implemented |
 | Data Quality (DQX) | 4 | Fully implemented — results persisted to `dqx_quality_results` table |
-| Governance | 79 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree, reviews, projects, contracts, policies, evaluations, workflows, executions, data products, ports, subscriptions, semantic models, concepts, properties, links |
+| Governance | 97 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree, reviews, projects, contracts, policies, evaluations, workflows, executions, data products, ports, subscriptions, semantic models, concepts, properties, links, naming conventions (CRUD + validate + toggle) |
 | Auth Core | 0 (middleware) | `get_current_user`, `require_permission`, `require_role` dependencies; `enforce_auth=false` default |
 | Quality Proxy | 1 | Fully implemented |
 
@@ -201,7 +201,7 @@
 
 ~~6. **Labeling table schemas not in DDL**~~ — FIXED. DDL files `09_labeling_jobs.sql` through `12_workspace_users.sql` added to `schemas/`.
 
-7. **Auth enforcement opt-in** — RBAC auth dependencies wired on all governance mutation endpoints (13 of 23 routes). `enforce_auth=false` by default (soft mode: logs warnings but allows through). Set `ENFORCE_AUTH=true` in `.env` to activate 403 blocking. Read-only endpoints remain open. Non-governance endpoints not yet wired.
+7. **Auth enforcement opt-in** — RBAC auth dependencies wired on governance (all mutations), sheets (5), templates (6), training (4), deployment (7), monitoring (6), feedback (5), and registries (9) — ~50+ mutation endpoints total. `enforce_auth=false` by default (soft mode: logs warnings but allows through). Set `ENFORCE_AUTH=true` in `.env` to activate 403 blocking. Read-only endpoints remain open.
 
 ---
 
@@ -281,7 +281,7 @@ Features for mature data governance organizations.
 | G12 | **Delivery Modes** | Direct (immediate), Indirect (GitOps), Manual deployment. Git repository setup, YAML configs, version control integration. | Single deployment mode (Databricks Serving Endpoints via SDK). | Git-based deployment pipeline, YAML configuration generation, multi-mode deployment UI, approval gates per mode. | M |
 | G13 | **Multi-Platform Connectors** | Pluggable platform adapters (Unity Catalog, Snowflake, Kafka, Power BI). Unified governance across platforms. | Databricks-only (Unity Catalog + Serving Endpoints + FMAPI). | Connector abstraction layer, Snowflake/Kafka adapters, unified asset discovery across platforms. | L |
 | G14 | **Dataset Marketplace** | Publishing datasets for discovery, subscriptions, access requests. | Sheets can be published/archived but not discoverable by external consumers. | Marketplace catalog UI, subscription requests, access approval workflow, usage analytics. | M |
-| G15 | **Naming Conventions** | Enforced naming rules per entity type. Validation on create/update. | No naming validation. | Naming convention config, validation hooks on CRUD operations. | S |
+| ~~G15~~ | ~~**Naming Conventions**~~ | ~~Enforced naming rules per entity type. Validation on create/update.~~ | ~~DONE — Naming convention CRUD (create, update, delete, toggle enable/disable), per-entity-type regex patterns with priority, live validation endpoint (`POST /governance/naming/validate`), 6 seeded default conventions for radiation safety domain. DDL: `34_naming_conventions.sql`. Backend: 8 API endpoints. UI: Naming tab in GovernancePage with grouped convention list, create form, inline toggle, and interactive Name Validator panel.~~ | ~~None.~~ | ~~S~~ |
 
 ### Implementation Strategy
 
@@ -291,11 +291,22 @@ Features for mature data governance organizations.
 
 **Phase 3 — Orchestration (G7–G8):** All DONE. G7 (Process Workflows) and G8 (Projects) complete. Projects provide logical isolation for team work; workflow engine automates governance processes with triggers, steps, approvals, and execution tracking.
 
-**Phase 4 — Platform (G9–G15):** G9 (Data Products) and G10 (Semantic Models) DONE. Remaining: MCP, Delivery Modes, Connectors, Marketplace, Naming. These extend governance across the full data ecosystem.
+**Phase 4 — Platform (G9–G15):** G9 (Data Products), G10 (Semantic Models), and G15 (Naming Conventions) DONE. Remaining: G11 (MCP Integration), G12 (Delivery Modes), G13 (Multi-Platform Connectors), G14 (Dataset Marketplace). These extend governance across the full data ecosystem.
 
 ---
 
 ## Recently Completed (Feb 20, 2026)
+
+- **Ontos Governance G15 (Naming Conventions)**: Full-stack implementation across 6 files:
+  - **DDL**: `34_naming_conventions.sql` — naming_conventions table (entity_type, pattern regex, priority, is_active toggle, example_valid/invalid, error_message) + 6 seeded default conventions for radiation safety domain
+  - **Backend**: `NamingEntityType` enum (10 types), `NamingConventionCreate/Update/Response`, `NamingValidationResult` models. Service methods: list, get, create, update, delete, toggle, validate (regex matching). 8 API endpoints: CRUD + toggle + validate
+  - **Frontend**: Types, 7 API functions, `NamingConventionsTab` in GovernancePage — interactive Name Validator panel (entity type selector + name input + live validation), convention list grouped by entity type with toggle/delete, create form
+
+- **Auth enforcement expansion**: Wired `require_permission()` across 7 additional endpoint files (~42 mutation endpoints):
+  - sheets_v2.py (5), templates.py (6), training.py (4), deployment.py (7), monitoring.py (6), feedback.py (5), registries.py (9)
+  - Fixed `convert_to_training_data` auth parameter placement bug, extracted `_ingest_single_metric` helper to avoid auth recursion in batch endpoint
+
+- **DDL script fix**: Added files 26-34 to `schemas/execute_all.sh` (were missing from G4-G10 remote merge)
 
 - **Ontos Governance G10 (Semantic Models)**: Full-stack implementation across 8 files:
   - **DDL**: `33_semantic_models.sql` — semantic_models (name, version, status, domain FK) + semantic_concepts (concept_type entity/event/metric/dimension, parent_id hierarchy, tags JSON) + semantic_properties (data_type, is_required, enum_values JSON, concept FK) + semantic_links (source_type concept/property, target_type table/column/sheet/contract/product, link_type maps_to/derived_from/aggregates/represents, confidence score)

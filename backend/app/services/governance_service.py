@@ -1707,6 +1707,106 @@ class GovernanceService:
             f"DELETE FROM {self._table('semantic_links')} WHERE id = '{_esc(link_id)}'"
         )
 
+    # ========================================================================
+    # Naming Conventions (G15)
+    # ========================================================================
+
+    def list_naming_conventions(self, entity_type: str | None = None) -> list[dict]:
+        sql = f"SELECT * FROM {self._table('naming_conventions')}"
+        if entity_type:
+            sql += f" WHERE entity_type = '{_esc(entity_type)}'"
+        sql += " ORDER BY entity_type, priority DESC, name"
+        return self.sql.execute(sql)
+
+    def get_naming_convention(self, convention_id: str) -> dict | None:
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('naming_conventions')} WHERE id = '{_esc(convention_id)}'"
+        )
+        return rows[0] if rows else None
+
+    def create_naming_convention(self, data: dict, created_by: str) -> dict:
+        conv_id = str(uuid.uuid4())
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('naming_conventions')}
+            (id, entity_type, name, description, pattern, example_valid, example_invalid,
+             error_message, is_active, priority, created_at, created_by, updated_at, updated_by)
+            VALUES (
+                '{conv_id}', '{_esc(data["entity_type"])}', '{_esc(data["name"])}',
+                {f"'{_esc(data['description'])}'" if data.get('description') else 'NULL'},
+                '{_esc(data["pattern"])}',
+                {f"'{_esc(data['example_valid'])}'" if data.get('example_valid') else 'NULL'},
+                {f"'{_esc(data['example_invalid'])}'" if data.get('example_invalid') else 'NULL'},
+                {f"'{_esc(data['error_message'])}'" if data.get('error_message') else 'NULL'},
+                {str(data.get('is_active', True)).lower()},
+                {data.get('priority', 0)},
+                current_timestamp(), '{_esc(created_by)}',
+                current_timestamp(), '{_esc(created_by)}'
+            )
+        """)
+        return self.get_naming_convention(conv_id)
+
+    def update_naming_convention(self, convention_id: str, data: dict, updated_by: str) -> dict | None:
+        updates = []
+        for field in ("name", "description", "pattern", "example_valid", "example_invalid", "error_message"):
+            if data.get(field) is not None:
+                updates.append(f"{field} = '{_esc(data[field])}'")
+        if data.get("is_active") is not None:
+            updates.append(f"is_active = {str(data['is_active']).lower()}")
+        if data.get("priority") is not None:
+            updates.append(f"priority = {data['priority']}")
+
+        if updates:
+            updates.append(f"updated_by = '{_esc(updated_by)}'")
+            updates.append("updated_at = current_timestamp()")
+            self.sql.execute_update(
+                f"UPDATE {self._table('naming_conventions')} SET {', '.join(updates)} "
+                f"WHERE id = '{_esc(convention_id)}'"
+            )
+        return self.get_naming_convention(convention_id)
+
+    def delete_naming_convention(self, convention_id: str) -> None:
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('naming_conventions')} WHERE id = '{_esc(convention_id)}'"
+        )
+
+    def toggle_naming_convention(self, convention_id: str, is_active: bool, updated_by: str) -> dict | None:
+        self.sql.execute_update(
+            f"UPDATE {self._table('naming_conventions')} "
+            f"SET is_active = {str(is_active).lower()}, "
+            f"updated_by = '{_esc(updated_by)}', updated_at = current_timestamp() "
+            f"WHERE id = '{_esc(convention_id)}'"
+        )
+        return self.get_naming_convention(convention_id)
+
+    def validate_name(self, entity_type: str, name: str) -> dict:
+        """Validate a name against all active conventions for the given entity type."""
+        import re
+        conventions = self.sql.execute(
+            f"SELECT * FROM {self._table('naming_conventions')} "
+            f"WHERE entity_type = '{_esc(entity_type)}' AND is_active = true "
+            f"ORDER BY priority DESC"
+        )
+        violations = []
+        for conv in conventions:
+            pattern = conv.get("pattern", "")
+            try:
+                if not re.match(pattern, name):
+                    violations.append({
+                        "convention_id": conv.get("id"),
+                        "convention_name": conv.get("name"),
+                        "pattern": pattern,
+                        "error_message": conv.get("error_message") or f"Name does not match pattern: {pattern}",
+                    })
+            except re.error:
+                logger.warning(f"Invalid regex pattern in convention {conv.get('id')}: {pattern}")
+        return {
+            "entity_type": entity_type,
+            "name": name,
+            "valid": len(violations) == 0,
+            "violations": violations,
+            "conventions_checked": len(conventions),
+        }
+
 
 # Singleton
 _governance_service: GovernanceService | None = None

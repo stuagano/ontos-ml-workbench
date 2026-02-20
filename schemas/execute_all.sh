@@ -47,6 +47,15 @@ SQL_FILES=(
     "23_data_domains.sql"
     "24_seed_default_roles.sql"
     "25_add_domain_id_columns.sql"
+    "26_asset_reviews.sql"
+    "27_projects.sql"
+    "28_project_members.sql"
+    "29_data_contracts.sql"
+    "30_compliance_policies.sql"
+    "31_workflows.sql"
+    "32_data_products.sql"
+    "33_semantic_models.sql"
+    "34_naming_conventions.sql"
     "99_validate_and_seed.sql"
 )
 

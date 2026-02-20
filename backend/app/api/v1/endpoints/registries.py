@@ -3,8 +3,9 @@
 import json
 import uuid
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.core.auth import CurrentUser, require_permission
 from app.core.databricks import get_current_user
 from app.models.registry import (
     AgentCreate,
@@ -74,7 +75,7 @@ async def list_tools(
 
 
 @router.post("/tools", response_model=ToolResponse, status_code=201)
-async def create_tool(tool: ToolCreate):
+async def create_tool(tool: ToolCreate, _auth: CurrentUser = Depends(require_permission("registries", "write"))):
     """Create a new tool."""
     sql_service = get_sql_service()
     user = get_current_user()
@@ -126,7 +127,7 @@ async def get_tool(tool_id: str):
 
 
 @router.put("/tools/{tool_id}", response_model=ToolResponse)
-async def update_tool(tool_id: str, tool: ToolUpdate):
+async def update_tool(tool_id: str, tool: ToolUpdate, _auth: CurrentUser = Depends(require_permission("registries", "write"))):
     """Update a tool."""
     sql_service = get_sql_service()
 
@@ -163,7 +164,7 @@ async def update_tool(tool_id: str, tool: ToolUpdate):
 
 
 @router.delete("/tools/{tool_id}", status_code=204)
-async def delete_tool(tool_id: str):
+async def delete_tool(tool_id: str, _auth: CurrentUser = Depends(require_permission("registries", "admin"))):
     """Delete a tool."""
     sql_service = get_sql_service()
     sql = f"DELETE FROM tools_registry WHERE id = '{tool_id}'"
@@ -217,7 +218,7 @@ async def list_agents(
 
 
 @router.post("/agents", response_model=AgentResponse, status_code=201)
-async def create_agent(agent: AgentCreate):
+async def create_agent(agent: AgentCreate, _auth: CurrentUser = Depends(require_permission("registries", "write"))):
     """Create a new agent."""
     sql_service = get_sql_service()
     user = get_current_user()
@@ -262,7 +263,7 @@ async def get_agent(agent_id: str):
 
 
 @router.put("/agents/{agent_id}", response_model=AgentResponse)
-async def update_agent(agent_id: str, agent: AgentUpdate):
+async def update_agent(agent_id: str, agent: AgentUpdate, _auth: CurrentUser = Depends(require_permission("registries", "write"))):
     """Update an agent."""
     sql_service = get_sql_service()
 
@@ -300,7 +301,7 @@ async def update_agent(agent_id: str, agent: AgentUpdate):
 
 
 @router.delete("/agents/{agent_id}", status_code=204)
-async def delete_agent(agent_id: str):
+async def delete_agent(agent_id: str, _auth: CurrentUser = Depends(require_permission("registries", "admin"))):
     """Delete an agent."""
     sql_service = get_sql_service()
     sql = f"DELETE FROM agents_registry WHERE id = '{agent_id}'"
@@ -355,7 +356,7 @@ async def list_endpoints(
 
 
 @router.post("/endpoints", response_model=EndpointResponse, status_code=201)
-async def create_endpoint(endpoint: EndpointCreate):
+async def create_endpoint(endpoint: EndpointCreate, _auth: CurrentUser = Depends(require_permission("registries", "write"))):
     """Create a new endpoint registration."""
     sql_service = get_sql_service()
     user = get_current_user()
@@ -406,7 +407,7 @@ async def get_endpoint(endpoint_id: str):
 
 
 @router.put("/endpoints/{endpoint_id}", response_model=EndpointResponse)
-async def update_endpoint(endpoint_id: str, endpoint: EndpointUpdate):
+async def update_endpoint(endpoint_id: str, endpoint: EndpointUpdate, _auth: CurrentUser = Depends(require_permission("registries", "write"))):
     """Update an endpoint."""
     sql_service = get_sql_service()
 
@@ -432,7 +433,7 @@ async def update_endpoint(endpoint_id: str, endpoint: EndpointUpdate):
 
 
 @router.delete("/endpoints/{endpoint_id}", status_code=204)
-async def delete_endpoint(endpoint_id: str):
+async def delete_endpoint(endpoint_id: str, _auth: CurrentUser = Depends(require_permission("registries", "admin"))):
     """Delete an endpoint registration."""
     sql_service = get_sql_service()
     sql = f"DELETE FROM endpoints_registry WHERE id = '{endpoint_id}'"

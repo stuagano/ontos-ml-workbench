@@ -10,7 +10,9 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from app.core.auth import CurrentUser, require_permission
 from pydantic import BaseModel, Field
 
 from app.core.databricks import get_current_user, get_workspace_client
@@ -157,46 +159,51 @@ class TimeseriesPoint(BaseModel):
 # ============================================================================
 
 
+async def _ingest_single_metric(body: MetricIngestRequest) -> dict[str, str]:
+    """Core logic for ingesting a single metric data point."""
+    metric_id = str(uuid.uuid4())
+    _sql.execute_update(f"""
+        INSERT INTO {METRICS_TABLE}
+        (id, endpoint_id, endpoint_name, request_id, model_name,
+         model_version, latency_ms, status_code, error_message,
+         input_tokens, output_tokens, total_tokens, cost_dollars)
+        VALUES (
+            '{metric_id}', '{body.endpoint_id}',
+            {f"'{body.endpoint_name}'" if body.endpoint_name else 'NULL'},
+            {f"'{body.request_id}'" if body.request_id else 'NULL'},
+            {f"'{body.model_name}'" if body.model_name else 'NULL'},
+            {f"'{body.model_version}'" if body.model_version else 'NULL'},
+            {body.latency_ms}, {body.status_code},
+            {f"'{body.error_message}'" if body.error_message else 'NULL'},
+            {body.input_tokens or 'NULL'}, {body.output_tokens or 'NULL'},
+            {body.total_tokens or 'NULL'}, {body.cost_dollars or 'NULL'}
+        )
+    """)
+    return {"id": metric_id}
+
+
 @router.post("/metrics/ingest", status_code=201)
-async def ingest_metric(body: MetricIngestRequest) -> dict[str, str]:
+async def ingest_metric(body: MetricIngestRequest, _auth: CurrentUser = Depends(require_permission("monitor", "write"))) -> dict[str, str]:
     """
     Ingest a single per-request metric data point.
 
     Called by the serving layer after each model inference to capture
     actual latency, token usage, and error information.
     """
-    metric_id = str(uuid.uuid4())
     try:
-        _sql.execute_update(f"""
-            INSERT INTO {METRICS_TABLE}
-            (id, endpoint_id, endpoint_name, request_id, model_name,
-             model_version, latency_ms, status_code, error_message,
-             input_tokens, output_tokens, total_tokens, cost_dollars)
-            VALUES (
-                '{metric_id}', '{body.endpoint_id}',
-                {f"'{body.endpoint_name}'" if body.endpoint_name else 'NULL'},
-                {f"'{body.request_id}'" if body.request_id else 'NULL'},
-                {f"'{body.model_name}'" if body.model_name else 'NULL'},
-                {f"'{body.model_version}'" if body.model_version else 'NULL'},
-                {body.latency_ms}, {body.status_code},
-                {f"'{body.error_message}'" if body.error_message else 'NULL'},
-                {body.input_tokens or 'NULL'}, {body.output_tokens or 'NULL'},
-                {body.total_tokens or 'NULL'}, {body.cost_dollars or 'NULL'}
-            )
-        """)
-        return {"id": metric_id}
+        return await _ingest_single_metric(body)
     except Exception as e:
         logger.error(f"Failed to ingest metric: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to ingest metric: {e}")
 
 
 @router.post("/metrics/ingest/batch", status_code=201)
-async def ingest_metrics_batch(body: MetricIngestBatchRequest) -> dict[str, int]:
+async def ingest_metrics_batch(body: MetricIngestBatchRequest, _auth: CurrentUser = Depends(require_permission("monitor", "write"))) -> dict[str, int]:
     """Ingest a batch of metric data points."""
     inserted = 0
     for m in body.metrics:
         try:
-            await ingest_metric(m)
+            await _ingest_single_metric(m)
             inserted += 1
         except Exception as e:
             logger.warning(f"Failed to ingest metric in batch: {e}")
@@ -473,7 +480,7 @@ async def get_realtime_metrics(
 
 
 @router.post("/alerts", response_model=AlertResponse, status_code=201)
-async def create_alert(config: AlertConfig) -> AlertResponse:
+async def create_alert(config: AlertConfig, _auth: CurrentUser = Depends(require_permission("monitor", "write"))) -> AlertResponse:
     """
     Create a new monitoring alert.
 
@@ -625,7 +632,7 @@ async def get_alert(alert_id: str) -> AlertResponse:
 
 
 @router.post("/alerts/{alert_id}/acknowledge")
-async def acknowledge_alert(alert_id: str) -> AlertResponse:
+async def acknowledge_alert(alert_id: str, _auth: CurrentUser = Depends(require_permission("monitor", "write"))) -> AlertResponse:
     """
     Acknowledge an alert.
 
@@ -659,7 +666,7 @@ async def acknowledge_alert(alert_id: str) -> AlertResponse:
 
 
 @router.post("/alerts/{alert_id}/resolve")
-async def resolve_alert(alert_id: str) -> AlertResponse:
+async def resolve_alert(alert_id: str, _auth: CurrentUser = Depends(require_permission("monitor", "write"))) -> AlertResponse:
     """
     Resolve an alert.
 
@@ -688,7 +695,7 @@ async def resolve_alert(alert_id: str) -> AlertResponse:
 
 
 @router.delete("/alerts/{alert_id}", status_code=204)
-async def delete_alert(alert_id: str) -> None:
+async def delete_alert(alert_id: str, _auth: CurrentUser = Depends(require_permission("monitor", "admin"))) -> None:
     """Delete an alert configuration."""
     try:
         # Verify alert exists

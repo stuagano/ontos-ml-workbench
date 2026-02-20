@@ -9,8 +9,9 @@ import logging
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.core.auth import CurrentUser, require_permission
 from app.core.config import get_settings
 from app.core.databricks import get_current_user
 from app.models.feedback import (
@@ -37,7 +38,7 @@ QA_PAIRS_TABLE = _settings.get_table("qa_pairs")
 
 
 @router.post("", response_model=FeedbackResponse, status_code=201)
-async def create_feedback(feedback: FeedbackCreate) -> FeedbackResponse:
+async def create_feedback(feedback: FeedbackCreate, _auth: CurrentUser = Depends(require_permission("improve", "write"))) -> FeedbackResponse:
     """
     Submit user feedback on an endpoint response.
 
@@ -307,7 +308,7 @@ async def get_feedback(feedback_id: str) -> FeedbackResponse:
 
 
 @router.delete("/{feedback_id}", status_code=204)
-async def delete_feedback(feedback_id: str) -> None:
+async def delete_feedback(feedback_id: str, _auth: CurrentUser = Depends(require_permission("improve", "admin"))) -> None:
     """
     Delete a feedback item.
 
@@ -335,7 +336,7 @@ async def delete_feedback(feedback_id: str) -> None:
 
 
 @router.post("/{feedback_id}/flag")
-async def flag_feedback(feedback_id: str) -> FeedbackResponse:
+async def flag_feedback(feedback_id: str, _auth: CurrentUser = Depends(require_permission("improve", "write"))) -> FeedbackResponse:
     """
     Flag a feedback item for review.
 
@@ -370,7 +371,7 @@ async def flag_feedback(feedback_id: str) -> FeedbackResponse:
 
 
 @router.delete("/{feedback_id}/flag")
-async def unflag_feedback(feedback_id: str) -> FeedbackResponse:
+async def unflag_feedback(feedback_id: str, _auth: CurrentUser = Depends(require_permission("improve", "write"))) -> FeedbackResponse:
     """
     Remove flag from a feedback item.
 
@@ -406,6 +407,7 @@ async def unflag_feedback(feedback_id: str) -> FeedbackResponse:
 async def convert_to_training_data(
     feedback_id: str,
     training_sheet_id: str = Query(..., description="Training Sheet to add to"),
+    _auth: CurrentUser = Depends(require_permission("improve", "write")),
 ) -> dict:
     """
     Convert feedback into training data for retraining.

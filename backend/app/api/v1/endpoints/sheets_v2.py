@@ -6,8 +6,10 @@ import logging
 import re
 from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from databricks.sdk.errors import NotFound, PermissionDenied
+
+from app.core.auth import CurrentUser, require_permission
 
 from app.models.sheet_simple import (
     SheetCreateRequest,
@@ -22,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("", response_model=SheetResponse, status_code=status.HTTP_201_CREATED)
-async def create_sheet(sheet: SheetCreateRequest):
+async def create_sheet(sheet: SheetCreateRequest, _auth: CurrentUser = Depends(require_permission("sheets", "write"))):
     """
     Create a new sheet (dataset definition)
 
@@ -116,7 +118,7 @@ async def get_sheet(sheet_id: str):
 
 
 @router.put("/{sheet_id}", response_model=SheetResponse)
-async def update_sheet(sheet_id: str, sheet_update: SheetUpdateRequest):
+async def update_sheet(sheet_id: str, sheet_update: SheetUpdateRequest, _auth: CurrentUser = Depends(require_permission("sheets", "write"))):
     """
     Update a sheet
 
@@ -156,7 +158,7 @@ async def update_sheet(sheet_id: str, sheet_update: SheetUpdateRequest):
 
 
 @router.delete("/{sheet_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_sheet(sheet_id: str):
+async def delete_sheet(sheet_id: str, _auth: CurrentUser = Depends(require_permission("sheets", "write"))):
     """
     Delete a sheet (soft delete)
 
@@ -320,7 +322,7 @@ async def get_sheet_preview(
 
 
 @router.post("/{sheet_id}/attach-template", response_model=SheetResponse, status_code=status.HTTP_200_OK)
-async def attach_template(sheet_id: str, template_config: dict):
+async def attach_template(sheet_id: str, template_config: dict, _auth: CurrentUser = Depends(require_permission("sheets", "write"))):
     """
     Attach template configuration to a sheet
 
@@ -418,7 +420,7 @@ async def attach_template(sheet_id: str, template_config: dict):
 
 
 @router.post("/{sheet_id}/assemble", status_code=status.HTTP_201_CREATED)
-async def assemble_sheet(sheet_id: str, request: dict):
+async def assemble_sheet(sheet_id: str, request: dict, _auth: CurrentUser = Depends(require_permission("sheets", "write"))):
     """
     Generate Q&A pairs from sheet data + template (PRD v2.3)
 

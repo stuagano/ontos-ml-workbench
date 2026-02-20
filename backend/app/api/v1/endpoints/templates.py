@@ -3,8 +3,9 @@
 import json
 import uuid
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.core.auth import CurrentUser, require_permission
 from app.core.databricks import get_current_user
 from app.models.template import (
     TemplateCreate,
@@ -128,7 +129,7 @@ async def list_templates(
 
 
 @router.post("", response_model=TemplateResponse, status_code=201)
-async def create_template(template: TemplateCreate):
+async def create_template(template: TemplateCreate, _auth: CurrentUser = Depends(require_permission("templates", "write"))):
     """Create a new template."""
     sql_service = get_sql_service()
     user = get_current_user()
@@ -217,7 +218,7 @@ async def get_template(template_id: str):
 
 
 @router.put("/{template_id}", response_model=TemplateResponse)
-async def update_template(template_id: str, template: TemplateUpdate):
+async def update_template(template_id: str, template: TemplateUpdate, _auth: CurrentUser = Depends(require_permission("templates", "write"))):
     """Update a template."""
     sql_service = get_sql_service()
 
@@ -290,7 +291,7 @@ async def update_template(template_id: str, template: TemplateUpdate):
 
 
 @router.post("/{template_id}/publish", response_model=TemplateResponse)
-async def publish_template(template_id: str):
+async def publish_template(template_id: str, _auth: CurrentUser = Depends(require_permission("templates", "write"))):
     """Publish a template (makes it immutable)."""
     sql_service = get_sql_service()
 
@@ -309,7 +310,7 @@ async def publish_template(template_id: str):
 
 
 @router.post("/{template_id}/archive", response_model=TemplateResponse)
-async def archive_template(template_id: str):
+async def archive_template(template_id: str, _auth: CurrentUser = Depends(require_permission("templates", "write"))):
     """Archive a template."""
     sql_service = get_sql_service()
 
@@ -324,7 +325,7 @@ async def archive_template(template_id: str):
 
 
 @router.post("/{template_id}/version", response_model=TemplateResponse)
-async def create_version(template_id: str):
+async def create_version(template_id: str, _auth: CurrentUser = Depends(require_permission("templates", "write"))):
     """Create a new version of a published template."""
     sql_service = get_sql_service()
 
@@ -357,7 +358,7 @@ async def create_version(template_id: str):
 
 
 @router.delete("/{template_id}", status_code=204)
-async def delete_template(template_id: str):
+async def delete_template(template_id: str, _auth: CurrentUser = Depends(require_permission("templates", "write"))):
     """Delete a draft template."""
     sql_service = get_sql_service()
 

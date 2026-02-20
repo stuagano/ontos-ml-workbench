@@ -425,3 +425,32 @@ export interface SemanticModel {
   updated_at: string | null;
   updated_by: string | null;
 }
+
+// Naming Conventions (G15)
+
+export type NamingEntityType = "sheet" | "template" | "training_sheet" | "domain" | "team" | "project" | "contract" | "product" | "semantic_model" | "role";
+
+export interface NamingConvention {
+  id: string;
+  entity_type: NamingEntityType;
+  name: string;
+  description: string | null;
+  pattern: string;
+  example_valid: string | null;
+  example_invalid: string | null;
+  error_message: string | null;
+  is_active: boolean;
+  priority: number;
+  created_at: string | null;
+  created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export interface NamingValidationResult {
+  entity_type: string;
+  name: string;
+  valid: boolean;
+  violations: { convention_id: string; convention_name: string; pattern: string; error_message: string }[];
+  conventions_checked: number;
+}

@@ -45,6 +45,9 @@ import {
   Link2,
   Box,
   Hash,
+  Type,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -90,7 +93,6 @@ import {
   cancelWorkflowExecution,
   listDataProducts,
   createDataProduct,
-  updateDataProduct,
   transitionProductStatus,
   deleteDataProduct,
   addProductPort,
@@ -101,7 +103,6 @@ import {
   revokeSubscription,
   listSemanticModels,
   createSemanticModel,
-  updateSemanticModel,
   publishSemanticModel,
   archiveSemanticModel,
   deleteSemanticModel,
@@ -111,6 +112,11 @@ import {
   removeConceptProperty,
   createSemanticLink,
   deleteSemanticLink,
+  listNamingConventions,
+  createNamingConvention,
+  deleteNamingConvention,
+  toggleNamingConvention,
+  validateName,
 } from "../services/governance";
 import { useToast } from "../components/Toast";
 import type {
@@ -128,16 +134,13 @@ import type {
   DataProductType,
   DataProductStatus,
   DataProductPort,
-  DataProductSubscription,
   ConceptType,
   SemanticLinkType,
   SemanticModelStatus,
-  SemanticConcept,
-  SemanticProperty,
-  SemanticLink,
+  NamingEntityType,
 } from "../types/governance";
 
-type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows" | "products" | "semantic";
+type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows" | "products" | "semantic" | "naming";
 
 interface GovernancePageProps {
   onClose: () => void;
@@ -1117,11 +1120,6 @@ function ContractsTab() {
   const { data: contracts = [], isLoading } = useQuery({
     queryKey: ["governance-contracts", filterStatus],
     queryFn: () => listContracts(filterStatus ? { status: filterStatus as ContractStatus } : undefined),
-  });
-
-  const { data: domains = [] } = useQuery({
-    queryKey: ["governance-domains"],
-    queryFn: listDomains,
   });
 
   const createMutation = useMutation({
@@ -2723,16 +2721,6 @@ function DataProductsTab() {
     }),
   });
 
-  const { data: domains = [] } = useQuery({
-    queryKey: ["governance-domains"],
-    queryFn: listDomains,
-  });
-
-  const { data: teams = [] } = useQuery({
-    queryKey: ["governance-teams"],
-    queryFn: listTeams,
-  });
-
   const createMutation = useMutation({
     mutationFn: (data: { name: string; description?: string; product_type?: string; owner_email?: string; tags?: string[] }) =>
       createDataProduct(data),
@@ -2747,16 +2735,6 @@ function DataProductsTab() {
       setNewTags([]);
     },
     onError: (err: Error) => toast.error("Create Failed", err.message),
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
-      updateDataProduct(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["governance-products"] });
-      toast.success("Product Updated", "Data product updated");
-    },
-    onError: (err: Error) => toast.error("Update Failed", err.message),
   });
 
   const transitionMutation = useMutation({
@@ -3361,11 +3339,6 @@ function SemanticModelsTab() {
     queryFn: () => listSemanticModels(filterStatus ? { status: filterStatus as SemanticModelStatus } : undefined),
   });
 
-  const { data: domains = [] } = useQuery({
-    queryKey: ["governance-domains"],
-    queryFn: listDomains,
-  });
-
   const createMutation = useMutation({
     mutationFn: (data: { name: string; description?: string; version?: string; owner_email?: string }) =>
       createSemanticModel(data),
@@ -3868,6 +3841,401 @@ function SemanticModelsTab() {
 }
 
 // ============================================================================
+// Naming Conventions Tab (G15)
+// ============================================================================
+
+const NAMING_ENTITY_TYPES: NamingEntityType[] = [
+  "sheet", "template", "training_sheet", "domain", "team",
+  "project", "contract", "product", "semantic_model", "role",
+];
+
+const NAMING_ENTITY_LABELS: Record<NamingEntityType, string> = {
+  sheet: "Sheet",
+  template: "Template",
+  training_sheet: "Training Sheet",
+  domain: "Domain",
+  team: "Team",
+  project: "Project",
+  contract: "Contract",
+  product: "Data Product",
+  semantic_model: "Semantic Model",
+  role: "Role",
+};
+
+function NamingConventionsTab() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [filterType, setFilterType] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+
+  // Create form state
+  const [newEntityType, setNewEntityType] = useState<string>("sheet");
+  const [newName, setNewName] = useState("");
+  const [newPattern, setNewPattern] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newExampleValid, setNewExampleValid] = useState("");
+  const [newExampleInvalid, setNewExampleInvalid] = useState("");
+  const [newErrorMsg, setNewErrorMsg] = useState("");
+  const [newPriority, setNewPriority] = useState(0);
+
+  // Validate tester state
+  const [testEntityType, setTestEntityType] = useState<string>("sheet");
+  const [testName, setTestName] = useState("");
+  const [testResult, setTestResult] = useState<{ valid: boolean; violations: { convention_id: string; convention_name: string; pattern: string; error_message: string }[]; conventions_checked: number } | null>(null);
+  const [testLoading, setTestLoading] = useState(false);
+
+  const { data: conventions = [], isLoading } = useQuery({
+    queryKey: ["governance-naming", filterType],
+    queryFn: () => listNamingConventions(filterType ? filterType as NamingEntityType : undefined),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: { entity_type: string; name: string; pattern: string; description?: string; example_valid?: string; example_invalid?: string; error_message?: string; priority?: number }) =>
+      createNamingConvention(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-naming"] });
+      toast.success("Convention Created", "Naming convention added");
+      setShowCreate(false);
+      setNewName("");
+      setNewPattern("");
+      setNewDesc("");
+      setNewExampleValid("");
+      setNewExampleInvalid("");
+      setNewErrorMsg("");
+      setNewPriority(0);
+    },
+    onError: (err: Error) => toast.error("Create Failed", err.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteNamingConvention(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-naming"] });
+      toast.success("Convention Deleted", "Naming convention removed");
+    },
+    onError: (err: Error) => toast.error("Delete Failed", err.message),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => toggleNamingConvention(id, isActive),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-naming"] });
+    },
+    onError: (err: Error) => toast.error("Toggle Failed", err.message),
+  });
+
+  const handleTest = async () => {
+    if (!testName.trim()) return;
+    setTestLoading(true);
+    try {
+      const result = await validateName(testEntityType, testName);
+      setTestResult(result);
+    } catch {
+      toast.error("Validation Error", "Could not validate name");
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
+  // Group conventions by entity_type
+  const grouped = conventions.reduce<Record<string, typeof conventions>>((acc, conv) => {
+    const key = conv.entity_type;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(conv);
+    return acc;
+  }, {});
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-db-gray-500 dark:text-gray-400 py-12 justify-center">
+        <Loader2 className="w-5 h-5 animate-spin" />
+        Loading naming conventions...
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Validate Tester */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-db-gray-200 dark:border-gray-700 p-5">
+        <h3 className="text-sm font-semibold text-db-gray-800 dark:text-white mb-3 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-green-600" />
+          Name Validator
+        </h3>
+        <div className="flex gap-3 items-end">
+          <div>
+            <label className="block text-xs text-db-gray-500 dark:text-gray-400 mb-1">Entity Type</label>
+            <select
+              value={testEntityType}
+              onChange={(e) => { setTestEntityType(e.target.value); setTestResult(null); }}
+              className="px-3 py-2 border border-db-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm"
+            >
+              {NAMING_ENTITY_TYPES.map((t) => (
+                <option key={t} value={t}>{NAMING_ENTITY_LABELS[t]}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs text-db-gray-500 dark:text-gray-400 mb-1">Name to Validate</label>
+            <input
+              type="text"
+              value={testName}
+              onChange={(e) => { setTestName(e.target.value); setTestResult(null); }}
+              placeholder="Enter a name to check..."
+              className="w-full px-3 py-2 border border-db-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm"
+              onKeyDown={(e) => e.key === "Enter" && handleTest()}
+            />
+          </div>
+          <button
+            onClick={handleTest}
+            disabled={testLoading || !testName.trim()}
+            className="px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 disabled:opacity-50"
+          >
+            {testLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Validate"}
+          </button>
+        </div>
+        {testResult && (
+          <div className={clsx(
+            "mt-3 p-3 rounded-lg text-sm border",
+            testResult.valid
+              ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400"
+              : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400",
+          )}>
+            <div className="flex items-center gap-2 font-medium">
+              {testResult.valid ? (
+                <><CheckCircle2 className="w-4 h-4" /> Valid — passes all {testResult.conventions_checked} convention(s)</>
+              ) : (
+                <><AlertCircle className="w-4 h-4" /> Invalid — {testResult.violations.length} violation(s) found</>
+              )}
+            </div>
+            {testResult.violations.length > 0 && (
+              <ul className="mt-2 space-y-1">
+                {testResult.violations.map((v, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs">
+                    <span className="font-mono bg-red-100 dark:bg-red-900/40 px-1.5 py-0.5 rounded">{v.convention_name}</span>
+                    <span>{v.error_message}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Header + filter + create */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-db-gray-800 dark:text-white">
+            Naming Conventions
+          </h2>
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="px-3 py-1.5 border border-db-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm"
+          >
+            <option value="">All Types</option>
+            {NAMING_ENTITY_TYPES.map((t) => (
+              <option key={t} value={t}>{NAMING_ENTITY_LABELS[t]}</option>
+            ))}
+          </select>
+          <span className="text-sm text-db-gray-500 dark:text-gray-400">
+            {conventions.length} convention(s)
+          </span>
+        </div>
+        <button
+          onClick={() => setShowCreate(!showCreate)}
+          className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700"
+        >
+          <Plus className="w-4 h-4" />
+          New Convention
+        </button>
+      </div>
+
+      {/* Create form */}
+      {showCreate && (
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-db-gray-200 dark:border-gray-700 p-5 space-y-4">
+          <h3 className="text-sm font-semibold text-db-gray-800 dark:text-white">New Naming Convention</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-db-gray-500 dark:text-gray-400 mb-1">Entity Type *</label>
+              <select
+                value={newEntityType}
+                onChange={(e) => setNewEntityType(e.target.value)}
+                className="w-full px-3 py-2 border border-db-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm"
+              >
+                {NAMING_ENTITY_TYPES.map((t) => (
+                  <option key={t} value={t}>{NAMING_ENTITY_LABELS[t]}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-db-gray-500 dark:text-gray-400 mb-1">Convention Name *</label>
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="e.g., Snake Case Sheets"
+                className="w-full px-3 py-2 border border-db-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs text-db-gray-500 dark:text-gray-400 mb-1">Regex Pattern *</label>
+              <input
+                type="text"
+                value={newPattern}
+                onChange={(e) => setNewPattern(e.target.value)}
+                placeholder="e.g., ^[a-z][a-z0-9_]{2,63}$"
+                className="w-full px-3 py-2 border border-db-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 font-mono text-sm"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs text-db-gray-500 dark:text-gray-400 mb-1">Description</label>
+              <input
+                type="text"
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+                placeholder="Explain the rationale..."
+                className="w-full px-3 py-2 border border-db-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-db-gray-500 dark:text-gray-400 mb-1">Valid Example</label>
+              <input
+                type="text"
+                value={newExampleValid}
+                onChange={(e) => setNewExampleValid(e.target.value)}
+                placeholder="defect_images_2024"
+                className="w-full px-3 py-2 border border-db-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-db-gray-500 dark:text-gray-400 mb-1">Invalid Example</label>
+              <input
+                type="text"
+                value={newExampleInvalid}
+                onChange={(e) => setNewExampleInvalid(e.target.value)}
+                placeholder="Defect Images"
+                className="w-full px-3 py-2 border border-db-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-db-gray-500 dark:text-gray-400 mb-1">Error Message</label>
+              <input
+                type="text"
+                value={newErrorMsg}
+                onChange={(e) => setNewErrorMsg(e.target.value)}
+                placeholder="Custom message on failure"
+                className="w-full px-3 py-2 border border-db-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-db-gray-500 dark:text-gray-400 mb-1">Priority</label>
+              <input
+                type="number"
+                value={newPriority}
+                onChange={(e) => setNewPriority(parseInt(e.target.value) || 0)}
+                className="w-full px-3 py-2 border border-db-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={() => createMutation.mutate({
+                entity_type: newEntityType,
+                name: newName,
+                pattern: newPattern,
+                ...(newDesc && { description: newDesc }),
+                ...(newExampleValid && { example_valid: newExampleValid }),
+                ...(newExampleInvalid && { example_invalid: newExampleInvalid }),
+                ...(newErrorMsg && { error_message: newErrorMsg }),
+                priority: newPriority,
+              })}
+              disabled={!newName.trim() || !newPattern.trim() || createMutation.isPending}
+              className="px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 disabled:opacity-50"
+            >
+              {createMutation.isPending ? "Creating..." : "Create Convention"}
+            </button>
+            <button
+              onClick={() => setShowCreate(false)}
+              className="px-4 py-2 text-sm text-db-gray-600 dark:text-gray-400 hover:text-db-gray-800 dark:hover:text-white"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Conventions grouped by entity type */}
+      {Object.keys(grouped).length === 0 ? (
+        <div className="text-center py-12 text-db-gray-500 dark:text-gray-400">
+          <Type className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <p>No naming conventions defined yet</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {Object.entries(grouped).map(([entityType, convs]) => (
+            <div key={entityType} className="bg-white dark:bg-gray-900 rounded-xl border border-db-gray-200 dark:border-gray-700">
+              <div className="px-5 py-3 border-b border-db-gray-100 dark:border-gray-800 flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400">
+                  {NAMING_ENTITY_LABELS[entityType as NamingEntityType] || entityType}
+                </span>
+                <span className="text-xs text-db-gray-500 dark:text-gray-400">{convs.length} rule(s)</span>
+              </div>
+              <div className="divide-y divide-db-gray-100 dark:divide-gray-800">
+                {convs.map((conv) => (
+                  <div key={conv.id} className="px-5 py-3 flex items-start gap-4 group">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={clsx("text-sm font-medium", conv.is_active ? "text-db-gray-800 dark:text-white" : "text-db-gray-400 dark:text-gray-600 line-through")}>{conv.name}</span>
+                        {conv.priority > 0 && (
+                          <span className="text-xs text-db-gray-400 dark:text-gray-500">P{conv.priority}</span>
+                        )}
+                      </div>
+                      {conv.description && (
+                        <p className="text-xs text-db-gray-500 dark:text-gray-400 mt-0.5">{conv.description}</p>
+                      )}
+                      <div className="flex items-center gap-4 mt-1.5">
+                        <code className="text-xs font-mono bg-db-gray-50 dark:bg-gray-800 px-2 py-0.5 rounded text-db-gray-600 dark:text-gray-300">{conv.pattern}</code>
+                        {conv.example_valid && (
+                          <span className="text-xs text-green-600 dark:text-green-400">
+                            <CheckCircle2 className="w-3 h-3 inline mr-0.5" />{conv.example_valid}
+                          </span>
+                        )}
+                        {conv.example_invalid && (
+                          <span className="text-xs text-red-500 dark:text-red-400">
+                            <XCircle className="w-3 h-3 inline mr-0.5" />{conv.example_invalid}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                      <button
+                        onClick={() => toggleMutation.mutate({ id: conv.id, isActive: !conv.is_active })}
+                        className="p-1 text-db-gray-400 hover:text-amber-600"
+                        title={conv.is_active ? "Disable" : "Enable"}
+                      >
+                        {conv.is_active ? <ToggleRight className="w-5 h-5 text-green-500" /> : <ToggleLeft className="w-5 h-5" />}
+                      </button>
+                      <button
+                        onClick={() => { if (confirm(`Delete convention "${conv.name}"?`)) deleteMutation.mutate(conv.id); }}
+                        className="p-1 text-db-gray-400 hover:text-red-500"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // Main Page
 // ============================================================================
 
@@ -3881,6 +4249,7 @@ const TABS: { id: TabId; label: string; icon: typeof Shield }[] = [
   { id: "workflows", label: "Workflows", icon: GitBranch },
   { id: "products", label: "Products", icon: Package },
   { id: "semantic", label: "Semantic", icon: Brain },
+  { id: "naming", label: "Naming", icon: Type },
 ];
 
 export function GovernancePage({ onClose }: GovernancePageProps) {
@@ -3940,6 +4309,7 @@ export function GovernancePage({ onClose }: GovernancePageProps) {
           {activeTab === "workflows" && <WorkflowsTab />}
           {activeTab === "products" && <DataProductsTab />}
           {activeTab === "semantic" && <SemanticModelsTab />}
+          {activeTab === "naming" && <NamingConventionsTab />}
         </div>
       </div>
     </div>

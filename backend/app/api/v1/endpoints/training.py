@@ -3,8 +3,9 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.core.auth import CurrentUser, require_permission
 from app.core.databricks import get_current_user
 from app.models.evaluation import (
     ComparisonResult,
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/jobs", response_model=TrainingJobResponse, status_code=201)
-async def create_training_job(job_request: TrainingJobCreate):
+async def create_training_job(job_request: TrainingJobCreate, _auth: CurrentUser = Depends(require_permission("training", "write"))):
     """Create a new training job.
 
     Steps:
@@ -142,7 +143,7 @@ async def get_training_job(job_id: str):
 
 @router.post("/jobs/{job_id}/cancel", response_model=TrainingJobResponse)
 async def cancel_training_job(
-    job_id: str, request: TrainingJobCancelRequest | None = None
+    job_id: str, request: TrainingJobCancelRequest | None = None, _auth: CurrentUser = Depends(require_permission("training", "write"))
 ):
     """Cancel a running training job.
 
@@ -178,7 +179,7 @@ async def cancel_training_job(
 
 
 @router.post("/jobs/{job_id}/poll", response_model=TrainingJobResponse)
-async def poll_training_job(job_id: str):
+async def poll_training_job(job_id: str, _auth: CurrentUser = Depends(require_permission("training", "read"))):
     """Poll Foundation Model API for job status and update database.
 
     **Use this endpoint to:**
@@ -361,7 +362,7 @@ async def get_training_job_lineage(job_id: str):
 
 
 @router.post("/jobs/{job_id}/evaluate", response_model=EvaluationResult)
-async def evaluate_training_job(job_id: str, request: EvaluationRequest | None = None):
+async def evaluate_training_job(job_id: str, request: EvaluationRequest | None = None, _auth: CurrentUser = Depends(require_permission("training", "write"))):
     """Run mlflow.evaluate() on a completed training job.
 
     Evaluates the model produced by this job against validation Q&A pairs.

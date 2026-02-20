@@ -57,6 +57,10 @@ from app.models.governance import (
     SemanticPropertyResponse,
     SemanticLinkCreate,
     SemanticLinkResponse,
+    NamingConventionCreate,
+    NamingConventionResponse,
+    NamingConventionUpdate,
+    NamingValidationResult,
 )
 from app.services.governance_service import get_governance_service
 
@@ -949,3 +953,69 @@ async def delete_link(link_id: str, _auth: CurrentUser = Depends(require_permiss
     """Delete a semantic link. Requires governance write."""
     svc = get_governance_service()
     svc.delete_link(link_id)
+
+
+# ============================================================================
+# Naming Conventions (G15)
+# ============================================================================
+
+
+@router.get("/naming", response_model=list[NamingConventionResponse])
+async def list_naming_conventions(entity_type: str | None = Query(None)):
+    """List naming conventions, optionally filtered by entity type."""
+    svc = get_governance_service()
+    return svc.list_naming_conventions(entity_type)
+
+
+@router.get("/naming/{convention_id}", response_model=NamingConventionResponse)
+async def get_naming_convention(convention_id: str):
+    """Get a naming convention by ID."""
+    svc = get_governance_service()
+    result = svc.get_naming_convention(convention_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Naming convention not found")
+    return result
+
+
+@router.post("/naming", response_model=NamingConventionResponse, status_code=201)
+async def create_naming_convention(data: NamingConventionCreate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Create a naming convention. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.create_naming_convention(data.model_dump(), user)
+
+
+@router.put("/naming/{convention_id}", response_model=NamingConventionResponse)
+async def update_naming_convention(convention_id: str, data: NamingConventionUpdate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Update a naming convention. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.update_naming_convention(convention_id, data.model_dump(exclude_none=True), user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Naming convention not found")
+    return result
+
+
+@router.delete("/naming/{convention_id}", status_code=204)
+async def delete_naming_convention(convention_id: str, _auth: CurrentUser = Depends(require_permission("governance", "admin"))):
+    """Delete a naming convention. Requires governance admin."""
+    svc = get_governance_service()
+    svc.delete_naming_convention(convention_id)
+
+
+@router.put("/naming/{convention_id}/toggle", response_model=NamingConventionResponse)
+async def toggle_naming_convention(convention_id: str, is_active: bool = Query(...), _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Enable or disable a naming convention. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.toggle_naming_convention(convention_id, is_active, user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Naming convention not found")
+    return result
+
+
+@router.post("/naming/validate", response_model=NamingValidationResult)
+async def validate_name(entity_type: str = Query(...), name: str = Query(...)):
+    """Validate a name against active naming conventions for an entity type."""
+    svc = get_governance_service()
+    return svc.validate_name(entity_type, name)

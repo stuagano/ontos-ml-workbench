@@ -8,8 +8,10 @@ Supports endpoint lifecycle management, traffic configuration, and A/B testing.
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+
+from app.core.auth import CurrentUser, require_permission
 
 from app.core.config import get_settings
 from app.services.deployment_service import get_deployment_service
@@ -138,7 +140,7 @@ async def get_endpoint_status(endpoint_name: str) -> dict[str, Any]:
 
 
 @router.post("/deploy", response_model=DeploymentResponse)
-async def deploy_model(request: DeployModelRequest) -> DeploymentResponse:
+async def deploy_model(request: DeployModelRequest, _auth: CurrentUser = Depends(require_permission("deploy", "write"))) -> DeploymentResponse:
     """
     Deploy a model to a serving endpoint.
 
@@ -168,7 +170,7 @@ async def deploy_model(request: DeployModelRequest) -> DeploymentResponse:
 
 
 @router.delete("/endpoints/{endpoint_name}")
-async def delete_endpoint(endpoint_name: str) -> dict[str, Any]:
+async def delete_endpoint(endpoint_name: str, _auth: CurrentUser = Depends(require_permission("deploy", "admin"))) -> dict[str, Any]:
     """
     Delete a serving endpoint.
 
@@ -191,6 +193,7 @@ async def delete_endpoint(endpoint_name: str) -> dict[str, Any]:
 async def query_endpoint(
     endpoint_name: str,
     request: QueryEndpointRequest,
+    _auth: CurrentUser = Depends(require_permission("deploy", "read")),
 ) -> dict[str, Any]:
     """
     Query a serving endpoint (playground functionality).
@@ -271,6 +274,7 @@ async def list_deployments(
 async def rollback_deployment(
     endpoint_name: str,
     target_version: str = Query(..., description="Model version to roll back to"),
+    _auth: CurrentUser = Depends(require_permission("deploy", "write")),
 ) -> dict[str, Any]:
     """
     Rollback a deployment to a previous model version.
@@ -323,6 +327,7 @@ async def update_deployment(
     model_version: str = Query(..., description="New model version to deploy"),
     workload_size: str | None = Query(None, description="Update workload size"),
     scale_to_zero: bool | None = Query(None, description="Update scale to zero setting"),
+    _auth: CurrentUser = Depends(require_permission("deploy", "write")),
 ) -> dict[str, Any]:
     """
     Update an existing deployment with a new version or configuration.
@@ -486,7 +491,7 @@ async def get_model_deployments(model_name: str) -> dict[str, Any]:
 
 
 @router.post("/endpoints/{endpoint_name}/validate")
-async def validate_endpoint(endpoint_name: str) -> dict[str, Any]:
+async def validate_endpoint(endpoint_name: str, _auth: CurrentUser = Depends(require_permission("deploy", "read"))) -> dict[str, Any]:
     """
     Validate an endpoint configuration.
 
@@ -688,7 +693,7 @@ async def get_guardrails(endpoint_name: str) -> GuardrailsResponse:
     "/endpoints/{endpoint_name}/guardrails", response_model=GuardrailsResponse
 )
 async def set_guardrails(
-    endpoint_name: str, config: GuardrailsConfig
+    endpoint_name: str, config: GuardrailsConfig, _auth: CurrentUser = Depends(require_permission("deploy", "admin"))
 ) -> GuardrailsResponse:
     """
     Apply guardrails to a serving endpoint via AI Gateway.

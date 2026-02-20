@@ -42,6 +42,9 @@ import type {
   SemanticConcept,
   SemanticProperty,
   SemanticLink,
+  NamingConvention,
+  NamingEntityType,
+  NamingValidationResult,
 } from "../types/governance";
 
 const API_BASE = "/api/v1/governance";
@@ -782,4 +785,57 @@ export async function createSemanticLink(
 
 export async function deleteSemanticLink(linkId: string): Promise<void> {
   return fetchJson(`${API_BASE}/semantic-models/links/${linkId}`, { method: "DELETE" });
+}
+
+// ============================================================================
+// Naming Conventions (G15)
+// ============================================================================
+
+export async function listNamingConventions(entityType?: NamingEntityType): Promise<NamingConvention[]> {
+  const params = entityType ? `?entity_type=${entityType}` : "";
+  return fetchJson(`${API_BASE}/naming${params}`);
+}
+
+export async function getNamingConvention(conventionId: string): Promise<NamingConvention> {
+  return fetchJson(`${API_BASE}/naming/${conventionId}`);
+}
+
+export async function createNamingConvention(data: {
+  entity_type: string;
+  name: string;
+  description?: string;
+  pattern: string;
+  example_valid?: string;
+  example_invalid?: string;
+  error_message?: string;
+  priority?: number;
+}): Promise<NamingConvention> {
+  return fetchJson(`${API_BASE}/naming`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateNamingConvention(
+  conventionId: string,
+  data: Partial<NamingConvention>,
+): Promise<NamingConvention> {
+  return fetchJson(`${API_BASE}/naming/${conventionId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteNamingConvention(conventionId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/naming/${conventionId}`, { method: "DELETE" });
+}
+
+export async function toggleNamingConvention(conventionId: string, isActive: boolean): Promise<NamingConvention> {
+  return fetchJson(`${API_BASE}/naming/${conventionId}/toggle?is_active=${isActive}`, {
+    method: "PUT",
+  });
+}
+
+export async function validateName(entityType: string, name: string): Promise<NamingValidationResult> {
+  return fetchJson(`${API_BASE}/naming/validate?entity_type=${encodeURIComponent(entityType)}&name=${encodeURIComponent(name)}`);
 }
