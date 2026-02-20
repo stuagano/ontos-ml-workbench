@@ -245,3 +245,60 @@ export interface PolicyEvaluation {
   evaluated_by: string | null;
   duration_ms: number | null;
 }
+
+// Process Workflows (G7)
+
+export type WorkflowTriggerType = "manual" | "on_create" | "on_update" | "on_review" | "scheduled";
+export type WorkflowStepType = "action" | "approval" | "notification" | "condition";
+
+export interface WorkflowStep {
+  step_id: string;
+  name: string;
+  type: WorkflowStepType;
+  action: string | null;
+  config: Record<string, unknown> | null;
+  next_step: string | null;
+  on_reject: string | null;
+}
+
+export interface WorkflowTriggerConfig {
+  entity_type: string | null;
+  schedule: string | null;
+  conditions: Record<string, unknown> | null;
+}
+
+export interface Workflow {
+  id: string;
+  name: string;
+  description: string | null;
+  trigger_type: WorkflowTriggerType;
+  trigger_config: WorkflowTriggerConfig | null;
+  steps: WorkflowStep[];
+  status: "draft" | "active" | "disabled";
+  owner_email: string | null;
+  execution_count: number;
+  created_at: string | null;
+  created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export interface WorkflowStepResult {
+  step_id: string;
+  status: string;
+  output: Record<string, unknown> | null;
+  completed_at: string | null;
+}
+
+export interface WorkflowExecution {
+  id: string;
+  workflow_id: string;
+  workflow_name: string | null;
+  status: "running" | "paused" | "completed" | "failed" | "cancelled";
+  current_step: string | null;
+  trigger_event: Record<string, unknown> | null;
+  step_results: WorkflowStepResult[];
+  started_at: string | null;
+  started_by: string | null;
+  completed_at: string | null;
+}

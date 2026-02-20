@@ -933,6 +933,225 @@ class GovernanceService:
             "failed_checks": int(row.get("failed_checks", 0)),
         }
 
+    # ========================================================================
+    # Process Workflows (G7)
+    # ========================================================================
+
+    def list_workflows(self, status: str | None = None) -> list[dict]:
+        where = f"WHERE w.status = '{_esc(status)}'" if status else ""
+        rows = self.sql.execute(f"""
+            SELECT w.*,
+                   (SELECT COUNT(*) FROM {self._table('workflow_executions')} we WHERE we.workflow_id = w.id) as execution_count
+            FROM {self._table('workflows')} w
+            {where}
+            ORDER BY w.name
+        """)
+        return [self._parse_workflow(r) for r in rows]
+
+    def get_workflow(self, workflow_id: str) -> dict | None:
+        rows = self.sql.execute(f"""
+            SELECT w.*,
+                   (SELECT COUNT(*) FROM {self._table('workflow_executions')} we WHERE we.workflow_id = w.id) as execution_count
+            FROM {self._table('workflows')} w
+            WHERE w.id = '{_esc(workflow_id)}'
+        """)
+        return self._parse_workflow(rows[0]) if rows else None
+
+    def create_workflow(self, data: dict, created_by: str) -> dict:
+        workflow_id = str(uuid.uuid4())
+        steps_json = json.dumps(data["steps"]).replace("'", "''")
+        trigger_json = json.dumps(data["trigger_config"]).replace("'", "''") if data.get("trigger_config") else None
+
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('workflows')}
+            (id, name, description, trigger_type, trigger_config, steps, status,
+             owner_email, created_at, created_by, updated_at, updated_by)
+            VALUES (
+                '{workflow_id}', '{_esc(data["name"])}',
+                {f"'{_esc(data['description'])}'" if data.get('description') else 'NULL'},
+                '{_esc(data.get("trigger_type", "manual"))}',
+                {f"'{trigger_json}'" if trigger_json else 'NULL'},
+                '{steps_json}', 'draft',
+                {f"'{_esc(data['owner_email'])}'" if data.get('owner_email') else 'NULL'},
+                current_timestamp(), '{_esc(created_by)}',
+                current_timestamp(), '{_esc(created_by)}'
+            )
+        """)
+        return self.get_workflow(workflow_id)
+
+    def update_workflow(self, workflow_id: str, data: dict, updated_by: str) -> dict | None:
+        updates = []
+        if data.get("name") is not None:
+            updates.append(f"name = '{_esc(data['name'])}'")
+        if data.get("description") is not None:
+            updates.append(f"description = '{_esc(data['description'])}'")
+        if data.get("trigger_type") is not None:
+            updates.append(f"trigger_type = '{_esc(data['trigger_type'])}'")
+        if data.get("trigger_config") is not None:
+            tc_json = json.dumps(data["trigger_config"]).replace("'", "''")
+            updates.append(f"trigger_config = '{tc_json}'")
+        if data.get("steps") is not None:
+            steps_json = json.dumps(data["steps"]).replace("'", "''")
+            updates.append(f"steps = '{steps_json}'")
+        if data.get("status") is not None:
+            updates.append(f"status = '{_esc(data['status'])}'")
+        if data.get("owner_email") is not None:
+            updates.append(f"owner_email = '{_esc(data['owner_email'])}'")
+
+        if updates:
+            updates.append(f"updated_by = '{_esc(updated_by)}'")
+            updates.append("updated_at = current_timestamp()")
+            self.sql.execute_update(
+                f"UPDATE {self._table('workflows')} SET {', '.join(updates)} "
+                f"WHERE id = '{_esc(workflow_id)}'"
+            )
+        return self.get_workflow(workflow_id)
+
+    def activate_workflow(self, workflow_id: str, updated_by: str) -> dict | None:
+        self.sql.execute_update(
+            f"UPDATE {self._table('workflows')} "
+            f"SET status = 'active', updated_by = '{_esc(updated_by)}', "
+            f"    updated_at = current_timestamp() "
+            f"WHERE id = '{_esc(workflow_id)}'"
+        )
+        return self.get_workflow(workflow_id)
+
+    def disable_workflow(self, workflow_id: str, updated_by: str) -> dict | None:
+        self.sql.execute_update(
+            f"UPDATE {self._table('workflows')} "
+            f"SET status = 'disabled', updated_by = '{_esc(updated_by)}', "
+            f"    updated_at = current_timestamp() "
+            f"WHERE id = '{_esc(workflow_id)}'"
+        )
+        return self.get_workflow(workflow_id)
+
+    def delete_workflow(self, workflow_id: str) -> None:
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('workflow_executions')} WHERE workflow_id = '{_esc(workflow_id)}'"
+        )
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('workflows')} WHERE id = '{_esc(workflow_id)}'"
+        )
+
+    def _parse_workflow(self, row: dict) -> dict:
+        steps_raw = row.get("steps")
+        trigger_raw = row.get("trigger_config")
+        return {
+            **row,
+            "steps": json.loads(steps_raw) if steps_raw else [],
+            "trigger_config": json.loads(trigger_raw) if trigger_raw else None,
+            "execution_count": int(row.get("execution_count", 0)),
+        }
+
+    # Workflow Executions
+
+    def list_executions(self, workflow_id: str) -> list[dict]:
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('workflow_executions')} "
+            f"WHERE workflow_id = '{_esc(workflow_id)}' "
+            f"ORDER BY started_at DESC LIMIT 50"
+        )
+        return [self._parse_execution(r) for r in rows]
+
+    def start_execution(self, workflow_id: str, started_by: str, trigger_event: dict | None = None) -> dict:
+        """Start a new workflow execution."""
+        workflow = self.get_workflow(workflow_id)
+        if not workflow:
+            return {}
+
+        exec_id = str(uuid.uuid4())
+        steps = workflow.get("steps", [])
+        first_step = steps[0]["step_id"] if steps else None
+        trigger_json = json.dumps(trigger_event).replace("'", "''") if trigger_event else None
+
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('workflow_executions')}
+            (id, workflow_id, workflow_name, status, current_step, trigger_event,
+             step_results, started_at, started_by)
+            VALUES (
+                '{exec_id}', '{_esc(workflow_id)}',
+                {f"'{_esc(workflow['name'])}'" if workflow.get('name') else 'NULL'},
+                'running',
+                {f"'{_esc(first_step)}'" if first_step else 'NULL'},
+                {f"'{trigger_json}'" if trigger_json else 'NULL'},
+                '[]',
+                current_timestamp(), '{_esc(started_by)}'
+            )
+        """)
+        return self._get_execution(exec_id)
+
+    def advance_execution(self, execution_id: str, step_result: dict) -> dict | None:
+        """Record a step result and advance to the next step."""
+        execution = self._get_execution(execution_id)
+        if not execution:
+            return None
+
+        workflow = self.get_workflow(execution["workflow_id"])
+        if not workflow:
+            return None
+
+        # Append step result
+        results = execution.get("step_results", [])
+        results.append(step_result)
+        results_json = json.dumps(results).replace("'", "''")
+
+        # Find next step
+        steps = workflow.get("steps", [])
+        current_step = execution.get("current_step")
+        next_step = None
+
+        for step in steps:
+            if step["step_id"] == current_step:
+                if step_result.get("status") == "rejected" and step.get("on_reject"):
+                    next_step = step["on_reject"]
+                else:
+                    next_step = step.get("next_step")
+                break
+
+        if next_step:
+            self.sql.execute_update(
+                f"UPDATE {self._table('workflow_executions')} "
+                f"SET current_step = '{_esc(next_step)}', "
+                f"    step_results = '{results_json}' "
+                f"WHERE id = '{_esc(execution_id)}'"
+            )
+        else:
+            # No next step — workflow complete
+            final_status = "failed" if step_result.get("status") == "failed" else "completed"
+            self.sql.execute_update(
+                f"UPDATE {self._table('workflow_executions')} "
+                f"SET current_step = NULL, status = '{final_status}', "
+                f"    step_results = '{results_json}', "
+                f"    completed_at = current_timestamp() "
+                f"WHERE id = '{_esc(execution_id)}'"
+            )
+
+        return self._get_execution(execution_id)
+
+    def cancel_execution(self, execution_id: str) -> dict | None:
+        self.sql.execute_update(
+            f"UPDATE {self._table('workflow_executions')} "
+            f"SET status = 'cancelled', completed_at = current_timestamp() "
+            f"WHERE id = '{_esc(execution_id)}'"
+        )
+        return self._get_execution(execution_id)
+
+    def _get_execution(self, execution_id: str) -> dict | None:
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('workflow_executions')} "
+            f"WHERE id = '{_esc(execution_id)}'"
+        )
+        return self._parse_execution(rows[0]) if rows else None
+
+    def _parse_execution(self, row: dict) -> dict:
+        trigger_raw = row.get("trigger_event")
+        results_raw = row.get("step_results")
+        return {
+            **row,
+            "trigger_event": json.loads(trigger_raw) if trigger_raw else None,
+            "step_results": json.loads(results_raw) if results_raw else [],
+        }
+
 
 # Singleton
 _governance_service: GovernanceService | None = None

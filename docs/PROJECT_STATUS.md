@@ -134,7 +134,7 @@
 | Labeling Jobs | Yes | `LabelingJobsPage.tsx` (1099 lines) | Yes | Create, Start, Pause, Resume, Delete | DONE |
 | Label Sets | Yes | `LabelSetsPage.tsx` (619 lines) | Yes | Full CRUD + Publish/Archive | DONE |
 | Registries | Yes | `RegistriesPage.tsx` (1050 lines) | Yes | Full CRUD for Tools/Agents/Endpoints | DONE |
-| Governance | Yes (Admin) | `GovernancePage.tsx` (~1900 lines) | Yes | Roles matrix, user assign, teams CRUD, domains tree, projects, contracts, policies | DONE |
+| Governance | Yes (Admin) | `GovernancePage.tsx` (~2600 lines) | Yes | Roles, teams, domains, projects, contracts, policies, workflows | DONE |
 | Example Effectiveness | No sidebar entry | `ExampleEffectivenessDashboard.tsx` (548 lines) | Yes (read) | None | DONE (read-only dashboard, embedded in Example Store module) |
 
 ---
@@ -183,7 +183,7 @@
 | Agents | 3 | Fully implemented |
 | Settings/Admin | 7 | Fully implemented |
 | Data Quality (DQX) | 4 | Fully implemented — results persisted to `dqx_quality_results` table |
-| Governance | 38 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree, reviews, projects, contracts, policies, evaluations |
+| Governance | 48 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree, reviews, projects, contracts, policies, evaluations, workflows, executions |
 | Auth Core | 0 (middleware) | `get_current_user`, `require_permission`, `require_role` dependencies; `enforce_auth=false` default |
 | Quality Proxy | 1 | Fully implemented |
 
@@ -266,7 +266,7 @@ Features that make the ML Workbench enterprise-grade for regulated environments 
 |---|---------|-------------|-------------|----------------|--------|
 | ~~G5~~ | ~~**Data Contracts (ODCS v3.0.2)**~~ | ~~Schema specifications with quality guarantees, SLOs, lifecycle management.~~ | ~~DONE — Data contract entity with schema definitions, quality SLO rules, usage terms, lifecycle (draft→active→deprecated→retired). DDL: `29_data_contracts.sql`. Backend: 7 API endpoints (list, create, get, update, transition status, delete) with domain join + status filtering. UI: Contracts tab in GovernancePage with schema column editor, SLO rule builder, usage terms, lifecycle transition buttons.~~ | ~~ODCS YAML import/export. Contract validation against live data.~~ | ~~L~~ |
 | ~~G6~~ | ~~**Compliance Policies (DSL)**~~ | ~~SQL-like DSL for governance rules. Check across catalogs/schemas/tables. Scheduled + on-demand runs.~~ | ~~DONE — Compliance policy engine with structured rule conditions (field/operator/value/message), categories (data_quality, access_control, retention, naming, lineage), severity levels, enable/disable toggle, on-demand evaluation with results tracking. DDL: `30_compliance_policies.sql` (policies + evaluations). Backend: 8 API endpoints. UI: Policies tab in GovernancePage with rule editor, evaluation runner, results display.~~ | ~~Scheduled execution via Databricks Jobs. UC metadata integration for live validation. Policy violation notifications.~~ | ~~L~~ |
-| G7 | **Process Workflows** | Event-driven automation with triggers, entity types, steps. Blocking/non-blocking execution. Approval pausing for human-in-the-loop. Visual workflow designer. | Labeling workflow has jobs→tasks→annotate→review state machine. No general-purpose workflow engine. | Generic workflow engine, trigger definitions, step library, visual designer UI, workflow execution + pause/resume. | L |
+| ~~G7~~ | ~~**Process Workflows**~~ | ~~Event-driven automation with triggers, entity types, steps. Blocking/non-blocking execution. Approval pausing for human-in-the-loop.~~ | ~~DONE — Workflow engine with 5 trigger types (manual, on_create, on_update, on_review, scheduled), 4 step types (action, approval, notification, condition), 8 built-in actions, execution lifecycle (running/paused/completed/failed/cancelled), step result tracking. DDL: `31_workflows.sql` (workflows + workflow_executions). Backend: 10 API endpoints. UI: Workflows tab with visual step editor, execution history, activate/disable/run controls.~~ | ~~Visual drag-and-drop designer. Scheduled trigger integration with Databricks Jobs.~~ | ~~L~~ |
 | ~~G8~~ | ~~**Projects**~~ | ~~Workspace containers for team initiatives. Personal vs. Team types.~~ | ~~DONE — Projects CRUD + member management with roles (owner/admin/member/viewer). DDL: `27_projects.sql`, `28_project_members.sql`. Backend: 8 API endpoints. UI: Projects tab in GovernancePage with detail view + member management. Auto-adds creator as owner. Team association support.~~ | ~~Asset↔project scoping (project_id on sheets/templates/training_sheets). Project-level permissions.~~ | ~~M~~ |
 
 ### G-P2: Advanced Governance
@@ -289,13 +289,22 @@ Features for mature data governance organizations.
 
 **Phase 2 — Governance Core (G4–G6):** All DONE. G4 (Asset Review), G5 (Data Contracts), G6 (Compliance Policies) complete. Asset review gives the ML pipeline a governance layer, contracts guarantee data quality with SLO rules, and policies enforce standards with rule conditions and on-demand evaluation.
 
-**Phase 3 — Orchestration (G7–G8):** G8 (Projects) DONE. Process Workflows remaining. Projects provide logical isolation for team work; workflow engine will automate governance processes.
+**Phase 3 — Orchestration (G7–G8):** All DONE. G7 (Process Workflows) and G8 (Projects) complete. Projects provide logical isolation for team work; workflow engine automates governance processes with triggers, steps, approvals, and execution tracking.
 
 **Phase 4 — Platform (G9–G15):** Data Products, Semantic Models, MCP, Delivery Modes, Connectors, Marketplace, Naming. These extend governance across the full data ecosystem.
 
 ---
 
 ## Recently Completed (Feb 20, 2026)
+
+- **Ontos Governance G7 (Process Workflows)**: Full-stack implementation across 7 files:
+  - **DDL**: `31_workflows.sql` — workflows (steps JSON, trigger_config JSON, trigger_type, status) + workflow_executions (step_results JSON, current_step, trigger_event, status lifecycle)
+  - **Backend models**: `WorkflowTriggerType`, `WorkflowStepType` enums, `WorkflowStep`, `WorkflowTriggerConfig`, `WorkflowCreate/Update/Response`, `WorkflowStepResult`, `WorkflowExecutionResponse`
+  - **Service**: `list_workflows`, `get_workflow`, `create_workflow`, `update_workflow`, `activate_workflow`, `disable_workflow`, `delete_workflow`, `list_executions`, `start_execution`, `advance_execution`, `cancel_execution`
+  - **API**: 10 endpoints — GET/POST /workflows, GET/PUT/DELETE /workflows/{id}, PUT activate/disable, GET executions, POST execute, PUT cancel
+  - **Frontend types**: `WorkflowTriggerType`, `WorkflowStepType`, `WorkflowStep`, `WorkflowTriggerConfig`, `Workflow`, `WorkflowStepResult`, `WorkflowExecution`
+  - **Frontend API**: `listWorkflows`, `getWorkflow`, `createWorkflow`, `updateWorkflow`, `activateWorkflow`, `disableWorkflow`, `deleteWorkflow`, `listWorkflowExecutions`, `startWorkflowExecution`, `cancelWorkflowExecution`
+  - **UI**: `WorkflowsTab` in GovernancePage — visual step editor with numbered flow, step type badges, trigger type picker, 8 built-in action types, execution history with cancel, activate/disable/run lifecycle buttons
 
 - **Ontos Governance G6 (Compliance Policies)**: Full-stack implementation across 7 files:
   - **DDL**: `30_compliance_policies.sql` — compliance_policies (rules JSON, scope JSON, category, severity, schedule, status) + policy_evaluations (per-rule results, pass/fail counts, duration)

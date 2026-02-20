@@ -37,6 +37,10 @@ from app.models.governance import (
     TeamUpdate,
     UserRoleAssignCreate,
     UserRoleAssignmentResponse,
+    WorkflowCreate,
+    WorkflowExecutionResponse,
+    WorkflowResponse,
+    WorkflowUpdate,
 )
 from app.services.governance_service import get_governance_service
 
@@ -553,3 +557,101 @@ async def run_evaluation(policy_id: str, _auth: CurrentUser = Depends(require_pe
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
     return svc.run_evaluation(policy_id, user)
+
+
+# ============================================================================
+# Process Workflows (G7)
+# ============================================================================
+
+
+@router.get("/workflows", response_model=list[WorkflowResponse])
+async def list_workflows(status: str | None = Query(None)):
+    """List workflows with optional status filter."""
+    svc = get_governance_service()
+    return svc.list_workflows(status=status)
+
+
+@router.post("/workflows", response_model=WorkflowResponse, status_code=201)
+async def create_workflow(workflow: WorkflowCreate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Create a new workflow. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.create_workflow(workflow.model_dump(), user)
+
+
+@router.get("/workflows/{workflow_id}", response_model=WorkflowResponse)
+async def get_workflow(workflow_id: str):
+    """Get a workflow by ID."""
+    svc = get_governance_service()
+    result = svc.get_workflow(workflow_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    return result
+
+
+@router.put("/workflows/{workflow_id}", response_model=WorkflowResponse)
+async def update_workflow(workflow_id: str, workflow: WorkflowUpdate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Update a workflow. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.update_workflow(workflow_id, workflow.model_dump(exclude_unset=True), user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    return result
+
+
+@router.put("/workflows/{workflow_id}/activate", response_model=WorkflowResponse)
+async def activate_workflow(workflow_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Activate a workflow. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.activate_workflow(workflow_id, user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    return result
+
+
+@router.put("/workflows/{workflow_id}/disable", response_model=WorkflowResponse)
+async def disable_workflow(workflow_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Disable a workflow. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.disable_workflow(workflow_id, user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    return result
+
+
+@router.delete("/workflows/{workflow_id}", status_code=204)
+async def delete_workflow(workflow_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Delete a workflow and its executions. Requires governance write."""
+    svc = get_governance_service()
+    svc.delete_workflow(workflow_id)
+
+
+@router.get("/workflows/{workflow_id}/executions", response_model=list[WorkflowExecutionResponse])
+async def list_executions_for_workflow(workflow_id: str):
+    """List execution history for a workflow (most recent first, limit 50)."""
+    svc = get_governance_service()
+    return svc.list_executions(workflow_id)
+
+
+@router.post("/workflows/{workflow_id}/execute", response_model=WorkflowExecutionResponse)
+async def start_workflow_execution(workflow_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Start a new execution of a workflow. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    workflow = svc.get_workflow(workflow_id)
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    return svc.start_execution(workflow_id, user, trigger_event={"type": "manual"})
+
+
+@router.put("/workflows/executions/{execution_id}/cancel", response_model=WorkflowExecutionResponse)
+async def cancel_workflow_execution(execution_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Cancel a running workflow execution. Requires governance write."""
+    svc = get_governance_service()
+    result = svc.cancel_execution(execution_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Execution not found")
+    return result

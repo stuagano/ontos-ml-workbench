@@ -30,6 +30,10 @@ import {
   AlertTriangle,
   Info,
   Zap,
+  GitBranch,
+  CircleDot,
+  PlayCircle,
+  StopCircle,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -64,6 +68,15 @@ import {
   togglePolicy,
   deletePolicy,
   runEvaluation,
+  listWorkflows,
+  createWorkflow,
+  updateWorkflow,
+  activateWorkflow,
+  disableWorkflow,
+  deleteWorkflow,
+  listWorkflowExecutions,
+  startWorkflowExecution,
+  cancelWorkflowExecution,
 } from "../services/governance";
 import { useToast } from "../components/Toast";
 import type {
@@ -75,9 +88,12 @@ import type {
   PolicyCategory,
   PolicySeverity,
   PolicyRuleCondition,
+  WorkflowStep,
+  WorkflowTriggerType,
+  WorkflowStepType,
 } from "../types/governance";
 
-type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies";
+type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows";
 
 interface GovernancePageProps {
   onClose: () => void;
@@ -2043,6 +2059,565 @@ function PoliciesTab() {
 }
 
 // ============================================================================
+// Workflows Tab (G7)
+// ============================================================================
+
+const TRIGGER_LABELS: Record<WorkflowTriggerType, string> = {
+  manual: "Manual",
+  on_create: "On Create",
+  on_update: "On Update",
+  on_review: "On Review",
+  scheduled: "Scheduled",
+};
+
+const STEP_TYPE_ICONS: Record<WorkflowStepType, { label: string; color: string }> = {
+  action: { label: "Action", color: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400" },
+  approval: { label: "Approval", color: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400" },
+  notification: { label: "Notify", color: "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400" },
+  condition: { label: "Condition", color: "bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-400" },
+};
+
+const STEP_ACTIONS = [
+  "request_review", "run_policy", "send_notification", "update_status",
+  "create_task", "assign_reviewer", "approve_asset", "reject_asset",
+];
+
+function WorkflowsTab() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [showCreate, setShowCreate] = useState(false);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
+
+  // Create form state
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newTrigger, setNewTrigger] = useState<WorkflowTriggerType>("manual");
+  const [newSteps, setNewSteps] = useState<WorkflowStep[]>([
+    { step_id: "step-1", name: "", type: "action", action: "request_review", config: null, next_step: null, on_reject: null },
+  ]);
+
+  // Detail edit state
+  const [editSteps, setEditSteps] = useState<WorkflowStep[]>([]);
+
+  const { data: workflows = [], isLoading } = useQuery({
+    queryKey: ["governance-workflows"],
+    queryFn: () => listWorkflows(),
+  });
+
+  const { data: executions = [] } = useQuery({
+    queryKey: ["governance-workflow-executions", selectedWorkflow],
+    queryFn: () => listWorkflowExecutions(selectedWorkflow!),
+    enabled: !!selectedWorkflow,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: { name: string; description?: string; trigger_type?: WorkflowTriggerType; steps: WorkflowStep[] }) =>
+      createWorkflow(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-workflows"] });
+      toast.success("Workflow Created", "New workflow created as draft");
+      setShowCreate(false);
+      setNewName("");
+      setNewDesc("");
+      setNewTrigger("manual");
+      setNewSteps([{ step_id: "step-1", name: "", type: "action", action: "request_review", config: null, next_step: null, on_reject: null }]);
+    },
+    onError: (err: Error) => toast.error("Create Failed", err.message),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      updateWorkflow(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-workflows"] });
+      toast.success("Workflow Updated", "Workflow steps updated");
+    },
+    onError: (err: Error) => toast.error("Update Failed", err.message),
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: activateWorkflow,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-workflows"] });
+      toast.success("Workflow Activated", "Workflow is now active");
+    },
+    onError: (err: Error) => toast.error("Activate Failed", err.message),
+  });
+
+  const disableMutation = useMutation({
+    mutationFn: disableWorkflow,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-workflows"] });
+      toast.success("Workflow Disabled", "Workflow has been disabled");
+    },
+    onError: (err: Error) => toast.error("Disable Failed", err.message),
+  });
+
+  const executeMutation = useMutation({
+    mutationFn: startWorkflowExecution,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-workflow-executions", selectedWorkflow] });
+      queryClient.invalidateQueries({ queryKey: ["governance-workflows"] });
+      toast.success("Execution Started", "Workflow execution has been triggered");
+    },
+    onError: (err: Error) => toast.error("Execute Failed", err.message),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: cancelWorkflowExecution,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-workflow-executions", selectedWorkflow] });
+      toast.success("Execution Cancelled", "Workflow execution cancelled");
+    },
+    onError: (err: Error) => toast.error("Cancel Failed", err.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteWorkflow,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-workflows"] });
+      toast.success("Workflow Deleted", "Workflow removed");
+      setSelectedWorkflow(null);
+    },
+    onError: (err: Error) => toast.error("Delete Failed", err.message),
+  });
+
+  if (isLoading) {
+    return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-db-orange" /></div>;
+  }
+
+  // Step editor helper
+  const renderStepEditor = (steps: WorkflowStep[], setSteps: (s: WorkflowStep[]) => void) => (
+    <div className="space-y-2">
+      {steps.map((step, idx) => (
+        <div key={idx} className="flex items-start gap-2 p-3 bg-db-gray-50 dark:bg-gray-800/50 rounded-lg">
+          <div className="flex items-center gap-1 mt-1.5 text-db-gray-400">
+            <CircleDot className="w-3.5 h-3.5" />
+            <span className="text-xs font-mono">{idx + 1}</span>
+          </div>
+          <div className="flex-1 grid grid-cols-4 gap-2">
+            <input
+              value={step.name}
+              onChange={(e) => {
+                const updated = [...steps];
+                updated[idx] = { ...step, name: e.target.value };
+                setSteps(updated);
+              }}
+              placeholder="Step name"
+              className="px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+            />
+            <select
+              value={step.type}
+              onChange={(e) => {
+                const updated = [...steps];
+                updated[idx] = { ...step, type: e.target.value as WorkflowStepType };
+                setSteps(updated);
+              }}
+              className="px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+            >
+              <option value="action">Action</option>
+              <option value="approval">Approval</option>
+              <option value="notification">Notification</option>
+              <option value="condition">Condition</option>
+            </select>
+            <select
+              value={step.action ?? ""}
+              onChange={(e) => {
+                const updated = [...steps];
+                updated[idx] = { ...step, action: e.target.value || null };
+                setSteps(updated);
+              }}
+              className="px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+            >
+              <option value="">No action</option>
+              {STEP_ACTIONS.map((a) => <option key={a} value={a}>{a.replace(/_/g, " ")}</option>)}
+            </select>
+            <div className="flex items-center gap-1">
+              {step.type === "approval" && (
+                <span className="text-[10px] text-amber-600 dark:text-amber-400">Blocks</span>
+              )}
+              <button
+                onClick={() => setSteps(steps.filter((_, i) => i !== idx))}
+                className="ml-auto p-1 text-db-gray-400 hover:text-red-500"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+      <button
+        onClick={() => {
+          const nextId = `step-${steps.length + 1}`;
+          // Wire previous step's next_step
+          const updated = steps.map((s, i) =>
+            i === steps.length - 1 ? { ...s, next_step: nextId } : s
+          );
+          setSteps([...updated, { step_id: nextId, name: "", type: "action", action: null, config: null, next_step: null, on_reject: null }]);
+        }}
+        className="px-3 py-1.5 text-sm text-db-gray-500 hover:text-db-gray-700 dark:hover:text-gray-300 flex items-center gap-1.5"
+      >
+        <Plus className="w-3.5 h-3.5" /> Add Step
+      </button>
+    </div>
+  );
+
+  // Detail view
+  if (selectedWorkflow) {
+    const workflow = workflows.find((w) => w.id === selectedWorkflow);
+    if (!workflow) return null;
+
+    return (
+      <div className="space-y-6">
+        <button onClick={() => setSelectedWorkflow(null)} className="flex items-center gap-2 text-sm text-db-gray-600 dark:text-gray-400 hover:text-db-gray-800 dark:hover:text-white">
+          <ArrowLeft className="w-4 h-4" /> Back to workflows
+        </button>
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-db-gray-800 dark:text-white flex items-center gap-2">
+              {workflow.name}
+              <span className={clsx(
+                "px-2 py-0.5 text-xs rounded-full font-medium",
+                workflow.status === "active" ? "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400"
+                  : workflow.status === "disabled" ? "bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-500",
+              )}>
+                {workflow.status}
+              </span>
+            </h3>
+            {workflow.description && <p className="text-sm text-db-gray-500 dark:text-gray-500 mt-1">{workflow.description}</p>}
+            <p className="text-xs text-db-gray-400 dark:text-gray-600 mt-1">
+              Trigger: {TRIGGER_LABELS[workflow.trigger_type]}
+              {workflow.owner_email && <> · Owner: {workflow.owner_email}</>}
+              · {workflow.execution_count} executions
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {workflow.status === "draft" && (
+              <button
+                onClick={() => activateMutation.mutate(workflow.id)}
+                disabled={activateMutation.isPending}
+                className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1.5"
+              >
+                <Play className="w-3.5 h-3.5" /> Activate
+              </button>
+            )}
+            {workflow.status === "active" && (
+              <>
+                <button
+                  onClick={() => executeMutation.mutate(workflow.id)}
+                  disabled={executeMutation.isPending}
+                  className="px-3 py-1.5 text-sm bg-db-orange text-white rounded-lg hover:bg-db-red transition-colors flex items-center gap-1.5"
+                >
+                  {executeMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PlayCircle className="w-3.5 h-3.5" />}
+                  Run
+                </button>
+                <button
+                  onClick={() => disableMutation.mutate(workflow.id)}
+                  disabled={disableMutation.isPending}
+                  className="px-3 py-1.5 text-sm text-db-gray-600 dark:text-gray-400 hover:bg-db-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <StopCircle className="w-3.5 h-3.5" /> Disable
+                </button>
+              </>
+            )}
+            {workflow.status === "disabled" && (
+              <button
+                onClick={() => activateMutation.mutate(workflow.id)}
+                disabled={activateMutation.isPending}
+                className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1.5"
+              >
+                <Play className="w-3.5 h-3.5" /> Re-activate
+              </button>
+            )}
+            <button
+              onClick={() => { if (confirm("Delete this workflow?")) deleteMutation.mutate(workflow.id); }}
+              className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Steps */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-db-gray-700 dark:text-gray-300">Workflow Steps</h4>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEditSteps(workflow.steps ?? [])}
+                className="px-2 py-1 text-xs text-db-gray-500 hover:text-db-gray-700 dark:hover:text-gray-300"
+              >
+                Reset
+              </button>
+              <button
+                onClick={() => updateMutation.mutate({ id: workflow.id, data: { steps: editSteps } })}
+                disabled={updateMutation.isPending}
+                className="px-3 py-1 text-xs bg-db-orange text-white rounded-lg hover:bg-db-red disabled:opacity-50 transition-colors"
+              >
+                {updateMutation.isPending ? "Saving..." : "Save Steps"}
+              </button>
+            </div>
+          </div>
+
+          {/* Visual step flow */}
+          <div className="space-y-1">
+            {editSteps.map((step, idx) => (
+              <div key={idx}>
+                <div className="flex items-center gap-3 p-3 border border-db-gray-200 dark:border-gray-700 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-db-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-mono text-db-gray-600 dark:text-gray-400">
+                      {idx + 1}
+                    </span>
+                  </div>
+                  <div className="flex-1 grid grid-cols-3 gap-2">
+                    <input
+                      value={step.name}
+                      onChange={(e) => {
+                        const updated = [...editSteps];
+                        updated[idx] = { ...step, name: e.target.value };
+                        setEditSteps(updated);
+                      }}
+                      placeholder="Step name"
+                      className="px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                    />
+                    <select
+                      value={step.type}
+                      onChange={(e) => {
+                        const updated = [...editSteps];
+                        updated[idx] = { ...step, type: e.target.value as WorkflowStepType };
+                        setEditSteps(updated);
+                      }}
+                      className="px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                    >
+                      <option value="action">Action</option>
+                      <option value="approval">Approval</option>
+                      <option value="notification">Notification</option>
+                      <option value="condition">Condition</option>
+                    </select>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={step.action ?? ""}
+                        onChange={(e) => {
+                          const updated = [...editSteps];
+                          updated[idx] = { ...step, action: e.target.value || null };
+                          setEditSteps(updated);
+                        }}
+                        className="flex-1 px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                      >
+                        <option value="">No action</option>
+                        {STEP_ACTIONS.map((a) => <option key={a} value={a}>{a.replace(/_/g, " ")}</option>)}
+                      </select>
+                      <button
+                        onClick={() => setEditSteps(editSteps.filter((_, i) => i !== idx))}
+                        className="p-1 text-db-gray-400 hover:text-red-500"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <span className={clsx("px-2 py-0.5 text-[10px] rounded font-medium", STEP_TYPE_ICONS[step.type as WorkflowStepType]?.color || "bg-gray-100 text-gray-500")}>
+                    {STEP_TYPE_ICONS[step.type as WorkflowStepType]?.label || step.type}
+                  </span>
+                </div>
+                {idx < editSteps.length - 1 && (
+                  <div className="flex justify-center py-0.5">
+                    <div className="w-px h-4 bg-db-gray-300 dark:bg-gray-600" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => {
+              const nextId = `step-${editSteps.length + 1}`;
+              const updated = editSteps.map((s, i) =>
+                i === editSteps.length - 1 ? { ...s, next_step: nextId } : s
+              );
+              setEditSteps([...updated, { step_id: nextId, name: "", type: "action", action: null, config: null, next_step: null, on_reject: null }]);
+            }}
+            className="px-3 py-1.5 text-sm text-db-gray-500 hover:text-db-gray-700 dark:hover:text-gray-300 flex items-center gap-1.5"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add Step
+          </button>
+        </div>
+
+        {/* Execution History */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold text-db-gray-700 dark:text-gray-300">Execution History</h4>
+          {executions.length === 0 ? (
+            <p className="text-sm text-db-gray-500 dark:text-gray-500 py-4">No executions yet.</p>
+          ) : (
+            <div className="border border-db-gray-200 dark:border-gray-700 rounded-lg divide-y divide-db-gray-100 dark:divide-gray-800">
+              {executions.map((exec) => (
+                <div key={exec.id} className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className={clsx(
+                      "px-2 py-0.5 text-xs rounded-full font-medium",
+                      exec.status === "completed" ? "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400"
+                        : exec.status === "running" ? "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400"
+                          : exec.status === "failed" ? "bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400"
+                            : "bg-gray-100 dark:bg-gray-800 text-gray-500",
+                    )}>
+                      {exec.status}
+                    </span>
+                    <div>
+                      <span className="text-xs text-db-gray-500 dark:text-gray-500">
+                        {exec.step_results.length} steps completed
+                      </span>
+                      {exec.current_step && (
+                        <span className="text-xs text-db-gray-400 dark:text-gray-600 ml-2">
+                          Current: {exec.current_step}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-db-gray-400 dark:text-gray-600">
+                      {exec.started_by}
+                    </span>
+                    {exec.status === "running" && (
+                      <button
+                        onClick={() => cancelMutation.mutate(exec.id)}
+                        disabled={cancelMutation.isPending}
+                        className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // List view
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-db-gray-800 dark:text-white">Process Workflows</h3>
+        <button
+          onClick={() => setShowCreate(!showCreate)}
+          className="px-3 py-1.5 text-sm bg-db-orange text-white rounded-lg hover:bg-db-red transition-colors flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" /> New Workflow
+        </button>
+      </div>
+
+      {showCreate && (
+        <div className="p-4 border border-db-gray-200 dark:border-gray-700 rounded-lg space-y-3">
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Workflow name"
+            className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+          />
+          <input
+            value={newDesc}
+            onChange={(e) => setNewDesc(e.target.value)}
+            placeholder="Description (optional)"
+            className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+          />
+          <div>
+            <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Trigger</label>
+            <select
+              value={newTrigger}
+              onChange={(e) => setNewTrigger(e.target.value as WorkflowTriggerType)}
+              className="w-48 px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+            >
+              {Object.entries(TRIGGER_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Steps</label>
+            {renderStepEditor(newSteps, setNewSteps)}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                const validSteps = newSteps.filter((s) => s.name.trim());
+                if (newName && validSteps.length > 0) {
+                  createMutation.mutate({
+                    name: newName,
+                    description: newDesc || undefined,
+                    trigger_type: newTrigger,
+                    steps: validSteps,
+                  });
+                }
+              }}
+              disabled={!newName || !newSteps.some((s) => s.name.trim()) || createMutation.isPending}
+              className="px-4 py-2 text-sm bg-db-orange text-white rounded-lg hover:bg-db-red disabled:opacity-50"
+            >
+              Create
+            </button>
+            <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-db-gray-600 dark:text-gray-400">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {workflows.length === 0 ? (
+        <p className="text-sm text-db-gray-500 dark:text-gray-500 py-8 text-center">No workflows created yet.</p>
+      ) : (
+        <div className="border border-db-gray-200 dark:border-gray-700 rounded-lg divide-y divide-db-gray-100 dark:divide-gray-800">
+          {workflows.map((workflow) => (
+            <button
+              key={workflow.id}
+              onClick={() => {
+                setSelectedWorkflow(workflow.id);
+                setEditSteps(workflow.steps ?? []);
+              }}
+              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-db-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <GitBranch className="w-4 h-4 text-db-gray-400 flex-shrink-0" />
+                <div>
+                  <div className="text-sm font-medium text-db-gray-800 dark:text-white flex items-center gap-2">
+                    {workflow.name}
+                    <span className={clsx(
+                      "px-1.5 py-0.5 text-[10px] rounded font-medium",
+                      workflow.status === "active" ? "bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400"
+                        : workflow.status === "disabled" ? "bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400"
+                          : "bg-gray-100 dark:bg-gray-800 text-gray-500",
+                    )}>
+                      {workflow.status}
+                    </span>
+                  </div>
+                  {workflow.description && (
+                    <div className="text-xs text-db-gray-500 dark:text-gray-500 mt-0.5">{workflow.description}</div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-db-gray-400 dark:text-gray-600">
+                  {TRIGGER_LABELS[workflow.trigger_type]}
+                </span>
+                <span className="text-xs text-db-gray-400 dark:text-gray-600">
+                  {workflow.steps.length} steps
+                </span>
+                <span className="text-xs text-db-gray-400 dark:text-gray-600">
+                  {workflow.execution_count} runs
+                </span>
+                <ChevronRight className="w-4 h-4 text-db-gray-400" />
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // Main Page
 // ============================================================================
 
@@ -2053,6 +2628,7 @@ const TABS: { id: TabId; label: string; icon: typeof Shield }[] = [
   { id: "projects", label: "Projects", icon: Briefcase },
   { id: "contracts", label: "Contracts", icon: FileCheck },
   { id: "policies", label: "Policies", icon: ShieldAlert },
+  { id: "workflows", label: "Workflows", icon: GitBranch },
 ];
 
 export function GovernancePage({ onClose }: GovernancePageProps) {
@@ -2109,6 +2685,7 @@ export function GovernancePage({ onClose }: GovernancePageProps) {
           {activeTab === "projects" && <ProjectsTab />}
           {activeTab === "contracts" && <ContractsTab />}
           {activeTab === "policies" && <PoliciesTab />}
+          {activeTab === "workflows" && <WorkflowsTab />}
         </div>
       </div>
     </div>

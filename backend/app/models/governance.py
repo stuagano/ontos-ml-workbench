@@ -507,3 +507,101 @@ class PolicyEvaluationResponse(BaseModel):
     evaluated_at: datetime | None = None
     evaluated_by: str | None = None
     duration_ms: int | None = None
+
+
+# ============================================================================
+# Process Workflows (G7)
+# ============================================================================
+
+
+class WorkflowTriggerType(str, Enum):
+    MANUAL = "manual"
+    ON_CREATE = "on_create"
+    ON_UPDATE = "on_update"
+    ON_REVIEW = "on_review"
+    SCHEDULED = "scheduled"
+
+
+class WorkflowStepType(str, Enum):
+    ACTION = "action"
+    APPROVAL = "approval"
+    NOTIFICATION = "notification"
+    CONDITION = "condition"
+
+
+class WorkflowStep(BaseModel):
+    """A step within a workflow definition."""
+    step_id: str = Field(..., description="Unique step identifier within the workflow")
+    name: str = Field(..., min_length=1)
+    type: str = Field(..., description="action | approval | notification | condition")
+    action: str | None = Field(None, description="Action to perform (e.g., request_review, run_policy, send_notification, update_status)")
+    config: dict | None = Field(None, description="Step-specific configuration")
+    next_step: str | None = Field(None, description="step_id of next step (null = end)")
+    on_reject: str | None = Field(None, description="step_id if approval is rejected")
+
+
+class WorkflowTriggerConfig(BaseModel):
+    """Configuration for workflow triggers."""
+    entity_type: str | None = Field(None, description="Entity type: sheet, template, training_sheet")
+    schedule: str | None = Field(None, description="Cron expression for scheduled triggers")
+    conditions: dict | None = Field(None, description="Additional trigger conditions")
+
+
+class WorkflowCreate(BaseModel):
+    """Request body for creating a workflow."""
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = None
+    trigger_type: str = "manual"
+    trigger_config: WorkflowTriggerConfig | None = None
+    steps: list[WorkflowStep] = Field(..., min_length=1)
+    owner_email: str | None = None
+
+
+class WorkflowUpdate(BaseModel):
+    """Request body for updating a workflow."""
+    name: str | None = None
+    description: str | None = None
+    trigger_type: str | None = None
+    trigger_config: WorkflowTriggerConfig | None = None
+    steps: list[WorkflowStep] | None = None
+    status: str | None = None
+    owner_email: str | None = None
+
+
+class WorkflowResponse(BaseModel):
+    """Workflow response model."""
+    id: str
+    name: str
+    description: str | None = None
+    trigger_type: str = "manual"
+    trigger_config: WorkflowTriggerConfig | None = None
+    steps: list[WorkflowStep] = Field(default_factory=list)
+    status: str = "draft"
+    owner_email: str | None = None
+    execution_count: int = 0
+    created_at: datetime | None = None
+    created_by: str | None = None
+    updated_at: datetime | None = None
+    updated_by: str | None = None
+
+
+class WorkflowStepResult(BaseModel):
+    """Result of executing a single workflow step."""
+    step_id: str
+    status: str = Field(..., description="completed | failed | skipped")
+    output: dict | None = None
+    completed_at: str | None = None
+
+
+class WorkflowExecutionResponse(BaseModel):
+    """Workflow execution instance."""
+    id: str
+    workflow_id: str
+    workflow_name: str | None = None
+    status: str = "running"
+    current_step: str | None = None
+    trigger_event: dict | None = None
+    step_results: list[WorkflowStepResult] = Field(default_factory=list)
+    started_at: datetime | None = None
+    started_by: str | None = None
+    completed_at: datetime | None = None

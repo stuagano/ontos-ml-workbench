@@ -27,6 +27,11 @@ import type {
   PolicyRuleCondition,
   PolicyScope,
   PolicyEvaluation,
+  Workflow,
+  WorkflowStep,
+  WorkflowTriggerConfig,
+  WorkflowTriggerType,
+  WorkflowExecution,
 } from "../types/governance";
 
 const API_BASE = "/api/v1/governance";
@@ -477,5 +482,78 @@ export async function listEvaluations(policyId: string): Promise<PolicyEvaluatio
 export async function runEvaluation(policyId: string): Promise<PolicyEvaluation> {
   return fetchJson(`${API_BASE}/policies/${policyId}/evaluate`, {
     method: "POST",
+  });
+}
+
+// ============================================================================
+// Process Workflows (G7)
+// ============================================================================
+
+export async function listWorkflows(filters?: {
+  status?: string;
+}): Promise<Workflow[]> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.set("status", filters.status);
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/workflows${qs ? `?${qs}` : ""}`);
+}
+
+export async function getWorkflow(workflowId: string): Promise<Workflow> {
+  return fetchJson(`${API_BASE}/workflows/${workflowId}`);
+}
+
+export async function createWorkflow(data: {
+  name: string;
+  description?: string;
+  trigger_type?: WorkflowTriggerType;
+  trigger_config?: WorkflowTriggerConfig;
+  steps: WorkflowStep[];
+  owner_email?: string;
+}): Promise<Workflow> {
+  return fetchJson(`${API_BASE}/workflows`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateWorkflow(
+  workflowId: string,
+  data: Partial<Workflow>,
+): Promise<Workflow> {
+  return fetchJson(`${API_BASE}/workflows/${workflowId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function activateWorkflow(workflowId: string): Promise<Workflow> {
+  return fetchJson(`${API_BASE}/workflows/${workflowId}/activate`, {
+    method: "PUT",
+  });
+}
+
+export async function disableWorkflow(workflowId: string): Promise<Workflow> {
+  return fetchJson(`${API_BASE}/workflows/${workflowId}/disable`, {
+    method: "PUT",
+  });
+}
+
+export async function deleteWorkflow(workflowId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/workflows/${workflowId}`, { method: "DELETE" });
+}
+
+export async function listWorkflowExecutions(workflowId: string): Promise<WorkflowExecution[]> {
+  return fetchJson(`${API_BASE}/workflows/${workflowId}/executions`);
+}
+
+export async function startWorkflowExecution(workflowId: string): Promise<WorkflowExecution> {
+  return fetchJson(`${API_BASE}/workflows/${workflowId}/execute`, {
+    method: "POST",
+  });
+}
+
+export async function cancelWorkflowExecution(executionId: string): Promise<WorkflowExecution> {
+  return fetchJson(`${API_BASE}/workflows/executions/${executionId}/cancel`, {
+    method: "PUT",
   });
 }
