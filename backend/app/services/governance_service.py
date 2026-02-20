@@ -1993,6 +1993,183 @@ class GovernanceService:
         return [dict(r) for r in rows]
 
     # ========================================================================
+    # Delivery Modes (G12)
+    # ========================================================================
+
+    def _parse_delivery_mode(self, row: dict) -> dict:
+        roles_raw = row.get("approved_roles")
+        config_raw = row.get("config")
+        return {
+            **row,
+            "approved_roles": json.loads(roles_raw) if roles_raw else None,
+            "config": json.loads(config_raw) if config_raw else None,
+        }
+
+    def _count_deliveries(self, mode_id: str) -> int:
+        rows = self.sql.execute(
+            f"SELECT COUNT(*) AS cnt FROM {self._table('delivery_records')} "
+            f"WHERE delivery_mode_id = '{_esc(mode_id)}'"
+        )
+        return int(rows[0].get("cnt", 0)) if rows else 0
+
+    def list_delivery_modes(self, mode_type: str | None = None, active_only: bool = False) -> list[dict]:
+        where = []
+        if mode_type:
+            where.append(f"mode_type = '{_esc(mode_type)}'")
+        if active_only:
+            where.append("is_active = true")
+        where_clause = f"WHERE {' AND '.join(where)}" if where else ""
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('delivery_modes')} {where_clause} ORDER BY is_default DESC, name"
+        )
+        modes = [self._parse_delivery_mode(r) for r in rows]
+        for mode in modes:
+            mode["delivery_count"] = self._count_deliveries(mode["id"])
+        return modes
+
+    def get_delivery_mode(self, mode_id: str) -> dict | None:
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('delivery_modes')} WHERE id = '{_esc(mode_id)}'"
+        )
+        if not rows:
+            return None
+        mode = self._parse_delivery_mode(rows[0])
+        mode["delivery_count"] = self._count_deliveries(mode_id)
+        return mode
+
+    def create_delivery_mode(self, data: dict, created_by: str) -> dict:
+        mode_id = str(uuid.uuid4())
+        roles_json = json.dumps(data.get("approved_roles", [])).replace("'", "''") if data.get("approved_roles") else None
+        config_json = json.dumps(data.get("config", {})).replace("'", "''") if data.get("config") else None
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('delivery_modes')}
+            (id, name, description, mode_type, is_default, requires_approval, approved_roles,
+             git_repo_url, git_branch, git_path, yaml_template, manual_instructions,
+             environment, config, is_active,
+             created_at, created_by, updated_at, updated_by)
+            VALUES (
+                '{mode_id}', '{_esc(data["name"])}',
+                {f"'{_esc(data['description'])}'" if data.get('description') else 'NULL'},
+                '{_esc(data["mode_type"])}',
+                {data.get('is_default', False)},
+                {data.get('requires_approval', False)},
+                {f"'{roles_json}'" if roles_json else 'NULL'},
+                {f"'{_esc(data['git_repo_url'])}'" if data.get('git_repo_url') else 'NULL'},
+                {f"'{_esc(data['git_branch'])}'" if data.get('git_branch') else 'NULL'},
+                {f"'{_esc(data['git_path'])}'" if data.get('git_path') else 'NULL'},
+                {f"'{_esc(data['yaml_template'])}'" if data.get('yaml_template') else 'NULL'},
+                {f"'{_esc(data['manual_instructions'])}'" if data.get('manual_instructions') else 'NULL'},
+                {f"'{_esc(data['environment'])}'" if data.get('environment') else 'NULL'},
+                {f"'{config_json}'" if config_json else 'NULL'},
+                true,
+                current_timestamp(), '{_esc(created_by)}',
+                current_timestamp(), '{_esc(created_by)}'
+            )
+        """)
+        return self.get_delivery_mode(mode_id)
+
+    def update_delivery_mode(self, mode_id: str, data: dict, updated_by: str) -> dict | None:
+        updates = []
+        if data.get("name") is not None:
+            updates.append(f"name = '{_esc(data['name'])}'")
+        if data.get("description") is not None:
+            updates.append(f"description = '{_esc(data['description'])}'")
+        if data.get("requires_approval") is not None:
+            updates.append(f"requires_approval = {data['requires_approval']}")
+        if data.get("approved_roles") is not None:
+            roles_json = json.dumps(data["approved_roles"]).replace("'", "''")
+            updates.append(f"approved_roles = '{roles_json}'")
+        if data.get("git_repo_url") is not None:
+            updates.append(f"git_repo_url = '{_esc(data['git_repo_url'])}'")
+        if data.get("git_branch") is not None:
+            updates.append(f"git_branch = '{_esc(data['git_branch'])}'")
+        if data.get("git_path") is not None:
+            updates.append(f"git_path = '{_esc(data['git_path'])}'")
+        if data.get("yaml_template") is not None:
+            updates.append(f"yaml_template = '{_esc(data['yaml_template'])}'")
+        if data.get("manual_instructions") is not None:
+            updates.append(f"manual_instructions = '{_esc(data['manual_instructions'])}'")
+        if data.get("environment") is not None:
+            updates.append(f"environment = '{_esc(data['environment'])}'")
+        if data.get("config") is not None:
+            config_json = json.dumps(data["config"]).replace("'", "''")
+            updates.append(f"config = '{config_json}'")
+        if data.get("is_active") is not None:
+            updates.append(f"is_active = {data['is_active']}")
+
+        if updates:
+            updates.append(f"updated_by = '{_esc(updated_by)}'")
+            updates.append("updated_at = current_timestamp()")
+            self.sql.execute_update(
+                f"UPDATE {self._table('delivery_modes')} SET {', '.join(updates)} "
+                f"WHERE id = '{_esc(mode_id)}'"
+            )
+        return self.get_delivery_mode(mode_id)
+
+    def delete_delivery_mode(self, mode_id: str) -> None:
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('delivery_records')} WHERE delivery_mode_id = '{_esc(mode_id)}'"
+        )
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('delivery_modes')} WHERE id = '{_esc(mode_id)}'"
+        )
+
+    def list_delivery_records(self, mode_id: str | None = None, status: str | None = None) -> list[dict]:
+        where = []
+        if mode_id:
+            where.append(f"r.delivery_mode_id = '{_esc(mode_id)}'")
+        if status:
+            where.append(f"r.status = '{_esc(status)}'")
+        where_clause = f"WHERE {' AND '.join(where)}" if where else ""
+        rows = self.sql.execute(f"""
+            SELECT r.*, m.name AS delivery_mode_name, m.mode_type
+            FROM {self._table('delivery_records')} r
+            LEFT JOIN {self._table('delivery_modes')} m ON r.delivery_mode_id = m.id
+            {where_clause}
+            ORDER BY r.requested_at DESC
+        """)
+        result_parsed = []
+        for r in rows:
+            row = dict(r)
+            result_raw = row.get("result")
+            row["result"] = json.loads(result_raw) if result_raw else None
+            result_parsed.append(row)
+        return result_parsed
+
+    def create_delivery_record(self, data: dict, requested_by: str) -> dict:
+        record_id = str(uuid.uuid4())
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('delivery_records')}
+            (id, delivery_mode_id, model_name, model_version, endpoint_name,
+             status, requested_by, requested_at, notes)
+            VALUES (
+                '{record_id}', '{_esc(data["delivery_mode_id"])}',
+                '{_esc(data["model_name"])}',
+                {f"'{_esc(data['model_version'])}'" if data.get('model_version') else 'NULL'},
+                {f"'{_esc(data['endpoint_name'])}'" if data.get('endpoint_name') else 'NULL'},
+                'pending', '{_esc(requested_by)}',
+                current_timestamp(),
+                {f"'{_esc(data['notes'])}'" if data.get('notes') else 'NULL'}
+            )
+        """)
+        records = self.list_delivery_records()
+        return next((r for r in records if r["id"] == record_id), {"id": record_id})
+
+    def transition_delivery_record(self, record_id: str, new_status: str, user: str) -> dict | None:
+        updates = [f"status = '{_esc(new_status)}'"]
+        if new_status == "approved":
+            updates.append(f"approved_by = '{_esc(user)}'")
+            updates.append("approved_at = current_timestamp()")
+        elif new_status in ("completed", "failed"):
+            updates.append("completed_at = current_timestamp()")
+        self.sql.execute_update(
+            f"UPDATE {self._table('delivery_records')} SET {', '.join(updates)} "
+            f"WHERE id = '{_esc(record_id)}'"
+        )
+        records = self.list_delivery_records()
+        return next((r for r in records if r["id"] == record_id), None)
+
+    # ========================================================================
     # Naming Conventions (G15)
     # ========================================================================
 

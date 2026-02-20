@@ -49,6 +49,8 @@ import type {
   MarketplaceSearchResult,
   MarketplaceSearchParams,
   MarketplaceStats,
+  DeliveryMode,
+  DeliveryRecord,
 } from "../types/governance";
 
 const API_BASE = "/api/v1/governance";
@@ -873,4 +875,65 @@ export async function getMarketplaceProduct(productId: string): Promise<Marketpl
 
 export async function getMySubscriptions(): Promise<unknown[]> {
   return fetchJson(`${API_BASE}/marketplace/my-subscriptions`);
+}
+
+// ============================================================================
+// Delivery Modes (G12)
+// ============================================================================
+
+export async function listDeliveryModes(modeType?: string, activeOnly?: boolean): Promise<DeliveryMode[]> {
+  const params = new URLSearchParams();
+  if (modeType) params.set("mode_type", modeType);
+  if (activeOnly) params.set("active_only", "true");
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/delivery-modes${qs ? `?${qs}` : ""}`);
+}
+
+export async function getDeliveryMode(modeId: string): Promise<DeliveryMode> {
+  return fetchJson(`${API_BASE}/delivery-modes/${modeId}`);
+}
+
+export async function createDeliveryMode(data: Partial<DeliveryMode>): Promise<DeliveryMode> {
+  return fetchJson(`${API_BASE}/delivery-modes`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateDeliveryMode(modeId: string, data: Partial<DeliveryMode>): Promise<DeliveryMode> {
+  return fetchJson(`${API_BASE}/delivery-modes/${modeId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteDeliveryMode(modeId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/delivery-modes/${modeId}`, { method: "DELETE" });
+}
+
+export async function listDeliveryRecords(modeId?: string, status?: string): Promise<DeliveryRecord[]> {
+  const params = new URLSearchParams();
+  if (modeId) params.set("mode_id", modeId);
+  if (status) params.set("status", status);
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/delivery-records${qs ? `?${qs}` : ""}`);
+}
+
+export async function createDeliveryRecord(data: {
+  delivery_mode_id: string;
+  model_name: string;
+  model_version?: string;
+  endpoint_name?: string;
+  notes?: string;
+}): Promise<DeliveryRecord> {
+  return fetchJson(`${API_BASE}/delivery-records`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function transitionDeliveryRecord(recordId: string, newStatus: string): Promise<DeliveryRecord> {
+  return fetchJson(`${API_BASE}/delivery-records/${recordId}/transition?new_status=${encodeURIComponent(newStatus)}`, {
+    method: "PUT",
+  });
 }

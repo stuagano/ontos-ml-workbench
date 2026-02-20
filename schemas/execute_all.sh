@@ -56,6 +56,7 @@ SQL_FILES=(
     "32_data_products.sql"
     "33_semantic_models.sql"
     "34_naming_conventions.sql"
+    "35_delivery_modes.sql"
     "99_validate_and_seed.sql"
 )
 

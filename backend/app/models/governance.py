@@ -991,3 +991,108 @@ class MarketplaceStatsResponse(BaseModel):
     products_by_domain: list[dict] = Field(default_factory=list)
     recent_products: list[MarketplaceProductResponse] = Field(default_factory=list)
     conventions_checked: int = 0
+
+
+# ============================================================================
+# Delivery Modes (G12)
+# ============================================================================
+
+
+class DeliveryModeType(str, Enum):
+    direct = "direct"
+    indirect = "indirect"
+    manual = "manual"
+
+
+class DeliveryRecordStatus(str, Enum):
+    pending = "pending"
+    approved = "approved"
+    in_progress = "in_progress"
+    completed = "completed"
+    failed = "failed"
+    rejected = "rejected"
+
+
+class DeliveryModeCreate(BaseModel):
+    """Create a delivery mode configuration."""
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str | None = None
+    mode_type: DeliveryModeType
+    is_default: bool = False
+    requires_approval: bool = False
+    approved_roles: list[str] | None = None
+    git_repo_url: str | None = None
+    git_branch: str | None = None
+    git_path: str | None = None
+    yaml_template: str | None = None
+    manual_instructions: str | None = None
+    environment: str | None = None
+    config: dict | None = None
+
+
+class DeliveryModeUpdate(BaseModel):
+    """Update a delivery mode configuration."""
+    name: str | None = None
+    description: str | None = None
+    requires_approval: bool | None = None
+    approved_roles: list[str] | None = None
+    git_repo_url: str | None = None
+    git_branch: str | None = None
+    git_path: str | None = None
+    yaml_template: str | None = None
+    manual_instructions: str | None = None
+    environment: str | None = None
+    config: dict | None = None
+    is_active: bool | None = None
+
+
+class DeliveryModeResponse(BaseModel):
+    """Delivery mode response."""
+    id: str
+    name: str
+    description: str | None = None
+    mode_type: str
+    is_default: bool = False
+    requires_approval: bool = False
+    approved_roles: list[str] | None = None
+    git_repo_url: str | None = None
+    git_branch: str | None = None
+    git_path: str | None = None
+    yaml_template: str | None = None
+    manual_instructions: str | None = None
+    environment: str | None = None
+    config: dict | None = None
+    is_active: bool = True
+    delivery_count: int = 0
+    created_at: datetime | None = None
+    created_by: str | None = None
+    updated_at: datetime | None = None
+    updated_by: str | None = None
+
+
+class DeliveryRecordCreate(BaseModel):
+    """Create a delivery record."""
+    delivery_mode_id: str
+    model_name: str
+    model_version: str | None = None
+    endpoint_name: str | None = None
+    notes: str | None = None
+
+
+class DeliveryRecordResponse(BaseModel):
+    """Delivery record response."""
+    id: str
+    delivery_mode_id: str
+    delivery_mode_name: str | None = None
+    mode_type: str | None = None
+    model_name: str
+    model_version: str | None = None
+    endpoint_name: str | None = None
+    status: str = "pending"
+    requested_by: str
+    requested_at: datetime | None = None
+    approved_by: str | None = None
+    approved_at: datetime | None = None
+    completed_at: datetime | None = None
+    notes: str | None = None
+    result: dict | None = None

@@ -65,6 +65,11 @@ from app.models.governance import (
     MarketplaceSearchResult,
     MarketplaceProductResponse,
     MarketplaceStatsResponse,
+    DeliveryModeCreate,
+    DeliveryModeResponse,
+    DeliveryModeUpdate,
+    DeliveryRecordCreate,
+    DeliveryRecordResponse,
 )
 from app.services.governance_service import get_governance_service
 
@@ -1081,3 +1086,87 @@ async def get_my_subscriptions():
     user = get_db_user()
     svc = get_governance_service()
     return svc.get_user_subscriptions(user)
+
+
+# ============================================================================
+# Delivery Modes (G12)
+# ============================================================================
+
+
+@router.get("/delivery-modes", response_model=list[DeliveryModeResponse])
+async def list_delivery_modes(
+    mode_type: str | None = Query(None),
+    active_only: bool = Query(False),
+):
+    """List delivery mode configurations."""
+    svc = get_governance_service()
+    return svc.list_delivery_modes(mode_type=mode_type, active_only=active_only)
+
+
+@router.get("/delivery-modes/{mode_id}", response_model=DeliveryModeResponse)
+async def get_delivery_mode(mode_id: str):
+    """Get a delivery mode by ID."""
+    svc = get_governance_service()
+    result = svc.get_delivery_mode(mode_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Delivery mode not found")
+    return result
+
+
+@router.post("/delivery-modes", response_model=DeliveryModeResponse, status_code=201)
+async def create_delivery_mode(data: DeliveryModeCreate, _auth: CurrentUser = Depends(require_permission("deploy", "admin"))):
+    """Create a delivery mode. Requires deploy admin."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.create_delivery_mode(data.model_dump(), user)
+
+
+@router.put("/delivery-modes/{mode_id}", response_model=DeliveryModeResponse)
+async def update_delivery_mode(mode_id: str, data: DeliveryModeUpdate, _auth: CurrentUser = Depends(require_permission("deploy", "admin"))):
+    """Update a delivery mode. Requires deploy admin."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.update_delivery_mode(mode_id, data.model_dump(exclude_none=True), user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Delivery mode not found")
+    return result
+
+
+@router.delete("/delivery-modes/{mode_id}", status_code=204)
+async def delete_delivery_mode(mode_id: str, _auth: CurrentUser = Depends(require_permission("deploy", "admin"))):
+    """Delete a delivery mode and its records. Requires deploy admin."""
+    svc = get_governance_service()
+    svc.delete_delivery_mode(mode_id)
+
+
+@router.get("/delivery-records", response_model=list[DeliveryRecordResponse])
+async def list_delivery_records(
+    mode_id: str | None = Query(None),
+    status: str | None = Query(None),
+):
+    """List delivery records with optional filters."""
+    svc = get_governance_service()
+    return svc.list_delivery_records(mode_id=mode_id, status=status)
+
+
+@router.post("/delivery-records", response_model=DeliveryRecordResponse, status_code=201)
+async def create_delivery_record(data: DeliveryRecordCreate, _auth: CurrentUser = Depends(require_permission("deploy", "write"))):
+    """Create a delivery record (request a deployment). Requires deploy write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.create_delivery_record(data.model_dump(), user)
+
+
+@router.put("/delivery-records/{record_id}/transition", response_model=DeliveryRecordResponse)
+async def transition_delivery_record(
+    record_id: str,
+    new_status: str = Query(..., description="pending|approved|in_progress|completed|failed|rejected"),
+    _auth: CurrentUser = Depends(require_permission("deploy", "write")),
+):
+    """Transition a delivery record status. Requires deploy write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.transition_delivery_record(record_id, new_status, user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Delivery record not found")
+    return result

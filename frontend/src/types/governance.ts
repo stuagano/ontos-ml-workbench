@@ -514,3 +514,51 @@ export interface MarketplaceSearchParams {
   limit?: number;
   offset?: number;
 }
+
+// ============================================================================
+// Delivery Modes (G12)
+// ============================================================================
+
+export type DeliveryModeType = "direct" | "indirect" | "manual";
+export type DeliveryRecordStatus = "pending" | "approved" | "in_progress" | "completed" | "failed" | "rejected";
+
+export interface DeliveryMode {
+  id: string;
+  name: string;
+  description: string | null;
+  mode_type: DeliveryModeType;
+  is_default: boolean;
+  requires_approval: boolean;
+  approved_roles: string[] | null;
+  git_repo_url: string | null;
+  git_branch: string | null;
+  git_path: string | null;
+  yaml_template: string | null;
+  manual_instructions: string | null;
+  environment: string | null;
+  config: Record<string, unknown> | null;
+  is_active: boolean;
+  delivery_count: number;
+  created_at: string | null;
+  created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export interface DeliveryRecord {
+  id: string;
+  delivery_mode_id: string;
+  delivery_mode_name: string | null;
+  mode_type: string | null;
+  model_name: string;
+  model_version: string | null;
+  endpoint_name: string | null;
+  status: DeliveryRecordStatus;
+  requested_by: string;
+  requested_at: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  completed_at: string | null;
+  notes: string | null;
+  result: Record<string, unknown> | null;
+}

@@ -48,6 +48,8 @@ import {
   Type,
   CheckCircle2,
   AlertCircle,
+  Truck,
+  Clock,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -117,6 +119,12 @@ import {
   deleteNamingConvention,
   toggleNamingConvention,
   validateName,
+  listDeliveryModes,
+  createDeliveryMode,
+  deleteDeliveryMode,
+  listDeliveryRecords,
+  createDeliveryRecord,
+  transitionDeliveryRecord,
 } from "../services/governance";
 import { useToast } from "../components/Toast";
 import type {
@@ -138,9 +146,10 @@ import type {
   SemanticLinkType,
   SemanticModelStatus,
   NamingEntityType,
+  DeliveryModeType,
 } from "../types/governance";
 
-type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows" | "products" | "semantic" | "naming";
+type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows" | "products" | "semantic" | "naming" | "delivery";
 
 interface GovernancePageProps {
   onClose: () => void;
@@ -4236,6 +4245,425 @@ function NamingConventionsTab() {
 }
 
 // ============================================================================
+// Delivery Modes Tab (G12)
+// ============================================================================
+
+const MODE_TYPE_CONFIG: Record<string, { label: string; color: string; bg: string; description: string }> = {
+  direct: { label: "Direct", color: "text-blue-700", bg: "bg-blue-100", description: "Deploy directly via SDK" },
+  indirect: { label: "GitOps", color: "text-purple-700", bg: "bg-purple-100", description: "Push config to Git repo" },
+  manual: { label: "Manual", color: "text-amber-700", bg: "bg-amber-100", description: "Manual deployment steps" },
+};
+
+const RECORD_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  pending: { label: "Pending", color: "text-gray-700", bg: "bg-gray-100" },
+  approved: { label: "Approved", color: "text-blue-700", bg: "bg-blue-100" },
+  in_progress: { label: "In Progress", color: "text-amber-700", bg: "bg-amber-100" },
+  completed: { label: "Completed", color: "text-green-700", bg: "bg-green-100" },
+  failed: { label: "Failed", color: "text-red-700", bg: "bg-red-100" },
+  rejected: { label: "Rejected", color: "text-red-700", bg: "bg-red-100" },
+};
+
+function DeliveryModesTab() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [showCreateMode, setShowCreateMode] = useState(false);
+  const [showCreateRecord, setShowCreateRecord] = useState(false);
+  const [newMode, setNewMode] = useState({
+    name: "", description: "", mode_type: "direct" as DeliveryModeType,
+    requires_approval: false, environment: "dev",
+    git_repo_url: "", git_branch: "main", git_path: "",
+    manual_instructions: "",
+  });
+  const [newRecord, setNewRecord] = useState({
+    delivery_mode_id: "", model_name: "", model_version: "", endpoint_name: "", notes: "",
+  });
+
+  const { data: modes = [] } = useQuery({
+    queryKey: ["delivery-modes"],
+    queryFn: () => listDeliveryModes(),
+  });
+
+  const { data: records = [] } = useQuery({
+    queryKey: ["delivery-records"],
+    queryFn: () => listDeliveryRecords(),
+  });
+
+  const createModeMutation = useMutation({
+    mutationFn: () => createDeliveryMode(newMode),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["delivery-modes"] });
+      setShowCreateMode(false);
+      setNewMode({ name: "", description: "", mode_type: "direct", requires_approval: false, environment: "dev", git_repo_url: "", git_branch: "main", git_path: "", manual_instructions: "" });
+      toast.success("Delivery mode created");
+    },
+  });
+
+  const deleteModeMutation = useMutation({
+    mutationFn: (id: string) => deleteDeliveryMode(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["delivery-modes"] });
+      queryClient.invalidateQueries({ queryKey: ["delivery-records"] });
+      toast.success("Delivery mode deleted");
+    },
+  });
+
+  const createRecordMutation = useMutation({
+    mutationFn: () => createDeliveryRecord(newRecord),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["delivery-records"] });
+      setShowCreateRecord(false);
+      setNewRecord({ delivery_mode_id: "", model_name: "", model_version: "", endpoint_name: "", notes: "" });
+      toast.success("Delivery record created");
+    },
+  });
+
+  const transitionMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => transitionDeliveryRecord(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["delivery-records"] });
+    },
+  });
+
+  return (
+    <div className="space-y-8">
+      {/* Delivery Modes */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Delivery Modes</h2>
+          <button
+            onClick={() => setShowCreateMode(!showCreateMode)}
+            className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+          >
+            <Plus className="w-4 h-4" />
+            Add Mode
+          </button>
+        </div>
+
+        {/* Create Mode Form */}
+        {showCreateMode && (
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                value={newMode.name}
+                onChange={(e) => setNewMode({ ...newMode, name: e.target.value })}
+                placeholder="Mode name"
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800"
+              />
+              <select
+                value={newMode.mode_type}
+                onChange={(e) => setNewMode({ ...newMode, mode_type: e.target.value as DeliveryModeType })}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800"
+              >
+                <option value="direct">Direct (SDK)</option>
+                <option value="indirect">Indirect (GitOps)</option>
+                <option value="manual">Manual</option>
+              </select>
+            </div>
+            <textarea
+              value={newMode.description}
+              onChange={(e) => setNewMode({ ...newMode, description: e.target.value })}
+              placeholder="Description"
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800"
+            />
+            <div className="grid grid-cols-3 gap-3">
+              <select
+                value={newMode.environment}
+                onChange={(e) => setNewMode({ ...newMode, environment: e.target.value })}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800"
+              >
+                <option value="dev">Development</option>
+                <option value="staging">Staging</option>
+                <option value="production">Production</option>
+              </select>
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={newMode.requires_approval}
+                  onChange={(e) => setNewMode({ ...newMode, requires_approval: e.target.checked })}
+                />
+                Requires Approval
+              </label>
+            </div>
+            {newMode.mode_type === "indirect" && (
+              <div className="grid grid-cols-3 gap-3">
+                <input
+                  value={newMode.git_repo_url}
+                  onChange={(e) => setNewMode({ ...newMode, git_repo_url: e.target.value })}
+                  placeholder="Git repo URL"
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800"
+                />
+                <input
+                  value={newMode.git_branch}
+                  onChange={(e) => setNewMode({ ...newMode, git_branch: e.target.value })}
+                  placeholder="Branch"
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800"
+                />
+                <input
+                  value={newMode.git_path}
+                  onChange={(e) => setNewMode({ ...newMode, git_path: e.target.value })}
+                  placeholder="Config path"
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800"
+                />
+              </div>
+            )}
+            {newMode.mode_type === "manual" && (
+              <textarea
+                value={newMode.manual_instructions}
+                onChange={(e) => setNewMode({ ...newMode, manual_instructions: e.target.value })}
+                placeholder="Manual deployment instructions..."
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800"
+              />
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={() => createModeMutation.mutate()}
+                disabled={!newMode.name || createModeMutation.isPending}
+                className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
+              >
+                Create
+              </button>
+              <button
+                onClick={() => setShowCreateMode(false)}
+                className="px-3 py-1.5 text-gray-600 dark:text-gray-400 rounded text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Modes List */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {modes.map((mode) => {
+            const typeConfig = MODE_TYPE_CONFIG[mode.mode_type] || MODE_TYPE_CONFIG.direct;
+            return (
+              <div key={mode.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">{mode.name}</h3>
+                      {mode.is_default && (
+                        <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">default</span>
+                      )}
+                    </div>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${typeConfig.bg} ${typeConfig.color} mt-1`}>
+                      {typeConfig.label}
+                    </span>
+                  </div>
+                  {!mode.is_default && (
+                    <button
+                      onClick={() => deleteModeMutation.mutate(mode.id)}
+                      className="text-gray-400 hover:text-red-500"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                  {mode.description || typeConfig.description}
+                </p>
+                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                  {mode.environment && (
+                    <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">{mode.environment}</span>
+                  )}
+                  {mode.requires_approval && (
+                    <span className="flex items-center gap-1 text-amber-600">
+                      <Clock className="w-3 h-3" />
+                      Approval required
+                    </span>
+                  )}
+                  <span>{mode.delivery_count} deliveries</span>
+                </div>
+                {mode.mode_type === "indirect" && mode.git_repo_url && (
+                  <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 truncate">
+                    <GitBranch className="w-3 h-3 inline mr-1" />
+                    {mode.git_repo_url} ({mode.git_branch || "main"})
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Delivery Records */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Delivery Records</h2>
+          <button
+            onClick={() => setShowCreateRecord(!showCreateRecord)}
+            className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
+          >
+            <Plus className="w-4 h-4" />
+            New Delivery
+          </button>
+        </div>
+
+        {/* Create Record Form */}
+        {showCreateRecord && (
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <select
+                value={newRecord.delivery_mode_id}
+                onChange={(e) => setNewRecord({ ...newRecord, delivery_mode_id: e.target.value })}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800"
+              >
+                <option value="">Select delivery mode...</option>
+                {modes.filter((m) => m.is_active).map((m) => (
+                  <option key={m.id} value={m.id}>{m.name} ({MODE_TYPE_CONFIG[m.mode_type]?.label || m.mode_type})</option>
+                ))}
+              </select>
+              <input
+                value={newRecord.model_name}
+                onChange={(e) => setNewRecord({ ...newRecord, model_name: e.target.value })}
+                placeholder="Model name (catalog.schema.model)"
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                value={newRecord.model_version}
+                onChange={(e) => setNewRecord({ ...newRecord, model_version: e.target.value })}
+                placeholder="Model version (optional)"
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800"
+              />
+              <input
+                value={newRecord.endpoint_name}
+                onChange={(e) => setNewRecord({ ...newRecord, endpoint_name: e.target.value })}
+                placeholder="Endpoint name (optional)"
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800"
+              />
+            </div>
+            <textarea
+              value={newRecord.notes}
+              onChange={(e) => setNewRecord({ ...newRecord, notes: e.target.value })}
+              placeholder="Notes (optional)"
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => createRecordMutation.mutate()}
+                disabled={!newRecord.delivery_mode_id || !newRecord.model_name || createRecordMutation.isPending}
+                className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
+              >
+                Request Delivery
+              </button>
+              <button
+                onClick={() => setShowCreateRecord(false)}
+                className="px-3 py-1.5 text-gray-600 dark:text-gray-400 rounded text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Records Table */}
+        {records.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <Truck className="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+            <p>No delivery records yet</p>
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-900">
+                <tr>
+                  <th className="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400">Model</th>
+                  <th className="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400">Mode</th>
+                  <th className="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400">Status</th>
+                  <th className="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400">Requested</th>
+                  <th className="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {records.map((record) => {
+                  const statusConfig = RECORD_STATUS_CONFIG[record.status] || RECORD_STATUS_CONFIG.pending;
+                  const modeType = record.mode_type || "";
+                  const modeConfig = MODE_TYPE_CONFIG[modeType] || { label: modeType, color: "text-gray-700", bg: "bg-gray-100" };
+                  return (
+                    <tr key={record.id}>
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-gray-900 dark:text-gray-100">{record.model_name}</div>
+                        {record.model_version && (
+                          <div className="text-xs text-gray-500">v{record.model_version}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${modeConfig.bg} ${modeConfig.color}`}>
+                          {record.delivery_mode_name || modeConfig.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusConfig.bg} ${statusConfig.color}`}>
+                          {statusConfig.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                        {record.requested_by}
+                        <br />
+                        {record.requested_at ? new Date(record.requested_at).toLocaleDateString() : ""}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          {record.status === "pending" && (
+                            <>
+                              <button
+                                onClick={() => transitionMutation.mutate({ id: record.id, status: "approved" })}
+                                className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => transitionMutation.mutate({ id: record.id, status: "rejected" })}
+                                className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          {record.status === "approved" && (
+                            <button
+                              onClick={() => transitionMutation.mutate({ id: record.id, status: "in_progress" })}
+                              className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs hover:bg-amber-200"
+                            >
+                              Start
+                            </button>
+                          )}
+                          {record.status === "in_progress" && (
+                            <>
+                              <button
+                                onClick={() => transitionMutation.mutate({ id: record.id, status: "completed" })}
+                                className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
+                              >
+                                Complete
+                              </button>
+                              <button
+                                onClick={() => transitionMutation.mutate({ id: record.id, status: "failed" })}
+                                className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200"
+                              >
+                                Failed
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // Main Page
 // ============================================================================
 
@@ -4250,6 +4678,7 @@ const TABS: { id: TabId; label: string; icon: typeof Shield }[] = [
   { id: "products", label: "Products", icon: Package },
   { id: "semantic", label: "Semantic", icon: Brain },
   { id: "naming", label: "Naming", icon: Type },
+  { id: "delivery", label: "Delivery", icon: Truck },
 ];
 
 export function GovernancePage({ onClose }: GovernancePageProps) {
@@ -4310,6 +4739,7 @@ export function GovernancePage({ onClose }: GovernancePageProps) {
           {activeTab === "products" && <DataProductsTab />}
           {activeTab === "semantic" && <SemanticModelsTab />}
           {activeTab === "naming" && <NamingConventionsTab />}
+          {activeTab === "delivery" && <DeliveryModesTab />}
         </div>
       </div>
     </div>
