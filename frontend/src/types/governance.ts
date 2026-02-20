@@ -562,3 +562,147 @@ export interface DeliveryRecord {
   notes: string | null;
   result: Record<string, unknown> | null;
 }
+
+// ============================================================================
+// MCP Integration (G11)
+// ============================================================================
+
+export type MCPTokenScope = "read" | "read_write" | "admin";
+export type MCPToolCategory = "data" | "training" | "deployment" | "monitoring" | "governance" | "general";
+export type MCPInvocationStatus = "success" | "error" | "denied" | "rate_limited";
+
+export interface MCPToken {
+  id: string;
+  name: string;
+  description: string | null;
+  token_prefix: string;
+  scope: MCPTokenScope;
+  allowed_tools: string[] | null;
+  allowed_resources: string[] | null;
+  owner_email: string;
+  team_id: string | null;
+  team_name: string | null;
+  is_active: boolean;
+  expires_at: string | null;
+  last_used_at: string | null;
+  usage_count: number;
+  rate_limit_per_minute: number;
+  created_at: string | null;
+  created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export interface MCPTokenCreateResult {
+  token: MCPToken;
+  token_value: string;
+}
+
+export interface MCPTool {
+  id: string;
+  name: string;
+  description: string | null;
+  category: MCPToolCategory;
+  input_schema: Record<string, unknown> | null;
+  required_scope: MCPTokenScope;
+  required_permission: string | null;
+  is_active: boolean;
+  version: string;
+  endpoint_path: string | null;
+  created_at: string | null;
+  created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export interface MCPInvocation {
+  id: string;
+  token_id: string;
+  token_name: string | null;
+  tool_id: string;
+  tool_name: string | null;
+  input_params: Record<string, unknown> | null;
+  output_summary: string | null;
+  status: MCPInvocationStatus;
+  error_message: string | null;
+  duration_ms: number | null;
+  invoked_at: string | null;
+}
+
+export interface MCPStats {
+  total_tokens: number;
+  active_tokens: number;
+  total_tools: number;
+  active_tools: number;
+  total_invocations: number;
+  invocations_today: number;
+  invocations_by_status: Record<string, number>;
+  top_tools: { name: string; category: string; invocation_count: number }[];
+}
+
+// ============================================================================
+// Multi-Platform Connectors (G13)
+// ============================================================================
+
+export type ConnectorPlatform = "unity_catalog" | "snowflake" | "kafka" | "power_bi" | "s3" | "custom";
+export type ConnectorStatus = "active" | "inactive" | "error" | "testing";
+export type SyncDirection = "inbound" | "outbound" | "bidirectional";
+export type SyncStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
+
+export interface PlatformConnector {
+  id: string;
+  name: string;
+  description: string | null;
+  platform: ConnectorPlatform;
+  status: ConnectorStatus;
+  connection_config: Record<string, unknown> | null;
+  sync_direction: SyncDirection;
+  sync_schedule: string | null;
+  owner_email: string | null;
+  team_id: string | null;
+  team_name: string | null;
+  last_sync_at: string | null;
+  last_sync_status: string | null;
+  asset_count: number;
+  sync_count: number;
+  created_at: string | null;
+  created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export interface ConnectorAsset {
+  id: string;
+  connector_id: string;
+  external_id: string;
+  external_name: string;
+  asset_type: string;
+  local_reference: string | null;
+  metadata: Record<string, unknown> | null;
+  last_synced_at: string | null;
+  created_at: string | null;
+}
+
+export interface ConnectorSyncRecord {
+  id: string;
+  connector_id: string;
+  connector_name: string | null;
+  status: SyncStatus;
+  direction: SyncDirection;
+  assets_synced: number;
+  assets_failed: number;
+  error_message: string | null;
+  started_at: string | null;
+  started_by: string | null;
+  completed_at: string | null;
+  duration_ms: number | null;
+}
+
+export interface ConnectorStats {
+  total_connectors: number;
+  active_connectors: number;
+  total_assets: number;
+  total_syncs: number;
+  connectors_by_platform: Record<string, number>;
+  recent_syncs: ConnectorSyncRecord[];
+}

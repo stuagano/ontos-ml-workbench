@@ -50,6 +50,12 @@ import {
   AlertCircle,
   Truck,
   Clock,
+  Key,
+  Cpu,
+  Plug,
+  RefreshCw,
+  Eye,
+  Copy,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -125,6 +131,23 @@ import {
   listDeliveryRecords,
   createDeliveryRecord,
   transitionDeliveryRecord,
+  getMCPStats,
+  listMCPTokens,
+  createMCPToken,
+  revokeMCPToken,
+  deleteMCPToken,
+  listMCPTools,
+  createMCPTool,
+  deleteMCPTool,
+  listMCPInvocations,
+  getConnectorStats,
+  listConnectors,
+  createConnector,
+  deleteConnector,
+  testConnector,
+  listConnectorAssets,
+  syncConnector,
+  listConnectorSyncs,
 } from "../services/governance";
 import { useToast } from "../components/Toast";
 import type {
@@ -147,9 +170,13 @@ import type {
   SemanticModelStatus,
   NamingEntityType,
   DeliveryModeType,
+  MCPTokenScope,
+  MCPToolCategory,
+  ConnectorPlatform,
+  SyncDirection,
 } from "../types/governance";
 
-type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows" | "products" | "semantic" | "naming" | "delivery";
+type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows" | "products" | "semantic" | "naming" | "delivery" | "mcp" | "connectors";
 
 interface GovernancePageProps {
   onClose: () => void;
@@ -4664,6 +4691,650 @@ function DeliveryModesTab() {
 }
 
 // ============================================================================
+// MCP Integration Tab (G11)
+// ============================================================================
+
+const SCOPE_CONFIG: Record<MCPTokenScope, { label: string; color: string }> = {
+  read: { label: "Read", color: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400" },
+  read_write: { label: "Read/Write", color: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400" },
+  admin: { label: "Admin", color: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400" },
+};
+
+const TOOL_CATEGORY_CONFIG: Record<MCPToolCategory, { label: string; color: string }> = {
+  data: { label: "Data", color: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400" },
+  training: { label: "Training", color: "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400" },
+  deployment: { label: "Deploy", color: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400" },
+  monitoring: { label: "Monitor", color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-400" },
+  governance: { label: "Governance", color: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400" },
+  general: { label: "General", color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400" },
+};
+
+const INVOCATION_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  success: { label: "Success", color: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400" },
+  error: { label: "Error", color: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400" },
+  denied: { label: "Denied", color: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400" },
+  rate_limited: { label: "Rate Limited", color: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400" },
+};
+
+function MCPIntegrationTab() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [view, setView] = useState<"tokens" | "tools" | "invocations">("tokens");
+  const [showCreateToken, setShowCreateToken] = useState(false);
+  const [showCreateTool, setShowCreateTool] = useState(false);
+  const [revealedToken, setRevealedToken] = useState<string | null>(null);
+
+  // Token form state
+  const [tokenName, setTokenName] = useState("");
+  const [tokenDesc, setTokenDesc] = useState("");
+  const [tokenScope, setTokenScope] = useState<MCPTokenScope>("read");
+  const [tokenRateLimit, setTokenRateLimit] = useState(60);
+
+  // Tool form state
+  const [toolName, setToolName] = useState("");
+  const [toolDesc, setToolDesc] = useState("");
+  const [toolCategory, setToolCategory] = useState<MCPToolCategory>("general");
+  const [toolScope, setToolScope] = useState<MCPTokenScope>("read");
+  const [toolEndpoint, setToolEndpoint] = useState("");
+
+  const statsQ = useQuery({ queryKey: ["mcp-stats"], queryFn: getMCPStats });
+  const tokensQ = useQuery({ queryKey: ["mcp-tokens"], queryFn: () => listMCPTokens() });
+  const toolsQ = useQuery({ queryKey: ["mcp-tools"], queryFn: () => listMCPTools() });
+  const invocationsQ = useQuery({ queryKey: ["mcp-invocations"], queryFn: () => listMCPInvocations({ limit: 50 }) });
+
+  const createTokenMut = useMutation({
+    mutationFn: createMCPToken,
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["mcp-tokens"] });
+      qc.invalidateQueries({ queryKey: ["mcp-stats"] });
+      setRevealedToken(result.token_value);
+      setShowCreateToken(false);
+      setTokenName(""); setTokenDesc(""); setTokenScope("read"); setTokenRateLimit(60);
+      toast.success("MCP Token Created", "Copy the token value now — it won't be shown again");
+    },
+    onError: () => toast.error("Create Failed", "Failed to create MCP token"),
+  });
+
+  const revokeTokenMut = useMutation({
+    mutationFn: revokeMCPToken,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mcp-tokens"] });
+      qc.invalidateQueries({ queryKey: ["mcp-stats"] });
+      toast.success("Token Revoked");
+    },
+  });
+
+  const deleteTokenMut = useMutation({
+    mutationFn: deleteMCPToken,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mcp-tokens"] });
+      qc.invalidateQueries({ queryKey: ["mcp-stats"] });
+      toast.success("Token Deleted");
+    },
+  });
+
+  const createToolMut = useMutation({
+    mutationFn: createMCPTool,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mcp-tools"] });
+      qc.invalidateQueries({ queryKey: ["mcp-stats"] });
+      setShowCreateTool(false);
+      setToolName(""); setToolDesc(""); setToolCategory("general"); setToolScope("read"); setToolEndpoint("");
+      toast.success("Tool Registered");
+    },
+    onError: () => toast.error("Register Failed", "Failed to register MCP tool"),
+  });
+
+  const deleteToolMut = useMutation({
+    mutationFn: deleteMCPTool,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mcp-tools"] });
+      qc.invalidateQueries({ queryKey: ["mcp-stats"] });
+      toast.success("Tool Deleted");
+    },
+  });
+
+  const stats = statsQ.data;
+
+  return (
+    <div className="space-y-6">
+      {/* Stats Overview */}
+      {stats && (
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            { label: "Active Tokens", value: stats.active_tokens, total: stats.total_tokens, color: "text-amber-600" },
+            { label: "Active Tools", value: stats.active_tools, total: stats.total_tools, color: "text-blue-600" },
+            { label: "Total Invocations", value: stats.total_invocations, color: "text-green-600" },
+            { label: "Today", value: stats.invocations_today, color: "text-purple-600" },
+          ].map((s) => (
+            <div key={s.label} className="bg-white dark:bg-gray-900 rounded-lg border border-db-gray-200 dark:border-gray-700 p-4">
+              <div className="text-sm text-db-gray-500 dark:text-gray-400">{s.label}</div>
+              <div className={clsx("text-2xl font-bold", s.color)}>
+                {s.value}{s.total !== undefined ? <span className="text-sm text-db-gray-400 dark:text-gray-500"> / {s.total}</span> : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Revealed Token Banner */}
+      {revealedToken && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">New Token Created — Copy Now</p>
+              <code className="text-xs bg-amber-100 dark:bg-amber-900 px-2 py-1 rounded mt-1 inline-block font-mono">{revealedToken}</code>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { navigator.clipboard.writeText(revealedToken); toast.success("Copied"); }}
+                className="px-3 py-1 text-xs bg-amber-600 text-white rounded hover:bg-amber-700 flex items-center gap-1"
+              >
+                <Copy className="w-3 h-3" /> Copy
+              </button>
+              <button onClick={() => setRevealedToken(null)} className="px-3 py-1 text-xs text-amber-700 hover:text-amber-900 dark:text-amber-400">
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sub-navigation */}
+      <div className="flex gap-2 border-b border-db-gray-200 dark:border-gray-700 pb-2">
+        {([["tokens", "Tokens", Key], ["tools", "Tools", Wrench], ["invocations", "Audit Log", Eye]] as const).map(([id, label, Icon]) => (
+          <button
+            key={id}
+            onClick={() => setView(id)}
+            className={clsx(
+              "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg",
+              view === id ? "bg-white dark:bg-gray-900 border border-b-0 border-db-gray-200 dark:border-gray-700 text-amber-700 dark:text-amber-400" : "text-db-gray-500 hover:text-db-gray-700 dark:text-gray-400",
+            )}
+          >
+            <Icon className="w-4 h-4" /> {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tokens View */}
+      {view === "tokens" && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-db-gray-800 dark:text-white">MCP Tokens</h3>
+            <button
+              onClick={() => setShowCreateToken(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm"
+            >
+              <Plus className="w-4 h-4" /> Create Token
+            </button>
+          </div>
+
+          {showCreateToken && (
+            <div className="bg-white dark:bg-gray-900 border border-db-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <input value={tokenName} onChange={(e) => setTokenName(e.target.value)} placeholder="Token name *" className="px-3 py-2 border border-db-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-db-gray-800 dark:text-white" />
+                <select value={tokenScope} onChange={(e) => setTokenScope(e.target.value as MCPTokenScope)} className="px-3 py-2 border border-db-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-db-gray-800 dark:text-white">
+                  <option value="read">Read Only</option>
+                  <option value="read_write">Read/Write</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <input value={tokenDesc} onChange={(e) => setTokenDesc(e.target.value)} placeholder="Description" className="w-full px-3 py-2 border border-db-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-db-gray-800 dark:text-white" />
+              <div className="flex items-center gap-3">
+                <label className="text-sm text-db-gray-600 dark:text-gray-400">Rate limit (req/min):</label>
+                <input type="number" value={tokenRateLimit} onChange={(e) => setTokenRateLimit(Number(e.target.value))} min={1} max={1000} className="w-24 px-3 py-2 border border-db-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-db-gray-800 dark:text-white" />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => createTokenMut.mutate({ name: tokenName, description: tokenDesc || undefined, scope: tokenScope, rate_limit_per_minute: tokenRateLimit })}
+                  disabled={!tokenName.trim() || createTokenMut.isPending}
+                  className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm disabled:opacity-50"
+                >
+                  {createTokenMut.isPending ? "Creating..." : "Create"}
+                </button>
+                <button onClick={() => setShowCreateToken(false)} className="px-4 py-2 text-sm text-db-gray-600 hover:text-db-gray-800 dark:text-gray-400">Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {tokensQ.isLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-db-gray-400" /></div>
+          ) : (
+            <div className="space-y-3">
+              {(tokensQ.data ?? []).map((token) => (
+                <div key={token.id} className="bg-white dark:bg-gray-900 border border-db-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Key className={clsx("w-5 h-5", token.is_active ? "text-amber-500" : "text-gray-400")} />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-db-gray-800 dark:text-white">{token.name}</span>
+                          <code className="text-xs bg-db-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded font-mono">{token.token_prefix}...</code>
+                          <span className={clsx("px-2 py-0.5 rounded text-xs font-medium", SCOPE_CONFIG[token.scope as MCPTokenScope]?.color ?? "bg-gray-100 text-gray-700")}>{SCOPE_CONFIG[token.scope as MCPTokenScope]?.label ?? token.scope}</span>
+                          {!token.is_active && <span className="px-2 py-0.5 rounded text-xs bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400">Revoked</span>}
+                        </div>
+                        <div className="text-xs text-db-gray-500 dark:text-gray-400 mt-0.5">
+                          Owner: {token.owner_email} · Used {token.usage_count}x · Rate: {token.rate_limit_per_minute}/min
+                          {token.last_used_at && ` · Last used: ${new Date(token.last_used_at).toLocaleDateString()}`}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      {token.is_active && (
+                        <button onClick={() => revokeTokenMut.mutate(token.id)} className="p-1.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded" title="Revoke">
+                          <Ban className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button onClick={() => deleteTokenMut.mutate(token.id)} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded" title="Delete">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {(tokensQ.data ?? []).length === 0 && (
+                <p className="text-center py-8 text-db-gray-500 dark:text-gray-400">No MCP tokens. Create one to enable AI assistant access.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tools View */}
+      {view === "tools" && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-db-gray-800 dark:text-white">Registered Tools</h3>
+            <button
+              onClick={() => setShowCreateTool(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm"
+            >
+              <Plus className="w-4 h-4" /> Register Tool
+            </button>
+          </div>
+
+          {showCreateTool && (
+            <div className="bg-white dark:bg-gray-900 border border-db-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <input value={toolName} onChange={(e) => setToolName(e.target.value)} placeholder="Tool name *" className="px-3 py-2 border border-db-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-db-gray-800 dark:text-white" />
+                <select value={toolCategory} onChange={(e) => setToolCategory(e.target.value as MCPToolCategory)} className="px-3 py-2 border border-db-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-db-gray-800 dark:text-white">
+                  {(Object.keys(TOOL_CATEGORY_CONFIG) as MCPToolCategory[]).map((c) => (
+                    <option key={c} value={c}>{TOOL_CATEGORY_CONFIG[c].label}</option>
+                  ))}
+                </select>
+              </div>
+              <input value={toolDesc} onChange={(e) => setToolDesc(e.target.value)} placeholder="Description" className="w-full px-3 py-2 border border-db-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-db-gray-800 dark:text-white" />
+              <div className="grid grid-cols-2 gap-3">
+                <select value={toolScope} onChange={(e) => setToolScope(e.target.value as MCPTokenScope)} className="px-3 py-2 border border-db-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-db-gray-800 dark:text-white">
+                  <option value="read">Required: Read</option>
+                  <option value="read_write">Required: Read/Write</option>
+                  <option value="admin">Required: Admin</option>
+                </select>
+                <input value={toolEndpoint} onChange={(e) => setToolEndpoint(e.target.value)} placeholder="Endpoint path (e.g., /api/v1/sheets/)" className="px-3 py-2 border border-db-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-db-gray-800 dark:text-white" />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => createToolMut.mutate({ name: toolName, description: toolDesc || undefined, category: toolCategory, required_scope: toolScope, endpoint_path: toolEndpoint || undefined })}
+                  disabled={!toolName.trim() || createToolMut.isPending}
+                  className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm disabled:opacity-50"
+                >
+                  {createToolMut.isPending ? "Registering..." : "Register"}
+                </button>
+                <button onClick={() => setShowCreateTool(false)} className="px-4 py-2 text-sm text-db-gray-600 hover:text-db-gray-800 dark:text-gray-400">Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {toolsQ.isLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-db-gray-400" /></div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {(toolsQ.data ?? []).map((tool) => (
+                <div key={tool.id} className="bg-white dark:bg-gray-900 border border-db-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Wrench className="w-4 h-4 text-blue-500" />
+                      <span className="font-medium text-sm text-db-gray-800 dark:text-white">{tool.name}</span>
+                    </div>
+                    <button onClick={() => deleteToolMut.mutate(tool.id)} className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded" title="Delete">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {tool.description && <p className="text-xs text-db-gray-500 dark:text-gray-400 mb-2">{tool.description}</p>}
+                  <div className="flex flex-wrap gap-1">
+                    <span className={clsx("px-2 py-0.5 rounded text-xs font-medium", TOOL_CATEGORY_CONFIG[tool.category as MCPToolCategory]?.color ?? "bg-gray-100 text-gray-700")}>{TOOL_CATEGORY_CONFIG[tool.category as MCPToolCategory]?.label ?? tool.category}</span>
+                    <span className={clsx("px-2 py-0.5 rounded text-xs font-medium", SCOPE_CONFIG[tool.required_scope as MCPTokenScope]?.color ?? "bg-gray-100 text-gray-700")}>Requires: {SCOPE_CONFIG[tool.required_scope as MCPTokenScope]?.label ?? tool.required_scope}</span>
+                    {tool.endpoint_path && <span className="px-2 py-0.5 rounded text-xs bg-db-gray-100 dark:bg-gray-800 font-mono text-db-gray-600 dark:text-gray-400">{tool.endpoint_path}</span>}
+                    {!tool.is_active && <span className="px-2 py-0.5 rounded text-xs bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400">Disabled</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Invocations View */}
+      {view === "invocations" && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-db-gray-800 dark:text-white">Invocation Audit Log</h3>
+          {invocationsQ.isLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-db-gray-400" /></div>
+          ) : (
+            <div className="bg-white dark:bg-gray-900 border border-db-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-db-gray-50 dark:bg-gray-800">
+                  <tr>
+                    <th className="text-left px-4 py-2 font-medium text-db-gray-600 dark:text-gray-400">Tool</th>
+                    <th className="text-left px-4 py-2 font-medium text-db-gray-600 dark:text-gray-400">Token</th>
+                    <th className="text-left px-4 py-2 font-medium text-db-gray-600 dark:text-gray-400">Status</th>
+                    <th className="text-left px-4 py-2 font-medium text-db-gray-600 dark:text-gray-400">Duration</th>
+                    <th className="text-left px-4 py-2 font-medium text-db-gray-600 dark:text-gray-400">Time</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-db-gray-100 dark:divide-gray-800">
+                  {(invocationsQ.data ?? []).map((inv) => {
+                    const statusCfg = INVOCATION_STATUS_CONFIG[inv.status] ?? { label: inv.status, color: "bg-gray-100 text-gray-700" };
+                    return (
+                      <tr key={inv.id}>
+                        <td className="px-4 py-2 text-db-gray-800 dark:text-white">{inv.tool_name ?? inv.tool_id}</td>
+                        <td className="px-4 py-2 text-db-gray-600 dark:text-gray-400">{inv.token_name ?? inv.token_id}</td>
+                        <td className="px-4 py-2">
+                          <span className={clsx("px-2 py-0.5 rounded text-xs font-medium", statusCfg.color)}>{statusCfg.label}</span>
+                        </td>
+                        <td className="px-4 py-2 text-db-gray-600 dark:text-gray-400">{inv.duration_ms != null ? `${inv.duration_ms}ms` : "—"}</td>
+                        <td className="px-4 py-2 text-db-gray-500 dark:text-gray-400 text-xs">{inv.invoked_at ? new Date(inv.invoked_at).toLocaleString() : "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {(invocationsQ.data ?? []).length === 0 && (
+                <p className="text-center py-8 text-db-gray-500 dark:text-gray-400">No invocations recorded yet.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Multi-Platform Connectors Tab (G13)
+// ============================================================================
+
+const PLATFORM_CONFIG: Record<ConnectorPlatform, { label: string; color: string; icon: string }> = {
+  unity_catalog: { label: "Unity Catalog", color: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400", icon: "UC" },
+  snowflake: { label: "Snowflake", color: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400", icon: "SF" },
+  kafka: { label: "Kafka", color: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400", icon: "KF" },
+  power_bi: { label: "Power BI", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-400", icon: "PB" },
+  s3: { label: "S3", color: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400", icon: "S3" },
+  custom: { label: "Custom", color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400", icon: "?" },
+};
+
+const DIRECTION_CONFIG: Record<SyncDirection, { label: string; color: string }> = {
+  inbound: { label: "Inbound", color: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400" },
+  outbound: { label: "Outbound", color: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400" },
+  bidirectional: { label: "Bidirectional", color: "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400" },
+};
+
+const CONNECTOR_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  active: { label: "Active", color: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400" },
+  inactive: { label: "Inactive", color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400" },
+  error: { label: "Error", color: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400" },
+  testing: { label: "Testing", color: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400" },
+};
+
+const SYNC_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  pending: { label: "Pending", color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400" },
+  running: { label: "Running", color: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400" },
+  completed: { label: "Completed", color: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400" },
+  failed: { label: "Failed", color: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400" },
+  cancelled: { label: "Cancelled", color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400" },
+};
+
+function ConnectorsTab() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [showCreate, setShowCreate] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Form state
+  const [name, setName] = useState("");
+  const [desc, setDesc] = useState("");
+  const [platform, setPlatform] = useState<ConnectorPlatform>("unity_catalog");
+  const [direction, setDirection] = useState<SyncDirection>("inbound");
+  const [schedule, setSchedule] = useState("");
+
+  const statsQ = useQuery({ queryKey: ["connector-stats"], queryFn: getConnectorStats });
+  const connectorsQ = useQuery({ queryKey: ["connectors"], queryFn: () => listConnectors() });
+  const assetsQ = useQuery({
+    queryKey: ["connector-assets", selectedId],
+    queryFn: () => listConnectorAssets(selectedId!),
+    enabled: !!selectedId,
+  });
+  const syncsQ = useQuery({ queryKey: ["connector-syncs"], queryFn: () => listConnectorSyncs() });
+
+  const createMut = useMutation({
+    mutationFn: createConnector,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["connectors"] });
+      qc.invalidateQueries({ queryKey: ["connector-stats"] });
+      setShowCreate(false);
+      setName(""); setDesc(""); setPlatform("unity_catalog"); setDirection("inbound"); setSchedule("");
+      toast.success("Connector Created");
+    },
+    onError: () => toast.error("Create Failed", "Failed to create connector"),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: deleteConnector,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["connectors"] });
+      qc.invalidateQueries({ queryKey: ["connector-stats"] });
+      if (selectedId) setSelectedId(null);
+      toast.success("Connector Deleted");
+    },
+  });
+
+  const testMut = useMutation({
+    mutationFn: testConnector,
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["connectors"] });
+      if (result.status === "active") {
+        toast.success("Connection Test Passed", result.message);
+      } else {
+        toast.error("Connection Test Failed", result.message);
+      }
+    },
+    onError: () => toast.error("Test Failed", "Connection test failed"),
+  });
+
+  const syncMut = useMutation({
+    mutationFn: syncConnector,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["connector-syncs"] });
+      qc.invalidateQueries({ queryKey: ["connectors"] });
+      qc.invalidateQueries({ queryKey: ["connector-assets", selectedId] });
+      toast.success("Sync Started");
+    },
+    onError: () => toast.error("Sync Failed"),
+  });
+
+  const stats = statsQ.data;
+
+  return (
+    <div className="space-y-6">
+      {/* Stats */}
+      {stats && (
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            { label: "Active Connectors", value: stats.active_connectors, total: stats.total_connectors, color: "text-green-600" },
+            { label: "Total Assets", value: stats.total_assets, color: "text-blue-600" },
+            { label: "Total Syncs", value: stats.total_syncs, color: "text-purple-600" },
+            { label: "Platforms", value: Object.keys(stats.connectors_by_platform).length, color: "text-amber-600" },
+          ].map((s) => (
+            <div key={s.label} className="bg-white dark:bg-gray-900 rounded-lg border border-db-gray-200 dark:border-gray-700 p-4">
+              <div className="text-sm text-db-gray-500 dark:text-gray-400">{s.label}</div>
+              <div className={clsx("text-2xl font-bold", s.color)}>
+                {s.value}{s.total !== undefined ? <span className="text-sm text-db-gray-400 dark:text-gray-500"> / {s.total}</span> : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Connector List + Detail */}
+      <div className="flex gap-6">
+        {/* Left: Connector List */}
+        <div className="flex-1 space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-db-gray-800 dark:text-white">Platform Connectors</h3>
+            <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm">
+              <Plus className="w-4 h-4" /> Add Connector
+            </button>
+          </div>
+
+          {showCreate && (
+            <div className="bg-white dark:bg-gray-900 border border-db-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Connector name *" className="px-3 py-2 border border-db-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-db-gray-800 dark:text-white" />
+                <select value={platform} onChange={(e) => setPlatform(e.target.value as ConnectorPlatform)} className="px-3 py-2 border border-db-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-db-gray-800 dark:text-white">
+                  {(Object.keys(PLATFORM_CONFIG) as ConnectorPlatform[]).map((p) => (
+                    <option key={p} value={p}>{PLATFORM_CONFIG[p].label}</option>
+                  ))}
+                </select>
+              </div>
+              <input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Description" className="w-full px-3 py-2 border border-db-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-db-gray-800 dark:text-white" />
+              <div className="grid grid-cols-2 gap-3">
+                <select value={direction} onChange={(e) => setDirection(e.target.value as SyncDirection)} className="px-3 py-2 border border-db-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-db-gray-800 dark:text-white">
+                  <option value="inbound">Inbound</option>
+                  <option value="outbound">Outbound</option>
+                  <option value="bidirectional">Bidirectional</option>
+                </select>
+                <input value={schedule} onChange={(e) => setSchedule(e.target.value)} placeholder="Sync schedule (cron, optional)" className="px-3 py-2 border border-db-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-db-gray-800 dark:text-white" />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => createMut.mutate({ name, description: desc || undefined, platform, sync_direction: direction, sync_schedule: schedule || undefined })}
+                  disabled={!name.trim() || createMut.isPending}
+                  className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm disabled:opacity-50"
+                >
+                  {createMut.isPending ? "Creating..." : "Create"}
+                </button>
+                <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-db-gray-600 hover:text-db-gray-800 dark:text-gray-400">Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {connectorsQ.isLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-db-gray-400" /></div>
+          ) : (
+            <div className="space-y-3">
+              {(connectorsQ.data ?? []).map((conn) => {
+                const pCfg = PLATFORM_CONFIG[conn.platform as ConnectorPlatform] ?? PLATFORM_CONFIG.custom;
+                const sCfg = CONNECTOR_STATUS_CONFIG[conn.status] ?? CONNECTOR_STATUS_CONFIG.inactive;
+                const dCfg = DIRECTION_CONFIG[conn.sync_direction as SyncDirection] ?? DIRECTION_CONFIG.inbound;
+                return (
+                  <div
+                    key={conn.id}
+                    onClick={() => setSelectedId(conn.id === selectedId ? null : conn.id)}
+                    className={clsx(
+                      "bg-white dark:bg-gray-900 border rounded-lg p-4 cursor-pointer transition-colors",
+                      conn.id === selectedId ? "border-amber-400 dark:border-amber-600" : "border-db-gray-200 dark:border-gray-700 hover:border-db-gray-300",
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={clsx("w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold", pCfg.color)}>{pCfg.icon}</div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-db-gray-800 dark:text-white">{conn.name}</span>
+                            <span className={clsx("px-2 py-0.5 rounded text-xs font-medium", sCfg.color)}>{sCfg.label}</span>
+                            <span className={clsx("px-2 py-0.5 rounded text-xs font-medium", dCfg.color)}>{dCfg.label}</span>
+                          </div>
+                          <div className="text-xs text-db-gray-500 dark:text-gray-400">
+                            {pCfg.label} · {conn.asset_count} assets · {conn.sync_count} syncs
+                            {conn.last_sync_at && ` · Last sync: ${new Date(conn.last_sync_at).toLocaleDateString()}`}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button onClick={(e) => { e.stopPropagation(); testMut.mutate(conn.id); }} className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded" title="Test">
+                          <Zap className="w-4 h-4" />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); syncMut.mutate(conn.id); }} className="p-1.5 text-green-500 hover:bg-green-50 dark:hover:bg-green-950/30 rounded" title="Sync">
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); deleteMut.mutate(conn.id); }} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded" title="Delete">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {(connectorsQ.data ?? []).length === 0 && (
+                <p className="text-center py-8 text-db-gray-500 dark:text-gray-400">No connectors configured. Add one to integrate external platforms.</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Right: Detail Panel */}
+        {selectedId && (
+          <div className="w-96 space-y-4">
+            <h4 className="text-sm font-semibold text-db-gray-700 dark:text-gray-300">Synced Assets</h4>
+            {assetsQ.isLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-db-gray-400" /></div>
+            ) : (
+              <div className="space-y-2 max-h-[400px] overflow-auto">
+                {(assetsQ.data ?? []).map((asset) => (
+                  <div key={asset.id} className="bg-white dark:bg-gray-900 border border-db-gray-200 dark:border-gray-700 rounded p-3">
+                    <div className="text-sm font-medium text-db-gray-800 dark:text-white">{asset.external_name}</div>
+                    <div className="text-xs text-db-gray-500 dark:text-gray-400">
+                      {asset.asset_type} · ID: {asset.external_id}
+                      {asset.last_synced_at && ` · Synced: ${new Date(asset.last_synced_at).toLocaleDateString()}`}
+                    </div>
+                  </div>
+                ))}
+                {(assetsQ.data ?? []).length === 0 && (
+                  <p className="text-sm text-db-gray-500 dark:text-gray-400">No assets synced yet. Run a sync to discover assets.</p>
+                )}
+              </div>
+            )}
+
+            <h4 className="text-sm font-semibold text-db-gray-700 dark:text-gray-300 pt-4">Recent Syncs</h4>
+            {syncsQ.isLoading ? (
+              <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-db-gray-400" /></div>
+            ) : (
+              <div className="space-y-2 max-h-[300px] overflow-auto">
+                {(syncsQ.data ?? []).filter((s) => s.connector_id === selectedId).slice(0, 10).map((sync) => {
+                  const ssCfg = SYNC_STATUS_CONFIG[sync.status] ?? SYNC_STATUS_CONFIG.pending;
+                  return (
+                    <div key={sync.id} className="bg-white dark:bg-gray-900 border border-db-gray-200 dark:border-gray-700 rounded p-3">
+                      <div className="flex items-center justify-between">
+                        <span className={clsx("px-2 py-0.5 rounded text-xs font-medium", ssCfg.color)}>{ssCfg.label}</span>
+                        <span className="text-xs text-db-gray-500 dark:text-gray-400">{sync.duration_ms != null ? `${sync.duration_ms}ms` : "—"}</span>
+                      </div>
+                      <div className="text-xs text-db-gray-500 dark:text-gray-400 mt-1">
+                        {sync.assets_synced} synced, {sync.assets_failed} failed
+                        {sync.started_at && ` · ${new Date(sync.started_at).toLocaleString()}`}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // Main Page
 // ============================================================================
 
@@ -4679,6 +5350,8 @@ const TABS: { id: TabId; label: string; icon: typeof Shield }[] = [
   { id: "semantic", label: "Semantic", icon: Brain },
   { id: "naming", label: "Naming", icon: Type },
   { id: "delivery", label: "Delivery", icon: Truck },
+  { id: "mcp", label: "MCP", icon: Cpu },
+  { id: "connectors", label: "Connectors", icon: Plug },
 ];
 
 export function GovernancePage({ onClose }: GovernancePageProps) {
@@ -4740,6 +5413,8 @@ export function GovernancePage({ onClose }: GovernancePageProps) {
           {activeTab === "semantic" && <SemanticModelsTab />}
           {activeTab === "naming" && <NamingConventionsTab />}
           {activeTab === "delivery" && <DeliveryModesTab />}
+          {activeTab === "mcp" && <MCPIntegrationTab />}
+          {activeTab === "connectors" && <ConnectorsTab />}
         </div>
       </div>
     </div>

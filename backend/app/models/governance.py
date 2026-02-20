@@ -1096,3 +1096,271 @@ class DeliveryRecordResponse(BaseModel):
     completed_at: datetime | None = None
     notes: str | None = None
     result: dict | None = None
+
+
+# ============================================================================
+# MCP Integration (G11)
+# ============================================================================
+
+class MCPTokenScope(str, Enum):
+    read = "read"
+    read_write = "read_write"
+    admin = "admin"
+
+
+class MCPToolCategory(str, Enum):
+    data = "data"
+    training = "training"
+    deployment = "deployment"
+    monitoring = "monitoring"
+    governance = "governance"
+    general = "general"
+
+
+class MCPInvocationStatus(str, Enum):
+    success = "success"
+    error = "error"
+    denied = "denied"
+    rate_limited = "rate_limited"
+
+
+class MCPTokenCreate(BaseModel):
+    """Create an MCP token."""
+    name: str
+    description: str | None = None
+    scope: MCPTokenScope = MCPTokenScope.read
+    allowed_tools: list[str] | None = None
+    allowed_resources: list[str] | None = None
+    team_id: str | None = None
+    expires_at: datetime | None = None
+    rate_limit_per_minute: int = 60
+
+
+class MCPTokenUpdate(BaseModel):
+    """Update an MCP token."""
+    name: str | None = None
+    description: str | None = None
+    scope: MCPTokenScope | None = None
+    allowed_tools: list[str] | None = None
+    allowed_resources: list[str] | None = None
+    is_active: bool | None = None
+    expires_at: datetime | None = None
+    rate_limit_per_minute: int | None = None
+
+
+class MCPTokenResponse(BaseModel):
+    """MCP token response (never includes token value)."""
+    id: str
+    name: str
+    description: str | None = None
+    token_prefix: str
+    scope: str
+    allowed_tools: list[str] | None = None
+    allowed_resources: list[str] | None = None
+    owner_email: str
+    team_id: str | None = None
+    team_name: str | None = None
+    is_active: bool = True
+    expires_at: datetime | None = None
+    last_used_at: datetime | None = None
+    usage_count: int = 0
+    rate_limit_per_minute: int = 60
+    created_at: datetime | None = None
+    created_by: str | None = None
+    updated_at: datetime | None = None
+    updated_by: str | None = None
+
+
+class MCPTokenCreateResult(BaseModel):
+    """Result of token creation — includes plain-text token value (shown once)."""
+    token: MCPTokenResponse
+    token_value: str
+
+
+class MCPToolCreate(BaseModel):
+    """Create/register an MCP tool."""
+    name: str
+    description: str | None = None
+    category: MCPToolCategory = MCPToolCategory.general
+    input_schema: dict | None = None
+    required_scope: MCPTokenScope = MCPTokenScope.read
+    required_permission: str | None = None
+    endpoint_path: str | None = None
+    version: str = "1.0"
+
+
+class MCPToolUpdate(BaseModel):
+    """Update an MCP tool."""
+    name: str | None = None
+    description: str | None = None
+    category: MCPToolCategory | None = None
+    input_schema: dict | None = None
+    required_scope: MCPTokenScope | None = None
+    required_permission: str | None = None
+    is_active: bool | None = None
+    endpoint_path: str | None = None
+    version: str | None = None
+
+
+class MCPToolResponse(BaseModel):
+    """MCP tool response."""
+    id: str
+    name: str
+    description: str | None = None
+    category: str
+    input_schema: dict | None = None
+    required_scope: str
+    required_permission: str | None = None
+    is_active: bool = True
+    version: str = "1.0"
+    endpoint_path: str | None = None
+    created_at: datetime | None = None
+    created_by: str | None = None
+    updated_at: datetime | None = None
+    updated_by: str | None = None
+
+
+class MCPInvocationResponse(BaseModel):
+    """MCP invocation audit log entry."""
+    id: str
+    token_id: str
+    token_name: str | None = None
+    tool_id: str
+    tool_name: str | None = None
+    input_params: dict | None = None
+    output_summary: str | None = None
+    status: str
+    error_message: str | None = None
+    duration_ms: int | None = None
+    invoked_at: datetime | None = None
+
+
+class MCPStatsResponse(BaseModel):
+    """MCP integration statistics."""
+    total_tokens: int
+    active_tokens: int
+    total_tools: int
+    active_tools: int
+    total_invocations: int
+    invocations_today: int
+    invocations_by_status: dict[str, int]
+    top_tools: list[dict]
+
+
+# ============================================================================
+# Multi-Platform Connectors (G13)
+# ============================================================================
+
+class ConnectorPlatform(str, Enum):
+    unity_catalog = "unity_catalog"
+    snowflake = "snowflake"
+    kafka = "kafka"
+    power_bi = "power_bi"
+    s3 = "s3"
+    custom = "custom"
+
+
+class ConnectorStatus(str, Enum):
+    active = "active"
+    inactive = "inactive"
+    error = "error"
+    testing = "testing"
+
+
+class SyncDirection(str, Enum):
+    inbound = "inbound"
+    outbound = "outbound"
+    bidirectional = "bidirectional"
+
+
+class SyncStatus(str, Enum):
+    pending = "pending"
+    running = "running"
+    completed = "completed"
+    failed = "failed"
+    cancelled = "cancelled"
+
+
+class ConnectorCreate(BaseModel):
+    """Create a platform connector."""
+    name: str
+    description: str | None = None
+    platform: ConnectorPlatform
+    connection_config: dict | None = None
+    sync_direction: SyncDirection = SyncDirection.inbound
+    sync_schedule: str | None = None
+    team_id: str | None = None
+
+
+class ConnectorUpdate(BaseModel):
+    """Update a platform connector."""
+    name: str | None = None
+    description: str | None = None
+    connection_config: dict | None = None
+    sync_direction: SyncDirection | None = None
+    sync_schedule: str | None = None
+    status: ConnectorStatus | None = None
+    is_active: bool | None = None
+
+
+class ConnectorResponse(BaseModel):
+    """Platform connector response."""
+    id: str
+    name: str
+    description: str | None = None
+    platform: str
+    status: str
+    connection_config: dict | None = None
+    sync_direction: str
+    sync_schedule: str | None = None
+    owner_email: str | None = None
+    team_id: str | None = None
+    team_name: str | None = None
+    last_sync_at: datetime | None = None
+    last_sync_status: str | None = None
+    asset_count: int = 0
+    sync_count: int = 0
+    is_active: bool = True
+    created_at: datetime | None = None
+    created_by: str | None = None
+    updated_at: datetime | None = None
+    updated_by: str | None = None
+
+
+class ConnectorAssetResponse(BaseModel):
+    """Connector asset response."""
+    id: str
+    connector_id: str
+    external_id: str
+    external_name: str
+    asset_type: str
+    local_reference: str | None = None
+    metadata: dict | None = None
+    last_synced_at: datetime | None = None
+    created_at: datetime | None = None
+
+
+class ConnectorSyncResponse(BaseModel):
+    """Connector sync record response."""
+    id: str
+    connector_id: str
+    connector_name: str | None = None
+    status: str
+    direction: str
+    assets_synced: int = 0
+    assets_failed: int = 0
+    error_message: str | None = None
+    started_at: datetime | None = None
+    started_by: str | None = None
+    completed_at: datetime | None = None
+    duration_ms: int | None = None
+
+
+class ConnectorStatsResponse(BaseModel):
+    """Connector statistics."""
+    total_connectors: int
+    active_connectors: int
+    total_assets: int
+    total_syncs: int
+    connectors_by_platform: dict[str, int]
+    recent_syncs: list[dict]

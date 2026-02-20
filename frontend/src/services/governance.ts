@@ -51,6 +51,15 @@ import type {
   MarketplaceStats,
   DeliveryMode,
   DeliveryRecord,
+  MCPToken,
+  MCPTokenCreateResult,
+  MCPTool,
+  MCPInvocation,
+  MCPStats,
+  PlatformConnector,
+  ConnectorAsset,
+  ConnectorSyncRecord,
+  ConnectorStats,
 } from "../types/governance";
 
 const API_BASE = "/api/v1/governance";
@@ -936,4 +945,171 @@ export async function transitionDeliveryRecord(recordId: string, newStatus: stri
   return fetchJson(`${API_BASE}/delivery-records/${recordId}/transition?new_status=${encodeURIComponent(newStatus)}`, {
     method: "PUT",
   });
+}
+
+// ============================================================================
+// MCP Integration (G11)
+// ============================================================================
+
+export async function getMCPStats(): Promise<MCPStats> {
+  return fetchJson(`${API_BASE}/mcp/stats`);
+}
+
+export async function listMCPTokens(activeOnly = false): Promise<MCPToken[]> {
+  return fetchJson(`${API_BASE}/mcp/tokens?active_only=${activeOnly}`);
+}
+
+export async function getMCPToken(tokenId: string): Promise<MCPToken> {
+  return fetchJson(`${API_BASE}/mcp/tokens/${tokenId}`);
+}
+
+export async function createMCPToken(data: {
+  name: string;
+  description?: string;
+  scope?: string;
+  allowed_tools?: string[];
+  allowed_resources?: string[];
+  team_id?: string;
+  expires_at?: string;
+  rate_limit_per_minute?: number;
+}): Promise<MCPTokenCreateResult> {
+  return fetchJson(`${API_BASE}/mcp/tokens`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateMCPToken(tokenId: string, data: Partial<MCPToken>): Promise<MCPToken> {
+  return fetchJson(`${API_BASE}/mcp/tokens/${tokenId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function revokeMCPToken(tokenId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/mcp/tokens/${tokenId}/revoke`, { method: "PUT" });
+}
+
+export async function deleteMCPToken(tokenId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/mcp/tokens/${tokenId}`, { method: "DELETE" });
+}
+
+export async function listMCPTools(activeOnly = false, category?: string): Promise<MCPTool[]> {
+  const params = new URLSearchParams();
+  if (activeOnly) params.set("active_only", "true");
+  if (category) params.set("category", category);
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/mcp/tools${qs ? `?${qs}` : ""}`);
+}
+
+export async function getMCPTool(toolId: string): Promise<MCPTool> {
+  return fetchJson(`${API_BASE}/mcp/tools/${toolId}`);
+}
+
+export async function createMCPTool(data: {
+  name: string;
+  description?: string;
+  category?: string;
+  input_schema?: Record<string, unknown>;
+  required_scope?: string;
+  required_permission?: string;
+  endpoint_path?: string;
+  version?: string;
+}): Promise<MCPTool> {
+  return fetchJson(`${API_BASE}/mcp/tools`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateMCPTool(toolId: string, data: Partial<MCPTool>): Promise<MCPTool> {
+  return fetchJson(`${API_BASE}/mcp/tools/${toolId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteMCPTool(toolId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/mcp/tools/${toolId}`, { method: "DELETE" });
+}
+
+export async function listMCPInvocations(params?: {
+  token_id?: string;
+  tool_id?: string;
+  status?: string;
+  limit?: number;
+}): Promise<MCPInvocation[]> {
+  const qs = new URLSearchParams();
+  if (params?.token_id) qs.set("token_id", params.token_id);
+  if (params?.tool_id) qs.set("tool_id", params.tool_id);
+  if (params?.status) qs.set("status", params.status);
+  if (params?.limit) qs.set("limit", String(params.limit));
+  const qsStr = qs.toString();
+  return fetchJson(`${API_BASE}/mcp/invocations${qsStr ? `?${qsStr}` : ""}`);
+}
+
+// ============================================================================
+// Multi-Platform Connectors (G13)
+// ============================================================================
+
+export async function getConnectorStats(): Promise<ConnectorStats> {
+  return fetchJson(`${API_BASE}/connectors/stats`);
+}
+
+export async function listConnectors(activeOnly = false, platform?: string): Promise<PlatformConnector[]> {
+  const params = new URLSearchParams();
+  if (activeOnly) params.set("active_only", "true");
+  if (platform) params.set("platform", platform);
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/connectors${qs ? `?${qs}` : ""}`);
+}
+
+export async function getConnector(connectorId: string): Promise<PlatformConnector> {
+  return fetchJson(`${API_BASE}/connectors/${connectorId}`);
+}
+
+export async function createConnector(data: {
+  name: string;
+  description?: string;
+  platform: string;
+  connection_config?: Record<string, unknown>;
+  sync_direction?: string;
+  sync_schedule?: string;
+  team_id?: string;
+}): Promise<PlatformConnector> {
+  return fetchJson(`${API_BASE}/connectors`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateConnector(connectorId: string, data: Partial<PlatformConnector>): Promise<PlatformConnector> {
+  return fetchJson(`${API_BASE}/connectors/${connectorId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteConnector(connectorId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/connectors/${connectorId}`, { method: "DELETE" });
+}
+
+export async function testConnector(connectorId: string): Promise<{ status: string; message: string }> {
+  return fetchJson(`${API_BASE}/connectors/${connectorId}/test`, { method: "POST" });
+}
+
+export async function listConnectorAssets(connectorId: string): Promise<ConnectorAsset[]> {
+  return fetchJson(`${API_BASE}/connectors/${connectorId}/assets`);
+}
+
+export async function syncConnector(connectorId: string): Promise<ConnectorSyncRecord> {
+  return fetchJson(`${API_BASE}/connectors/${connectorId}/sync`, { method: "POST" });
+}
+
+export async function listConnectorSyncs(connectorId?: string, status?: string): Promise<ConnectorSyncRecord[]> {
+  const params = new URLSearchParams();
+  if (connectorId) params.set("connector_id", connectorId);
+  if (status) params.set("status", status);
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/connector-syncs${qs ? `?${qs}` : ""}`);
 }

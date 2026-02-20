@@ -57,6 +57,8 @@ SQL_FILES=(
     "33_semantic_models.sql"
     "34_naming_conventions.sql"
     "35_delivery_modes.sql"
+    "36_mcp_integration.sql"
+    "37_platform_connectors.sql"
     "99_validate_and_seed.sql"
 )
 

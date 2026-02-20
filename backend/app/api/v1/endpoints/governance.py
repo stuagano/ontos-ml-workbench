@@ -70,6 +70,21 @@ from app.models.governance import (
     DeliveryModeUpdate,
     DeliveryRecordCreate,
     DeliveryRecordResponse,
+    MCPTokenCreate,
+    MCPTokenCreateResult,
+    MCPTokenResponse,
+    MCPTokenUpdate,
+    MCPToolCreate,
+    MCPToolResponse,
+    MCPToolUpdate,
+    MCPInvocationResponse,
+    MCPStatsResponse,
+    ConnectorCreate,
+    ConnectorResponse,
+    ConnectorUpdate,
+    ConnectorAssetResponse,
+    ConnectorSyncResponse,
+    ConnectorStatsResponse,
 )
 from app.services.governance_service import get_governance_service
 
@@ -1170,3 +1185,229 @@ async def transition_delivery_record(
     if not result:
         raise HTTPException(status_code=404, detail="Delivery record not found")
     return result
+
+
+# ============================================================================
+# MCP Integration (G11)
+# ============================================================================
+
+
+@router.get("/mcp/stats", response_model=MCPStatsResponse)
+async def get_mcp_stats():
+    """Get MCP integration statistics."""
+    svc = get_governance_service()
+    return svc.get_mcp_stats()
+
+
+@router.get("/mcp/tokens", response_model=list[MCPTokenResponse])
+async def list_mcp_tokens(
+    active_only: bool = Query(False),
+    _auth: CurrentUser = Depends(require_permission("admin", "read")),
+):
+    """List MCP tokens. Requires admin read."""
+    svc = get_governance_service()
+    return svc.list_mcp_tokens(active_only=active_only)
+
+
+@router.get("/mcp/tokens/{token_id}", response_model=MCPTokenResponse)
+async def get_mcp_token(token_id: str, _auth: CurrentUser = Depends(require_permission("admin", "read"))):
+    """Get an MCP token by ID. Requires admin read."""
+    svc = get_governance_service()
+    result = svc.get_mcp_token(token_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="MCP token not found")
+    return result
+
+
+@router.post("/mcp/tokens", response_model=MCPTokenCreateResult, status_code=201)
+async def create_mcp_token(data: MCPTokenCreate, _auth: CurrentUser = Depends(require_permission("admin", "admin"))):
+    """Create an MCP token. Returns token value once. Requires admin admin."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.create_mcp_token(data.model_dump(), user)
+
+
+@router.put("/mcp/tokens/{token_id}", response_model=MCPTokenResponse)
+async def update_mcp_token(
+    token_id: str, data: MCPTokenUpdate,
+    _auth: CurrentUser = Depends(require_permission("admin", "admin")),
+):
+    """Update an MCP token. Requires admin admin."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.update_mcp_token(token_id, data.model_dump(exclude_unset=True), user)
+    if not result:
+        raise HTTPException(status_code=404, detail="MCP token not found")
+    return result
+
+
+@router.put("/mcp/tokens/{token_id}/revoke", response_model=dict)
+async def revoke_mcp_token(token_id: str, _auth: CurrentUser = Depends(require_permission("admin", "admin"))):
+    """Revoke (deactivate) an MCP token. Requires admin admin."""
+    user = get_db_user()
+    svc = get_governance_service()
+    svc.revoke_mcp_token(token_id, user)
+    return {"status": "revoked"}
+
+
+@router.delete("/mcp/tokens/{token_id}", status_code=204)
+async def delete_mcp_token(token_id: str, _auth: CurrentUser = Depends(require_permission("admin", "admin"))):
+    """Delete an MCP token. Requires admin admin."""
+    svc = get_governance_service()
+    svc.delete_mcp_token(token_id)
+
+
+@router.get("/mcp/tools", response_model=list[MCPToolResponse])
+async def list_mcp_tools(
+    active_only: bool = Query(False),
+    category: str | None = Query(None),
+):
+    """List registered MCP tools."""
+    svc = get_governance_service()
+    return svc.list_mcp_tools(active_only=active_only, category=category)
+
+
+@router.get("/mcp/tools/{tool_id}", response_model=MCPToolResponse)
+async def get_mcp_tool(tool_id: str):
+    """Get an MCP tool by ID."""
+    svc = get_governance_service()
+    result = svc.get_mcp_tool(tool_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="MCP tool not found")
+    return result
+
+
+@router.post("/mcp/tools", response_model=MCPToolResponse, status_code=201)
+async def create_mcp_tool(data: MCPToolCreate, _auth: CurrentUser = Depends(require_permission("admin", "admin"))):
+    """Register a new MCP tool. Requires admin admin."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.create_mcp_tool(data.model_dump(), user)
+
+
+@router.put("/mcp/tools/{tool_id}", response_model=MCPToolResponse)
+async def update_mcp_tool(
+    tool_id: str, data: MCPToolUpdate,
+    _auth: CurrentUser = Depends(require_permission("admin", "admin")),
+):
+    """Update an MCP tool. Requires admin admin."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.update_mcp_tool(tool_id, data.model_dump(exclude_unset=True), user)
+    if not result:
+        raise HTTPException(status_code=404, detail="MCP tool not found")
+    return result
+
+
+@router.delete("/mcp/tools/{tool_id}", status_code=204)
+async def delete_mcp_tool(tool_id: str, _auth: CurrentUser = Depends(require_permission("admin", "admin"))):
+    """Delete an MCP tool. Requires admin admin."""
+    svc = get_governance_service()
+    svc.delete_mcp_tool(tool_id)
+
+
+@router.get("/mcp/invocations", response_model=list[MCPInvocationResponse])
+async def list_mcp_invocations(
+    token_id: str | None = Query(None),
+    tool_id: str | None = Query(None),
+    status: str | None = Query(None),
+    limit: int = Query(100, ge=1, le=1000),
+    _auth: CurrentUser = Depends(require_permission("admin", "read")),
+):
+    """List MCP invocation audit log. Requires admin read."""
+    svc = get_governance_service()
+    return svc.list_mcp_invocations(token_id=token_id, tool_id=tool_id, status=status, limit=limit)
+
+
+# ============================================================================
+# Multi-Platform Connectors (G13)
+# ============================================================================
+
+
+@router.get("/connectors/stats", response_model=ConnectorStatsResponse)
+async def get_connector_stats():
+    """Get connector statistics."""
+    svc = get_governance_service()
+    return svc.get_connector_stats()
+
+
+@router.get("/connectors", response_model=list[ConnectorResponse])
+async def list_connectors(
+    active_only: bool = Query(False),
+    platform: str | None = Query(None),
+):
+    """List platform connectors."""
+    svc = get_governance_service()
+    return svc.list_connectors(active_only=active_only, platform=platform)
+
+
+@router.get("/connectors/{connector_id}", response_model=ConnectorResponse)
+async def get_connector(connector_id: str):
+    """Get a connector by ID."""
+    svc = get_governance_service()
+    result = svc.get_connector(connector_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Connector not found")
+    return result
+
+
+@router.post("/connectors", response_model=ConnectorResponse, status_code=201)
+async def create_connector(data: ConnectorCreate, _auth: CurrentUser = Depends(require_permission("admin", "admin"))):
+    """Create a platform connector. Requires admin admin."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.create_connector(data.model_dump(), user)
+
+
+@router.put("/connectors/{connector_id}", response_model=ConnectorResponse)
+async def update_connector(
+    connector_id: str, data: ConnectorUpdate,
+    _auth: CurrentUser = Depends(require_permission("admin", "admin")),
+):
+    """Update a connector. Requires admin admin."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.update_connector(connector_id, data.model_dump(exclude_unset=True), user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Connector not found")
+    return result
+
+
+@router.delete("/connectors/{connector_id}", status_code=204)
+async def delete_connector(connector_id: str, _auth: CurrentUser = Depends(require_permission("admin", "admin"))):
+    """Delete a connector. Requires admin admin."""
+    svc = get_governance_service()
+    svc.delete_connector(connector_id)
+
+
+@router.post("/connectors/{connector_id}/test", response_model=dict)
+async def test_connector(connector_id: str, _auth: CurrentUser = Depends(require_permission("admin", "write"))):
+    """Test a connector's connection. Requires admin write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.test_connector(connector_id, user)
+
+
+@router.get("/connectors/{connector_id}/assets", response_model=list[ConnectorAssetResponse])
+async def list_connector_assets(connector_id: str):
+    """List assets discovered by a connector."""
+    svc = get_governance_service()
+    return svc.list_connector_assets(connector_id)
+
+
+@router.post("/connectors/{connector_id}/sync", response_model=ConnectorSyncResponse)
+async def sync_connector(connector_id: str, _auth: CurrentUser = Depends(require_permission("admin", "write"))):
+    """Start a sync operation for a connector. Requires admin write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.sync_connector(connector_id, user)
+
+
+@router.get("/connector-syncs", response_model=list[ConnectorSyncResponse])
+async def list_connector_syncs(
+    connector_id: str | None = Query(None),
+    status: str | None = Query(None),
+):
+    """List connector sync records."""
+    svc = get_governance_service()
+    return svc.list_connector_syncs(connector_id=connector_id, status=status)
