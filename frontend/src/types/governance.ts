@@ -188,3 +188,60 @@ export interface DataContract {
   updated_by: string | null;
   activated_at: string | null;
 }
+
+// Compliance Policies (G6)
+
+export type PolicyCategory = "data_quality" | "access_control" | "retention" | "naming" | "lineage";
+export type PolicySeverity = "info" | "warning" | "critical";
+
+export interface PolicyRuleCondition {
+  field: string;
+  operator: string;
+  value: string | number | boolean;
+  message: string | null;
+}
+
+export interface PolicyScope {
+  catalog: string | null;
+  schema_name: string | null;
+  tables: string[] | null;
+  asset_types: string[] | null;
+}
+
+export interface CompliancePolicy {
+  id: string;
+  name: string;
+  description: string | null;
+  category: PolicyCategory;
+  severity: PolicySeverity;
+  status: "enabled" | "disabled";
+  rules: PolicyRuleCondition[];
+  scope: PolicyScope | null;
+  schedule: string | null;
+  owner_email: string | null;
+  created_at: string | null;
+  created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+  last_evaluation: PolicyEvaluation | null;
+}
+
+export interface PolicyEvaluationRuleResult {
+  rule_index: number;
+  passed: boolean;
+  actual_value: string | number | boolean | null;
+  message: string | null;
+}
+
+export interface PolicyEvaluation {
+  id: string;
+  policy_id: string;
+  status: "passed" | "failed" | "error";
+  total_checks: number;
+  passed_checks: number;
+  failed_checks: number;
+  results: PolicyEvaluationRuleResult[];
+  evaluated_at: string | null;
+  evaluated_by: string | null;
+  duration_ms: number | null;
+}

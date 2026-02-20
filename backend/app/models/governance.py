@@ -406,3 +406,104 @@ class DataContractResponse(BaseModel):
     updated_at: datetime | None = None
     updated_by: str | None = None
     activated_at: datetime | None = None
+
+
+# ============================================================================
+# Compliance Policies (G6)
+# ============================================================================
+
+
+class PolicyCategory(str, Enum):
+    DATA_QUALITY = "data_quality"
+    ACCESS_CONTROL = "access_control"
+    RETENTION = "retention"
+    NAMING = "naming"
+    LINEAGE = "lineage"
+
+
+class PolicySeverity(str, Enum):
+    INFO = "info"
+    WARNING = "warning"
+    CRITICAL = "critical"
+
+
+class PolicyRuleCondition(BaseModel):
+    """A single rule condition within a compliance policy."""
+    field: str = Field(..., description="Field or metric to check (e.g., completeness, row_count, column_exists)")
+    operator: str = Field(..., description="Comparison: >=, <=, ==, !=, >, <, contains, matches")
+    value: str | float | int | bool = Field(..., description="Expected value or threshold")
+    message: str | None = Field(None, description="Human-readable violation message")
+
+
+class PolicyScope(BaseModel):
+    """Scope defining what assets a policy applies to."""
+    catalog: str | None = Field(None, description="Unity Catalog catalog (or * for all)")
+    schema_name: str | None = Field(None, description="Schema name (or * for all)")
+    tables: list[str] | None = Field(None, description="Specific table names")
+    asset_types: list[str] | None = Field(None, description="Asset types: sheet, template, training_sheet, qa_pair")
+
+
+class CompliancePolicyCreate(BaseModel):
+    """Request body for creating a compliance policy."""
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = None
+    category: str = "data_quality"
+    severity: str = "warning"
+    rules: list[PolicyRuleCondition] = Field(..., min_length=1)
+    scope: PolicyScope | None = None
+    schedule: str | None = Field(None, description="Cron expression for scheduled runs")
+    owner_email: str | None = None
+
+
+class CompliancePolicyUpdate(BaseModel):
+    """Request body for updating a compliance policy."""
+    name: str | None = None
+    description: str | None = None
+    category: str | None = None
+    severity: str | None = None
+    status: str | None = None
+    rules: list[PolicyRuleCondition] | None = None
+    scope: PolicyScope | None = None
+    schedule: str | None = None
+    owner_email: str | None = None
+
+
+class CompliancePolicyResponse(BaseModel):
+    """Compliance policy response model."""
+    id: str
+    name: str
+    description: str | None = None
+    category: str = "data_quality"
+    severity: str = "warning"
+    status: str = "enabled"
+    rules: list[PolicyRuleCondition] = Field(default_factory=list)
+    scope: PolicyScope | None = None
+    schedule: str | None = None
+    owner_email: str | None = None
+    created_at: datetime | None = None
+    created_by: str | None = None
+    updated_at: datetime | None = None
+    updated_by: str | None = None
+    last_evaluation: dict | None = Field(None, description="Most recent evaluation summary")
+
+
+class PolicyEvaluationRuleResult(BaseModel):
+    """Result for a single rule within an evaluation."""
+    rule_index: int
+    passed: bool
+    actual_value: str | float | int | bool | None = None
+    message: str | None = None
+
+
+class PolicyEvaluationResponse(BaseModel):
+    """Policy evaluation result."""
+    id: str
+    policy_id: str
+    status: str
+    total_checks: int = 0
+    passed_checks: int = 0
+    failed_checks: int = 0
+    results: list[PolicyEvaluationRuleResult] = Field(default_factory=list)
+    evaluated_at: datetime | None = None
+    evaluated_by: str | None = None
+    duration_ms: int | None = None

@@ -737,6 +737,202 @@ class GovernanceService:
             "terms": json.loads(terms) if terms else None,
         }
 
+    # ========================================================================
+    # Compliance Policies (G6)
+    # ========================================================================
+
+    def list_policies(self, category: str | None = None, status: str | None = None) -> list[dict]:
+        where = []
+        if category:
+            where.append(f"p.category = '{_esc(category)}'")
+        if status:
+            where.append(f"p.status = '{_esc(status)}'")
+        where_clause = f"WHERE {' AND '.join(where)}" if where else ""
+        rows = self.sql.execute(f"""
+            SELECT p.*
+            FROM {self._table('compliance_policies')} p
+            {where_clause}
+            ORDER BY p.severity DESC, p.name
+        """)
+        policies = [self._parse_policy(r) for r in rows]
+        # Attach latest evaluation summary to each policy
+        for policy in policies:
+            latest = self._get_latest_evaluation(policy["id"])
+            policy["last_evaluation"] = latest
+        return policies
+
+    def get_policy(self, policy_id: str) -> dict | None:
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('compliance_policies')} "
+            f"WHERE id = '{_esc(policy_id)}'"
+        )
+        if not rows:
+            return None
+        policy = self._parse_policy(rows[0])
+        policy["last_evaluation"] = self._get_latest_evaluation(policy_id)
+        return policy
+
+    def create_policy(self, data: dict, created_by: str) -> dict:
+        policy_id = str(uuid.uuid4())
+        rules_json = json.dumps(data["rules"]).replace("'", "''")
+        scope_json = json.dumps(data["scope"]).replace("'", "''") if data.get("scope") else None
+
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('compliance_policies')}
+            (id, name, description, category, severity, status, rules, scope,
+             schedule, owner_email, created_at, created_by, updated_at, updated_by)
+            VALUES (
+                '{policy_id}', '{_esc(data["name"])}',
+                {f"'{_esc(data['description'])}'" if data.get('description') else 'NULL'},
+                '{_esc(data.get("category", "data_quality"))}',
+                '{_esc(data.get("severity", "warning"))}',
+                'enabled', '{rules_json}',
+                {f"'{scope_json}'" if scope_json else 'NULL'},
+                {f"'{_esc(data['schedule'])}'" if data.get('schedule') else 'NULL'},
+                {f"'{_esc(data['owner_email'])}'" if data.get('owner_email') else 'NULL'},
+                current_timestamp(), '{_esc(created_by)}',
+                current_timestamp(), '{_esc(created_by)}'
+            )
+        """)
+        return self.get_policy(policy_id)
+
+    def update_policy(self, policy_id: str, data: dict, updated_by: str) -> dict | None:
+        updates = []
+        if data.get("name") is not None:
+            updates.append(f"name = '{_esc(data['name'])}'")
+        if data.get("description") is not None:
+            updates.append(f"description = '{_esc(data['description'])}'")
+        if data.get("category") is not None:
+            updates.append(f"category = '{_esc(data['category'])}'")
+        if data.get("severity") is not None:
+            updates.append(f"severity = '{_esc(data['severity'])}'")
+        if data.get("status") is not None:
+            updates.append(f"status = '{_esc(data['status'])}'")
+        if data.get("rules") is not None:
+            rules_json = json.dumps(data["rules"]).replace("'", "''")
+            updates.append(f"rules = '{rules_json}'")
+        if data.get("scope") is not None:
+            scope_json = json.dumps(data["scope"]).replace("'", "''")
+            updates.append(f"scope = '{scope_json}'")
+        if "schedule" in data:
+            sched_sql = f"'{_esc(data['schedule'])}'" if data["schedule"] else "NULL"
+            updates.append(f"schedule = {sched_sql}")
+        if data.get("owner_email") is not None:
+            updates.append(f"owner_email = '{_esc(data['owner_email'])}'")
+
+        if updates:
+            updates.append(f"updated_by = '{_esc(updated_by)}'")
+            updates.append("updated_at = current_timestamp()")
+            self.sql.execute_update(
+                f"UPDATE {self._table('compliance_policies')} SET {', '.join(updates)} "
+                f"WHERE id = '{_esc(policy_id)}'"
+            )
+        return self.get_policy(policy_id)
+
+    def toggle_policy(self, policy_id: str, enabled: bool, updated_by: str) -> dict | None:
+        new_status = "enabled" if enabled else "disabled"
+        self.sql.execute_update(
+            f"UPDATE {self._table('compliance_policies')} "
+            f"SET status = '{new_status}', updated_by = '{_esc(updated_by)}', "
+            f"    updated_at = current_timestamp() "
+            f"WHERE id = '{_esc(policy_id)}'"
+        )
+        return self.get_policy(policy_id)
+
+    def delete_policy(self, policy_id: str) -> None:
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('policy_evaluations')} WHERE policy_id = '{_esc(policy_id)}'"
+        )
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('compliance_policies')} WHERE id = '{_esc(policy_id)}'"
+        )
+
+    def _parse_policy(self, row: dict) -> dict:
+        rules_raw = row.get("rules")
+        scope_raw = row.get("scope")
+        return {
+            **row,
+            "rules": json.loads(rules_raw) if rules_raw else [],
+            "scope": json.loads(scope_raw) if scope_raw else None,
+        }
+
+    # Policy Evaluations
+
+    def _get_latest_evaluation(self, policy_id: str) -> dict | None:
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('policy_evaluations')} "
+            f"WHERE policy_id = '{_esc(policy_id)}' "
+            f"ORDER BY evaluated_at DESC LIMIT 1"
+        )
+        return self._parse_evaluation(rows[0]) if rows else None
+
+    def list_evaluations(self, policy_id: str) -> list[dict]:
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('policy_evaluations')} "
+            f"WHERE policy_id = '{_esc(policy_id)}' "
+            f"ORDER BY evaluated_at DESC LIMIT 50"
+        )
+        return [self._parse_evaluation(r) for r in rows]
+
+    def run_evaluation(self, policy_id: str, evaluated_by: str) -> dict:
+        """Run a policy evaluation (simulated — checks rule structure, returns mock results)."""
+        import time
+        start = time.time()
+
+        policy = self.get_policy(policy_id)
+        if not policy:
+            return {}
+
+        rules = policy.get("rules", [])
+        results = []
+        passed = 0
+        failed = 0
+
+        for idx, rule in enumerate(rules):
+            # Simulated evaluation: all rules pass for now
+            # In production, this would query Unity Catalog metadata
+            rule_passed = True
+            results.append({
+                "rule_index": idx,
+                "passed": rule_passed,
+                "actual_value": None,
+                "message": rule.get("message") or f"{rule.get('field', '?')} check",
+            })
+            if rule_passed:
+                passed += 1
+            else:
+                failed += 1
+
+        duration_ms = int((time.time() - start) * 1000)
+        eval_status = "passed" if failed == 0 else "failed"
+        eval_id = str(uuid.uuid4())
+        results_json = json.dumps(results).replace("'", "''")
+
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('policy_evaluations')}
+            (id, policy_id, status, total_checks, passed_checks, failed_checks,
+             results, evaluated_at, evaluated_by, duration_ms)
+            VALUES (
+                '{eval_id}', '{_esc(policy_id)}', '{eval_status}',
+                {len(rules)}, {passed}, {failed},
+                '{results_json}',
+                current_timestamp(), '{_esc(evaluated_by)}', {duration_ms}
+            )
+        """)
+        return self._parse_evaluation(self.sql.execute(
+            f"SELECT * FROM {self._table('policy_evaluations')} WHERE id = '{eval_id}'"
+        )[0])
+
+    def _parse_evaluation(self, row: dict) -> dict:
+        results_raw = row.get("results")
+        return {
+            **row,
+            "results": json.loads(results_raw) if results_raw else [],
+            "total_checks": int(row.get("total_checks", 0)),
+            "passed_checks": int(row.get("passed_checks", 0)),
+            "failed_checks": int(row.get("failed_checks", 0)),
+        }
+
 
 # Singleton
 _governance_service: GovernanceService | None = None

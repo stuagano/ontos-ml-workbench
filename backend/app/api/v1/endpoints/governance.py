@@ -9,6 +9,9 @@ from app.models.governance import (
     AppRoleResponse,
     AppRoleUpdate,
     AssetReviewResponse,
+    CompliancePolicyCreate,
+    CompliancePolicyResponse,
+    CompliancePolicyUpdate,
     CurrentUserResponse,
     DataContractCreate,
     DataContractResponse,
@@ -17,6 +20,7 @@ from app.models.governance import (
     DataDomainResponse,
     DataDomainUpdate,
     DomainTreeNode,
+    PolicyEvaluationResponse,
     ProjectCreate,
     ProjectMemberAdd,
     ProjectMemberResponse,
@@ -465,3 +469,87 @@ async def delete_contract(contract_id: str, _auth: CurrentUser = Depends(require
     """Delete a data contract. Requires governance write."""
     svc = get_governance_service()
     svc.delete_contract(contract_id)
+
+
+# ============================================================================
+# Compliance Policies (G6)
+# ============================================================================
+
+
+@router.get("/policies", response_model=list[CompliancePolicyResponse])
+async def list_policies(
+    category: str | None = Query(None),
+    status: str | None = Query(None),
+):
+    """List compliance policies with optional filters."""
+    svc = get_governance_service()
+    return svc.list_policies(category=category, status=status)
+
+
+@router.post("/policies", response_model=CompliancePolicyResponse, status_code=201)
+async def create_policy(policy: CompliancePolicyCreate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Create a new compliance policy. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.create_policy(policy.model_dump(), user)
+
+
+@router.get("/policies/{policy_id}", response_model=CompliancePolicyResponse)
+async def get_policy(policy_id: str):
+    """Get a compliance policy by ID."""
+    svc = get_governance_service()
+    result = svc.get_policy(policy_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Policy not found")
+    return result
+
+
+@router.put("/policies/{policy_id}", response_model=CompliancePolicyResponse)
+async def update_policy(policy_id: str, policy: CompliancePolicyUpdate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Update a compliance policy. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.update_policy(policy_id, policy.model_dump(exclude_unset=True), user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Policy not found")
+    return result
+
+
+@router.put("/policies/{policy_id}/toggle", response_model=CompliancePolicyResponse)
+async def toggle_policy(
+    policy_id: str,
+    enabled: bool = Query(..., description="Enable or disable the policy"),
+    _auth: CurrentUser = Depends(require_permission("governance", "write")),
+):
+    """Enable or disable a compliance policy. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.toggle_policy(policy_id, enabled, user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Policy not found")
+    return result
+
+
+@router.delete("/policies/{policy_id}", status_code=204)
+async def delete_policy(policy_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Delete a compliance policy and its evaluations. Requires governance write."""
+    svc = get_governance_service()
+    svc.delete_policy(policy_id)
+
+
+@router.get("/policies/{policy_id}/evaluations", response_model=list[PolicyEvaluationResponse])
+async def list_evaluations(policy_id: str):
+    """List evaluation history for a policy (most recent first, limit 50)."""
+    svc = get_governance_service()
+    return svc.list_evaluations(policy_id)
+
+
+@router.post("/policies/{policy_id}/evaluate", response_model=PolicyEvaluationResponse)
+async def run_evaluation(policy_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Run a policy evaluation on-demand. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    policy = svc.get_policy(policy_id)
+    if not policy:
+        raise HTTPException(status_code=404, detail="Policy not found")
+    return svc.run_evaluation(policy_id, user)

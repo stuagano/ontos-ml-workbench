@@ -24,6 +24,12 @@ import {
   Play,
   Archive,
   XCircle,
+  ShieldAlert,
+  ToggleLeft,
+  ToggleRight,
+  AlertTriangle,
+  Info,
+  Zap,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -52,6 +58,12 @@ import {
   updateContract,
   transitionContractStatus,
   deleteContract,
+  listPolicies,
+  createPolicy,
+  updatePolicy,
+  togglePolicy,
+  deletePolicy,
+  runEvaluation,
 } from "../services/governance";
 import { useToast } from "../components/Toast";
 import type {
@@ -60,9 +72,12 @@ import type {
   ContractColumnSpec,
   ContractQualityRule,
   ContractStatus,
+  PolicyCategory,
+  PolicySeverity,
+  PolicyRuleCondition,
 } from "../types/governance";
 
-type TabId = "roles" | "teams" | "domains" | "projects" | "contracts";
+type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies";
 
 interface GovernancePageProps {
   onClose: () => void;
@@ -1532,6 +1547,502 @@ function ContractsTab() {
 }
 
 // ============================================================================
+// Policies Tab (G6)
+// ============================================================================
+
+const CATEGORY_LABELS: Record<PolicyCategory, string> = {
+  data_quality: "Data Quality",
+  access_control: "Access Control",
+  retention: "Retention",
+  naming: "Naming",
+  lineage: "Lineage",
+};
+
+const SEVERITY_CONFIG: Record<PolicySeverity, { icon: typeof Info; color: string }> = {
+  info: { icon: Info, color: "text-blue-500" },
+  warning: { icon: AlertTriangle, color: "text-amber-500" },
+  critical: { icon: Zap, color: "text-red-500" },
+};
+
+const RULE_OPERATORS = [">=", "<=", "==", "!=", ">", "<", "contains", "matches"];
+
+function PoliciesTab() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [showCreate, setShowCreate] = useState(false);
+  const [selectedPolicy, setSelectedPolicy] = useState<string | null>(null);
+  const [filterCategory, setFilterCategory] = useState<string>("");
+
+  // Create form state
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newCategory, setNewCategory] = useState<PolicyCategory>("data_quality");
+  const [newSeverity, setNewSeverity] = useState<PolicySeverity>("warning");
+  const [newRules, setNewRules] = useState<PolicyRuleCondition[]>([
+    { field: "", operator: ">=", value: 0, message: null },
+  ]);
+
+  // Detail edit state
+  const [editRules, setEditRules] = useState<PolicyRuleCondition[]>([]);
+
+  const { data: policies = [], isLoading } = useQuery({
+    queryKey: ["governance-policies", filterCategory],
+    queryFn: () => listPolicies(filterCategory ? { category: filterCategory as PolicyCategory } : undefined),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: { name: string; description?: string; category?: string; severity?: string; rules: PolicyRuleCondition[] }) =>
+      createPolicy(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-policies"] });
+      toast.success("Policy Created", "Compliance policy created and enabled");
+      setShowCreate(false);
+      setNewName("");
+      setNewDesc("");
+      setNewCategory("data_quality");
+      setNewSeverity("warning");
+      setNewRules([{ field: "", operator: ">=", value: 0, message: null }]);
+    },
+    onError: (err: Error) => toast.error("Create Failed", err.message),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      updatePolicy(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-policies"] });
+      toast.success("Policy Updated", "Compliance policy updated");
+    },
+    onError: (err: Error) => toast.error("Update Failed", err.message),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      togglePolicy(id, enabled),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["governance-policies"] });
+      toast.success("Policy Toggled", `Policy ${vars.enabled ? "enabled" : "disabled"}`);
+    },
+    onError: (err: Error) => toast.error("Toggle Failed", err.message),
+  });
+
+  const evaluateMutation = useMutation({
+    mutationFn: (policyId: string) => runEvaluation(policyId),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["governance-policies"] });
+      toast.success("Evaluation Complete", `Result: ${result.status} (${result.passed_checks}/${result.total_checks} passed)`);
+    },
+    onError: (err: Error) => toast.error("Evaluation Failed", err.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deletePolicy,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-policies"] });
+      toast.success("Policy Deleted", "Compliance policy removed");
+      setSelectedPolicy(null);
+    },
+    onError: (err: Error) => toast.error("Delete Failed", err.message),
+  });
+
+  if (isLoading) {
+    return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-db-orange" /></div>;
+  }
+
+  // Detail view
+  if (selectedPolicy) {
+    const policy = policies.find((p) => p.id === selectedPolicy);
+    if (!policy) return null;
+    const SevIcon = SEVERITY_CONFIG[policy.severity]?.icon || Info;
+
+    return (
+      <div className="space-y-6">
+        <button onClick={() => setSelectedPolicy(null)} className="flex items-center gap-2 text-sm text-db-gray-600 dark:text-gray-400 hover:text-db-gray-800 dark:hover:text-white">
+          <ArrowLeft className="w-4 h-4" /> Back to policies
+        </button>
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-db-gray-800 dark:text-white flex items-center gap-2">
+              <SevIcon className={clsx("w-5 h-5", SEVERITY_CONFIG[policy.severity]?.color)} />
+              {policy.name}
+              <span className={clsx(
+                "px-2 py-0.5 text-xs rounded-full font-medium",
+                policy.status === "enabled"
+                  ? "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400"
+                  : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500",
+              )}>
+                {policy.status}
+              </span>
+            </h3>
+            {policy.description && <p className="text-sm text-db-gray-500 dark:text-gray-500 mt-1">{policy.description}</p>}
+            <p className="text-xs text-db-gray-400 dark:text-gray-600 mt-1">
+              {CATEGORY_LABELS[policy.category]} · {policy.severity}
+              {policy.owner_email && <> · Owner: {policy.owner_email}</>}
+              {policy.schedule && <> · Schedule: {policy.schedule}</>}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => toggleMutation.mutate({ id: policy.id, enabled: policy.status !== "enabled" })}
+              disabled={toggleMutation.isPending}
+              className="px-3 py-1.5 text-sm text-db-gray-600 dark:text-gray-400 hover:bg-db-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-1.5"
+            >
+              {policy.status === "enabled"
+                ? <><ToggleRight className="w-4 h-4 text-green-500" /> Enabled</>
+                : <><ToggleLeft className="w-4 h-4 text-gray-400" /> Disabled</>
+              }
+            </button>
+            <button
+              onClick={() => evaluateMutation.mutate(policy.id)}
+              disabled={evaluateMutation.isPending}
+              className="px-3 py-1.5 text-sm bg-db-orange text-white rounded-lg hover:bg-db-red transition-colors flex items-center gap-1.5"
+            >
+              {evaluateMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+              Evaluate
+            </button>
+            <button
+              onClick={() => { if (confirm("Delete this policy?")) deleteMutation.mutate(policy.id); }}
+              className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Last Evaluation */}
+        {policy.last_evaluation && (
+          <div className={clsx(
+            "p-4 rounded-lg border",
+            policy.last_evaluation.status === "passed"
+              ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
+              : policy.last_evaluation.status === "failed"
+                ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
+                : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700",
+          )}>
+            <div className="flex items-center justify-between mb-2">
+              <span className={clsx(
+                "text-sm font-medium",
+                policy.last_evaluation.status === "passed" ? "text-green-700 dark:text-green-400"
+                  : policy.last_evaluation.status === "failed" ? "text-red-700 dark:text-red-400"
+                    : "text-gray-600 dark:text-gray-400",
+              )}>
+                Last Evaluation: {policy.last_evaluation.status.toUpperCase()}
+              </span>
+              <span className="text-xs text-db-gray-400">
+                {policy.last_evaluation.passed_checks}/{policy.last_evaluation.total_checks} passed
+                {policy.last_evaluation.duration_ms != null && <> · {policy.last_evaluation.duration_ms}ms</>}
+              </span>
+            </div>
+            {policy.last_evaluation.results.length > 0 && (
+              <div className="space-y-1">
+                {policy.last_evaluation.results.map((r, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-xs">
+                    <span className={r.passed ? "text-green-600" : "text-red-600"}>{r.passed ? "PASS" : "FAIL"}</span>
+                    <span className="text-db-gray-600 dark:text-gray-400">{r.message}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Rules */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-db-gray-700 dark:text-gray-300">Rule Conditions</h4>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEditRules(policy.rules ?? [])}
+                className="px-2 py-1 text-xs text-db-gray-500 hover:text-db-gray-700 dark:hover:text-gray-300"
+              >
+                Reset
+              </button>
+              <button
+                onClick={() => updateMutation.mutate({ id: policy.id, data: { rules: editRules } })}
+                disabled={updateMutation.isPending}
+                className="px-3 py-1 text-xs bg-db-orange text-white rounded-lg hover:bg-db-red disabled:opacity-50 transition-colors"
+              >
+                {updateMutation.isPending ? "Saving..." : "Save Rules"}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {editRules.map((rule, idx) => (
+              <div key={idx} className="flex items-center gap-2 p-3 bg-db-gray-50 dark:bg-gray-800/50 rounded-lg">
+                <input
+                  value={rule.field}
+                  onChange={(e) => {
+                    const updated = [...editRules];
+                    updated[idx] = { ...rule, field: e.target.value };
+                    setEditRules(updated);
+                  }}
+                  placeholder="field / metric"
+                  className="flex-1 px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                />
+                <select
+                  value={rule.operator}
+                  onChange={(e) => {
+                    const updated = [...editRules];
+                    updated[idx] = { ...rule, operator: e.target.value };
+                    setEditRules(updated);
+                  }}
+                  className="w-24 px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                >
+                  {RULE_OPERATORS.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+                <input
+                  value={String(rule.value)}
+                  onChange={(e) => {
+                    const updated = [...editRules];
+                    const numVal = parseFloat(e.target.value);
+                    updated[idx] = { ...rule, value: isNaN(numVal) ? e.target.value : numVal };
+                    setEditRules(updated);
+                  }}
+                  placeholder="value"
+                  className="w-28 px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                />
+                <input
+                  value={rule.message ?? ""}
+                  onChange={(e) => {
+                    const updated = [...editRules];
+                    updated[idx] = { ...rule, message: e.target.value || null };
+                    setEditRules(updated);
+                  }}
+                  placeholder="Violation message..."
+                  className="flex-1 px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                />
+                <button
+                  onClick={() => setEditRules(editRules.filter((_, i) => i !== idx))}
+                  className="p-1 text-db-gray-400 hover:text-red-500"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={() => setEditRules([...editRules, { field: "", operator: ">=", value: 0, message: null }])}
+              className="px-3 py-1.5 text-sm text-db-gray-500 hover:text-db-gray-700 dark:hover:text-gray-300 flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Rule
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // List view
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-db-gray-800 dark:text-white">Compliance Policies</h3>
+        <div className="flex items-center gap-3">
+          <select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+            className="px-3 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+          >
+            <option value="">All categories</option>
+            {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => setShowCreate(!showCreate)}
+            className="px-3 py-1.5 text-sm bg-db-orange text-white rounded-lg hover:bg-db-red transition-colors flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> New Policy
+          </button>
+        </div>
+      </div>
+
+      {showCreate && (
+        <div className="p-4 border border-db-gray-200 dark:border-gray-700 rounded-lg space-y-3">
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Policy name"
+            className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+          />
+          <input
+            value={newDesc}
+            onChange={(e) => setNewDesc(e.target.value)}
+            placeholder="Description (optional)"
+            className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Category</label>
+              <select
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value as PolicyCategory)}
+                className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+              >
+                {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Severity</label>
+              <select
+                value={newSeverity}
+                onChange={(e) => setNewSeverity(e.target.value as PolicySeverity)}
+                className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+              >
+                <option value="info">Info</option>
+                <option value="warning">Warning</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Rules for new policy */}
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400">Rules (at least one required)</label>
+            {newRules.map((rule, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <input
+                  value={rule.field}
+                  onChange={(e) => {
+                    const updated = [...newRules];
+                    updated[idx] = { ...rule, field: e.target.value };
+                    setNewRules(updated);
+                  }}
+                  placeholder="field"
+                  className="flex-1 px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                />
+                <select
+                  value={rule.operator}
+                  onChange={(e) => {
+                    const updated = [...newRules];
+                    updated[idx] = { ...rule, operator: e.target.value };
+                    setNewRules(updated);
+                  }}
+                  className="w-20 px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                >
+                  {RULE_OPERATORS.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+                <input
+                  value={String(rule.value)}
+                  onChange={(e) => {
+                    const updated = [...newRules];
+                    const numVal = parseFloat(e.target.value);
+                    updated[idx] = { ...rule, value: isNaN(numVal) ? e.target.value : numVal };
+                    setNewRules(updated);
+                  }}
+                  placeholder="value"
+                  className="w-24 px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                />
+                {newRules.length > 1 && (
+                  <button onClick={() => setNewRules(newRules.filter((_, i) => i !== idx))} className="p-1 text-db-gray-400 hover:text-red-500">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              onClick={() => setNewRules([...newRules, { field: "", operator: ">=", value: 0, message: null }])}
+              className="px-2 py-1 text-xs text-db-gray-500 hover:text-db-gray-700 flex items-center gap-1"
+            >
+              <Plus className="w-3 h-3" /> Add Rule
+            </button>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                const validRules = newRules.filter((r) => r.field.trim());
+                if (newName && validRules.length > 0) {
+                  createMutation.mutate({
+                    name: newName,
+                    description: newDesc || undefined,
+                    category: newCategory,
+                    severity: newSeverity,
+                    rules: validRules,
+                  });
+                }
+              }}
+              disabled={!newName || !newRules.some((r) => r.field.trim()) || createMutation.isPending}
+              className="px-4 py-2 text-sm bg-db-orange text-white rounded-lg hover:bg-db-red disabled:opacity-50"
+            >
+              Create
+            </button>
+            <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-db-gray-600 dark:text-gray-400">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {policies.length === 0 ? (
+        <p className="text-sm text-db-gray-500 dark:text-gray-500 py-8 text-center">
+          {filterCategory ? `No ${CATEGORY_LABELS[filterCategory as PolicyCategory] || filterCategory} policies.` : "No compliance policies created yet."}
+        </p>
+      ) : (
+        <div className="border border-db-gray-200 dark:border-gray-700 rounded-lg divide-y divide-db-gray-100 dark:divide-gray-800">
+          {policies.map((policy) => {
+            const SevIcon = SEVERITY_CONFIG[policy.severity]?.icon || Info;
+            return (
+              <button
+                key={policy.id}
+                onClick={() => {
+                  setSelectedPolicy(policy.id);
+                  setEditRules(policy.rules ?? []);
+                }}
+                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-db-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <SevIcon className={clsx("w-4 h-4 flex-shrink-0", SEVERITY_CONFIG[policy.severity]?.color)} />
+                  <div>
+                    <div className="text-sm font-medium text-db-gray-800 dark:text-white flex items-center gap-2">
+                      {policy.name}
+                      <span className={clsx(
+                        "px-1.5 py-0.5 text-[10px] rounded font-medium",
+                        policy.status === "enabled"
+                          ? "bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400"
+                          : "bg-gray-100 dark:bg-gray-800 text-gray-500",
+                      )}>
+                        {policy.status}
+                      </span>
+                    </div>
+                    {policy.description && (
+                      <div className="text-xs text-db-gray-500 dark:text-gray-500 mt-0.5">{policy.description}</div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-db-gray-400 dark:text-gray-600">
+                    {CATEGORY_LABELS[policy.category]}
+                  </span>
+                  <span className="text-xs text-db-gray-400 dark:text-gray-600">
+                    {policy.rules.length} rules
+                  </span>
+                  {policy.last_evaluation && (
+                    <span className={clsx(
+                      "px-1.5 py-0.5 text-[10px] rounded font-medium",
+                      policy.last_evaluation.status === "passed"
+                        ? "bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400"
+                        : "bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400",
+                    )}>
+                      {policy.last_evaluation.status}
+                    </span>
+                  )}
+                  <ChevronRight className="w-4 h-4 text-db-gray-400" />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // Main Page
 // ============================================================================
 
@@ -1541,6 +2052,7 @@ const TABS: { id: TabId; label: string; icon: typeof Shield }[] = [
   { id: "domains", label: "Domains", icon: FolderTree },
   { id: "projects", label: "Projects", icon: Briefcase },
   { id: "contracts", label: "Contracts", icon: FileCheck },
+  { id: "policies", label: "Policies", icon: ShieldAlert },
 ];
 
 export function GovernancePage({ onClose }: GovernancePageProps) {
@@ -1596,6 +2108,7 @@ export function GovernancePage({ onClose }: GovernancePageProps) {
           {activeTab === "domains" && <DomainsTab />}
           {activeTab === "projects" && <ProjectsTab />}
           {activeTab === "contracts" && <ContractsTab />}
+          {activeTab === "policies" && <PoliciesTab />}
         </div>
       </div>
     </div>

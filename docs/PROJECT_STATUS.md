@@ -134,7 +134,7 @@
 | Labeling Jobs | Yes | `LabelingJobsPage.tsx` (1099 lines) | Yes | Create, Start, Pause, Resume, Delete | DONE |
 | Label Sets | Yes | `LabelSetsPage.tsx` (619 lines) | Yes | Full CRUD + Publish/Archive | DONE |
 | Registries | Yes | `RegistriesPage.tsx` (1050 lines) | Yes | Full CRUD for Tools/Agents/Endpoints | DONE |
-| Governance | Yes (Admin) | `GovernancePage.tsx` (~1350 lines) | Yes | Roles matrix, user assign, teams CRUD, domains tree, projects, contracts | DONE |
+| Governance | Yes (Admin) | `GovernancePage.tsx` (~1900 lines) | Yes | Roles matrix, user assign, teams CRUD, domains tree, projects, contracts, policies | DONE |
 | Example Effectiveness | No sidebar entry | `ExampleEffectivenessDashboard.tsx` (548 lines) | Yes (read) | None | DONE (read-only dashboard, embedded in Example Store module) |
 
 ---
@@ -183,7 +183,7 @@
 | Agents | 3 | Fully implemented |
 | Settings/Admin | 7 | Fully implemented |
 | Data Quality (DQX) | 4 | Fully implemented — results persisted to `dqx_quality_results` table |
-| Governance | 30 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree, reviews, projects, contracts |
+| Governance | 38 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree, reviews, projects, contracts, policies, evaluations |
 | Auth Core | 0 (middleware) | `get_current_user`, `require_permission`, `require_role` dependencies; `enforce_auth=false` default |
 | Quality Proxy | 1 | Fully implemented |
 
@@ -265,7 +265,7 @@ Features that make the ML Workbench enterprise-grade for regulated environments 
 | # | Feature | Description | What We Have | What's Missing | Effort |
 |---|---------|-------------|-------------|----------------|--------|
 | ~~G5~~ | ~~**Data Contracts (ODCS v3.0.2)**~~ | ~~Schema specifications with quality guarantees, SLOs, lifecycle management.~~ | ~~DONE — Data contract entity with schema definitions, quality SLO rules, usage terms, lifecycle (draft→active→deprecated→retired). DDL: `29_data_contracts.sql`. Backend: 7 API endpoints (list, create, get, update, transition status, delete) with domain join + status filtering. UI: Contracts tab in GovernancePage with schema column editor, SLO rule builder, usage terms, lifecycle transition buttons.~~ | ~~ODCS YAML import/export. Contract validation against live data.~~ | ~~L~~ |
-| G6 | **Compliance Policies (DSL)** | SQL-like DSL for governance rules. Check across catalogs/schemas/tables. Tagging, notifications, validation failure actions. Scheduled + on-demand runs. | No policy engine. Governance is manual. | Policy DSL parser, policy CRUD, scheduled execution engine, results dashboard, integration with Unity Catalog asset metadata. | L |
+| ~~G6~~ | ~~**Compliance Policies (DSL)**~~ | ~~SQL-like DSL for governance rules. Check across catalogs/schemas/tables. Scheduled + on-demand runs.~~ | ~~DONE — Compliance policy engine with structured rule conditions (field/operator/value/message), categories (data_quality, access_control, retention, naming, lineage), severity levels, enable/disable toggle, on-demand evaluation with results tracking. DDL: `30_compliance_policies.sql` (policies + evaluations). Backend: 8 API endpoints. UI: Policies tab in GovernancePage with rule editor, evaluation runner, results display.~~ | ~~Scheduled execution via Databricks Jobs. UC metadata integration for live validation. Policy violation notifications.~~ | ~~L~~ |
 | G7 | **Process Workflows** | Event-driven automation with triggers, entity types, steps. Blocking/non-blocking execution. Approval pausing for human-in-the-loop. Visual workflow designer. | Labeling workflow has jobs→tasks→annotate→review state machine. No general-purpose workflow engine. | Generic workflow engine, trigger definitions, step library, visual designer UI, workflow execution + pause/resume. | L |
 | ~~G8~~ | ~~**Projects**~~ | ~~Workspace containers for team initiatives. Personal vs. Team types.~~ | ~~DONE — Projects CRUD + member management with roles (owner/admin/member/viewer). DDL: `27_projects.sql`, `28_project_members.sql`. Backend: 8 API endpoints. UI: Projects tab in GovernancePage with detail view + member management. Auto-adds creator as owner. Team association support.~~ | ~~Asset↔project scoping (project_id on sheets/templates/training_sheets). Project-level permissions.~~ | ~~M~~ |
 
@@ -287,7 +287,7 @@ Features for mature data governance organizations.
 
 **Phase 1 — Foundation (G1–G3): DONE.** RBAC + Teams + Domains. 6 DDL files, auth core (`auth.py`), governance service (23 endpoints), GovernancePage with 3 tabs. `enforce_auth=false` default preserves existing functionality.
 
-**Phase 2 — Governance Core (G4–G6):** G4 (Asset Review) DONE. G5 (Data Contracts) DONE. Compliance Policies remaining. Asset review gives the ML pipeline a governance layer — reviewers can approve datasets before training. Contracts guarantee data quality with SLO rules; policies will enforce standards.
+**Phase 2 — Governance Core (G4–G6):** All DONE. G4 (Asset Review), G5 (Data Contracts), G6 (Compliance Policies) complete. Asset review gives the ML pipeline a governance layer, contracts guarantee data quality with SLO rules, and policies enforce standards with rule conditions and on-demand evaluation.
 
 **Phase 3 — Orchestration (G7–G8):** G8 (Projects) DONE. Process Workflows remaining. Projects provide logical isolation for team work; workflow engine will automate governance processes.
 
@@ -296,6 +296,15 @@ Features for mature data governance organizations.
 ---
 
 ## Recently Completed (Feb 20, 2026)
+
+- **Ontos Governance G6 (Compliance Policies)**: Full-stack implementation across 7 files:
+  - **DDL**: `30_compliance_policies.sql` — compliance_policies (rules JSON, scope JSON, category, severity, schedule, status) + policy_evaluations (per-rule results, pass/fail counts, duration)
+  - **Backend models**: `PolicyCategory`, `PolicySeverity` enums, `PolicyRuleCondition`, `PolicyScope`, `CompliancePolicyCreate/Update/Response`, `PolicyEvaluationRuleResult`, `PolicyEvaluationResponse`
+  - **Service**: `list_policies` (with category/status filters), `get_policy` (with last_evaluation attach), `create_policy`, `update_policy`, `toggle_policy`, `delete_policy`, `list_evaluations`, `run_evaluation`, `_parse_policy`, `_parse_evaluation`
+  - **API**: 8 endpoints — GET/POST /policies, GET/PUT/DELETE /policies/{id}, PUT /policies/{id}/toggle, GET /policies/{id}/evaluations, POST /policies/{id}/evaluate
+  - **Frontend types**: `PolicyCategory`, `PolicySeverity`, `PolicyRuleCondition`, `PolicyScope`, `CompliancePolicy`, `PolicyEvaluationRuleResult`, `PolicyEvaluation`
+  - **Frontend API**: `listPolicies`, `getPolicy`, `createPolicy`, `updatePolicy`, `togglePolicy`, `deletePolicy`, `listEvaluations`, `runEvaluation`
+  - **UI**: `PoliciesTab` in GovernancePage — severity icons, category/status filters, rule condition editor (field/operator/value/message), enable/disable toggle, on-demand Evaluate button, last evaluation result panel with per-rule PASS/FAIL display
 
 - **Ontos Governance G5 (Data Contracts)**: Full-stack implementation across 7 files:
   - **DDL**: `29_data_contracts.sql` — contract entity with schema_definition (JSON column specs), quality_rules (SLO rules), terms (usage constraints), lifecycle status

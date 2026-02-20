@@ -22,6 +22,11 @@ import type {
   ContractColumnSpec,
   ContractQualityRule,
   ContractTerms,
+  CompliancePolicy,
+  PolicyCategory,
+  PolicyRuleCondition,
+  PolicyScope,
+  PolicyEvaluation,
 } from "../types/governance";
 
 const API_BASE = "/api/v1/governance";
@@ -405,4 +410,72 @@ export async function transitionContractStatus(
 
 export async function deleteContract(contractId: string): Promise<void> {
   return fetchJson(`${API_BASE}/contracts/${contractId}`, { method: "DELETE" });
+}
+
+// ============================================================================
+// Compliance Policies (G6)
+// ============================================================================
+
+export async function listPolicies(filters?: {
+  category?: PolicyCategory;
+  status?: "enabled" | "disabled";
+}): Promise<CompliancePolicy[]> {
+  const params = new URLSearchParams();
+  if (filters?.category) params.set("category", filters.category);
+  if (filters?.status) params.set("status", filters.status);
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/policies${qs ? `?${qs}` : ""}`);
+}
+
+export async function getPolicy(policyId: string): Promise<CompliancePolicy> {
+  return fetchJson(`${API_BASE}/policies/${policyId}`);
+}
+
+export async function createPolicy(data: {
+  name: string;
+  description?: string;
+  category?: string;
+  severity?: string;
+  rules: PolicyRuleCondition[];
+  scope?: PolicyScope;
+  schedule?: string;
+  owner_email?: string;
+}): Promise<CompliancePolicy> {
+  return fetchJson(`${API_BASE}/policies`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updatePolicy(
+  policyId: string,
+  data: Partial<CompliancePolicy>,
+): Promise<CompliancePolicy> {
+  return fetchJson(`${API_BASE}/policies/${policyId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function togglePolicy(
+  policyId: string,
+  enabled: boolean,
+): Promise<CompliancePolicy> {
+  return fetchJson(`${API_BASE}/policies/${policyId}/toggle?enabled=${enabled}`, {
+    method: "PUT",
+  });
+}
+
+export async function deletePolicy(policyId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/policies/${policyId}`, { method: "DELETE" });
+}
+
+export async function listEvaluations(policyId: string): Promise<PolicyEvaluation[]> {
+  return fetchJson(`${API_BASE}/policies/${policyId}/evaluations`);
+}
+
+export async function runEvaluation(policyId: string): Promise<PolicyEvaluation> {
+  return fetchJson(`${API_BASE}/policies/${policyId}/evaluate`, {
+    method: "POST",
+  });
 }
