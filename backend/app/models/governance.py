@@ -730,3 +730,135 @@ class DataProductResponse(BaseModel):
     updated_at: datetime | None = None
     updated_by: str | None = None
     published_at: datetime | None = None
+
+
+# ============================================================================
+# Semantic Models (G10)
+# ============================================================================
+
+
+class ConceptType(str, Enum):
+    ENTITY = "entity"
+    EVENT = "event"
+    METRIC = "metric"
+    DIMENSION = "dimension"
+
+
+class LinkType(str, Enum):
+    MAPS_TO = "maps_to"
+    DERIVED_FROM = "derived_from"
+    AGGREGATES = "aggregates"
+    REPRESENTS = "represents"
+
+
+class SemanticConceptCreate(BaseModel):
+    """Request body for creating a business concept."""
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = None
+    parent_id: str | None = None
+    concept_type: str = "entity"
+    tags: list[str] = Field(default_factory=list)
+
+
+class SemanticConceptResponse(BaseModel):
+    """Business concept response."""
+    id: str
+    model_id: str
+    name: str
+    description: str | None = None
+    parent_id: str | None = None
+    concept_type: str = "entity"
+    tags: list[str] = Field(default_factory=list)
+    created_at: datetime | None = None
+    created_by: str | None = None
+    properties: list["SemanticPropertyResponse"] = Field(default_factory=list)
+
+
+class SemanticPropertyCreate(BaseModel):
+    """Request body for creating a business property."""
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = None
+    data_type: str | None = Field(None, description="string | number | boolean | date | enum")
+    is_required: bool = False
+    enum_values: list[str] | None = None
+
+
+class SemanticPropertyResponse(BaseModel):
+    """Business property response."""
+    id: str
+    concept_id: str
+    model_id: str
+    name: str
+    description: str | None = None
+    data_type: str | None = None
+    is_required: bool = False
+    enum_values: list[str] | None = None
+    created_at: datetime | None = None
+    created_by: str | None = None
+
+
+class SemanticLinkCreate(BaseModel):
+    """Request body for creating a semantic link."""
+    source_type: str = Field(..., description="concept | property")
+    source_id: str = Field(..., min_length=1)
+    target_type: str = Field(..., description="table | column | sheet | contract | product")
+    target_id: str | None = None
+    target_name: str | None = None
+    link_type: str = "maps_to"
+    confidence: float | None = Field(None, ge=0.0, le=1.0)
+    notes: str | None = None
+
+
+class SemanticLinkResponse(BaseModel):
+    """Semantic link response."""
+    id: str
+    model_id: str
+    source_type: str
+    source_id: str
+    target_type: str
+    target_id: str | None = None
+    target_name: str | None = None
+    link_type: str = "maps_to"
+    confidence: float | None = None
+    notes: str | None = None
+    created_at: datetime | None = None
+    created_by: str | None = None
+
+
+class SemanticModelCreate(BaseModel):
+    """Request body for creating a semantic model."""
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = None
+    domain_id: str | None = None
+    owner_email: str | None = None
+    version: str = "1.0.0"
+
+
+class SemanticModelUpdate(BaseModel):
+    """Request body for updating a semantic model."""
+    name: str | None = None
+    description: str | None = None
+    domain_id: str | None = None
+    owner_email: str | None = None
+    version: str | None = None
+
+
+class SemanticModelResponse(BaseModel):
+    """Semantic model response."""
+    id: str
+    name: str
+    description: str | None = None
+    domain_id: str | None = None
+    domain_name: str | None = None
+    owner_email: str | None = None
+    status: str = "draft"
+    version: str = "1.0.0"
+    metadata: dict | None = None
+    concept_count: int = 0
+    link_count: int = 0
+    concepts: list[SemanticConceptResponse] = Field(default_factory=list)
+    links: list[SemanticLinkResponse] = Field(default_factory=list)
+    created_at: datetime | None = None
+    created_by: str | None = None
+    updated_at: datetime | None = None
+    updated_by: str | None = None

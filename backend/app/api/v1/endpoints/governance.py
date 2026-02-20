@@ -48,6 +48,15 @@ from app.models.governance import (
     DataProductPortSpec,
     SubscriptionRequest,
     SubscriptionResponse,
+    SemanticModelCreate,
+    SemanticModelResponse,
+    SemanticModelUpdate,
+    SemanticConceptCreate,
+    SemanticConceptResponse,
+    SemanticPropertyCreate,
+    SemanticPropertyResponse,
+    SemanticLinkCreate,
+    SemanticLinkResponse,
 )
 from app.services.governance_service import get_governance_service
 
@@ -802,3 +811,141 @@ async def revoke_subscription(subscription_id: str, _auth: CurrentUser = Depends
     if not result:
         raise HTTPException(status_code=404, detail="Subscription not found")
     return result
+
+
+# ============================================================================
+# Semantic Models (G10)
+# ============================================================================
+
+
+@router.get("/semantic-models", response_model=list[SemanticModelResponse])
+async def list_semantic_models(status: str | None = Query(None)):
+    """List semantic models with optional status filter."""
+    svc = get_governance_service()
+    return svc.list_semantic_models(status=status)
+
+
+@router.get("/semantic-models/{model_id}", response_model=SemanticModelResponse)
+async def get_semantic_model(model_id: str):
+    """Get a semantic model by ID (includes concepts, properties, and links)."""
+    svc = get_governance_service()
+    result = svc.get_semantic_model(model_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Semantic model not found")
+    return result
+
+
+@router.post("/semantic-models", response_model=SemanticModelResponse, status_code=201)
+async def create_semantic_model(data: SemanticModelCreate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Create a semantic model. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.create_semantic_model(data.model_dump(), user)
+
+
+@router.put("/semantic-models/{model_id}", response_model=SemanticModelResponse)
+async def update_semantic_model(model_id: str, data: SemanticModelUpdate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Update a semantic model. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.update_semantic_model(model_id, data.model_dump(exclude_none=True), user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Semantic model not found")
+    return result
+
+
+@router.put("/semantic-models/{model_id}/publish", response_model=SemanticModelResponse)
+async def publish_semantic_model(model_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Publish a semantic model. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.publish_semantic_model(model_id, user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Semantic model not found")
+    return result
+
+
+@router.put("/semantic-models/{model_id}/archive", response_model=SemanticModelResponse)
+async def archive_semantic_model(model_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Archive a semantic model. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.archive_semantic_model(model_id, user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Semantic model not found")
+    return result
+
+
+@router.delete("/semantic-models/{model_id}", status_code=204)
+async def delete_semantic_model(model_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Delete a semantic model and all its concepts, properties, and links. Requires governance write."""
+    svc = get_governance_service()
+    svc.delete_semantic_model(model_id)
+
+
+# Concepts
+
+
+@router.get("/semantic-models/{model_id}/concepts", response_model=list[SemanticConceptResponse])
+async def list_concepts(model_id: str):
+    """List concepts for a semantic model (with properties)."""
+    svc = get_governance_service()
+    return svc.list_concepts(model_id)
+
+
+@router.post("/semantic-models/{model_id}/concepts", response_model=SemanticConceptResponse, status_code=201)
+async def create_concept(model_id: str, data: SemanticConceptCreate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Add a concept to a semantic model. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.create_concept(model_id, data.model_dump(), user)
+
+
+@router.delete("/semantic-models/concepts/{concept_id}", status_code=204)
+async def delete_concept(concept_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Delete a concept and its properties/links. Requires governance write."""
+    svc = get_governance_service()
+    svc.delete_concept(concept_id)
+
+
+# Properties
+
+
+@router.post("/semantic-models/{model_id}/concepts/{concept_id}/properties", response_model=SemanticPropertyResponse, status_code=201)
+async def add_property(model_id: str, concept_id: str, data: SemanticPropertyCreate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Add a property to a concept. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.add_property(concept_id, model_id, data.model_dump(), user)
+
+
+@router.delete("/semantic-models/properties/{property_id}", status_code=204)
+async def remove_property(property_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Remove a property and its links. Requires governance write."""
+    svc = get_governance_service()
+    svc.remove_property(property_id)
+
+
+# Semantic Links
+
+
+@router.get("/semantic-models/{model_id}/links", response_model=list[SemanticLinkResponse])
+async def list_links(model_id: str):
+    """List semantic links for a model."""
+    svc = get_governance_service()
+    return svc.list_links(model_id)
+
+
+@router.post("/semantic-models/{model_id}/links", response_model=SemanticLinkResponse, status_code=201)
+async def create_link(model_id: str, data: SemanticLinkCreate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Create a semantic link. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.create_link(model_id, data.model_dump(), user)
+
+
+@router.delete("/semantic-models/links/{link_id}", status_code=204)
+async def delete_link(link_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Delete a semantic link. Requires governance write."""
+    svc = get_governance_service()
+    svc.delete_link(link_id)

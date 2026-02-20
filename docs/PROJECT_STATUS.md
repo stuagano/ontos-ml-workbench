@@ -134,7 +134,7 @@
 | Labeling Jobs | Yes | `LabelingJobsPage.tsx` (1099 lines) | Yes | Create, Start, Pause, Resume, Delete | DONE |
 | Label Sets | Yes | `LabelSetsPage.tsx` (619 lines) | Yes | Full CRUD + Publish/Archive | DONE |
 | Registries | Yes | `RegistriesPage.tsx` (1050 lines) | Yes | Full CRUD for Tools/Agents/Endpoints | DONE |
-| Governance | Yes (Admin) | `GovernancePage.tsx` (~3340 lines) | Yes | Roles, teams, domains, projects, contracts, policies, workflows, data products | DONE |
+| Governance | Yes (Admin) | `GovernancePage.tsx` (~3950 lines) | Yes | Roles, teams, domains, projects, contracts, policies, workflows, data products, semantic models | DONE |
 | Example Effectiveness | No sidebar entry | `ExampleEffectivenessDashboard.tsx` (548 lines) | Yes (read) | None | DONE (read-only dashboard, embedded in Example Store module) |
 
 ---
@@ -183,7 +183,7 @@
 | Agents | 3 | Fully implemented |
 | Settings/Admin | 7 | Fully implemented |
 | Data Quality (DQX) | 4 | Fully implemented — results persisted to `dqx_quality_results` table |
-| Governance | 63 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree, reviews, projects, contracts, policies, evaluations, workflows, executions, data products, ports, subscriptions |
+| Governance | 79 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree, reviews, projects, contracts, policies, evaluations, workflows, executions, data products, ports, subscriptions, semantic models, concepts, properties, links |
 | Auth Core | 0 (middleware) | `get_current_user`, `require_permission`, `require_role` dependencies; `enforce_auth=false` default |
 | Quality Proxy | 1 | Fully implemented |
 
@@ -276,7 +276,7 @@ Features for mature data governance organizations.
 | # | Feature | Description | What We Have | What's Missing | Effort |
 |---|---------|-------------|-------------|----------------|--------|
 | ~~G9~~ | ~~**Data Products**~~ | ~~Curated asset collections (Source, Source-Aligned, Aggregate, Consumer-Aligned). Input/Output ports. Marketplace publishing, subscriptions.~~ | ~~DONE — Data product entity with 4 product types, input/output ports with entity linking, subscription system with approve/reject/revoke lifecycle. DDL: `32_data_products.sql` (data_products + data_product_ports + data_product_subscriptions). Backend: 15 API endpoints (CRUD, status transitions, port management, subscription workflow). UI: Products tab in GovernancePage with type/status filters, port editor (input/output with entity type), tag management, subscription panel with approve/reject/revoke actions, lifecycle buttons (Publish/Deprecate/Retire).~~ | ~~Full marketplace search/discovery. Cross-product lineage visualization.~~ | ~~L~~ |
-| G10 | **Semantic Models** | Knowledge graphs connecting technical assets to business concepts (RDF/RDFS). Business Concepts, Business Properties, three-tier semantic linking. | Templates encode domain knowledge as prompts, but no formal ontology. | Semantic model CRUD, concept/property graph, semantic linking to datasets/contracts, graph visualization UI. | L |
+| ~~G10~~ | ~~**Semantic Models**~~ | ~~Knowledge graphs connecting technical assets to business concepts. Business Concepts, Business Properties, three-tier semantic linking.~~ | ~~DONE — Semantic model entity with concepts (entity/event/metric/dimension), business properties (typed, with required/enum support), and semantic links (maps_to/derived_from/aggregates/represents) connecting concepts to data assets (table/column/sheet/contract/product). DDL: `33_semantic_models.sql` (4 tables). Backend: 16 API endpoints. UI: Semantic tab in GovernancePage with concept editor, property builder, link editor with confidence scores, publish/archive lifecycle.~~ | ~~RDF/RDFS export. Visual graph rendering.~~ | ~~L~~ |
 | G11 | **MCP Integration** | Model Context Protocol for AI assistant access. Token management, scoped access (read/write/special), tool discovery. | No MCP server. Backend is REST-only. | MCP server implementation, token CRUD, scope management, tool registration, AI assistant integration. | L |
 | G12 | **Delivery Modes** | Direct (immediate), Indirect (GitOps), Manual deployment. Git repository setup, YAML configs, version control integration. | Single deployment mode (Databricks Serving Endpoints via SDK). | Git-based deployment pipeline, YAML configuration generation, multi-mode deployment UI, approval gates per mode. | M |
 | G13 | **Multi-Platform Connectors** | Pluggable platform adapters (Unity Catalog, Snowflake, Kafka, Power BI). Unified governance across platforms. | Databricks-only (Unity Catalog + Serving Endpoints + FMAPI). | Connector abstraction layer, Snowflake/Kafka adapters, unified asset discovery across platforms. | L |
@@ -291,11 +291,20 @@ Features for mature data governance organizations.
 
 **Phase 3 — Orchestration (G7–G8):** All DONE. G7 (Process Workflows) and G8 (Projects) complete. Projects provide logical isolation for team work; workflow engine automates governance processes with triggers, steps, approvals, and execution tracking.
 
-**Phase 4 — Platform (G9–G15):** G9 (Data Products) DONE. Remaining: Semantic Models, MCP, Delivery Modes, Connectors, Marketplace, Naming. These extend governance across the full data ecosystem.
+**Phase 4 — Platform (G9–G15):** G9 (Data Products) and G10 (Semantic Models) DONE. Remaining: MCP, Delivery Modes, Connectors, Marketplace, Naming. These extend governance across the full data ecosystem.
 
 ---
 
 ## Recently Completed (Feb 20, 2026)
+
+- **Ontos Governance G10 (Semantic Models)**: Full-stack implementation across 8 files:
+  - **DDL**: `33_semantic_models.sql` — semantic_models (name, version, status, domain FK) + semantic_concepts (concept_type entity/event/metric/dimension, parent_id hierarchy, tags JSON) + semantic_properties (data_type, is_required, enum_values JSON, concept FK) + semantic_links (source_type concept/property, target_type table/column/sheet/contract/product, link_type maps_to/derived_from/aggregates/represents, confidence score)
+  - **Backend models**: `ConceptType`, `LinkType` enums, `SemanticConceptCreate/Response`, `SemanticPropertyCreate/Response`, `SemanticLinkCreate/Response`, `SemanticModelCreate/Update/Response`
+  - **Service**: `list_semantic_models` (status filter + domain join + concept/link counts), `get_semantic_model` (with concepts/properties/links), `create_semantic_model`, `update_semantic_model`, `publish_semantic_model`, `archive_semantic_model`, `delete_semantic_model` (cascading), concept CRUD with property nesting, property CRUD, link CRUD
+  - **API**: 16 endpoints — GET/POST /semantic-models, GET/PUT/DELETE /semantic-models/{id}, PUT publish/archive, GET/POST concepts, DELETE concept, POST property, DELETE property, GET/POST links, DELETE link
+  - **Frontend types**: `ConceptType`, `SemanticLinkType`, `SemanticModelStatus`, `SemanticProperty`, `SemanticConcept`, `SemanticLink`, `SemanticModel`
+  - **Frontend API**: `listSemanticModels`, `getSemanticModel`, `createSemanticModel`, `updateSemanticModel`, `publishSemanticModel`, `archiveSemanticModel`, `deleteSemanticModel`, `createConcept`, `deleteConcept`, `addConceptProperty`, `removeConceptProperty`, `createSemanticLink`, `deleteSemanticLink`
+  - **UI**: `SemanticModelsTab` in GovernancePage — concept type badges (Entity=blue, Event=amber, Metric=green, Dimension=purple), inline property builder with data type picker and required flag, semantic link editor with source picker (concept/property dropdown), target type selector, confidence score, link type badges, publish/archive lifecycle buttons
 
 - **Ontos Governance G9 (Data Products)**: Full-stack implementation across 8 files:
   - **DDL**: `32_data_products.sql` — data_products (product_type, status, tags JSON, metadata JSON, domain/team FKs) + data_product_ports (name, port_type input/output, entity_type/id linking, config JSON) + data_product_subscriptions (subscriber_email, status lifecycle pending→approved→rejected→revoked, purpose, approval tracking)

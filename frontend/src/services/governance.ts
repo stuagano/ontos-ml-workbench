@@ -37,6 +37,11 @@ import type {
   DataProductType,
   DataProductStatus,
   DataProductSubscription,
+  SemanticModel,
+  SemanticModelStatus,
+  SemanticConcept,
+  SemanticProperty,
+  SemanticLink,
 } from "../types/governance";
 
 const API_BASE = "/api/v1/governance";
@@ -670,4 +675,111 @@ export async function revokeSubscription(subscriptionId: string): Promise<DataPr
   return fetchJson(`${API_BASE}/products/subscriptions/${subscriptionId}/revoke`, {
     method: "PUT",
   });
+}
+
+// ============================================================================
+// Semantic Models (G10)
+// ============================================================================
+
+export async function listSemanticModels(filters?: {
+  status?: SemanticModelStatus;
+}): Promise<SemanticModel[]> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.set("status", filters.status);
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/semantic-models${qs ? `?${qs}` : ""}`);
+}
+
+export async function getSemanticModel(modelId: string): Promise<SemanticModel> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}`);
+}
+
+export async function createSemanticModel(data: {
+  name: string;
+  description?: string;
+  domain_id?: string;
+  owner_email?: string;
+  version?: string;
+}): Promise<SemanticModel> {
+  return fetchJson(`${API_BASE}/semantic-models`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateSemanticModel(
+  modelId: string,
+  data: Partial<SemanticModel>,
+): Promise<SemanticModel> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function publishSemanticModel(modelId: string): Promise<SemanticModel> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}/publish`, {
+    method: "PUT",
+  });
+}
+
+export async function archiveSemanticModel(modelId: string): Promise<SemanticModel> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}/archive`, {
+    method: "PUT",
+  });
+}
+
+export async function deleteSemanticModel(modelId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}`, { method: "DELETE" });
+}
+
+export async function listConcepts(modelId: string): Promise<SemanticConcept[]> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}/concepts`);
+}
+
+export async function createConcept(
+  modelId: string,
+  data: { name: string; description?: string; parent_id?: string; concept_type?: string; tags?: string[] },
+): Promise<SemanticConcept> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}/concepts`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteConcept(conceptId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/semantic-models/concepts/${conceptId}`, { method: "DELETE" });
+}
+
+export async function addConceptProperty(
+  modelId: string,
+  conceptId: string,
+  data: { name: string; description?: string; data_type?: string; is_required?: boolean; enum_values?: string[] },
+): Promise<SemanticProperty> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}/concepts/${conceptId}/properties`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function removeConceptProperty(propertyId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/semantic-models/properties/${propertyId}`, { method: "DELETE" });
+}
+
+export async function listSemanticLinks(modelId: string): Promise<SemanticLink[]> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}/links`);
+}
+
+export async function createSemanticLink(
+  modelId: string,
+  data: { source_type: string; source_id: string; target_type: string; target_id?: string; target_name?: string; link_type?: string; confidence?: number; notes?: string },
+): Promise<SemanticLink> {
+  return fetchJson(`${API_BASE}/semantic-models/${modelId}/links`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteSemanticLink(linkId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/semantic-models/links/${linkId}`, { method: "DELETE" });
 }

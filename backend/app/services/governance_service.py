@@ -1420,6 +1420,293 @@ class GovernanceService:
         )
         return rows[0] if rows else None
 
+    # ========================================================================
+    # Semantic Models (G10)
+    # ========================================================================
+
+    def list_semantic_models(self, status: str | None = None) -> list[dict]:
+        where = f"WHERE m.status = '{_esc(status)}'" if status else ""
+        rows = self.sql.execute(f"""
+            SELECT m.*,
+                   d.name AS domain_name
+            FROM {self._table('semantic_models')} m
+            LEFT JOIN {self._table('data_domains')} d ON m.domain_id = d.id
+            {where}
+            ORDER BY m.updated_at DESC
+        """)
+        models = [self._parse_semantic_model(r) for r in rows]
+        for model in models:
+            model["concept_count"] = self._count_concepts(model["id"])
+            model["link_count"] = self._count_links(model["id"])
+        return models
+
+    def get_semantic_model(self, model_id: str) -> dict | None:
+        rows = self.sql.execute(f"""
+            SELECT m.*,
+                   d.name AS domain_name
+            FROM {self._table('semantic_models')} m
+            LEFT JOIN {self._table('data_domains')} d ON m.domain_id = d.id
+            WHERE m.id = '{_esc(model_id)}'
+        """)
+        if not rows:
+            return None
+        model = self._parse_semantic_model(rows[0])
+        model["concept_count"] = self._count_concepts(model_id)
+        model["link_count"] = self._count_links(model_id)
+        model["concepts"] = self.list_concepts(model_id)
+        model["links"] = self.list_links(model_id)
+        return model
+
+    def create_semantic_model(self, data: dict, created_by: str) -> dict:
+        model_id = str(uuid.uuid4())
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('semantic_models')}
+            (id, name, description, domain_id, owner_email, status, version,
+             created_at, created_by, updated_at, updated_by)
+            VALUES (
+                '{model_id}', '{_esc(data["name"])}',
+                {f"'{_esc(data['description'])}'" if data.get('description') else 'NULL'},
+                {f"'{_esc(data['domain_id'])}'" if data.get('domain_id') else 'NULL'},
+                {f"'{_esc(data['owner_email'])}'" if data.get('owner_email') else f"'{_esc(created_by)}'"},
+                'draft',
+                '{_esc(data.get("version", "1.0.0"))}',
+                current_timestamp(), '{_esc(created_by)}',
+                current_timestamp(), '{_esc(created_by)}'
+            )
+        """)
+        return self.get_semantic_model(model_id)
+
+    def update_semantic_model(self, model_id: str, data: dict, updated_by: str) -> dict | None:
+        updates = []
+        if data.get("name") is not None:
+            updates.append(f"name = '{_esc(data['name'])}'")
+        if data.get("description") is not None:
+            updates.append(f"description = '{_esc(data['description'])}'")
+        if data.get("domain_id") is not None:
+            updates.append(f"domain_id = '{_esc(data['domain_id'])}'")
+        if data.get("owner_email") is not None:
+            updates.append(f"owner_email = '{_esc(data['owner_email'])}'")
+        if data.get("version") is not None:
+            updates.append(f"version = '{_esc(data['version'])}'")
+
+        if updates:
+            updates.append(f"updated_by = '{_esc(updated_by)}'")
+            updates.append("updated_at = current_timestamp()")
+            self.sql.execute_update(
+                f"UPDATE {self._table('semantic_models')} SET {', '.join(updates)} "
+                f"WHERE id = '{_esc(model_id)}'"
+            )
+        return self.get_semantic_model(model_id)
+
+    def publish_semantic_model(self, model_id: str, updated_by: str) -> dict | None:
+        self.sql.execute_update(
+            f"UPDATE {self._table('semantic_models')} "
+            f"SET status = 'published', updated_by = '{_esc(updated_by)}', "
+            f"    updated_at = current_timestamp() "
+            f"WHERE id = '{_esc(model_id)}'"
+        )
+        return self.get_semantic_model(model_id)
+
+    def archive_semantic_model(self, model_id: str, updated_by: str) -> dict | None:
+        self.sql.execute_update(
+            f"UPDATE {self._table('semantic_models')} "
+            f"SET status = 'archived', updated_by = '{_esc(updated_by)}', "
+            f"    updated_at = current_timestamp() "
+            f"WHERE id = '{_esc(model_id)}'"
+        )
+        return self.get_semantic_model(model_id)
+
+    def delete_semantic_model(self, model_id: str) -> None:
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('semantic_links')} WHERE model_id = '{_esc(model_id)}'"
+        )
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('semantic_properties')} WHERE model_id = '{_esc(model_id)}'"
+        )
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('semantic_concepts')} WHERE model_id = '{_esc(model_id)}'"
+        )
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('semantic_models')} WHERE id = '{_esc(model_id)}'"
+        )
+
+    def _parse_semantic_model(self, row: dict) -> dict:
+        meta_raw = row.get("metadata")
+        return {
+            **row,
+            "metadata": json.loads(meta_raw) if meta_raw else None,
+        }
+
+    def _count_concepts(self, model_id: str) -> int:
+        rows = self.sql.execute(
+            f"SELECT COUNT(*) AS cnt FROM {self._table('semantic_concepts')} "
+            f"WHERE model_id = '{_esc(model_id)}'"
+        )
+        return rows[0]["cnt"] if rows else 0
+
+    def _count_links(self, model_id: str) -> int:
+        rows = self.sql.execute(
+            f"SELECT COUNT(*) AS cnt FROM {self._table('semantic_links')} "
+            f"WHERE model_id = '{_esc(model_id)}'"
+        )
+        return rows[0]["cnt"] if rows else 0
+
+    # Concepts
+
+    def list_concepts(self, model_id: str) -> list[dict]:
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('semantic_concepts')} "
+            f"WHERE model_id = '{_esc(model_id)}' ORDER BY name"
+        )
+        concepts = [self._parse_concept(r) for r in rows]
+        # Attach properties to each concept
+        for concept in concepts:
+            concept["properties"] = self._list_properties_for_concept(concept["id"])
+        return concepts
+
+    def create_concept(self, model_id: str, data: dict, created_by: str) -> dict:
+        concept_id = str(uuid.uuid4())
+        tags_json = json.dumps(data.get("tags", [])).replace("'", "''")
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('semantic_concepts')}
+            (id, model_id, name, description, parent_id, concept_type, tags,
+             created_at, created_by)
+            VALUES (
+                '{concept_id}', '{_esc(model_id)}',
+                '{_esc(data["name"])}',
+                {f"'{_esc(data['description'])}'" if data.get('description') else 'NULL'},
+                {f"'{_esc(data['parent_id'])}'" if data.get('parent_id') else 'NULL'},
+                '{_esc(data.get("concept_type", "entity"))}',
+                '{tags_json}',
+                current_timestamp(), '{_esc(created_by)}'
+            )
+        """)
+        # Touch model updated_at
+        self.sql.execute_update(
+            f"UPDATE {self._table('semantic_models')} "
+            f"SET updated_at = current_timestamp(), updated_by = '{_esc(created_by)}' "
+            f"WHERE id = '{_esc(model_id)}'"
+        )
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('semantic_concepts')} WHERE id = '{concept_id}'"
+        )
+        concept = self._parse_concept(rows[0]) if rows else {}
+        concept["properties"] = []
+        return concept
+
+    def delete_concept(self, concept_id: str) -> None:
+        # Delete properties and links for this concept
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('semantic_links')} "
+            f"WHERE source_type = 'concept' AND source_id = '{_esc(concept_id)}'"
+        )
+        # Delete links targeting properties of this concept
+        props = self.sql.execute(
+            f"SELECT id FROM {self._table('semantic_properties')} WHERE concept_id = '{_esc(concept_id)}'"
+        )
+        for prop in props:
+            self.sql.execute_update(
+                f"DELETE FROM {self._table('semantic_links')} "
+                f"WHERE source_type = 'property' AND source_id = '{_esc(prop['id'])}'"
+            )
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('semantic_properties')} WHERE concept_id = '{_esc(concept_id)}'"
+        )
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('semantic_concepts')} WHERE id = '{_esc(concept_id)}'"
+        )
+
+    def _parse_concept(self, row: dict) -> dict:
+        tags_raw = row.get("tags")
+        return {
+            **row,
+            "tags": json.loads(tags_raw) if tags_raw else [],
+        }
+
+    # Properties
+
+    def _list_properties_for_concept(self, concept_id: str) -> list[dict]:
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('semantic_properties')} "
+            f"WHERE concept_id = '{_esc(concept_id)}' ORDER BY name"
+        )
+        return [self._parse_property(r) for r in rows]
+
+    def add_property(self, concept_id: str, model_id: str, data: dict, created_by: str) -> dict:
+        prop_id = str(uuid.uuid4())
+        enum_json = json.dumps(data["enum_values"]).replace("'", "''") if data.get("enum_values") else None
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('semantic_properties')}
+            (id, concept_id, model_id, name, description, data_type, is_required, enum_values,
+             created_at, created_by)
+            VALUES (
+                '{prop_id}', '{_esc(concept_id)}', '{_esc(model_id)}',
+                '{_esc(data["name"])}',
+                {f"'{_esc(data['description'])}'" if data.get('description') else 'NULL'},
+                {f"'{_esc(data['data_type'])}'" if data.get('data_type') else 'NULL'},
+                {str(data.get('is_required', False)).lower()},
+                {f"'{enum_json}'" if enum_json else 'NULL'},
+                current_timestamp(), '{_esc(created_by)}'
+            )
+        """)
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('semantic_properties')} WHERE id = '{prop_id}'"
+        )
+        return self._parse_property(rows[0]) if rows else {}
+
+    def remove_property(self, property_id: str) -> None:
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('semantic_links')} "
+            f"WHERE source_type = 'property' AND source_id = '{_esc(property_id)}'"
+        )
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('semantic_properties')} WHERE id = '{_esc(property_id)}'"
+        )
+
+    def _parse_property(self, row: dict) -> dict:
+        enum_raw = row.get("enum_values")
+        return {
+            **row,
+            "enum_values": json.loads(enum_raw) if enum_raw else None,
+        }
+
+    # Semantic Links
+
+    def list_links(self, model_id: str) -> list[dict]:
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('semantic_links')} "
+            f"WHERE model_id = '{_esc(model_id)}' ORDER BY source_type, link_type"
+        )
+        return rows
+
+    def create_link(self, model_id: str, data: dict, created_by: str) -> dict:
+        link_id = str(uuid.uuid4())
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('semantic_links')}
+            (id, model_id, source_type, source_id, target_type, target_id, target_name,
+             link_type, confidence, notes, created_at, created_by)
+            VALUES (
+                '{link_id}', '{_esc(model_id)}',
+                '{_esc(data["source_type"])}', '{_esc(data["source_id"])}',
+                '{_esc(data["target_type"])}',
+                {f"'{_esc(data['target_id'])}'" if data.get('target_id') else 'NULL'},
+                {f"'{_esc(data['target_name'])}'" if data.get('target_name') else 'NULL'},
+                '{_esc(data.get("link_type", "maps_to"))}',
+                {data['confidence'] if data.get('confidence') is not None else 'NULL'},
+                {f"'{_esc(data['notes'])}'" if data.get('notes') else 'NULL'},
+                current_timestamp(), '{_esc(created_by)}'
+            )
+        """)
+        rows = self.sql.execute(
+            f"SELECT * FROM {self._table('semantic_links')} WHERE id = '{link_id}'"
+        )
+        return rows[0] if rows else {}
+
+    def delete_link(self, link_id: str) -> None:
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('semantic_links')} WHERE id = '{_esc(link_id)}'"
+        )
+
 
 # Singleton
 _governance_service: GovernanceService | None = None

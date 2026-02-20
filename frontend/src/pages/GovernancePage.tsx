@@ -41,6 +41,10 @@ import {
   UserCheck,
   XOctagon,
   Ban,
+  Brain,
+  Link2,
+  Box,
+  Hash,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -95,6 +99,18 @@ import {
   approveSubscription,
   rejectSubscription,
   revokeSubscription,
+  listSemanticModels,
+  createSemanticModel,
+  updateSemanticModel,
+  publishSemanticModel,
+  archiveSemanticModel,
+  deleteSemanticModel,
+  createConcept,
+  deleteConcept,
+  addConceptProperty,
+  removeConceptProperty,
+  createSemanticLink,
+  deleteSemanticLink,
 } from "../services/governance";
 import { useToast } from "../components/Toast";
 import type {
@@ -113,9 +129,15 @@ import type {
   DataProductStatus,
   DataProductPort,
   DataProductSubscription,
+  ConceptType,
+  SemanticLinkType,
+  SemanticModelStatus,
+  SemanticConcept,
+  SemanticProperty,
+  SemanticLink,
 } from "../types/governance";
 
-type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows" | "products";
+type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows" | "products" | "semantic";
 
 interface GovernancePageProps {
   onClose: () => void;
@@ -3266,6 +3288,586 @@ function SubscriptionsPanel({ productId }: { productId: string }) {
 }
 
 // ============================================================================
+// Semantic Models Tab (G10)
+// ============================================================================
+
+const CONCEPT_TYPE_LABELS: Record<ConceptType, string> = {
+  entity: "Entity",
+  event: "Event",
+  metric: "Metric",
+  dimension: "Dimension",
+};
+
+const CONCEPT_TYPE_COLORS: Record<ConceptType, string> = {
+  entity: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400",
+  event: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400",
+  metric: "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400",
+  dimension: "bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-400",
+};
+
+const LINK_TYPE_LABELS: Record<SemanticLinkType, string> = {
+  maps_to: "Maps To",
+  derived_from: "Derived From",
+  aggregates: "Aggregates",
+  represents: "Represents",
+};
+
+const SEMANTIC_STATUS_COLORS: Record<SemanticModelStatus, string> = {
+  draft: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  published: "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400",
+  archived: "bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400",
+};
+
+const DATA_TYPES = ["string", "number", "boolean", "date", "enum"];
+const TARGET_TYPES = ["table", "column", "sheet", "contract", "product"];
+
+function SemanticModelsTab() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [showCreate, setShowCreate] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string>("");
+
+  // Create form
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newVersion, setNewVersion] = useState("1.0.0");
+  const [newOwner, setNewOwner] = useState("");
+
+  // Concept form (in detail view)
+  const [showAddConcept, setShowAddConcept] = useState(false);
+  const [conceptName, setConceptName] = useState("");
+  const [conceptDesc, setConceptDesc] = useState("");
+  const [conceptType, setConceptType] = useState<string>("entity");
+
+  // Property form
+  const [addPropConceptId, setAddPropConceptId] = useState<string | null>(null);
+  const [propName, setPropName] = useState("");
+  const [propDesc, setPropDesc] = useState("");
+  const [propDataType, setPropDataType] = useState<string>("string");
+  const [propRequired, setPropRequired] = useState(false);
+
+  // Link form
+  const [showAddLink, setShowAddLink] = useState(false);
+  const [linkSourceType, setLinkSourceType] = useState<string>("concept");
+  const [linkSourceId, setLinkSourceId] = useState("");
+  const [linkTargetType, setLinkTargetType] = useState<string>("table");
+  const [linkTargetName, setLinkTargetName] = useState("");
+  const [linkType, setLinkType] = useState<string>("maps_to");
+  const [linkConfidence, setLinkConfidence] = useState("");
+
+  const { data: models = [], isLoading } = useQuery({
+    queryKey: ["governance-semantic", filterStatus],
+    queryFn: () => listSemanticModels(filterStatus ? { status: filterStatus as SemanticModelStatus } : undefined),
+  });
+
+  const { data: domains = [] } = useQuery({
+    queryKey: ["governance-domains"],
+    queryFn: listDomains,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: { name: string; description?: string; version?: string; owner_email?: string }) =>
+      createSemanticModel(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-semantic"] });
+      toast.success("Model Created", "New semantic model created as draft");
+      setShowCreate(false);
+      setNewName(""); setNewDesc(""); setNewVersion("1.0.0"); setNewOwner("");
+    },
+    onError: (err: Error) => toast.error("Create Failed", err.message),
+  });
+
+  const publishMutation = useMutation({
+    mutationFn: publishSemanticModel,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-semantic"] });
+      toast.success("Model Published", "Semantic model is now published");
+    },
+    onError: (err: Error) => toast.error("Publish Failed", err.message),
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: archiveSemanticModel,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-semantic"] });
+      toast.success("Model Archived", "Semantic model archived");
+    },
+    onError: (err: Error) => toast.error("Archive Failed", err.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteSemanticModel,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-semantic"] });
+      toast.success("Model Deleted", "Semantic model removed");
+      setSelectedModel(null);
+    },
+    onError: (err: Error) => toast.error("Delete Failed", err.message),
+  });
+
+  const createConceptMutation = useMutation({
+    mutationFn: ({ modelId, data }: { modelId: string; data: { name: string; description?: string; concept_type?: string } }) =>
+      createConcept(modelId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-semantic"] });
+      toast.success("Concept Added", "Business concept created");
+      setShowAddConcept(false);
+      setConceptName(""); setConceptDesc(""); setConceptType("entity");
+    },
+    onError: (err: Error) => toast.error("Add Concept Failed", err.message),
+  });
+
+  const deleteConceptMutation = useMutation({
+    mutationFn: deleteConcept,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-semantic"] });
+      toast.success("Concept Deleted", "Business concept and its properties removed");
+    },
+    onError: (err: Error) => toast.error("Delete Failed", err.message),
+  });
+
+  const addPropertyMutation = useMutation({
+    mutationFn: ({ modelId, conceptId, data }: { modelId: string; conceptId: string; data: { name: string; description?: string; data_type?: string; is_required?: boolean } }) =>
+      addConceptProperty(modelId, conceptId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-semantic"] });
+      toast.success("Property Added", "Business property created");
+      setAddPropConceptId(null);
+      setPropName(""); setPropDesc(""); setPropDataType("string"); setPropRequired(false);
+    },
+    onError: (err: Error) => toast.error("Add Property Failed", err.message),
+  });
+
+  const removePropertyMutation = useMutation({
+    mutationFn: removeConceptProperty,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-semantic"] });
+      toast.success("Property Removed", "Business property removed");
+    },
+    onError: (err: Error) => toast.error("Remove Failed", err.message),
+  });
+
+  const createLinkMutation = useMutation({
+    mutationFn: ({ modelId, data }: { modelId: string; data: { source_type: string; source_id: string; target_type: string; target_name?: string; link_type?: string; confidence?: number } }) =>
+      createSemanticLink(modelId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-semantic"] });
+      toast.success("Link Created", "Semantic link established");
+      setShowAddLink(false);
+      setLinkSourceType("concept"); setLinkSourceId(""); setLinkTargetType("table"); setLinkTargetName(""); setLinkType("maps_to"); setLinkConfidence("");
+    },
+    onError: (err: Error) => toast.error("Create Link Failed", err.message),
+  });
+
+  const deleteLinkMutation = useMutation({
+    mutationFn: deleteSemanticLink,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-semantic"] });
+      toast.success("Link Deleted", "Semantic link removed");
+    },
+    onError: (err: Error) => toast.error("Delete Failed", err.message),
+  });
+
+  if (isLoading) {
+    return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-db-orange" /></div>;
+  }
+
+  // Detail view
+  if (selectedModel) {
+    const model = models.find((m) => m.id === selectedModel);
+    if (!model) return null;
+
+    // Build flat list of all concepts + properties for link source picker
+    const allSources: { id: string; label: string; type: "concept" | "property" }[] = [];
+    for (const c of model.concepts || []) {
+      allSources.push({ id: c.id, label: `[${CONCEPT_TYPE_LABELS[c.concept_type]}] ${c.name}`, type: "concept" });
+      for (const p of c.properties || []) {
+        allSources.push({ id: p.id, label: `  ${c.name}.${p.name}`, type: "property" });
+      }
+    }
+
+    return (
+      <div className="space-y-6">
+        <button onClick={() => setSelectedModel(null)} className="flex items-center gap-2 text-sm text-db-gray-600 dark:text-gray-400 hover:text-db-gray-800 dark:hover:text-white">
+          <ArrowLeft className="w-4 h-4" /> Back to semantic models
+        </button>
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-db-gray-800 dark:text-white flex items-center gap-2">
+              <Brain className="w-5 h-5 text-indigo-500" />
+              {model.name}
+              <span className="text-xs text-db-gray-400 font-normal">v{model.version}</span>
+              <span className={clsx("px-2 py-0.5 text-xs rounded-full font-medium", SEMANTIC_STATUS_COLORS[model.status])}>
+                {model.status}
+              </span>
+            </h3>
+            {model.description && <p className="text-sm text-db-gray-500 dark:text-gray-500 mt-1">{model.description}</p>}
+            <p className="text-xs text-db-gray-400 dark:text-gray-600 mt-1">
+              {model.owner_email && <>Owner: {model.owner_email}</>}
+              {model.domain_name && <> · Domain: {model.domain_name}</>}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {model.status === "draft" && (
+              <button onClick={() => publishMutation.mutate(model.id)} className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center gap-1">
+                <Play className="w-3 h-3" /> Publish
+              </button>
+            )}
+            {model.status === "published" && (
+              <button onClick={() => archiveMutation.mutate(model.id)} className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 flex items-center gap-1">
+                <Archive className="w-3 h-3" /> Archive
+              </button>
+            )}
+            <button
+              onClick={() => { if (confirm("Delete this semantic model?")) deleteMutation.mutate(model.id); }}
+              className="px-3 py-1.5 text-red-600 dark:text-red-400 text-sm rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950 flex items-center gap-1"
+            >
+              <Trash2 className="w-3 h-3" /> Delete
+            </button>
+          </div>
+        </div>
+
+        {/* Concepts Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-db-gray-700 dark:text-gray-300 flex items-center gap-1">
+              <Box className="w-4 h-4" /> Business Concepts ({(model.concepts || []).length})
+            </h4>
+            <button onClick={() => setShowAddConcept(!showAddConcept)} className="px-3 py-1.5 bg-db-orange text-white text-sm rounded-lg hover:bg-db-orange/90 flex items-center gap-1">
+              <Plus className="w-3 h-3" /> Add Concept
+            </button>
+          </div>
+
+          {showAddConcept && (
+            <div className="bg-db-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3 border border-db-gray-200 dark:border-gray-700">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Name *</label>
+                  <input value={conceptName} onChange={(e) => setConceptName(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white" placeholder="e.g., Equipment" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Type</label>
+                  <select value={conceptType} onChange={(e) => setConceptType(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white">
+                    {(Object.keys(CONCEPT_TYPE_LABELS) as ConceptType[]).map((t) => (
+                      <option key={t} value={t}>{CONCEPT_TYPE_LABELS[t]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Description</label>
+                  <input value={conceptDesc} onChange={(e) => setConceptDesc(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white" />
+                </div>
+              </div>
+              <button
+                onClick={() => { if (conceptName.trim()) createConceptMutation.mutate({ modelId: model.id, data: { name: conceptName.trim(), description: conceptDesc || undefined, concept_type: conceptType } }); }}
+                disabled={!conceptName.trim()}
+                className="px-4 py-1.5 bg-db-orange text-white text-sm rounded-lg hover:bg-db-orange/90 disabled:opacity-50"
+              >
+                Add Concept
+              </button>
+            </div>
+          )}
+
+          {(model.concepts || []).length === 0 ? (
+            <p className="text-sm text-db-gray-400 dark:text-gray-600 italic">No concepts defined yet. Add business concepts to build the knowledge graph.</p>
+          ) : (
+            <div className="space-y-3">
+              {(model.concepts || []).map((concept) => (
+                <div key={concept.id} className="bg-white dark:bg-gray-900 rounded-lg border border-db-gray-200 dark:border-gray-700 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Box className="w-4 h-4 text-indigo-500" />
+                      <span className="font-medium text-sm text-db-gray-800 dark:text-white">{concept.name}</span>
+                      <span className={clsx("px-1.5 py-0.5 text-[10px] rounded font-medium", CONCEPT_TYPE_COLORS[concept.concept_type])}>
+                        {CONCEPT_TYPE_LABELS[concept.concept_type]}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { setAddPropConceptId(addPropConceptId === concept.id ? null : concept.id); setPropName(""); setPropDesc(""); }}
+                        className="px-2 py-1 text-xs text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded hover:bg-indigo-50 dark:hover:bg-indigo-950"
+                      >
+                        <Plus className="w-3 h-3 inline" /> Property
+                      </button>
+                      <button onClick={() => deleteConceptMutation.mutate(concept.id)} className="text-red-400 hover:text-red-600 p-1">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  {concept.description && <p className="text-xs text-db-gray-500 dark:text-gray-500 mb-2 ml-6">{concept.description}</p>}
+
+                  {/* Properties */}
+                  {(concept.properties || []).length > 0 && (
+                    <div className="ml-6 space-y-1">
+                      {concept.properties.map((prop) => (
+                        <div key={prop.id} className="flex items-center justify-between py-1 px-2 bg-db-gray-50 dark:bg-gray-800 rounded text-xs">
+                          <div className="flex items-center gap-2">
+                            <Hash className="w-3 h-3 text-db-gray-400" />
+                            <span className="font-medium text-db-gray-700 dark:text-gray-300">{prop.name}</span>
+                            {prop.data_type && <span className="text-db-gray-400 dark:text-gray-600">{prop.data_type}</span>}
+                            {prop.is_required && <span className="text-red-500 text-[10px]">required</span>}
+                          </div>
+                          <button onClick={() => removePropertyMutation.mutate(prop.id)} className="text-red-400 hover:text-red-600">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add property form */}
+                  {addPropConceptId === concept.id && (
+                    <div className="ml-6 mt-2 p-2 bg-indigo-50/50 dark:bg-indigo-950/20 rounded border border-indigo-200 dark:border-indigo-800 space-y-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <input value={propName} onChange={(e) => setPropName(e.target.value)} placeholder="Property name" className="px-2 py-1 text-xs rounded border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white" />
+                        <select value={propDataType} onChange={(e) => setPropDataType(e.target.value)} className="px-2 py-1 text-xs rounded border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white">
+                          {DATA_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        <div className="flex items-center gap-2">
+                          <label className="flex items-center gap-1 text-xs text-db-gray-600 dark:text-gray-400">
+                            <input type="checkbox" checked={propRequired} onChange={(e) => setPropRequired(e.target.checked)} className="rounded" />
+                            Required
+                          </label>
+                          <button
+                            onClick={() => { if (propName.trim()) addPropertyMutation.mutate({ modelId: model.id, conceptId: concept.id, data: { name: propName.trim(), description: propDesc || undefined, data_type: propDataType, is_required: propRequired } }); }}
+                            disabled={!propName.trim()}
+                            className="px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Semantic Links Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-db-gray-700 dark:text-gray-300 flex items-center gap-1">
+              <Link2 className="w-4 h-4" /> Semantic Links ({(model.links || []).length})
+            </h4>
+            <button onClick={() => setShowAddLink(!showAddLink)} className="px-3 py-1.5 bg-db-orange text-white text-sm rounded-lg hover:bg-db-orange/90 flex items-center gap-1">
+              <Plus className="w-3 h-3" /> Add Link
+            </button>
+          </div>
+
+          {showAddLink && (
+            <div className="bg-db-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3 border border-db-gray-200 dark:border-gray-700">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Source (Concept/Property) *</label>
+                  <select
+                    value={`${linkSourceType}:${linkSourceId}`}
+                    onChange={(e) => {
+                      const [t, id] = e.target.value.split(":");
+                      setLinkSourceType(t);
+                      setLinkSourceId(id || "");
+                    }}
+                    className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                  >
+                    <option value=":">Select source...</option>
+                    {allSources.map((s) => (
+                      <option key={s.id} value={`${s.type}:${s.id}`}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Link Type</label>
+                  <select value={linkType} onChange={(e) => setLinkType(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white">
+                    {(Object.keys(LINK_TYPE_LABELS) as SemanticLinkType[]).map((t) => (
+                      <option key={t} value={t}>{LINK_TYPE_LABELS[t]}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Target Type *</label>
+                  <select value={linkTargetType} onChange={(e) => setLinkTargetType(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white">
+                    {TARGET_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Target Name *</label>
+                  <input value={linkTargetName} onChange={(e) => setLinkTargetName(e.target.value)} placeholder="e.g., catalog.schema.table" className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Confidence (0-1)</label>
+                  <input value={linkConfidence} onChange={(e) => setLinkConfidence(e.target.value)} type="number" step="0.1" min="0" max="1" placeholder="0.9" className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white" />
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  if (!linkSourceId || !linkTargetName.trim()) return;
+                  createLinkMutation.mutate({
+                    modelId: model.id,
+                    data: {
+                      source_type: linkSourceType,
+                      source_id: linkSourceId,
+                      target_type: linkTargetType,
+                      target_name: linkTargetName.trim(),
+                      link_type: linkType,
+                      confidence: linkConfidence ? parseFloat(linkConfidence) : undefined,
+                    },
+                  });
+                }}
+                disabled={!linkSourceId || !linkTargetName.trim()}
+                className="px-4 py-1.5 bg-db-orange text-white text-sm rounded-lg hover:bg-db-orange/90 disabled:opacity-50"
+              >
+                Create Link
+              </button>
+            </div>
+          )}
+
+          {(model.links || []).length === 0 ? (
+            <p className="text-sm text-db-gray-400 dark:text-gray-600 italic">No links defined yet. Add links to connect concepts to data assets.</p>
+          ) : (
+            <div className="space-y-1">
+              {(model.links || []).map((link) => {
+                const source = allSources.find((s) => s.id === link.source_id);
+                return (
+                  <div key={link.id} className="flex items-center justify-between p-2 bg-white dark:bg-gray-900 rounded border border-db-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-medium text-db-gray-700 dark:text-gray-300">{source?.label || link.source_id.substring(0, 8)}</span>
+                      <span className="px-1.5 py-0.5 text-[10px] bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 rounded font-medium">
+                        {LINK_TYPE_LABELS[link.link_type as SemanticLinkType] || link.link_type}
+                      </span>
+                      <span className="text-db-gray-500 dark:text-gray-500">→</span>
+                      <span className="text-[10px] px-1.5 py-0.5 bg-db-gray-100 dark:bg-gray-800 text-db-gray-500 dark:text-gray-500 rounded">{link.target_type}</span>
+                      <span className="text-db-gray-700 dark:text-gray-300">{link.target_name || link.target_id?.substring(0, 8)}</span>
+                      {link.confidence != null && (
+                        <span className="text-[10px] text-db-gray-400 dark:text-gray-600">{(link.confidence * 100).toFixed(0)}%</span>
+                      )}
+                    </div>
+                    <button onClick={() => deleteLinkMutation.mutate(link.id)} className="text-red-400 hover:text-red-600">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // List view
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-700 dark:text-gray-300"
+        >
+          <option value="">All Statuses</option>
+          <option value="draft">Draft</option>
+          <option value="published">Published</option>
+          <option value="archived">Archived</option>
+        </select>
+        <button
+          onClick={() => setShowCreate(!showCreate)}
+          className="flex items-center gap-2 px-4 py-2 bg-db-orange text-white text-sm rounded-lg hover:bg-db-orange/90"
+        >
+          <Plus className="w-4 h-4" /> New Semantic Model
+        </button>
+      </div>
+
+      {showCreate && (
+        <div className="bg-db-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3 border border-db-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Name *</label>
+              <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g., Radiation Safety Ontology" className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Version</label>
+              <input value={newVersion} onChange={(e) => setNewVersion(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Description</label>
+            <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Owner Email</label>
+            <input value={newOwner} onChange={(e) => setNewOwner(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white" />
+          </div>
+          <button
+            onClick={() => createMutation.mutate({
+              name: newName.trim(),
+              description: newDesc || undefined,
+              version: newVersion || undefined,
+              owner_email: newOwner || undefined,
+            })}
+            disabled={!newName.trim() || createMutation.isPending}
+            className="px-4 py-2 bg-db-orange text-white text-sm rounded-lg hover:bg-db-orange/90 disabled:opacity-50"
+          >
+            {createMutation.isPending ? "Creating..." : "Create Model"}
+          </button>
+        </div>
+      )}
+
+      {/* Model List */}
+      {models.length === 0 ? (
+        <p className="text-center text-sm text-db-gray-400 dark:text-gray-600 py-8">No semantic models found.</p>
+      ) : (
+        <div className="space-y-2">
+          {models.map((model) => (
+            <div
+              key={model.id}
+              onClick={() => setSelectedModel(model.id)}
+              className="p-4 bg-white dark:bg-gray-900 rounded-lg border border-db-gray-200 dark:border-gray-700 cursor-pointer hover:border-db-orange/50 dark:hover:border-db-orange/50 transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                    <span className="font-medium text-sm text-db-gray-800 dark:text-white truncate">{model.name}</span>
+                    <span className="text-xs text-db-gray-400 font-normal">v{model.version}</span>
+                    <span className={clsx("px-1.5 py-0.5 text-[10px] rounded font-medium", SEMANTIC_STATUS_COLORS[model.status])}>
+                      {model.status}
+                    </span>
+                  </div>
+                  {model.description && (
+                    <div className="text-xs text-db-gray-500 dark:text-gray-500 mt-0.5 ml-6">{model.description}</div>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {model.concept_count > 0 && (
+                    <span className="text-xs text-db-gray-400 dark:text-gray-600 flex items-center gap-1">
+                      <Box className="w-3 h-3" /> {model.concept_count}
+                    </span>
+                  )}
+                  {model.link_count > 0 && (
+                    <span className="text-xs text-db-gray-400 dark:text-gray-600 flex items-center gap-1">
+                      <Link2 className="w-3 h-3" /> {model.link_count}
+                    </span>
+                  )}
+                  {model.domain_name && (
+                    <span className="text-[10px] px-1.5 py-0.5 bg-db-gray-100 dark:bg-gray-800 text-db-gray-500 dark:text-gray-500 rounded">{model.domain_name}</span>
+                  )}
+                  <ChevronRight className="w-4 h-4 text-db-gray-400 dark:text-gray-600" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // Main Page
 // ============================================================================
 
@@ -3278,6 +3880,7 @@ const TABS: { id: TabId; label: string; icon: typeof Shield }[] = [
   { id: "policies", label: "Policies", icon: ShieldAlert },
   { id: "workflows", label: "Workflows", icon: GitBranch },
   { id: "products", label: "Products", icon: Package },
+  { id: "semantic", label: "Semantic", icon: Brain },
 ];
 
 export function GovernancePage({ onClose }: GovernancePageProps) {
@@ -3336,6 +3939,7 @@ export function GovernancePage({ onClose }: GovernancePageProps) {
           {activeTab === "policies" && <PoliciesTab />}
           {activeTab === "workflows" && <WorkflowsTab />}
           {activeTab === "products" && <DataProductsTab />}
+          {activeTab === "semantic" && <SemanticModelsTab />}
         </div>
       </div>
     </div>

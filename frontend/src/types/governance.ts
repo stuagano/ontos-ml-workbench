@@ -358,3 +358,70 @@ export interface DataProduct {
   updated_by: string | null;
   published_at: string | null;
 }
+
+// Semantic Models (G10)
+
+export type ConceptType = "entity" | "event" | "metric" | "dimension";
+export type SemanticLinkType = "maps_to" | "derived_from" | "aggregates" | "represents";
+export type SemanticModelStatus = "draft" | "published" | "archived";
+
+export interface SemanticProperty {
+  id: string;
+  concept_id: string;
+  model_id: string;
+  name: string;
+  description: string | null;
+  data_type: string | null;
+  is_required: boolean;
+  enum_values: string[] | null;
+  created_at: string | null;
+  created_by: string | null;
+}
+
+export interface SemanticConcept {
+  id: string;
+  model_id: string;
+  name: string;
+  description: string | null;
+  parent_id: string | null;
+  concept_type: ConceptType;
+  tags: string[];
+  created_at: string | null;
+  created_by: string | null;
+  properties: SemanticProperty[];
+}
+
+export interface SemanticLink {
+  id: string;
+  model_id: string;
+  source_type: "concept" | "property";
+  source_id: string;
+  target_type: string;
+  target_id: string | null;
+  target_name: string | null;
+  link_type: SemanticLinkType;
+  confidence: number | null;
+  notes: string | null;
+  created_at: string | null;
+  created_by: string | null;
+}
+
+export interface SemanticModel {
+  id: string;
+  name: string;
+  description: string | null;
+  domain_id: string | null;
+  domain_name: string | null;
+  owner_email: string | null;
+  status: SemanticModelStatus;
+  version: string;
+  metadata: Record<string, unknown> | null;
+  concept_count: number;
+  link_count: number;
+  concepts: SemanticConcept[];
+  links: SemanticLink[];
+  created_at: string | null;
+  created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+}
