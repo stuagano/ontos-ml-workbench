@@ -20,6 +20,10 @@ import {
   ChevronRight,
   Wrench,
   Briefcase,
+  FileCheck,
+  Play,
+  Archive,
+  XCircle,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -43,14 +47,22 @@ import {
   listProjectMembers,
   addProjectMember,
   removeProjectMember,
+  listContracts,
+  createContract,
+  updateContract,
+  transitionContractStatus,
+  deleteContract,
 } from "../services/governance";
 import { useToast } from "../components/Toast";
 import type {
   AccessLevel,
   DomainTreeNode,
+  ContractColumnSpec,
+  ContractQualityRule,
+  ContractStatus,
 } from "../types/governance";
 
-type TabId = "roles" | "teams" | "domains" | "projects";
+type TabId = "roles" | "teams" | "domains" | "projects" | "contracts";
 
 interface GovernancePageProps {
   onClose: () => void;
@@ -993,6 +1005,533 @@ function ProjectsTab() {
 }
 
 // ============================================================================
+// Contracts Tab (G5)
+// ============================================================================
+
+const STATUS_COLORS: Record<ContractStatus, string> = {
+  draft: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  active: "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400",
+  deprecated: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400",
+  retired: "bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400",
+};
+
+const COLUMN_TYPES = ["STRING", "INT", "BIGINT", "DOUBLE", "FLOAT", "BOOLEAN", "TIMESTAMP", "DATE", "BINARY", "ARRAY", "MAP", "STRUCT"];
+const QUALITY_METRICS = ["completeness", "freshness", "accuracy", "uniqueness", "consistency", "validity"];
+const QUALITY_OPERATORS = [">=", "<=", "==", ">", "<"];
+
+function ContractsTab() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [showCreate, setShowCreate] = useState(false);
+  const [selectedContract, setSelectedContract] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string>("");
+
+  // Create form state
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newVersion, setNewVersion] = useState("1.0.0");
+  const [newOwner, setNewOwner] = useState("");
+
+  // Schema editor state (for detail view)
+  const [editColumns, setEditColumns] = useState<ContractColumnSpec[]>([]);
+  const [editRules, setEditRules] = useState<ContractQualityRule[]>([]);
+  const [editPurpose, setEditPurpose] = useState("");
+  const [editLimitations, setEditLimitations] = useState("");
+  const [editRetention, setEditRetention] = useState("");
+
+  const { data: contracts = [], isLoading } = useQuery({
+    queryKey: ["governance-contracts", filterStatus],
+    queryFn: () => listContracts(filterStatus ? { status: filterStatus as ContractStatus } : undefined),
+  });
+
+  const { data: domains = [] } = useQuery({
+    queryKey: ["governance-domains"],
+    queryFn: listDomains,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: { name: string; description?: string; version?: string; owner_email?: string }) =>
+      createContract(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-contracts"] });
+      toast.success("Contract Created", "New data contract created as draft");
+      setShowCreate(false);
+      setNewName("");
+      setNewDesc("");
+      setNewVersion("1.0.0");
+      setNewOwner("");
+    },
+    onError: (err: Error) => toast.error("Create Failed", err.message),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      updateContract(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-contracts"] });
+      toast.success("Contract Updated", "Data contract updated");
+    },
+    onError: (err: Error) => toast.error("Update Failed", err.message),
+  });
+
+  const transitionMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "active" | "deprecated" | "retired" }) =>
+      transitionContractStatus(id, status),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["governance-contracts"] });
+      toast.success("Status Changed", `Contract is now ${vars.status}`);
+    },
+    onError: (err: Error) => toast.error("Transition Failed", err.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteContract,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["governance-contracts"] });
+      toast.success("Contract Deleted", "Data contract removed");
+      setSelectedContract(null);
+    },
+    onError: (err: Error) => toast.error("Delete Failed", err.message),
+  });
+
+  if (isLoading) {
+    return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-db-orange" /></div>;
+  }
+
+  // Detail view
+  if (selectedContract) {
+    const contract = contracts.find((c) => c.id === selectedContract);
+    if (!contract) return null;
+
+    // Sync local state on first render of detail
+    const syncSchema = () => {
+      setEditColumns(contract.schema_definition ?? []);
+      setEditRules(contract.quality_rules ?? []);
+      setEditPurpose(contract.terms?.purpose ?? "");
+      setEditLimitations(contract.terms?.limitations ?? "");
+      setEditRetention(contract.terms?.retention_days?.toString() ?? "");
+    };
+
+    return (
+      <div className="space-y-6">
+        <button onClick={() => setSelectedContract(null)} className="flex items-center gap-2 text-sm text-db-gray-600 dark:text-gray-400 hover:text-db-gray-800 dark:hover:text-white">
+          <ArrowLeft className="w-4 h-4" /> Back to contracts
+        </button>
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-db-gray-800 dark:text-white flex items-center gap-2">
+              {contract.name}
+              <span className="text-xs text-db-gray-400 font-normal">v{contract.version}</span>
+              <span className={clsx("px-2 py-0.5 text-xs rounded-full font-medium", STATUS_COLORS[contract.status as ContractStatus])}>
+                {contract.status}
+              </span>
+            </h3>
+            {contract.description && <p className="text-sm text-db-gray-500 dark:text-gray-500 mt-1">{contract.description}</p>}
+            <p className="text-xs text-db-gray-400 dark:text-gray-600 mt-1">
+              {contract.owner_email && <>Owner: {contract.owner_email}</>}
+              {contract.domain_name && <> · Domain: {contract.domain_name}</>}
+              {contract.dataset_name && <> · Dataset: {contract.dataset_name}</>}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Lifecycle transitions */}
+            {contract.status === "draft" && (
+              <button
+                onClick={() => transitionMutation.mutate({ id: contract.id, status: "active" })}
+                disabled={transitionMutation.isPending}
+                className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1.5"
+              >
+                <Play className="w-3.5 h-3.5" /> Activate
+              </button>
+            )}
+            {contract.status === "active" && (
+              <button
+                onClick={() => transitionMutation.mutate({ id: contract.id, status: "deprecated" })}
+                disabled={transitionMutation.isPending}
+                className="px-3 py-1.5 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-1.5"
+              >
+                <Archive className="w-3.5 h-3.5" /> Deprecate
+              </button>
+            )}
+            {contract.status === "deprecated" && (
+              <button
+                onClick={() => transitionMutation.mutate({ id: contract.id, status: "retired" })}
+                disabled={transitionMutation.isPending}
+                className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1.5"
+              >
+                <XCircle className="w-3.5 h-3.5" /> Retire
+              </button>
+            )}
+            <button
+              onClick={() => { if (confirm("Delete this contract?")) deleteMutation.mutate(contract.id); }}
+              className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Schema Definition */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-db-gray-700 dark:text-gray-300">Schema Definition</h4>
+            <div className="flex gap-2">
+              <button
+                onClick={syncSchema}
+                className="px-2 py-1 text-xs text-db-gray-500 hover:text-db-gray-700 dark:hover:text-gray-300"
+              >
+                Reset
+              </button>
+              <button
+                onClick={() => {
+                  updateMutation.mutate({
+                    id: contract.id,
+                    data: {
+                      schema_definition: editColumns,
+                      quality_rules: editRules,
+                      terms: {
+                        purpose: editPurpose || null,
+                        limitations: editLimitations || null,
+                        retention_days: editRetention ? parseInt(editRetention) : null,
+                      },
+                    },
+                  });
+                }}
+                disabled={updateMutation.isPending}
+                className="px-3 py-1 text-xs bg-db-orange text-white rounded-lg hover:bg-db-red disabled:opacity-50 transition-colors"
+              >
+                {updateMutation.isPending ? "Saving..." : "Save All"}
+              </button>
+            </div>
+          </div>
+
+          {/* Columns table */}
+          <div className="border border-db-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-db-gray-50 dark:bg-gray-800">
+                  <th className="text-left p-2 font-medium text-db-gray-600 dark:text-gray-400">Name</th>
+                  <th className="text-left p-2 font-medium text-db-gray-600 dark:text-gray-400">Type</th>
+                  <th className="text-center p-2 font-medium text-db-gray-600 dark:text-gray-400">Required</th>
+                  <th className="text-left p-2 font-medium text-db-gray-600 dark:text-gray-400">Description</th>
+                  <th className="w-10 p-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {editColumns.map((col, idx) => (
+                  <tr key={idx} className="border-t border-db-gray-100 dark:border-gray-800">
+                    <td className="p-2">
+                      <input
+                        value={col.name}
+                        onChange={(e) => {
+                          const updated = [...editColumns];
+                          updated[idx] = { ...col, name: e.target.value };
+                          setEditColumns(updated);
+                        }}
+                        className="w-full px-2 py-1 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                        placeholder="column_name"
+                      />
+                    </td>
+                    <td className="p-2">
+                      <select
+                        value={col.type}
+                        onChange={(e) => {
+                          const updated = [...editColumns];
+                          updated[idx] = { ...col, type: e.target.value };
+                          setEditColumns(updated);
+                        }}
+                        className="w-full px-2 py-1 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                      >
+                        {COLUMN_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </td>
+                    <td className="p-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={col.required}
+                        onChange={(e) => {
+                          const updated = [...editColumns];
+                          updated[idx] = { ...col, required: e.target.checked };
+                          setEditColumns(updated);
+                        }}
+                        className="rounded"
+                      />
+                    </td>
+                    <td className="p-2">
+                      <input
+                        value={col.description ?? ""}
+                        onChange={(e) => {
+                          const updated = [...editColumns];
+                          updated[idx] = { ...col, description: e.target.value || null };
+                          setEditColumns(updated);
+                        }}
+                        className="w-full px-2 py-1 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                        placeholder="Description..."
+                      />
+                    </td>
+                    <td className="p-2">
+                      <button
+                        onClick={() => setEditColumns(editColumns.filter((_, i) => i !== idx))}
+                        className="p-1 text-db-gray-400 hover:text-red-500"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button
+              onClick={() => setEditColumns([...editColumns, { name: "", type: "STRING", required: false, description: null, constraints: null }])}
+              className="w-full px-4 py-2 text-sm text-db-gray-500 hover:bg-db-gray-50 dark:hover:bg-gray-800/50 border-t border-db-gray-100 dark:border-gray-800 flex items-center gap-1.5 justify-center"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Column
+            </button>
+          </div>
+        </div>
+
+        {/* Quality Rules (SLOs) */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold text-db-gray-700 dark:text-gray-300">Quality Rules (SLOs)</h4>
+          <div className="space-y-2">
+            {editRules.map((rule, idx) => (
+              <div key={idx} className="flex items-center gap-2 p-3 bg-db-gray-50 dark:bg-gray-800/50 rounded-lg">
+                <select
+                  value={rule.metric}
+                  onChange={(e) => {
+                    const updated = [...editRules];
+                    updated[idx] = { ...rule, metric: e.target.value };
+                    setEditRules(updated);
+                  }}
+                  className="px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                >
+                  {QUALITY_METRICS.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <select
+                  value={rule.operator}
+                  onChange={(e) => {
+                    const updated = [...editRules];
+                    updated[idx] = { ...rule, operator: e.target.value };
+                    setEditRules(updated);
+                  }}
+                  className="w-20 px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                >
+                  {QUALITY_OPERATORS.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={rule.threshold}
+                  onChange={(e) => {
+                    const updated = [...editRules];
+                    updated[idx] = { ...rule, threshold: parseFloat(e.target.value) || 0 };
+                    setEditRules(updated);
+                  }}
+                  className="w-24 px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                />
+                <input
+                  value={rule.description ?? ""}
+                  onChange={(e) => {
+                    const updated = [...editRules];
+                    updated[idx] = { ...rule, description: e.target.value || null };
+                    setEditRules(updated);
+                  }}
+                  placeholder="Description..."
+                  className="flex-1 px-2 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+                />
+                <button
+                  onClick={() => setEditRules(editRules.filter((_, i) => i !== idx))}
+                  className="p-1 text-db-gray-400 hover:text-red-500"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={() => setEditRules([...editRules, { metric: "completeness", operator: ">=", threshold: 0.95, description: null }])}
+              className="px-3 py-1.5 text-sm text-db-gray-500 hover:text-db-gray-700 dark:hover:text-gray-300 flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Rule
+            </button>
+          </div>
+        </div>
+
+        {/* Usage Terms */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold text-db-gray-700 dark:text-gray-300">Usage Terms</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Purpose</label>
+              <input
+                value={editPurpose}
+                onChange={(e) => setEditPurpose(e.target.value)}
+                placeholder="Intended use of the data..."
+                className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Limitations</label>
+              <input
+                value={editLimitations}
+                onChange={(e) => setEditLimitations(e.target.value)}
+                placeholder="Usage restrictions..."
+                className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+              />
+            </div>
+          </div>
+          <div className="w-48">
+            <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Retention (days)</label>
+            <input
+              type="number"
+              value={editRetention}
+              onChange={(e) => setEditRetention(e.target.value)}
+              placeholder="365"
+              className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // List view
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-db-gray-800 dark:text-white">Data Contracts</h3>
+        <div className="flex items-center gap-3">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-3 py-1.5 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+          >
+            <option value="">All statuses</option>
+            <option value="draft">Draft</option>
+            <option value="active">Active</option>
+            <option value="deprecated">Deprecated</option>
+            <option value="retired">Retired</option>
+          </select>
+          <button
+            onClick={() => setShowCreate(!showCreate)}
+            className="px-3 py-1.5 text-sm bg-db-orange text-white rounded-lg hover:bg-db-red transition-colors flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> New Contract
+          </button>
+        </div>
+      </div>
+
+      {showCreate && (
+        <div className="p-4 border border-db-gray-200 dark:border-gray-700 rounded-lg space-y-3">
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Contract name"
+            className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+          />
+          <input
+            value={newDesc}
+            onChange={(e) => setNewDesc(e.target.value)}
+            placeholder="Description (optional)"
+            className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Version</label>
+              <input
+                value={newVersion}
+                onChange={(e) => setNewVersion(e.target.value)}
+                placeholder="1.0.0"
+                className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Owner Email</label>
+              <input
+                value={newOwner}
+                onChange={(e) => setNewOwner(e.target.value)}
+                placeholder="owner@example.com"
+                className="w-full px-3 py-2 text-sm border border-db-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => newName && createMutation.mutate({
+                name: newName,
+                description: newDesc || undefined,
+                version: newVersion || undefined,
+                owner_email: newOwner || undefined,
+              })}
+              disabled={!newName || createMutation.isPending}
+              className="px-4 py-2 text-sm bg-db-orange text-white rounded-lg hover:bg-db-red disabled:opacity-50"
+            >
+              Create
+            </button>
+            <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-db-gray-600 dark:text-gray-400">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {contracts.length === 0 ? (
+        <p className="text-sm text-db-gray-500 dark:text-gray-500 py-8 text-center">
+          {filterStatus ? `No ${filterStatus} contracts.` : "No data contracts created yet."}
+        </p>
+      ) : (
+        <div className="border border-db-gray-200 dark:border-gray-700 rounded-lg divide-y divide-db-gray-100 dark:divide-gray-800">
+          {contracts.map((contract) => (
+            <button
+              key={contract.id}
+              onClick={() => {
+                setSelectedContract(contract.id);
+                setEditColumns(contract.schema_definition ?? []);
+                setEditRules(contract.quality_rules ?? []);
+                setEditPurpose(contract.terms?.purpose ?? "");
+                setEditLimitations(contract.terms?.limitations ?? "");
+                setEditRetention(contract.terms?.retention_days?.toString() ?? "");
+              }}
+              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-db-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+            >
+              <div>
+                <div className="text-sm font-medium text-db-gray-800 dark:text-white flex items-center gap-2">
+                  {contract.name}
+                  <span className="text-xs text-db-gray-400 font-normal">v{contract.version}</span>
+                  <span className={clsx("px-1.5 py-0.5 text-[10px] rounded font-medium", STATUS_COLORS[contract.status as ContractStatus])}>
+                    {contract.status}
+                  </span>
+                </div>
+                {contract.description && (
+                  <div className="text-xs text-db-gray-500 dark:text-gray-500 mt-0.5">{contract.description}</div>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {contract.schema_definition.length > 0 && (
+                  <span className="text-xs text-db-gray-400 dark:text-gray-600">
+                    {contract.schema_definition.length} cols
+                  </span>
+                )}
+                {contract.quality_rules.length > 0 && (
+                  <span className="text-xs text-db-gray-400 dark:text-gray-600">
+                    {contract.quality_rules.length} SLOs
+                  </span>
+                )}
+                {contract.domain_name && (
+                  <span className="text-xs text-db-gray-400 dark:text-gray-600">{contract.domain_name}</span>
+                )}
+                <ChevronRight className="w-4 h-4 text-db-gray-400" />
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // Main Page
 // ============================================================================
 
@@ -1001,6 +1540,7 @@ const TABS: { id: TabId; label: string; icon: typeof Shield }[] = [
   { id: "teams", label: "Teams", icon: Users },
   { id: "domains", label: "Domains", icon: FolderTree },
   { id: "projects", label: "Projects", icon: Briefcase },
+  { id: "contracts", label: "Contracts", icon: FileCheck },
 ];
 
 export function GovernancePage({ onClose }: GovernancePageProps) {
@@ -1055,6 +1595,7 @@ export function GovernancePage({ onClose }: GovernancePageProps) {
           {activeTab === "teams" && <TeamsTab />}
           {activeTab === "domains" && <DomainsTab />}
           {activeTab === "projects" && <ProjectsTab />}
+          {activeTab === "contracts" && <ContractsTab />}
         </div>
       </div>
     </div>

@@ -10,6 +10,9 @@ from app.models.governance import (
     AppRoleUpdate,
     AssetReviewResponse,
     CurrentUserResponse,
+    DataContractCreate,
+    DataContractResponse,
+    DataContractUpdate,
     DataDomainCreate,
     DataDomainResponse,
     DataDomainUpdate,
@@ -393,3 +396,72 @@ async def remove_project_member(project_id: str, member_id: str, _auth: CurrentU
     """Remove a member from a project. Requires governance write."""
     svc = get_governance_service()
     svc.remove_project_member(member_id)
+
+
+# ============================================================================
+# Data Contracts (G5)
+# ============================================================================
+
+
+@router.get("/contracts", response_model=list[DataContractResponse])
+async def list_contracts(
+    status: str | None = Query(None),
+    domain_id: str | None = Query(None),
+):
+    """List data contracts with optional filters."""
+    svc = get_governance_service()
+    return svc.list_contracts(status=status, domain_id=domain_id)
+
+
+@router.post("/contracts", response_model=DataContractResponse, status_code=201)
+async def create_contract(contract: DataContractCreate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Create a new data contract. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    return svc.create_contract(contract.model_dump(), user)
+
+
+@router.get("/contracts/{contract_id}", response_model=DataContractResponse)
+async def get_contract(contract_id: str):
+    """Get a data contract by ID."""
+    svc = get_governance_service()
+    result = svc.get_contract(contract_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    return result
+
+
+@router.put("/contracts/{contract_id}", response_model=DataContractResponse)
+async def update_contract(contract_id: str, contract: DataContractUpdate, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Update a data contract. Requires governance write."""
+    user = get_db_user()
+    svc = get_governance_service()
+    result = svc.update_contract(contract_id, contract.model_dump(exclude_unset=True), user)
+    if not result:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    return result
+
+
+@router.put("/contracts/{contract_id}/status", response_model=DataContractResponse)
+async def transition_contract_status(
+    contract_id: str,
+    new_status: str = Query(..., description="Target status: active, deprecated, or retired"),
+    _auth: CurrentUser = Depends(require_permission("governance", "write")),
+):
+    """Transition a contract's lifecycle status. Requires governance write."""
+    valid_statuses = {"active", "deprecated", "retired"}
+    if new_status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Status must be one of: {', '.join(valid_statuses)}")
+    user = get_db_user()
+    svc = get_governance_service()
+    contract = svc.get_contract(contract_id)
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    return svc.transition_contract(contract_id, new_status, user)
+
+
+@router.delete("/contracts/{contract_id}", status_code=204)
+async def delete_contract(contract_id: str, _auth: CurrentUser = Depends(require_permission("governance", "write"))):
+    """Delete a data contract. Requires governance write."""
+    svc = get_governance_service()
+    svc.delete_contract(contract_id)

@@ -142,3 +142,49 @@ export interface ProjectMember {
   added_at: string | null;
   added_by: string | null;
 }
+
+// Data Contracts (G5)
+
+export type ContractStatus = "draft" | "active" | "deprecated" | "retired";
+
+export interface ContractColumnSpec {
+  name: string;
+  type: string;
+  required: boolean;
+  description: string | null;
+  constraints: string | null;
+}
+
+export interface ContractQualityRule {
+  metric: string;
+  operator: string;
+  threshold: number;
+  description: string | null;
+}
+
+export interface ContractTerms {
+  purpose: string | null;
+  limitations: string | null;
+  retention_days: number | null;
+}
+
+export interface DataContract {
+  id: string;
+  name: string;
+  description: string | null;
+  version: string;
+  status: ContractStatus;
+  dataset_id: string | null;
+  dataset_name: string | null;
+  domain_id: string | null;
+  domain_name: string | null;
+  owner_email: string | null;
+  schema_definition: ContractColumnSpec[];
+  quality_rules: ContractQualityRule[];
+  terms: ContractTerms | null;
+  created_at: string | null;
+  created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+  activated_at: string | null;
+}

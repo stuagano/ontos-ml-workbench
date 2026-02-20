@@ -17,6 +17,11 @@ import type {
   Project,
   ProjectMember,
   ProjectType,
+  DataContract,
+  ContractStatus,
+  ContractColumnSpec,
+  ContractQualityRule,
+  ContractTerms,
 } from "../types/governance";
 
 const API_BASE = "/api/v1/governance";
@@ -340,4 +345,64 @@ export async function removeProjectMember(
   return fetchJson(`${API_BASE}/projects/${projectId}/members/${memberId}`, {
     method: "DELETE",
   });
+}
+
+// ============================================================================
+// Data Contracts (G5)
+// ============================================================================
+
+export async function listContracts(filters?: {
+  status?: ContractStatus;
+  domain_id?: string;
+}): Promise<DataContract[]> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.domain_id) params.set("domain_id", filters.domain_id);
+  const qs = params.toString();
+  return fetchJson(`${API_BASE}/contracts${qs ? `?${qs}` : ""}`);
+}
+
+export async function getContract(contractId: string): Promise<DataContract> {
+  return fetchJson(`${API_BASE}/contracts/${contractId}`);
+}
+
+export async function createContract(data: {
+  name: string;
+  description?: string;
+  version?: string;
+  dataset_id?: string;
+  dataset_name?: string;
+  domain_id?: string;
+  owner_email?: string;
+  schema_definition?: ContractColumnSpec[];
+  quality_rules?: ContractQualityRule[];
+  terms?: ContractTerms;
+}): Promise<DataContract> {
+  return fetchJson(`${API_BASE}/contracts`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateContract(
+  contractId: string,
+  data: Partial<DataContract>,
+): Promise<DataContract> {
+  return fetchJson(`${API_BASE}/contracts/${contractId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function transitionContractStatus(
+  contractId: string,
+  newStatus: "active" | "deprecated" | "retired",
+): Promise<DataContract> {
+  return fetchJson(`${API_BASE}/contracts/${contractId}/status?new_status=${newStatus}`, {
+    method: "PUT",
+  });
+}
+
+export async function deleteContract(contractId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/contracts/${contractId}`, { method: "DELETE" });
 }

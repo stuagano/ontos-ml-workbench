@@ -607,6 +607,136 @@ class GovernanceService:
             f"DELETE FROM {self._table('project_members')} WHERE id = '{_esc(member_id)}'"
         )
 
+    # ========================================================================
+    # Data Contracts (G5)
+    # ========================================================================
+
+    def list_contracts(self, status: str | None = None, domain_id: str | None = None) -> list[dict]:
+        where = []
+        if status:
+            where.append(f"c.status = '{_esc(status)}'")
+        if domain_id:
+            where.append(f"c.domain_id = '{_esc(domain_id)}'")
+        where_clause = f"WHERE {' AND '.join(where)}" if where else ""
+        rows = self.sql.execute(f"""
+            SELECT c.*, d.name as domain_name
+            FROM {self._table('data_contracts')} c
+            LEFT JOIN {self._table('data_domains')} d ON c.domain_id = d.id
+            {where_clause}
+            ORDER BY c.name
+        """)
+        return [self._parse_contract(r) for r in rows]
+
+    def get_contract(self, contract_id: str) -> dict | None:
+        rows = self.sql.execute(f"""
+            SELECT c.*, d.name as domain_name
+            FROM {self._table('data_contracts')} c
+            LEFT JOIN {self._table('data_domains')} d ON c.domain_id = d.id
+            WHERE c.id = '{_esc(contract_id)}'
+        """)
+        return self._parse_contract(rows[0]) if rows else None
+
+    def create_contract(self, data: dict, created_by: str) -> dict:
+        contract_id = str(uuid.uuid4())
+        schema_json = json.dumps(data.get("schema_definition", [])).replace("'", "''")
+        rules_json = json.dumps(data.get("quality_rules", [])).replace("'", "''")
+        terms_json = json.dumps(data["terms"]).replace("'", "''") if data.get("terms") else None
+
+        self.sql.execute_update(f"""
+            INSERT INTO {self._table('data_contracts')}
+            (id, name, description, version, status, dataset_id, dataset_name,
+             domain_id, owner_email, schema_definition, quality_rules, terms,
+             created_at, created_by, updated_at, updated_by)
+            VALUES (
+                '{contract_id}', '{_esc(data["name"])}',
+                {f"'{_esc(data['description'])}'" if data.get('description') else 'NULL'},
+                '{_esc(data.get("version", "1.0.0"))}', 'draft',
+                {f"'{_esc(data['dataset_id'])}'" if data.get('dataset_id') else 'NULL'},
+                {f"'{_esc(data['dataset_name'])}'" if data.get('dataset_name') else 'NULL'},
+                {f"'{_esc(data['domain_id'])}'" if data.get('domain_id') else 'NULL'},
+                {f"'{_esc(data['owner_email'])}'" if data.get('owner_email') else 'NULL'},
+                '{schema_json}', '{rules_json}',
+                {f"'{terms_json}'" if terms_json else 'NULL'},
+                current_timestamp(), '{_esc(created_by)}',
+                current_timestamp(), '{_esc(created_by)}'
+            )
+        """)
+        return self.get_contract(contract_id)
+
+    def update_contract(self, contract_id: str, data: dict, updated_by: str) -> dict | None:
+        updates = []
+        if data.get("name") is not None:
+            updates.append(f"name = '{_esc(data['name'])}'")
+        if data.get("description") is not None:
+            updates.append(f"description = '{_esc(data['description'])}'")
+        if data.get("version") is not None:
+            updates.append(f"version = '{_esc(data['version'])}'")
+        if "dataset_id" in data:
+            did_sql = f"'{_esc(data['dataset_id'])}'" if data["dataset_id"] else "NULL"
+            updates.append(f"dataset_id = {did_sql}")
+        if data.get("dataset_name") is not None:
+            updates.append(f"dataset_name = '{_esc(data['dataset_name'])}'")
+        if "domain_id" in data:
+            did_sql = f"'{_esc(data['domain_id'])}'" if data["domain_id"] else "NULL"
+            updates.append(f"domain_id = {did_sql}")
+        if data.get("owner_email") is not None:
+            updates.append(f"owner_email = '{_esc(data['owner_email'])}'")
+        if data.get("schema_definition") is not None:
+            schema_json = json.dumps(data["schema_definition"]).replace("'", "''")
+            updates.append(f"schema_definition = '{schema_json}'")
+        if data.get("quality_rules") is not None:
+            rules_json = json.dumps(data["quality_rules"]).replace("'", "''")
+            updates.append(f"quality_rules = '{rules_json}'")
+        if data.get("terms") is not None:
+            terms_json = json.dumps(data["terms"]).replace("'", "''")
+            updates.append(f"terms = '{terms_json}'")
+
+        if updates:
+            updates.append(f"updated_by = '{_esc(updated_by)}'")
+            updates.append("updated_at = current_timestamp()")
+            self.sql.execute_update(
+                f"UPDATE {self._table('data_contracts')} SET {', '.join(updates)} "
+                f"WHERE id = '{_esc(contract_id)}'"
+            )
+        return self.get_contract(contract_id)
+
+    def activate_contract(self, contract_id: str, updated_by: str) -> dict | None:
+        self.sql.execute_update(
+            f"UPDATE {self._table('data_contracts')} "
+            f"SET status = 'active', activated_at = current_timestamp(), "
+            f"    updated_by = '{_esc(updated_by)}', updated_at = current_timestamp() "
+            f"WHERE id = '{_esc(contract_id)}'"
+        )
+        return self.get_contract(contract_id)
+
+    def transition_contract(self, contract_id: str, new_status: str, updated_by: str) -> dict | None:
+        extra = ""
+        if new_status == "active":
+            extra = "activated_at = current_timestamp(), "
+        self.sql.execute_update(
+            f"UPDATE {self._table('data_contracts')} "
+            f"SET status = '{_esc(new_status)}', {extra}"
+            f"    updated_by = '{_esc(updated_by)}', updated_at = current_timestamp() "
+            f"WHERE id = '{_esc(contract_id)}'"
+        )
+        return self.get_contract(contract_id)
+
+    def delete_contract(self, contract_id: str) -> None:
+        self.sql.execute_update(
+            f"DELETE FROM {self._table('data_contracts')} WHERE id = '{_esc(contract_id)}'"
+        )
+
+    def _parse_contract(self, row: dict) -> dict:
+        schema_def = row.get("schema_definition")
+        quality_rules = row.get("quality_rules")
+        terms = row.get("terms")
+        return {
+            **row,
+            "schema_definition": json.loads(schema_def) if schema_def else [],
+            "quality_rules": json.loads(quality_rules) if quality_rules else [],
+            "terms": json.loads(terms) if terms else None,
+        }
+
 
 # Singleton
 _governance_service: GovernanceService | None = None

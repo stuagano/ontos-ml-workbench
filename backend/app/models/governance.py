@@ -320,3 +320,89 @@ class ProjectResponse(BaseModel):
     created_by: str | None = None
     updated_at: datetime | None = None
     updated_by: str | None = None
+
+
+# ============================================================================
+# Data Contracts (G5)
+# ============================================================================
+
+
+class ContractStatus(str, Enum):
+    DRAFT = "draft"
+    ACTIVE = "active"
+    DEPRECATED = "deprecated"
+    RETIRED = "retired"
+
+
+class ContractColumnSpec(BaseModel):
+    """A column definition within a data contract schema."""
+    name: str = Field(..., min_length=1)
+    type: str = Field(..., description="Data type (e.g., STRING, INT, DOUBLE, TIMESTAMP)")
+    required: bool = False
+    description: str | None = None
+    constraints: str | None = Field(None, description="Additional constraints (e.g., 'NOT NULL', 'UNIQUE', regex)")
+
+
+class ContractQualityRule(BaseModel):
+    """A quality SLO rule for a data contract."""
+    metric: str = Field(..., description="Quality metric (e.g., completeness, freshness, accuracy, uniqueness)")
+    operator: str = Field(..., description="Comparison operator (>=, <=, ==, >, <)")
+    threshold: float = Field(..., description="Threshold value (e.g., 0.99 for 99%)")
+    description: str | None = None
+
+
+class ContractTerms(BaseModel):
+    """Usage terms for a data contract."""
+    purpose: str | None = Field(None, description="Intended use of the data")
+    limitations: str | None = Field(None, description="Usage restrictions or limitations")
+    retention_days: int | None = Field(None, description="Data retention period in days")
+
+
+class DataContractCreate(BaseModel):
+    """Request body for creating a data contract."""
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = None
+    version: str = "1.0.0"
+    dataset_id: str | None = Field(None, description="FK to sheets.id")
+    dataset_name: str | None = None
+    domain_id: str | None = Field(None, description="FK to data_domains.id")
+    owner_email: str | None = None
+    schema_definition: list[ContractColumnSpec] = Field(default_factory=list)
+    quality_rules: list[ContractQualityRule] = Field(default_factory=list)
+    terms: ContractTerms | None = None
+
+
+class DataContractUpdate(BaseModel):
+    """Request body for updating a data contract."""
+    name: str | None = None
+    description: str | None = None
+    version: str | None = None
+    dataset_id: str | None = None
+    dataset_name: str | None = None
+    domain_id: str | None = None
+    owner_email: str | None = None
+    schema_definition: list[ContractColumnSpec] | None = None
+    quality_rules: list[ContractQualityRule] | None = None
+    terms: ContractTerms | None = None
+
+
+class DataContractResponse(BaseModel):
+    """Data contract response model."""
+    id: str
+    name: str
+    description: str | None = None
+    version: str = "1.0.0"
+    status: str = "draft"
+    dataset_id: str | None = None
+    dataset_name: str | None = None
+    domain_id: str | None = None
+    domain_name: str | None = None
+    owner_email: str | None = None
+    schema_definition: list[ContractColumnSpec] = Field(default_factory=list)
+    quality_rules: list[ContractQualityRule] = Field(default_factory=list)
+    terms: ContractTerms | None = None
+    created_at: datetime | None = None
+    created_by: str | None = None
+    updated_at: datetime | None = None
+    updated_by: str | None = None
+    activated_at: datetime | None = None

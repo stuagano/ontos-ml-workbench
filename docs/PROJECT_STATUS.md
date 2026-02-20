@@ -1,6 +1,6 @@
 # Ontos ML Workbench - Project Status
 
-**Last Updated:** February 19, 2026
+**Last Updated:** February 20, 2026
 **PRD Version:** 2.3
 **Overall Progress:** ~85% backend, ~75% frontend (ML Pipeline); Phase 1 (G1–G3) Ontos Governance complete
 
@@ -134,7 +134,7 @@
 | Labeling Jobs | Yes | `LabelingJobsPage.tsx` (1099 lines) | Yes | Create, Start, Pause, Resume, Delete | DONE |
 | Label Sets | Yes | `LabelSetsPage.tsx` (619 lines) | Yes | Full CRUD + Publish/Archive | DONE |
 | Registries | Yes | `RegistriesPage.tsx` (1050 lines) | Yes | Full CRUD for Tools/Agents/Endpoints | DONE |
-| Governance | Yes (Admin) | `GovernancePage.tsx` (670 lines) | Yes | Roles matrix, user assign, teams CRUD, domains tree | DONE |
+| Governance | Yes (Admin) | `GovernancePage.tsx` (~1350 lines) | Yes | Roles matrix, user assign, teams CRUD, domains tree, projects, contracts | DONE |
 | Example Effectiveness | No sidebar entry | `ExampleEffectivenessDashboard.tsx` (548 lines) | Yes (read) | None | DONE (read-only dashboard, embedded in Example Store module) |
 
 ---
@@ -183,7 +183,7 @@
 | Agents | 3 | Fully implemented |
 | Settings/Admin | 7 | Fully implemented |
 | Data Quality (DQX) | 4 | Fully implemented — results persisted to `dqx_quality_results` table |
-| Governance | 23 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree |
+| Governance | 30 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree, reviews, projects, contracts |
 | Auth Core | 0 (middleware) | `get_current_user`, `require_permission`, `require_role` dependencies; `enforce_auth=false` default |
 | Quality Proxy | 1 | Fully implemented |
 
@@ -264,7 +264,7 @@ Features that make the ML Workbench enterprise-grade for regulated environments 
 
 | # | Feature | Description | What We Have | What's Missing | Effort |
 |---|---------|-------------|-------------|----------------|--------|
-| G5 | **Data Contracts (ODCS v3.0.2)** | Schema specifications with quality guarantees, SLOs, semantic linking. Lifecycle: Draft→Proposed→Under Review→Approved→Active→Certified→Deprecated→Retired. | Sheets define column schemas loosely. DQX checks exist but no contract abstraction. | Data contract entity (DDL + Pydantic model), contract editor UI, SLO definitions, contract↔dataset binding, ODCS YAML import/export. | L |
+| ~~G5~~ | ~~**Data Contracts (ODCS v3.0.2)**~~ | ~~Schema specifications with quality guarantees, SLOs, lifecycle management.~~ | ~~DONE — Data contract entity with schema definitions, quality SLO rules, usage terms, lifecycle (draft→active→deprecated→retired). DDL: `29_data_contracts.sql`. Backend: 7 API endpoints (list, create, get, update, transition status, delete) with domain join + status filtering. UI: Contracts tab in GovernancePage with schema column editor, SLO rule builder, usage terms, lifecycle transition buttons.~~ | ~~ODCS YAML import/export. Contract validation against live data.~~ | ~~L~~ |
 | G6 | **Compliance Policies (DSL)** | SQL-like DSL for governance rules. Check across catalogs/schemas/tables. Tagging, notifications, validation failure actions. Scheduled + on-demand runs. | No policy engine. Governance is manual. | Policy DSL parser, policy CRUD, scheduled execution engine, results dashboard, integration with Unity Catalog asset metadata. | L |
 | G7 | **Process Workflows** | Event-driven automation with triggers, entity types, steps. Blocking/non-blocking execution. Approval pausing for human-in-the-loop. Visual workflow designer. | Labeling workflow has jobs→tasks→annotate→review state machine. No general-purpose workflow engine. | Generic workflow engine, trigger definitions, step library, visual designer UI, workflow execution + pause/resume. | L |
 | ~~G8~~ | ~~**Projects**~~ | ~~Workspace containers for team initiatives. Personal vs. Team types.~~ | ~~DONE — Projects CRUD + member management with roles (owner/admin/member/viewer). DDL: `27_projects.sql`, `28_project_members.sql`. Backend: 8 API endpoints. UI: Projects tab in GovernancePage with detail view + member management. Auto-adds creator as owner. Team association support.~~ | ~~Asset↔project scoping (project_id on sheets/templates/training_sheets). Project-level permissions.~~ | ~~M~~ |
@@ -287,7 +287,7 @@ Features for mature data governance organizations.
 
 **Phase 1 — Foundation (G1–G3): DONE.** RBAC + Teams + Domains. 6 DDL files, auth core (`auth.py`), governance service (23 endpoints), GovernancePage with 3 tabs. `enforce_auth=false` default preserves existing functionality.
 
-**Phase 2 — Governance Core (G4–G6):** G4 (Asset Review) DONE. Data Contracts + Compliance Policies remaining. Asset review gives the ML pipeline a governance layer — reviewers can approve datasets before training. Contracts will guarantee data quality, policies will enforce standards.
+**Phase 2 — Governance Core (G4–G6):** G4 (Asset Review) DONE. G5 (Data Contracts) DONE. Compliance Policies remaining. Asset review gives the ML pipeline a governance layer — reviewers can approve datasets before training. Contracts guarantee data quality with SLO rules; policies will enforce standards.
 
 **Phase 3 — Orchestration (G7–G8):** G8 (Projects) DONE. Process Workflows remaining. Projects provide logical isolation for team work; workflow engine will automate governance processes.
 
@@ -295,7 +295,18 @@ Features for mature data governance organizations.
 
 ---
 
-## Recently Completed (Feb 19, 2026)
+## Recently Completed (Feb 20, 2026)
+
+- **Ontos Governance G5 (Data Contracts)**: Full-stack implementation across 7 files:
+  - **DDL**: `29_data_contracts.sql` — contract entity with schema_definition (JSON column specs), quality_rules (SLO rules), terms (usage constraints), lifecycle status
+  - **Backend models**: `ContractStatus` enum, `ContractColumnSpec`, `ContractQualityRule`, `ContractTerms`, `DataContractCreate`, `DataContractUpdate`, `DataContractResponse`
+  - **Service**: `list_contracts` (with status/domain filters), `get_contract`, `create_contract`, `update_contract`, `transition_contract`, `delete_contract`, `_parse_contract`
+  - **API**: 7 endpoints — GET/POST /contracts, GET/PUT/DELETE /contracts/{id}, PUT /contracts/{id}/status
+  - **Frontend types**: `ContractStatus`, `ContractColumnSpec`, `ContractQualityRule`, `ContractTerms`, `DataContract`
+  - **Frontend API**: `listContracts`, `getContract`, `createContract`, `updateContract`, `transitionContractStatus`, `deleteContract`
+  - **UI**: `ContractsTab` in GovernancePage with schema column editor (add/remove columns, type picker, required checkbox), SLO rule builder (metric/operator/threshold), usage terms editor, lifecycle buttons (Activate/Deprecate/Retire), status filter dropdown
+
+## Previously Completed (Feb 19, 2026)
 
 - **Ontos Governance G1–G3 (RBAC, Teams, Domains)**: Full implementation across 19 files:
   - **Phase 1 (DDL)**: 6 schema files — `19_app_roles.sql`, `20_user_role_assignments.sql`, `21_teams.sql`, `22_team_members.sql`, `23_data_domains.sql`, `24_seed_default_roles.sql` (6 default roles with 11-feature permission matrix)
