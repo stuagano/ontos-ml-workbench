@@ -34,10 +34,19 @@ import {
   flagItem,
   submitLabelingTask,
   getLabelingJob,
+  getSheet,
   getSheetPreview,
 } from "../../services/api";
 import { useToast } from "../Toast";
 import type { LabelingTask, LabelField } from "../../types";
+import { resolveImageUrl } from "../../utils/imageUrl";
+import { SpatialAnnotationWrapper } from "./SpatialAnnotationWrapper";
+
+// ============================================================================
+// Annotation mode types
+// ============================================================================
+
+type AnnotationMode = "text-only" | "image-classify" | "spatial";
 
 // ============================================================================
 // Label Field Components
@@ -509,6 +518,148 @@ function KeyboardShortcutsHelp({ onClose }: { onClose: () => void }) {
 }
 
 // ============================================================================
+// Extracted Panel Components (used by all annotation modes)
+// ============================================================================
+
+interface ContextDataPanelProps {
+  rowData: import("../../types").RowData | null | undefined;
+  sheetPreview: import("../../types").SheetPreview | undefined;
+  job: import("../../types").LabelingJob;
+  currentItem: import("../../types").LabeledItem;
+  /** Column names to hide (e.g. image columns shown separately) */
+  hideImageColumns?: string[];
+}
+
+function ContextDataPanel({
+  rowData,
+  sheetPreview,
+  job,
+  currentItem,
+  hideImageColumns,
+}: ContextDataPanelProps) {
+  const hiddenNames = new Set(hideImageColumns ?? []);
+
+  return (
+    <>
+      {rowData ? (
+        <div className="space-y-4">
+          {Object.entries(rowData.cells).map(([columnId, cell]) => {
+            const column = sheetPreview?.columns.find(
+              (c) => c.id === columnId,
+            );
+            const isTargetColumn = job.target_columns.includes(columnId);
+            // Hide target columns and image columns shown in left panel
+            if (isTargetColumn) return null;
+            if (hiddenNames.has(column?.name ?? "") || hiddenNames.has(columnId)) {
+              return null;
+            }
+
+            return (
+              <div key={columnId} className="p-3 bg-db-gray-50 rounded-lg">
+                <div className="text-xs text-db-gray-500 mb-1">
+                  {column?.name || columnId}
+                </div>
+                <div className="text-sm text-db-gray-800">
+                  {cell.value !== null && cell.value !== undefined
+                    ? typeof cell.value === "object"
+                      ? JSON.stringify(cell.value)
+                      : String(cell.value)
+                    : "-"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-db-gray-500">Loading item data...</p>
+      )}
+
+      {/* Show AI labels if available */}
+      {currentItem.ai_labels && (
+        <div className="mt-6">
+          <h3 className="text-sm font-medium text-purple-600 mb-2 flex items-center gap-2">
+            <Sparkles className="w-4 h-4" />
+            AI Suggestions
+          </h3>
+          <div className="p-3 bg-purple-50 rounded-lg space-y-2">
+            {Object.entries(currentItem.ai_labels).map(([key, value]) => (
+              <div key={key} className="flex items-center justify-between">
+                <span className="text-sm text-purple-700">{key}</span>
+                <span className="text-sm font-medium text-purple-900">
+                  {String(value)}
+                </span>
+              </div>
+            ))}
+            {currentItem.ai_confidence !== undefined && (
+              <div className="text-xs text-purple-500 mt-2">
+                Confidence: {(currentItem.ai_confidence * 100).toFixed(1)}%
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+interface LabelFormPanelProps {
+  fields: LabelField[];
+  labels: Record<string, unknown>;
+  aiLabels?: Record<string, unknown>;
+  onFieldChange: (fieldId: string, value: unknown) => void;
+}
+
+function LabelFormPanel({
+  fields,
+  labels,
+  aiLabels,
+  onFieldChange,
+}: LabelFormPanelProps) {
+  return (
+    <div className="space-y-6">
+      {fields.map((field) => (
+        <LabelFieldInput
+          key={field.id}
+          field={field}
+          value={labels[field.id]}
+          aiValue={aiLabels?.[field.id]}
+          onChange={(value) => onFieldChange(field.id, value)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ItemStatusIndicators({
+  currentItem,
+}: {
+  currentItem: import("../../types").LabeledItem;
+}) {
+  return (
+    <div className="mt-6 flex items-center gap-4">
+      {currentItem.is_difficult && (
+        <span className="flex items-center gap-1 text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">
+          <Flag className="w-3 h-3" />
+          Flagged as difficult
+        </span>
+      )}
+      {currentItem.needs_discussion && (
+        <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+          <MessageSquare className="w-3 h-3" />
+          Needs discussion
+        </span>
+      )}
+      {currentItem.skip_reason && (
+        <span className="flex items-center gap-1 text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
+          <SkipForward className="w-3 h-3" />
+          Skipped
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // Main AnnotationInterface Component
 // ============================================================================
 
@@ -545,6 +696,13 @@ export function AnnotationInterface({
     queryFn: () => listLabeledItems(task.id, { limit: 500 }),
   });
 
+  // Fetch sheet for image_columns metadata
+  const { data: sheet } = useQuery({
+    queryKey: ["sheet", job?.sheet_id],
+    queryFn: () => getSheet(job!.sheet_id),
+    enabled: !!job?.sheet_id,
+  });
+
   // Fetch sheet preview for context data
   const { data: sheetPreview } = useQuery({
     queryKey: ["sheet-preview", job?.sheet_id],
@@ -555,11 +713,50 @@ export function AnnotationInterface({
   const items = itemsData?.items || [];
   const currentItem = items[currentIndex];
 
+  // Determine annotation mode based on sheet image_columns and label field types
+  const { annotationMode, spatialFields, formFields } = useMemo(() => {
+    const hasImageColumns = (sheet?.image_columns?.length ?? 0) > 0;
+    const fields = job?.label_schema.fields ?? [];
+    const spatial = fields.filter(
+      (f) => f.field_type === "bounding_box" || f.field_type === "polygon",
+    );
+    const form = fields.filter(
+      (f) => f.field_type !== "bounding_box" && f.field_type !== "polygon",
+    );
+
+    let mode: AnnotationMode = "text-only";
+    if (hasImageColumns && spatial.length > 0) {
+      mode = "spatial";
+    } else if (hasImageColumns) {
+      mode = "image-classify";
+    }
+
+    return { annotationMode: mode, spatialFields: spatial, formFields: form };
+  }, [sheet?.image_columns, job?.label_schema.fields]);
+
   // Get row data from sheet preview
   const rowData = useMemo(() => {
     if (!sheetPreview || !currentItem) return null;
     return sheetPreview.rows.find((r) => r.row_index === currentItem.row_index);
   }, [sheetPreview, currentItem]);
+
+  // Resolve image URL for the current item (first image column value)
+  const currentImageUrl = useMemo(() => {
+    if (annotationMode === "text-only" || !sheet?.image_columns?.length || !rowData) {
+      return null;
+    }
+    // Find the first image column that has a value
+    for (const colName of sheet.image_columns) {
+      const cell = Object.entries(rowData.cells).find(([colId]) => {
+        const col = sheetPreview?.columns.find((c) => c.id === colId);
+        return col?.name === colName || colId === colName;
+      });
+      if (cell && cell[1].value) {
+        return resolveImageUrl(String(cell[1].value));
+      }
+    }
+    return null;
+  }, [annotationMode, sheet?.image_columns, rowData, sheetPreview?.columns]);
 
   // Initialize labels when item changes
   useEffect(() => {
@@ -660,6 +857,15 @@ export function AnnotationInterface({
     goToNext();
   }, [hasChanges, currentItem, labelMutation, goToNext]);
 
+  // Spatial annotation change handler
+  const handleSpatialAnnotationsChange = useCallback(
+    (fieldId: string, value: unknown) => {
+      setLabels((prev) => ({ ...prev, [fieldId]: value }));
+      setHasChanges(true);
+    },
+    [],
+  );
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -669,6 +875,17 @@ export function AnnotationInterface({
         e.target instanceof HTMLTextAreaElement
       ) {
         return;
+      }
+
+      // When focus is inside the annotation canvas, only allow navigation keys
+      const inCanvas = (e.target as HTMLElement)?.closest?.(
+        ".spatial-annotation-wrapper",
+      );
+      if (inCanvas) {
+        // Only allow arrow keys for navigation and Escape
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "Escape") {
+          return;
+        }
       }
 
       switch (e.key) {
@@ -809,113 +1026,137 @@ export function AnnotationInterface({
         </div>
       </div>
 
-      {/* Main content */}
+      {/* Main content — layout adapts to annotation mode */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left panel - Context data */}
-        <div className="w-1/2 border-r border-db-gray-200 bg-white overflow-auto p-6">
-          <h2 className="text-lg font-semibold text-db-gray-800 mb-4">
-            Item Data
-          </h2>
-
-          {rowData ? (
-            <div className="space-y-4">
-              {Object.entries(rowData.cells).map(([columnId, cell]) => {
-                const column = sheetPreview?.columns.find(
-                  (c) => c.id === columnId,
-                );
-                const isTargetColumn = job.target_columns.includes(columnId);
-
-                if (isTargetColumn) return null; // Don't show target columns in context
-
-                return (
-                  <div key={columnId} className="p-3 bg-db-gray-50 rounded-lg">
-                    <div className="text-xs text-db-gray-500 mb-1">
-                      {column?.name || columnId}
-                    </div>
-                    <div className="text-sm text-db-gray-800">
-                      {cell.value !== null && cell.value !== undefined
-                        ? typeof cell.value === "object"
-                          ? JSON.stringify(cell.value)
-                          : String(cell.value)
-                        : "-"}
-                    </div>
-                  </div>
-                );
-              })}
+        {annotationMode === "text-only" && (
+          <>
+            {/* Left panel - Context data (text-only mode) */}
+            <div className="w-1/2 border-r border-db-gray-200 bg-white overflow-auto p-6">
+              <h2 className="text-lg font-semibold text-db-gray-800 mb-4">
+                Item Data
+              </h2>
+              <ContextDataPanel
+                rowData={rowData}
+                sheetPreview={sheetPreview}
+                job={job}
+                currentItem={currentItem}
+              />
             </div>
-          ) : (
-            <p className="text-db-gray-500">Loading item data...</p>
-          )}
 
-          {/* Show AI labels if available */}
-          {currentItem.ai_labels && (
-            <div className="mt-6">
-              <h3 className="text-sm font-medium text-purple-600 mb-2 flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                AI Suggestions
-              </h3>
-              <div className="p-3 bg-purple-50 rounded-lg space-y-2">
-                {Object.entries(currentItem.ai_labels).map(([key, value]) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <span className="text-sm text-purple-700">{key}</span>
-                    <span className="text-sm font-medium text-purple-900">
-                      {String(value)}
-                    </span>
-                  </div>
-                ))}
-                {currentItem.ai_confidence !== undefined && (
-                  <div className="text-xs text-purple-500 mt-2">
-                    Confidence: {(currentItem.ai_confidence * 100).toFixed(1)}%
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right panel - Label form */}
-        <div className="w-1/2 overflow-auto p-6">
-          <h2 className="text-lg font-semibold text-db-gray-800 mb-4">
-            Labels
-          </h2>
-
-          <div className="space-y-6">
-            {job.label_schema.fields.map((field) => (
-              <LabelFieldInput
-                key={field.id}
-                field={field}
-                value={labels[field.id]}
-                aiValue={currentItem.ai_labels?.[field.id]}
-                onChange={(value) => {
-                  setLabels((prev) => ({ ...prev, [field.id]: value }));
+            {/* Right panel - Label form (text-only mode) */}
+            <div className="w-1/2 overflow-auto p-6">
+              <h2 className="text-lg font-semibold text-db-gray-800 mb-4">
+                Labels
+              </h2>
+              <LabelFormPanel
+                fields={job.label_schema.fields}
+                labels={labels}
+                aiLabels={currentItem.ai_labels}
+                onFieldChange={(fieldId, value) => {
+                  setLabels((prev) => ({ ...prev, [fieldId]: value }));
                   setHasChanges(true);
                 }}
               />
-            ))}
-          </div>
+              <ItemStatusIndicators currentItem={currentItem} />
+            </div>
+          </>
+        )}
 
-          {/* Item status indicators */}
-          <div className="mt-6 flex items-center gap-4">
-            {currentItem.is_difficult && (
-              <span className="flex items-center gap-1 text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">
-                <Flag className="w-3 h-3" />
-                Flagged as difficult
-              </span>
-            )}
-            {currentItem.needs_discussion && (
-              <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
-                <MessageSquare className="w-3 h-3" />
-                Needs discussion
-              </span>
-            )}
-            {currentItem.skip_reason && (
-              <span className="flex items-center gap-1 text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                <SkipForward className="w-3 h-3" />
-                Skipped
-              </span>
-            )}
-          </div>
-        </div>
+        {annotationMode === "image-classify" && (
+          <>
+            {/* Left panel - Image + metadata (image-classify mode) */}
+            <div className="w-1/2 border-r border-db-gray-200 bg-white overflow-auto p-6">
+              {currentImageUrl && (
+                <div className="mb-4">
+                  <img
+                    src={currentImageUrl}
+                    alt="Item image"
+                    className="max-w-full h-auto rounded-lg border border-db-gray-200"
+                  />
+                </div>
+              )}
+              <h2 className="text-lg font-semibold text-db-gray-800 mb-4">
+                Item Data
+              </h2>
+              <ContextDataPanel
+                rowData={rowData}
+                sheetPreview={sheetPreview}
+                job={job}
+                currentItem={currentItem}
+                hideImageColumns={sheet?.image_columns}
+              />
+            </div>
+
+            {/* Right panel - Label form (image-classify mode) */}
+            <div className="w-1/2 overflow-auto p-6">
+              <h2 className="text-lg font-semibold text-db-gray-800 mb-4">
+                Labels
+              </h2>
+              <LabelFormPanel
+                fields={formFields}
+                labels={labels}
+                aiLabels={currentItem.ai_labels}
+                onFieldChange={(fieldId, value) => {
+                  setLabels((prev) => ({ ...prev, [fieldId]: value }));
+                  setHasChanges(true);
+                }}
+              />
+              <ItemStatusIndicators currentItem={currentItem} />
+            </div>
+          </>
+        )}
+
+        {annotationMode === "spatial" && (
+          <>
+            {/* Left panel - Annotation widget (spatial mode, 60%) */}
+            <div className="w-3/5 border-r border-db-gray-200 bg-white overflow-auto p-4">
+              {currentImageUrl ? (
+                <SpatialAnnotationWrapper
+                  imageUrl={currentImageUrl}
+                  spatialFields={spatialFields}
+                  labels={labels}
+                  onAnnotationsChange={handleSpatialAnnotationsChange}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-64 bg-db-gray-50 rounded-lg">
+                  <p className="text-db-gray-500">No image available for this item</p>
+                </div>
+              )}
+            </div>
+
+            {/* Right panel - Form fields + metadata (spatial mode, 40%) */}
+            <div className="w-2/5 overflow-auto p-6">
+              {formFields.length > 0 && (
+                <>
+                  <h2 className="text-lg font-semibold text-db-gray-800 mb-4">
+                    Labels
+                  </h2>
+                  <LabelFormPanel
+                    fields={formFields}
+                    labels={labels}
+                    aiLabels={currentItem.ai_labels}
+                    onFieldChange={(fieldId, value) => {
+                      setLabels((prev) => ({ ...prev, [fieldId]: value }));
+                      setHasChanges(true);
+                    }}
+                  />
+                </>
+              )}
+
+              <h2 className="text-lg font-semibold text-db-gray-800 mb-4 mt-6">
+                Item Data
+              </h2>
+              <ContextDataPanel
+                rowData={rowData}
+                sheetPreview={sheetPreview}
+                job={job}
+                currentItem={currentItem}
+                hideImageColumns={sheet?.image_columns}
+              />
+              <ItemStatusIndicators currentItem={currentItem} />
+            </div>
+          </>
+        )}
       </div>
 
       {/* Footer - Navigation */}

@@ -17,6 +17,7 @@ from app.api.v1.endpoints import (
     feedback,
     gaps,
     governance,
+    images,
     jobs,
     labeling,
     labelsets,
@@ -88,3 +89,6 @@ router.include_router(admin.router)
 
 # Governance - RBAC roles, teams, and data domains
 router.include_router(governance.router)
+
+# Images - Proxy for Unity Catalog volume images
+router.include_router(images.router)
