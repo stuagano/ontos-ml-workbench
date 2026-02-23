@@ -4,6 +4,7 @@ import logging
 import os
 import time
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -14,7 +15,10 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.v1.router import router as api_router
-from app.api.dqx.router import router as dqx_router
+try:
+    from app.api.dqx.router import router as dqx_router
+except ImportError:
+    dqx_router = None
 from app.core.config import get_settings
 from app.core.databricks import get_current_user, get_workspace_url
 
@@ -28,6 +32,90 @@ logger = logging.getLogger("api")
 sql_logger = logging.getLogger("sql_queries")
 
 settings = get_settings()
+
+
+# ---------------------------------------------------------------------------
+# MCP session-manager lifespan  (must be started before any /mcp requests)
+# ---------------------------------------------------------------------------
+_mcp_session_manager_ctx = None
+
+try:
+    from app.mcp.server import get_mcp_instance, MCPHandler
+    _mcp_instance = get_mcp_instance()
+    _mcp_handler = MCPHandler(_mcp_instance)
+    _mcp_available = True
+    logger.info("MCP server initialised (8 tools, 4 resources)")
+except Exception as e:
+    _mcp_available = False
+    _mcp_handler = None
+    logger.warning(f"MCP server not available: {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan — starts MCP session manager + cache warming."""
+    import asyncio
+    from app.services.cache_service import get_cache_service
+    from app.core.databricks import get_workspace_client
+
+    # -- Start MCP session manager task group --
+    mcp_ctx = None
+    if _mcp_available:
+        mcp_ctx = _mcp_instance.session_manager.run()
+        await mcp_ctx.__aenter__()
+        logger.info("MCP session manager started")
+
+    # -- Warm caches (non-blocking) --
+    cache = get_cache_service()
+
+    async def warm_catalogs():
+        try:
+            client = get_workspace_client()
+            catalogs = list(client.catalogs.list())
+            result = [
+                {"name": c.name, "comment": c.comment, "owner": c.owner}
+                for c in catalogs if c.name
+            ]
+            cache.set("uc:catalogs", result, ttl=300)
+            logger.info(f"Cache warmed: {len(result)} catalogs")
+        except Exception as e:
+            logger.warning(f"Failed to warm catalogs cache: {e}")
+
+    async def warm_main_schema():
+        try:
+            client = get_workspace_client()
+            catalog = settings.databricks_catalog
+            schema = settings.databricks_schema
+            schemas = list(client.schemas.list(catalog_name=catalog))
+            schemas_result = [
+                {"name": s.name, "catalog_name": s.catalog_name}
+                for s in schemas if s.name
+            ]
+            cache.set(f"uc:schemas:{catalog}", schemas_result, ttl=300)
+            tables = list(client.tables.list(catalog_name=catalog, schema_name=schema))
+            tables_result = [
+                {
+                    "name": t.name,
+                    "catalog_name": t.catalog_name,
+                    "schema_name": t.schema_name,
+                    "table_type": t.table_type.value if t.table_type else "UNKNOWN",
+                }
+                for t in tables if t.name
+            ]
+            cache.set(f"uc:tables:{catalog}:{schema}:cols=False", tables_result, ttl=300)
+            logger.info(f"Cache warmed: {len(tables_result)} tables in {catalog}.{schema}")
+        except Exception as e:
+            logger.warning(f"Failed to warm schema cache: {e}")
+
+    asyncio.create_task(warm_catalogs())
+    asyncio.create_task(warm_main_schema())
+
+    yield  # ── app is running ──
+
+    # -- Shutdown --
+    if mcp_ctx is not None:
+        await mcp_ctx.__aexit__(None, None, None)
+        logger.info("MCP session manager stopped")
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -79,6 +167,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    lifespan=lifespan,
 )
 
 # CORS middleware for local development
@@ -98,69 +187,13 @@ app.add_middleware(RequestLoggingMiddleware)
 
 # Include API routes
 app.include_router(api_router)
-app.include_router(dqx_router)
+if dqx_router is not None:
+    app.include_router(dqx_router)
 
-
-@app.on_event("startup")
-async def startup_event():
-    """Warm cache on startup with common data."""
-    import asyncio
-    from app.services.cache_service import get_cache_service
-    from app.core.databricks import get_workspace_client
-
-    cache = get_cache_service()
-
-    async def warm_catalogs():
-        """Preload catalogs list."""
-        try:
-            client = get_workspace_client()
-            catalogs = list(client.catalogs.list())
-            result = [
-                {"name": c.name, "comment": c.comment, "owner": c.owner}
-                for c in catalogs
-                if c.name
-            ]
-            cache.set("uc:catalogs", result, ttl=300)
-            print(f"✓ Cache warmed: {len(result)} catalogs")
-        except Exception as e:
-            print(f"✗ Failed to warm catalogs cache: {e}")
-
-    async def warm_main_schema():
-        """Preload main schema tables."""
-        try:
-            client = get_workspace_client()
-            catalog = settings.databricks_catalog
-            schema = settings.databricks_schema
-
-            # Warm schemas for main catalog
-            schemas = list(client.schemas.list(catalog_name=catalog))
-            schemas_result = [
-                {"name": s.name, "catalog_name": s.catalog_name}
-                for s in schemas
-                if s.name
-            ]
-            cache.set(f"uc:schemas:{catalog}", schemas_result, ttl=300)
-
-            # Warm tables for main schema
-            tables = list(client.tables.list(catalog_name=catalog, schema_name=schema))
-            tables_result = [
-                {
-                    "name": t.name,
-                    "catalog_name": t.catalog_name,
-                    "schema_name": t.schema_name,
-                    "table_type": t.table_type.value if t.table_type else "UNKNOWN",
-                }
-                for t in tables
-                if t.name
-            ]
-            cache.set(f"uc:tables:{catalog}:{schema}:cols=False", tables_result, ttl=300)
-            print(f"✓ Cache warmed: {len(tables_result)} tables in {catalog}.{schema}")
-        except Exception as e:
-            print(f"✗ Failed to warm schema cache: {e}")
-
-    # Run cache warming in background
-    asyncio.create_task(warm_catalogs())
-    asyncio.create_task(warm_main_schema())
+# Mount MCP handler (raw ASGI callable, NOT a Starlette sub-app)
+if _mcp_available and _mcp_handler is not None:
+    app.mount("/mcp", _mcp_handler)
+    logger.info("MCP handler mounted at /mcp")
 
 
 @app.get("/api/health")
@@ -210,7 +243,7 @@ async def debug_info():
 
 
 @app.get("/api/config")
-async def get_config():
+async def get_config(request: Request):
     """Get client configuration."""
     try:
         workspace_url = get_workspace_url()
@@ -219,13 +252,20 @@ async def get_config():
         workspace_url = ""
         user = "unknown"
 
+    # Resolve ontos_url: if still default localhost, use the request's origin
+    # so deployed apps get the correct URL instead of http://localhost:8000
+    ontos_url = settings.ontos_base_url
+    if "localhost" in ontos_url or "127.0.0.1" in ontos_url:
+        # Derive from incoming request (works for both local dev and deployed)
+        ontos_url = str(request.base_url).rstrip("/")
+
     return {
         "app_name": settings.app_name,
         "workspace_url": workspace_url,
         "catalog": settings.databricks_catalog,
         "schema": settings.databricks_schema,
         "current_user": user,
-        "ontos_url": settings.ontos_base_url,
+        "ontos_url": ontos_url,
     }
 
 
@@ -272,7 +312,7 @@ if static_dir:
     async def serve_spa(full_path: str):
         """Serve React SPA for all non-API routes."""
         # Don't intercept API calls or docs
-        if full_path.startswith(("api/", "dqx-ui/")) or full_path in ("docs", "redoc", "openapi.json"):
+        if full_path.startswith(("api/", "dqx-ui/", "mcp/")) or full_path in ("docs", "redoc", "openapi.json"):
             return {"error": "Not found"}
 
         index_path = static_dir / "index.html"
