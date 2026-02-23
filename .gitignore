@@ -120,6 +120,5 @@ presentations/
 docs-internal/
 docs/archive/
 Training_Dataset_Workbench_PRD_v2.docx
-tmux-client-*.log
 *.log
 __dist__/
