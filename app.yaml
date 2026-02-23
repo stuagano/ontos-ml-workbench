@@ -2,12 +2,12 @@
 command:
   - "bash"
   - "-c"
-  - "cd backend && python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+  - "pip3 install -r backend/requirements.txt && cd backend && ../.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${DATABRICKS_APP_PORT:-8000}"
 
 env:
   - name: DATABRICKS_CATALOG
-    value: "${var.catalog}"
+    value: "serverless_dxukih_catalog"
   - name: DATABRICKS_SCHEMA
-    value: "${var.schema}"
+    value: "mirion"
   - name: DATABRICKS_WAREHOUSE_ID
-    value: "${var.warehouse_id}"
+    value: "387bcda0f2ece20c"

@@ -6,7 +6,8 @@ import json
 from typing import Dict, Any, List
 from datetime import datetime
 
-BASE_URL = "http://localhost:8000"
+import os
+BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
 
 
 class APITester:

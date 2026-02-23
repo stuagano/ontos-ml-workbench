@@ -29,14 +29,14 @@ class Settings(BaseSettings):
     # API configuration
     api_prefix: str = "/api/v1"
 
-    # CORS (for local development)
+    # CORS (for local development only; in production the SPA is served same-origin)
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:5000", "http://localhost:3000"]
 
     # Lakebase schema name (uses same SQL Warehouse as main schema)
     # The Lakebase schema has engine='postgres' for optimized OLTP workloads
     lakebase_schema: str = "ontos_ml_lakebase"
 
-    # Ontos backend URL (for DQX quality proxy)
+    # Ontos backend URL (for DQX quality proxy; auto-resolved from request origin in production)
     ontos_base_url: str = "http://localhost:8000"
 
     # Auth enforcement (False = resolve user identity but don't block requests)

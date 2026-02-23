@@ -7,7 +7,8 @@ import requests
 import json
 from uuid import uuid4
 
-API_BASE = "http://localhost:8000/api/v1"
+import os
+API_BASE = os.environ.get("API_BASE_URL", "http://localhost:8000") + "/api/v1"
 
 sheets_to_create = [
     {

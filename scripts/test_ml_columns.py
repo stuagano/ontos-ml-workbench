@@ -4,8 +4,8 @@ Test script: Verify ML column configuration works end-to-end
 import requests
 import json
 
-# Backend URL
-API_BASE = "http://localhost:8000/api/v1"
+import os
+API_BASE = os.environ.get("API_BASE_URL", "http://localhost:8000") + "/api/v1"
 
 def test_create_template_with_ml_columns():
     """Test creating a template with ML column configuration"""

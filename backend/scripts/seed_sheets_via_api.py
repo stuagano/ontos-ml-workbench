@@ -17,7 +17,8 @@ print("🌱 Seeding sheets via API...\n")
 
 # Initialize
 settings = get_settings()
-api_base_url = "http://localhost:8000/api/v1"  # Assumes backend is running locally
+import os
+api_base_url = os.environ.get("API_BASE_URL", "http://localhost:8000") + "/api/v1"
 catalog = settings.databricks_catalog
 schema = settings.databricks_schema
 
@@ -129,7 +130,7 @@ print(f"❌ Failed: {failed_count}")
 print(f"\n🎉 Seeding complete!")
 
 if created_count > 0:
-    print(f"\nVerify in UI: http://localhost:5173 (DATA stage)")
+    print(f"\nVerify in UI: open the app (DATA stage)")
     print(f"Or via API: {api_base_url}/sheets-v2")
 
 

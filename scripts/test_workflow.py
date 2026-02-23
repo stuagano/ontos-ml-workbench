@@ -10,7 +10,8 @@ import time
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-BASE_URL = "http://localhost:8000"
+import os
+BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
 TIMEOUT = 60  # Longer timeout for SQL warehouse queries
 
 

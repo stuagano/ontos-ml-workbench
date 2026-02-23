@@ -5,7 +5,8 @@ Tests: Template → Template Config → Training Sheet → Database
 import requests
 import json
 
-API_BASE = "http://localhost:8000/api/v1"
+import os
+API_BASE = os.environ.get("API_BASE_URL", "http://localhost:8000") + "/api/v1"
 
 def test_ml_columns_end_to_end():
     """Test ML columns flow through: templates → sheets → training_sheets"""
