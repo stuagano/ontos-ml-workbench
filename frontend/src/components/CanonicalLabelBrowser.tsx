@@ -5,8 +5,14 @@
  */
 
 import { useState } from "react";
-import { useCanonicalLabels } from "../hooks/useCanonicalLabels";
+import {
+  useCanonicalLabels,
+  useDeleteCanonicalLabel,
+  useCanonicalLabelUsage,
+  useUpdateCanonicalLabel,
+} from "../hooks/useCanonicalLabels";
 import { CanonicalLabelCard, CanonicalLabelCardSkeleton } from "./CanonicalLabelCard";
+import { useToast } from "./Toast";
 import type { CanonicalLabel, LabelConfidence } from "../types";
 
 interface CanonicalLabelBrowserProps {
@@ -31,6 +37,62 @@ export function CanonicalLabelBrowser({
   );
   const [page, setPage] = useState(1);
   const pageSize = compact ? 20 : 12;
+
+  // Delete state & mutations
+  const [deletingLabel, setDeletingLabel] = useState<CanonicalLabel | null>(null);
+  const deleteMutation = useDeleteCanonicalLabel();
+  const { data: usageData, isLoading: usageLoading } = useCanonicalLabelUsage(
+    deletingLabel?.id
+  );
+
+  // Edit state & mutation
+  const [editingLabel, setEditingLabel] = useState<CanonicalLabel | null>(null);
+  const [editConfidence, setEditConfidence] = useState<LabelConfidence>("high");
+  const [editNotes, setEditNotes] = useState("");
+  const [editLabelData, setEditLabelData] = useState("");
+  const updateMutation = useUpdateCanonicalLabel(editingLabel?.id ?? "");
+  const toast = useToast();
+
+  const handleStartEdit = (label: CanonicalLabel) => {
+    setEditingLabel(label);
+    setEditConfidence(label.confidence);
+    setEditNotes(label.notes || "");
+    setEditLabelData(JSON.stringify(label.label_data, null, 2));
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingLabel) return;
+    let parsedLabelData: unknown;
+    try {
+      parsedLabelData = JSON.parse(editLabelData);
+    } catch {
+      toast.error("Invalid JSON", "Label data must be valid JSON");
+      return;
+    }
+    updateMutation.mutate(
+      { confidence: editConfidence, notes: editNotes, label_data: parsedLabelData },
+      {
+        onSuccess: () => {
+          toast.success("Label updated");
+          setEditingLabel(null);
+        },
+        onError: (err) =>
+          toast.error("Update failed", err instanceof Error ? err.message : "Unknown error"),
+      }
+    );
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deletingLabel) return;
+    deleteMutation.mutate(deletingLabel.id, {
+      onSuccess: () => {
+        toast.success("Label deleted");
+        setDeletingLabel(null);
+      },
+      onError: (err) =>
+        toast.error("Delete failed", err instanceof Error ? err.message : "Unknown error"),
+    });
+  };
 
   const { data, isLoading, error } = useCanonicalLabels({
     sheet_id: sheetId,
@@ -198,8 +260,8 @@ export function CanonicalLabelBrowser({
             >
               <CanonicalLabelCard
                 label={label}
-                onEdit={onEditLabel}
-                onDelete={onDeleteLabel}
+                onEdit={onEditLabel ?? handleStartEdit}
+                onDelete={onDeleteLabel ?? ((l) => setDeletingLabel(l))}
                 compact={compact}
               />
             </div>
@@ -254,6 +316,142 @@ export function CanonicalLabelBrowser({
           >
             Next
           </button>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deletingLabel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Delete Canonical Label?
+            </h3>
+            <p className="text-sm text-gray-600 mb-3">
+              <span className="font-medium">{deletingLabel.label_type}</span>{" "}
+              &mdash;{" "}
+              <span className="font-mono text-xs">{deletingLabel.item_ref}</span>
+            </p>
+
+            {usageLoading ? (
+              <div className="text-sm text-gray-500 mb-4">Checking usage...</div>
+            ) : usageData && usageData.usage_count > 0 ? (
+              <div className="p-3 mb-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm font-medium text-amber-800">
+                  This label is used in {usageData.usage_count} training sheet
+                  {usageData.usage_count !== 1 ? "s" : ""}
+                </p>
+                <ul className="mt-1 text-xs text-amber-700 space-y-0.5">
+                  {usageData.used_in.slice(0, 5).map((u) => (
+                    <li key={`${u.assembly_id}-${u.row_index}`}>
+                      {u.assembly_name} (row {u.row_index})
+                    </li>
+                  ))}
+                  {usageData.used_in.length > 5 && (
+                    <li>...and {usageData.used_in.length - 5} more</li>
+                  )}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 mb-4">
+                This label is not used in any training sheets.
+              </p>
+            )}
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeletingLabel(null)}
+                className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Label Modal */}
+      {editingLabel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Edit Canonical Label
+            </h3>
+
+            <div className="space-y-4">
+              {/* Read-only context */}
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">{editingLabel.label_type}</span>{" "}
+                &mdash;{" "}
+                <span className="font-mono text-xs">{editingLabel.item_ref}</span>
+              </div>
+
+              {/* Confidence */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Confidence
+                </label>
+                <select
+                  value={editConfidence}
+                  onChange={(e) => setEditConfidence(e.target.value as LabelConfidence)}
+                  className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notes
+                </label>
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  placeholder="Optional notes about this label..."
+                />
+              </div>
+
+              {/* Label Data */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Label Data (JSON)
+                </label>
+                <textarea
+                  value={editLabelData}
+                  onChange={(e) => setEditLabelData(e.target.value)}
+                  rows={6}
+                  className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={() => setEditingLabel(null)}
+                className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={updateMutation.isPending}
+                className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {updateMutation.isPending ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

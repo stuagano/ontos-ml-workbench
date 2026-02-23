@@ -38,15 +38,15 @@ const ExampleStorePage = lazy(() =>
     default: m.ExampleStorePage,
   })),
 );
-const CanonicalLabelingTool = lazy(() =>
-  import("./components/CanonicalLabelingTool").then((m) => ({
-    default: m.CanonicalLabelingTool,
+const CanonicalLabelModal = lazy(() =>
+  import("./components/CanonicalLabelModal").then((m) => ({
+    default: m.CanonicalLabelModal,
   })),
 );
 
 import { getConfig } from "./services/api";
 import { setWorkspaceUrl } from "./services/databricksLinks";
-import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { useKeyboardShortcuts, useAppShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useToast } from "./components/Toast";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import {
@@ -176,14 +176,15 @@ function AppContent() {
     }
   }, [showEditor]);
 
-  // Register keyboard shortcuts
+  // App-wide shortcuts: Ctrl+N (new), Ctrl+K (search), Shift+? (help)
+  useAppShortcuts({
+    onNew: handleNewTemplate,
+    onSearch: () => toast.info("Search", "Global search coming soon (Ctrl+K)"),
+    onHelp: () => (keyboardHelp.isOpen ? keyboardHelp.close() : keyboardHelp.open()),
+  });
+
+  // Escape to close modals (not covered by useAppShortcuts)
   useKeyboardShortcuts([
-    {
-      key: "n",
-      modifiers: ["alt"],
-      handler: handleNewTemplate,
-      description: "New template",
-    },
     {
       key: "Escape",
       handler: handleEscape,
@@ -317,22 +318,13 @@ function AppContent() {
         onClose={keyboardHelp.close}
       />
 
-      {/* Canonical Labeling Tool Overlay */}
-      {showCanonicalLabeling && (
-        <div className="fixed inset-0 z-40 bg-db-gray-50">
-          <Suspense
-            fallback={
-              <div className="flex items-center justify-center min-h-screen">
-                <Loader2 className="w-10 h-10 animate-spin text-db-orange" />
-              </div>
-            }
-          >
-            <CanonicalLabelingTool
-              onClose={() => setShowCanonicalLabeling(false)}
-            />
-          </Suspense>
-        </div>
-      )}
+      {/* Canonical Labeling Tool Modal */}
+      <Suspense fallback={null}>
+        <CanonicalLabelModal
+          isOpen={showCanonicalLabeling}
+          onClose={() => setShowCanonicalLabeling(false)}
+        />
+      </Suspense>
 
       {/* Example Store Overlay */}
       {showExampleStore && (

@@ -1,6 +1,6 @@
 # Ontos ML Workbench - Project Status
 
-**Last Updated:** February 20, 2026
+**Last Updated:** February 22, 2026
 **PRD Version:** 2.3
 **Overall Progress:** ~90% backend, ~80% frontend (ML Pipeline); Ontos Governance G1–G10 + G14–G15 complete
 
@@ -41,7 +41,7 @@
 | Export to Delta | DONE | `exportSheet` API |
 | Data Quality (DQX) inline panel | DONE | `DataQualityPanel` component in sheet detail view |
 | Multimodal data fusion (images + sensor + metadata) | DONE | Columns support text, image, metadata categories |
-| Join multiple data sources | BACKEND ONLY | API supports secondary sources + join keys, UI doesn't expose |
+| Join multiple data sources | DONE | Full end-to-end: suggest-join-keys + preview-join backend, JoinConfigPanel + staging workflow in SheetBuilder |
 
 ### Stage 2: GENERATE (SheetBuilder + CuratePage) — DONE
 
@@ -130,7 +130,7 @@
 | Example Store | Yes | `ExampleStorePage.tsx` (690 lines) | Yes | Delete, **Copy+Track**, **Regen Embeddings** | DONE |
 | DSPy Optimizer | Yes | `DSPyOptimizationPage.tsx` (729 lines) | Yes | Export, Create Run, Cancel, Sync Results | DONE |
 | Canonical Labeling | Yes | `CanonicalLabelingTool.tsx` | Yes | Full CRUD | DONE |
-| Data Quality (DQX) | Yes | `DataQualityPage.tsx` (36 lines) | Minimal | None | SCAFFOLD — tiny redirect, real DQX is inline in SheetBuilder |
+| Data Quality (DQX) | Yes | `DataQualityPage.tsx` (~400 lines) | Yes | Profile, AI Generate Rules, Run Checks, Export Report | DONE — standalone page with sheet picker + history; module inspector also wired to real endpoints |
 | Labeling Jobs | Yes | `LabelingJobsPage.tsx` (1099 lines) | Yes | Create, Start, Pause, Resume, Delete | DONE |
 | Label Sets | Yes | `LabelSetsPage.tsx` (619 lines) | Yes | Full CRUD + Publish/Archive | DONE |
 | Registries | Yes | `RegistriesPage.tsx` (1050 lines) | Yes | Full CRUD for Tools/Agents/Endpoints | DONE |
@@ -295,6 +295,13 @@ Features for mature data governance organizations.
 **Phase 4 — Platform (G9–G15):** ALL DONE. G9 (Data Products), G10 (Semantic Models), G11 (MCP Integration), G12 (Delivery Modes), G13 (Multi-Platform Connectors), G14 (Dataset Marketplace), G15 (Naming Conventions). The complete governance platform is implemented across all 15 feature areas.
 
 ---
+
+## Recently Completed (Feb 22, 2026)
+
+- **Canonical Label CRUD hooks wired into CanonicalLabelBrowser**: Self-contained delete (with usage-count warning dialog via `useDeleteCanonicalLabel` + `useCanonicalLabelUsage`) and inline edit modal (confidence/notes/label_data JSON via `useUpdateCanonicalLabel`). Props still work as overrides.
+- **Canonical label lookup wired into CuratePage DetailPanel**: `useLookupCanonicalLabel` shows green banner when a canonical label exists for the current source item; `useItemLabelsets` shows collapsible list of all labelsets. "Create Canonical Label" button dynamically changes to "Update" when match found.
+- **Keyboard navigation hooks wired into CuratePage**: Replaced manual `addEventListener` with `useListNavigation` (adds j/k vim keys + ArrowUp/ArrowDown) alongside existing ArrowLeft/ArrowRight. Updated shortcuts modal.
+- **App-wide shortcuts via `useAppShortcuts`**: Added Ctrl+N (new template), Ctrl+K (search placeholder), Shift+? (help toggle) to App.tsx. Removed duplicate Alt+N binding.
 
 ## Recently Completed (Feb 20, 2026)
 

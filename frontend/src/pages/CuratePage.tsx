@@ -62,8 +62,19 @@ import {
   LabelConfig,
   Annotation,
 } from "../components/annotation";
-import { useSheetCanonicalStats } from "../hooks/useCanonicalLabels";
+import {
+  useSheetCanonicalStats,
+  useLookupCanonicalLabel,
+  useItemLabelsets,
+} from "../hooks/useCanonicalLabels";
+import {
+  useListNavigation,
+  useKeyboardShortcuts,
+} from "../hooks/useKeyboardShortcuts";
 import { PromoteToCanonicalModal } from "../components/PromoteToCanonicalModal";
+import { CanonicalLabelStats } from "../components/CanonicalLabelStats";
+import { CanonicalLabelBrowser } from "../components/CanonicalLabelBrowser";
+import { NoCurationItems, NoTemplates, EmptyState } from "../components/EmptyState";
 import { QualityGatePanel } from "../components/QualityGatePanel";
 import { LabelVersionHistory } from "../components/LabelVersionHistory";
 import { ReviewPanel } from "../components/ReviewPanel";
@@ -327,6 +338,27 @@ function DetailPanel({
 
   const hasChanges = editedResponse !== (row.response || "");
 
+  // Extract item_ref from source data for canonical label lookup
+  const itemRef = row.source_data?.item_ref
+    ?? row.source_data?.id
+    ?? row.source_data?.file_path
+    ?? (Object.keys(row.source_data || {})[0]
+      ? String((row.source_data as Record<string, unknown>)[Object.keys(row.source_data)[0]])
+      : undefined);
+
+  // Canonical label lookup for current source item
+  const { data: matchedLabel, isLoading: lookupLoading } = useLookupCanonicalLabel(
+    assembly.sheet_id,
+    itemRef ? String(itemRef) : undefined,
+    assembly.template_config?.label_type
+  );
+
+  // All labelsets for current source item
+  const { data: labelsets } = useItemLabelsets(
+    assembly.sheet_id,
+    itemRef ? String(itemRef) : undefined
+  );
+
   return (
     <div className="w-[520px] bg-white border-l border-db-gray-200 flex flex-col">
       {/* Header */}
@@ -362,6 +394,54 @@ function DetailPanel({
             <pre>{JSON.stringify(row.source_data, null, 2)}</pre>
           </div>
         </div>
+
+        {/* Canonical Label Lookup Banner */}
+        {lookupLoading && (
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            Checking for canonical label...
+          </div>
+        )}
+        {matchedLabel && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-medium text-emerald-800">
+                Canonical label exists
+              </span>
+              <span className="ml-2 text-xs px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">
+                {matchedLabel.confidence}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Labelsets for Current Item */}
+        {labelsets && labelsets.labelsets.length > 0 && (
+          <details className="group">
+            <summary className="cursor-pointer text-sm font-medium text-db-gray-700 hover:text-db-gray-900 flex items-center gap-2">
+              <ChevronRight className="w-3 h-3 group-open:rotate-90 transition-transform" />
+              Labelsets for this item ({labelsets.labelsets.length})
+            </summary>
+            <div className="mt-2 space-y-1">
+              {labelsets.labelsets.map((ls) => (
+                <div
+                  key={ls.id}
+                  className="flex items-center justify-between text-xs px-3 py-1.5 bg-gray-50 rounded"
+                >
+                  <span className="font-medium text-gray-700">{ls.label_type}</span>
+                  <div className="flex items-center gap-3 text-gray-500">
+                    <span>{ls.confidence}</span>
+                    <span>{ls.labeled_by}</span>
+                    {ls.created_at && (
+                      <span>{new Date(ls.created_at).toLocaleDateString()}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
 
         {/* Prompt */}
         <div>
@@ -448,14 +528,14 @@ function DetailPanel({
           </kbd>
         </button>
 
-        {/* Create Canonical Label button */}
+        {/* Create/Update Canonical Label button */}
         {onCreateCanonicalLabel && row.response && (
           <button
             onClick={onCreateCanonicalLabel}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors font-medium"
           >
             <Plus className="w-4 h-4" />
-            Create Canonical Label
+            {matchedLabel ? "Update Canonical Label" : "Create Canonical Label"}
           </button>
         )}
 
@@ -769,50 +849,36 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
     [updateMutation],
   );
 
-  // Keyboard navigation
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (rows.length === 0) return;
+  // Keyboard navigation via hooks (replaces manual addEventListener)
+  const navigateUp = useCallback(() => {
+    if (selectedIndex > 0) {
+      setSelectedRowIndex(rows[selectedIndex - 1].row_index);
+    }
+  }, [rows, selectedIndex]);
 
-      // Don't capture if typing in an input
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      )
-        return;
+  const navigateDown = useCallback(() => {
+    if (selectedIndex < rows.length - 1) {
+      setSelectedRowIndex(rows[selectedIndex + 1].row_index);
+    } else if (selectedIndex === -1 && rows.length > 0) {
+      setSelectedRowIndex(rows[0].row_index);
+    }
+  }, [rows, selectedIndex]);
 
-      switch (e.key.toLowerCase()) {
-        case "arrowleft":
-          e.preventDefault();
-          if (selectedIndex > 0) {
-            setSelectedRowIndex(rows[selectedIndex - 1].row_index);
-          }
-          break;
-        case "arrowright":
-          e.preventDefault();
-          if (selectedIndex < rows.length - 1) {
-            setSelectedRowIndex(rows[selectedIndex + 1].row_index);
-          } else if (selectedIndex === -1 && rows.length > 0) {
-            setSelectedRowIndex(rows[0].row_index);
-          }
-          break;
-        case "escape":
-          e.preventDefault();
-          setSelectedRowIndex(null);
-          break;
-        case "?":
-          e.preventDefault();
-          setShowShortcuts((s) => !s);
-          break;
-      }
-    },
-    [rows, selectedIndex],
+  useListNavigation({
+    onUp: navigateUp,
+    onDown: navigateDown,
+    onEscape: () => setSelectedRowIndex(null),
+    enabled: rows.length > 0,
+  });
+
+  useKeyboardShortcuts(
+    [
+      { key: "?", handler: () => setShowShortcuts((s) => !s), description: "Toggle shortcuts" },
+      { key: "ArrowLeft", handler: navigateUp, description: "Previous row" },
+      { key: "ArrowRight", handler: navigateDown, description: "Next row" },
+    ],
+    { enabled: rows.length > 0 },
   );
-
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
 
   const handleSaveRow = (response: string, markAsVerified: boolean) => {
     if (selectedRowIndex === null) return;
@@ -986,24 +1052,13 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
       ];
 
       const emptyState = (
-        <div className="text-center py-20 bg-white rounded-lg">
-          <Layers className="w-16 h-16 text-db-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-db-gray-700 mb-2">
-            No assemblies found
-          </h3>
-          <p className="text-db-gray-500 mb-6">
-            {searchQuery
-              ? "Try adjusting your search"
-              : "Create your first assembly from a sheet with a template"}
-          </p>
-          <button
-            onClick={() => setStageMode("create")}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
-          >
-            <Plus className="w-4 h-4" />
-            Create Training Data
-          </button>
-        </div>
+        <NoCurationItems
+          action={{
+            label: "Create Training Data",
+            onClick: () => setStageMode("create"),
+          }}
+          className="bg-white rounded-lg"
+        />
       );
 
       return (
@@ -1182,24 +1237,15 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-20 bg-white rounded-lg">
-                  <Table2 className="w-16 h-16 text-db-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-db-gray-700 mb-2">
-                    No sheets with templates found
-                  </h3>
-                  <p className="text-db-gray-500 mb-6">
-                    Create a sheet and attach a template first
-                  </p>
-                  <button
-                    onClick={() =>
+                <NoTemplates
+                  action={{
+                    label: "Go to Data Stage",
+                    onClick: () =>
                       (window.location.href =
-                        window.location.origin + "/#/data")
-                    }
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
-                  >
-                    Go to Data Stage
-                  </button>
-                </div>
+                        window.location.origin + "/#/data"),
+                  }}
+                  className="bg-white rounded-lg"
+                />
               )}
             </div>
           </div>
@@ -1335,38 +1381,23 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
             </div>
           )}
 
-          {/* Canonical Label Indicator */}
-          {canonicalStats && canonicalStats.total_labels > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full">
-                    <CheckCircle className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-blue-900">
-                      Canonical Labels Available
-                    </h3>
-                    <p className="text-sm text-blue-700">
-                      {canonicalStats.total_labels} expert-validated labels
-                      available
-                      {canonicalStats.coverage_percent && (
-                        <>
-                          {" "}
-                          ({canonicalStats.coverage_percent.toFixed(1)}%
-                          coverage)
-                        </>
-                      )}
-                      {" · "}
-                      Avg {canonicalStats.avg_reuse_count.toFixed(1)}x reuse
-                    </p>
-                  </div>
-                </div>
-                <div className="text-xs text-blue-600">
-                  {assembly?.canonical_reused_count || 0} rows use canonical
-                  labels
-                </div>
-              </div>
+          {/* Canonical Label Stats */}
+          {assembly?.sheet_id && (
+            <div className="mb-6">
+              <CanonicalLabelStats sheetId={assembly.sheet_id} />
+            </div>
+          )}
+
+          {/* Canonical Label Browser */}
+          {assembly?.sheet_id && canonicalStats && canonicalStats.total_labels > 0 && (
+            <div className="mb-6">
+              <details className="group">
+                <summary className="cursor-pointer text-sm font-medium text-db-gray-700 hover:text-db-gray-900 flex items-center gap-2 mb-2">
+                  <ChevronRight className="w-4 h-4 group-open:rotate-90 transition-transform" />
+                  Browse Canonical Labels ({canonicalStats.total_labels})
+                </summary>
+                <CanonicalLabelBrowser sheetId={assembly.sheet_id} compact />
+              </details>
             </div>
           )}
 
@@ -1385,17 +1416,16 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
               ))}
             </div>
           ) : rows.length === 0 ? (
-            <div className="text-center py-20">
-              <FileText className="w-12 h-12 text-db-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-db-gray-600">
-                No rows to display
-              </h3>
-              <p className="text-db-gray-400 mt-1">
-                {sourceFilter
+            <EmptyState
+              icon={FileText}
+              title="No rows to display"
+              description={
+                sourceFilter
                   ? `No rows with status "${sourceLabels[sourceFilter]}"`
-                  : "The assembly has no rows yet"}
-              </p>
-            </div>
+                  : "The assembly has no rows yet"
+              }
+              variant="compact"
+            />
           ) : (
             <>
               {/* Toolbar */}
@@ -1550,8 +1580,8 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
             </div>
             <div className="space-y-3">
               {[
-                { key: "←", action: "Previous row" },
-                { key: "→", action: "Next row" },
+                { key: "← / ↑ / k", action: "Previous row" },
+                { key: "→ / ↓ / j", action: "Next row" },
                 { key: "⌘S", action: "Save response" },
                 { key: "Esc", action: "Close detail panel" },
                 { key: "?", action: "Toggle shortcuts" },
