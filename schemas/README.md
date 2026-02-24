@@ -1,6 +1,6 @@
 # Ontos ML Workbench - Database Schema
 
-This directory contains all Delta Lake table schemas for the Ontos ML Workbench in Unity Catalog.
+Delta Lake table schemas for the Ontos ML Workbench in Unity Catalog.
 
 **Schema Location:** Configure via `backend/.env` (`DATABRICKS_CATALOG` and `DATABRICKS_SCHEMA`)
 
@@ -8,71 +8,93 @@ For the current field reference, see `SCHEMA_REFERENCE.md`.
 
 ## Quick Start
 
-### Initial Schema Setup
-
-Run these SQL files in order:
-
 ```bash
-# 1. Create catalog and schema
-databricks sql --file 01_create_catalog.sql
-
-# 2. Create all tables
-databricks sql --file 02_sheets.sql
-databricks sql --file 03_templates.sql
-databricks sql --file 04_canonical_labels.sql
-databricks sql --file 05_training_sheets.sql
-databricks sql --file 06_qa_pairs.sql
-databricks sql --file 07_model_training_lineage.sql
-databricks sql --file 08_example_store.sql
-databricks sql --file 09_labeling_jobs.sql
-databricks sql --file 10_labeling_tasks.sql
-databricks sql --file 11_labeled_items.sql
-databricks sql --file 12_workspace_users.sql
-databricks sql --file 13_model_evaluations.sql
-databricks sql --file 14_identified_gaps.sql
-databricks sql --file 15_annotation_tasks.sql
-databricks sql --file 16_bit_attribution.sql
-databricks sql --file 17_dqx_quality_results.sql
-databricks sql --file 18_endpoint_metrics.sql
-databricks sql --file 19_app_roles.sql
-databricks sql --file 20_user_role_assignments.sql
-databricks sql --file 21_teams.sql
-databricks sql --file 22_team_members.sql
-databricks sql --file 23_data_domains.sql
-databricks sql --file 24_seed_default_roles.sql
-databricks sql --file 25_add_domain_id_columns.sql
-
-# 3. Validate setup
-databricks sql --file 99_validate_and_seed.sql
-```
-
-Or run all at once:
-```bash
+# Run all schemas in order
 ./execute_all.sh
+
+# Or run individually
+databricks sql --file 00_create_catalog.sql
+databricks sql --file 01_sheets.sql
+# ... etc
 ```
 
-### Apply Migrations
+## File Organization
 
-After initial setup, apply these migrations in order:
+34 SQL files, numbered `00`–`33`, grouped by domain:
 
-```bash
-# 1. Add ML columns to templates (v1.1)
-databricks sql --file add_ml_columns_to_templates.sql
+### Infrastructure (00)
+| # | File | Table(s) |
+|---|------|----------|
+| 00 | `create_catalog.sql` | Creates catalog and schema container |
 
-# 2. Add ML columns to training_sheets (v1.1)
-databricks sql --file add_ml_columns_to_training_sheets.sql
+### Core ML Pipeline (01–07)
+| # | File | Table(s) |
+|---|------|----------|
+| 01 | `sheets.sql` | `sheets` — Dataset definitions pointing to UC tables/volumes |
+| 02 | `templates.sql` | `templates` — Reusable prompt templates for Q&A generation |
+| 03 | `canonical_labels.sql` | `canonical_labels` — Ground truth labels (composite key: sheet_id, item_ref, label_type) |
+| 04 | `training_sheets.sql` | `training_sheets` — Q&A datasets from Sheet + Template |
+| 05 | `qa_pairs.sql` | `qa_pairs` — Individual Q&A pairs with review status |
+| 06 | `model_training_lineage.sql` | `model_training_lineage` — Model-to-Training Sheet traceability |
+| 07 | `example_store.sql` | `example_store` — Few-shot examples with vector embeddings |
 
-# 3. Add Monitor stage support (v1.2)
-databricks sql --file fix_monitor_schema.sql
-```
+### Labeling Workflow (08–10)
+| # | File | Table(s) |
+|---|------|----------|
+| 08 | `labeling_jobs.sql` | `labeling_jobs` — Annotation project definitions |
+| 09 | `labeling_tasks.sql` | `labeling_tasks` — Task batches assigned to labelers |
+| 10 | `labeled_items.sql` | `labeled_items` — Individual item annotations |
+
+### Quality & Monitoring (11–16)
+| # | File | Table(s) |
+|---|------|----------|
+| 11 | `model_evaluations.sql` | `model_evaluations` — Per-metric MLflow evaluation results |
+| 12 | `identified_gaps.sql` | `identified_gaps` — Gap analysis findings |
+| 13 | `annotation_tasks.sql` | `annotation_tasks` — Gap remediation tasks |
+| 14 | `bit_attribution.sql` | `bit_attribution` — Attribution scores per training data |
+| 15 | `dqx_quality_results.sql` | `dqx_quality_results` — Data quality check results |
+| 16 | `endpoint_metrics.sql` | `endpoint_metrics` — Per-request endpoint performance |
+
+### RBAC & Organization (17–24)
+| # | File | Table(s) |
+|---|------|----------|
+| 17 | `app_roles.sql` | `app_roles` + seed data — 6 built-in RBAC roles |
+| 18 | `user_role_assignments.sql` | `user_role_assignments` — User-to-role mappings |
+| 19 | `teams.sql` | `teams` — Organizational groups |
+| 20 | `team_members.sql` | `team_members` — Team membership |
+| 21 | `data_domains.sql` | `data_domains` — Hierarchical organizational domains |
+| 22 | `asset_reviews.sql` | `asset_reviews` — Steward review workflow |
+| 23 | `projects.sql` | `projects` — Workspace containers |
+| 24 | `project_members.sql` | `project_members` — Project membership |
+
+### Contracts & Workflows (25–27)
+| # | File | Table(s) |
+|---|------|----------|
+| 25 | `data_contracts.sql` | `data_contracts` — Schema specs with quality SLOs |
+| 26 | `compliance_policies.sql` | `compliance_policies`, `policy_evaluations` — Governance rules + results |
+| 27 | `workflows.sql` | `workflows`, `workflow_executions` — Event-driven workflow templates |
+
+### Data Products & Semantic Models (28–29)
+| # | File | Table(s) |
+|---|------|----------|
+| 28 | `data_products.sql` | `data_products`, `data_product_ports`, `data_product_subscriptions` |
+| 29 | `semantic_models.sql` | `semantic_models`, `semantic_concepts`, `semantic_properties`, `semantic_links` |
+
+### Governance Configuration (30–31)
+| # | File | Table(s) |
+|---|------|----------|
+| 30 | `naming_conventions.sql` | `naming_conventions` — Regex patterns for entity names |
+| 31 | `delivery_modes.sql` | `delivery_modes`, `delivery_records` — Deployment configs + audit |
+
+### Platform Integration (32–33)
+| # | File | Table(s) |
+|---|------|----------|
+| 32 | `mcp_integration.sql` | `mcp_tokens`, `mcp_tools`, `mcp_invocations` — AI assistant tools |
+| 33 | `platform_connectors.sql` | `platform_connectors`, `connector_assets`, `connector_sync_records` |
 
 ## Table Relationships
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Data Flow Architecture                   │
-└─────────────────────────────────────────────────────────────┘
-
       Unity Catalog
       (External Data)
             │
@@ -106,7 +128,7 @@ databricks sql --file fix_monitor_schema.sql
             │
             ▼
    ┌────────────────────┐
-   │ canonical_labels   │  Ground truth labels ⭐
+   │ canonical_labels   │  Ground truth labels
    └────────────────────┘
    (sheet_id, item_ref, label_type)  ← COMPOSITE KEY
 
@@ -119,259 +141,33 @@ databricks sql --file fix_monitor_schema.sql
   └─────────────────────────┘
 ```
 
+The full lineage graph (materialized in `semantic_links`) covers all 54 tables across 20 entity types and 34 link types, enabling upstream/downstream traversal and impact analysis.
+
 ## Key Design Patterns
 
-### 1. Composite Key on Canonical Labels ⭐
-
-The **canonical_labels** table uses a composite UNIQUE constraint:
+### Composite Key on Canonical Labels
 
 ```sql
 CONSTRAINT unique_label UNIQUE (sheet_id, item_ref, label_type)
 ```
 
-This enables the "label once, reuse everywhere" pattern:
-- Same item (item_ref) in same Sheet (sheet_id)
-- Labeled for same purpose (label_type)
-- Results in ONE canonical label that gets reused
+Enables "label once, reuse everywhere" — same item labeled for the same purpose produces one canonical label that gets auto-reused across Training Sheets.
 
-**Example:**
-- Sheet: "medical_invoices"
-- Item: "invoice_001.pdf"
-- Label Type: "entities"
-- First time: Expert labels entities → creates canonical_label
-- Second time (different template, same label_type): Canonical label auto-reused ✨
+### Foreign Keys (Documented, Not Enforced)
 
-### 2. Foreign Key Relationships (Documented, Not Enforced)
+Delta Lake doesn't enforce FKs, but logical relationships are documented in column comments. The lineage graph materializes all FK relationships as traversable edges.
 
-Delta Lake doesn't enforce foreign keys, but logical relationships are:
+### Audit Fields
 
-```sql
--- Sheets
-sheets.id → training_sheets.sheet_id
-sheets.id → canonical_labels.sheet_id
-sheets.id → qa_pairs.sheet_id
+All tables include `created_at`, `created_by`, `updated_at`, `updated_by`.
 
--- Templates
-templates.id → training_sheets.template_id
-templates.label_type → canonical_labels.label_type  (logical link)
+### Change Data Feed
 
--- Training Sheets
-training_sheets.id → qa_pairs.training_sheet_id
-training_sheets.id → model_training_lineage.training_sheet_id
+All tables have `delta.enableChangeDataFeed = true` for audit trails and incremental ETL.
 
--- Canonical Labels
-canonical_labels.id → qa_pairs.canonical_label_id
-```
+## Other Files
 
-### 3. Audit Fields Pattern
-
-All tables include:
-```sql
-created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP()
-created_by STRING NOT NULL
-updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP()
-updated_by STRING NOT NULL
-```
-
-Application code must populate `created_by` and `updated_by` with Databricks user identity.
-
-### 4. JSON Variant Fields
-
-Used for flexible schema evolution:
-- `label_data VARIANT` - Different label types have different structures
-- `messages VARIANT` - OpenAI chat format with role + content arrays
-- `metadata VARIANT` - Extensible metadata without schema changes
-- `validation_rules VARIANT` - Template-specific validation logic
-
-### 5. Status Field Enums
-
-Common status values (enforced at application layer):
-
-**sheets.status:**
-- `active` - Available for use
-- `archived` - Read-only, no longer used
-- `deleted` - Soft delete
-
-**templates.status:**
-- `draft` - Under development
-- `active` - Available for use
-- `archived` - Deprecated
-
-**training_sheets.status:**
-- `generating` - Q&A generation in progress
-- `review` - Ready for expert review
-- `approved` - Review complete, ready to export
-- `rejected` - Not suitable for training
-- `exported` - JSONL exported and ready for training
-
-**qa_pairs.review_status:**
-- `pending` - Awaiting review
-- `approved` - Expert approved
-- `edited` - Expert modified assistant response
-- `rejected` - Not suitable for training
-- `flagged` - Needs attention
-
-## Data Quality
-
-Tables have quality levels (Bronze/Silver/Gold):
-
-- **Bronze** - Raw source references: `sheets`
-- **Silver** - Curated/transformed: `templates`, `training_sheets`, `qa_pairs`, `example_store`
-- **Gold** - Validated ground truth: `canonical_labels`, `model_training_lineage`
-
-## Change Data Feed
-
-All tables have `delta.enableChangeDataFeed = true` for:
-- Audit trail of all changes
-- Real-time streaming to downstream systems
-- Incremental ETL processing
-
-## Indexes
-
-Indexes are created on:
-- Status fields (for filtering active/archived items)
-- Foreign key columns (for join performance)
-- Composite key components (for canonical label lookups)
-- Boolean flags (for filtered queries)
-
-## Vector Search (P1)
-
-The `example_store` table includes an `embedding` column for future vector search:
-
-```sql
--- P1: Create vector search index
-CREATE VECTOR SEARCH INDEX example_embeddings
-  ON main.ontos_ml_workbench.example_store(embedding)
-  USING EMBEDDING_MODEL 'databricks-bge-large-en';
-```
-
-This enables similarity-based few-shot example retrieval in Phase 4.
-
-## Validation Queries
-
-After creating tables, run these to verify:
-
-```sql
--- Show all tables
-SHOW TABLES IN main.ontos_ml_workbench;
-
--- Check table schemas
-DESCRIBE EXTENDED main.ontos_ml_workbench.canonical_labels;
-
--- Test composite key constraint
-INSERT INTO main.ontos_ml_workbench.canonical_labels
-  (id, sheet_id, item_ref, label_type, label_data, created_by, updated_by)
-VALUES
-  ('test-1', 'sheet-1', 'item-1', 'entities', '{"test": true}', 'system', 'system');
-
--- This should fail with UNIQUE constraint violation
-INSERT INTO main.ontos_ml_workbench.canonical_labels
-  (id, sheet_id, item_ref, label_type, label_data, created_by, updated_by)
-VALUES
-  ('test-2', 'sheet-1', 'item-1', 'entities', '{"test": true}', 'system', 'system');
-```
-
-## Migration Strategy
-
-For future schema changes:
-1. Add new columns with DEFAULT values
-2. Use `ALTER TABLE ADD COLUMN` (non-breaking)
-3. Avoid dropping columns (breaking change)
-4. Version templates/prompts instead of modifying
-
-## Permissions
-
-Recommended Unity Catalog permissions:
-
-```sql
--- Data Scientists (read-only)
-GRANT SELECT ON SCHEMA main.ontos_ml_workbench TO data_scientists;
-
--- Domain Experts (read + label)
-GRANT SELECT, MODIFY ON TABLE main.ontos_ml_workbench.canonical_labels TO domain_experts;
-GRANT SELECT, MODIFY ON TABLE main.ontos_ml_workbench.qa_pairs TO domain_experts;
-
--- Platform Admins (full access)
-GRANT ALL PRIVILEGES ON SCHEMA main.ontos_ml_workbench TO platform_admins;
-```
-
-## Next Steps
-
-1. ✅ Create all tables in Unity Catalog
-2. Validate composite key constraint on canonical_labels
-3. Create Pydantic models matching these schemas (Task #3-5)
-4. Implement service layer for CRUD operations
-5. Seed with sample data for testing
-
-## File Organization
-
-### Core Schema Files
-- `01_create_catalog.sql` - Catalog and schema creation
-- `02_sheets.sql` - Dataset definitions
-- `03_templates.sql` - Prompt templates
-- `04_canonical_labels.sql` - Ground truth labels
-- `05_training_sheets.sql` - Q&A datasets
-- `06_qa_pairs.sql` - Individual Q&A pairs
-- `07_model_training_lineage.sql` - Model tracking
-- `08_example_store.sql` - Few-shot examples
-- `09_labeling_jobs.sql` - Labeling job definitions
-- `10_labeling_tasks.sql` - Labeling task batches
-- `11_labeled_items.sql` - Individual item annotations
-- `12_workspace_users.sql` - Labeling workspace users
-- `13_model_evaluations.sql` - Model evaluation results (mlflow.evaluate)
-- `14_identified_gaps.sql` - Gap analysis identified gaps
-- `15_annotation_tasks.sql` - Annotation tasks for gap remediation
-- `16_bit_attribution.sql` - Model attribution scores per training data
-- `17_dqx_quality_results.sql` - Data quality check results per sheet
-- `18_endpoint_metrics.sql` - Per-request endpoint performance metrics
-- `19_app_roles.sql` - RBAC role definitions with per-feature permissions
-- `20_user_role_assignments.sql` - User-to-role mappings
-- `21_teams.sql` - Organizational teams for data governance
-- `22_team_members.sql` - Team membership with role overrides
-- `23_data_domains.sql` - Hierarchical data domains
-- `24_seed_default_roles.sql` - Seed 6 default RBAC roles
-- `25_add_domain_id_columns.sql` - Add domain_id FK to sheets, templates, training_sheets
-- `99_validate_and_seed.sql` - Validation queries
-
-### Active Migrations
-- `add_ml_columns_to_templates.sql` - Add feature/target columns to templates (v1.1)
-- `add_ml_columns_to_training_sheets.sql` - Add feature/target columns to training sheets (v1.1)
-- `fix_monitor_schema.sql` - Add Monitor stage tables and columns (v1.2)
-
-### Seed Data Scripts
-- `seed_sheets.sql` - Sample sheets data
-- `seed_simple.sql` - Minimal seed data
-- `seed_templates.sql` - Sample templates
-- `seed_pcb_data.sql` - PCB demo data
-- `seed_canonical_labels.sql` - Canonical labels seed data
-
-### Documentation
-- `README.md` - This file
-- `SCHEMA_REFERENCE.md` - Current field reference and common mistakes
-
-### Python Utilities
-- `execute_schemas.py` - Execute SQL via Databricks SDK
-- `create_tables_simple.py` - Simple table creation
-- `verify_schema.py` - Schema verification
-- `check_and_seed.py` - Check and seed data
-- `quick_setup.py` - Quick setup utility
-- `run_sql.py` - SQL runner utility
-- `seed_data.py` - Comprehensive seed script
-
-### Specialized Scripts
-- `create_canonical_labels_table.py` - Canonical labels table creation
-- `seed_canonical_labels.py` - Seed canonical labels
-- `verify_canonical_labels.py` - Verify canonical labels
-- `create_sheets_table.py` - Sheets table creation
-- `migrate_sheets_schema.py` - Schema migration utility
-- `seed_sheets_production.py` - Production seed data
-- `verify_sheets.py` - Verify sheets data
-
-### Shell Scripts
-- `execute_all.sh` - Execute all schemas in order
-
-## Support
-
-For schema questions or modifications, see:
-- `SCHEMA_REFERENCE.md` - Field reference and common mistakes
-- PRD: `docs/PRD.md`
+- `execute_all.sh` — Run all schemas in order
+- `README.md` — This file
+- `SCHEMA_REFERENCE.md` — Field reference and common mistakes
+- `../scripts/seed_test_data.sql` — Test seed data (moved out of schema dir)

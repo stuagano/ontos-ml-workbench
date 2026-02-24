@@ -413,7 +413,7 @@ WHERE qa.training_sheet_id IN (
 ## Implementation Checklist
 
 ### Backend
-- [x] Add fields to `qa_pairs` table (`schemas/06_qa_pairs.sql` — `allowed_uses`, `prohibited_uses`, `usage_reason`, `data_classification`)
+- [x] Add fields to `qa_pairs` table (`schemas/05_qa_pairs.sql` — `allowed_uses`, `prohibited_uses`, `usage_reason`, `data_classification`)
 - [ ] Create `usage_constraint_audit` table (not yet implemented)
 - [x] Update Q&A pair creation to set default constraints
 - [ ] Add Unity Catalog tag detection (auto-detect PII/PHI tags)

@@ -218,6 +218,96 @@ export default function LineageDetailsPanel({ node, onClose }: LineageDetailsPan
                 </ul>
               </div>
             )}
+
+            {impactQuery.data.affected_canonical_labels?.length > 0 && (
+              <div>
+                <h4 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  Canonical Labels ({impactQuery.data.affected_canonical_labels.length})
+                </h4>
+                <ul className="space-y-1">
+                  {impactQuery.data.affected_canonical_labels.map((e) => (
+                    <li key={e.entity_id} className="text-xs px-2 py-1 rounded bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 truncate">
+                      {e.entity_name ?? e.entity_id}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {impactQuery.data.affected_data_products?.length > 0 && (
+              <div>
+                <h4 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  Data Products ({impactQuery.data.affected_data_products.length})
+                </h4>
+                <ul className="space-y-1">
+                  {impactQuery.data.affected_data_products.map((e) => (
+                    <li key={e.entity_id} className="text-xs px-2 py-1 rounded bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-400 truncate">
+                      {e.entity_name ?? e.entity_id}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {impactQuery.data.affected_data_contracts?.length > 0 && (
+              <div>
+                <h4 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  Data Contracts ({impactQuery.data.affected_data_contracts.length})
+                </h4>
+                <ul className="space-y-1">
+                  {impactQuery.data.affected_data_contracts.map((e) => (
+                    <li key={e.entity_id} className="text-xs px-2 py-1 rounded bg-slate-50 dark:bg-slate-950/30 text-slate-700 dark:text-slate-400 truncate">
+                      {e.entity_name ?? e.entity_id}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {impactQuery.data.affected_labeling_jobs?.length > 0 && (
+              <div>
+                <h4 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  Labeling Jobs ({impactQuery.data.affected_labeling_jobs.length})
+                </h4>
+                <ul className="space-y-1">
+                  {impactQuery.data.affected_labeling_jobs.map((e) => (
+                    <li key={e.entity_id} className="text-xs px-2 py-1 rounded bg-lime-50 dark:bg-lime-950/30 text-lime-700 dark:text-lime-400 truncate">
+                      {e.entity_name ?? e.entity_id}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {impactQuery.data.affected_teams?.length > 0 && (
+              <div>
+                <h4 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  Teams ({impactQuery.data.affected_teams.length})
+                </h4>
+                <ul className="space-y-1">
+                  {impactQuery.data.affected_teams.map((e) => (
+                    <li key={e.entity_id} className="text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 truncate">
+                      {e.entity_name ?? e.entity_id}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {impactQuery.data.affected_identified_gaps?.length > 0 && (
+              <div>
+                <h4 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  Identified Gaps ({impactQuery.data.affected_identified_gaps.length})
+                </h4>
+                <ul className="space-y-1">
+                  {impactQuery.data.affected_identified_gaps.map((e) => (
+                    <li key={e.entity_id} className="text-xs px-2 py-1 rounded bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 truncate">
+                      {e.entity_name ?? e.entity_id}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </div>

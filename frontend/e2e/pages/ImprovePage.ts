@@ -137,11 +137,11 @@ export class ImprovePage {
     await waitForLoadingComplete(this.page);
   }
 
-  async convertToTrainingData(index: number, assemblyId: string) {
+  async convertToTrainingData(index: number, trainingSheetId: string) {
     const card = await this.getFeedbackCard(index);
     await card.locator('[data-testid="convert-to-training-button"]').click();
 
-    await this.page.selectOption('[data-testid="assembly-select"]', assemblyId);
+    await this.page.selectOption('[data-testid="training-sheet-select"]', trainingSheetId);
 
     await waitForApiResponse(
       this.page,

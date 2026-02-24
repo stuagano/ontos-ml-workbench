@@ -483,8 +483,8 @@ WHERE qa.item_ref = cl.item_ref
 ## Next Steps
 
 1. **Backend Implementation**
-   - [x] Create `canonical_labels` table (`schemas/04_canonical_labels.sql`)
-   - [x] Add `canonical_label_id` to `qa_pairs` (`schemas/06_qa_pairs.sql`)
+   - [x] Create `canonical_labels` table (`schemas/03_canonical_labels.sql`)
+   - [x] Add `canonical_label_id` to `qa_pairs` (`schemas/05_qa_pairs.sql`)
    - [x] Implement canonical label CRUD APIs (13 endpoints under `/api/v1/canonical-labels`)
    - [x] Update Q&A generation logic (canonical label lookup with coverage stats)
    - [x] Update approval logic (create canonical label on approve/edit)

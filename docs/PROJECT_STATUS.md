@@ -413,13 +413,13 @@ Features for mature data governance organizations.
 ## Previously Completed (Feb 18, 2026)
 
 - **Lineage DAG visualization**: `LineageDAG.tsx` SVG-based component in TrainingJobDetail Lineage tab. Shows Sheet→Template→Training Sheet→Model with canonical label branches and Q&A pair counts. No external graph library needed.
-- **Dedicated metrics ingestion**: `endpoint_metrics` table (DDL `18_endpoint_metrics.sql`) captures per-request latency, status, tokens, cost. Endpoints: `POST /monitoring/metrics/ingest`, `POST /monitoring/metrics/ingest/batch`, `GET /monitoring/metrics/timeseries/{id}`. Performance endpoint now returns real p50/p95/p99 latencies. MonitorPage chart uses real timeseries with mock fallback.
+- **Dedicated metrics ingestion**: `endpoint_metrics` table (DDL `16_endpoint_metrics.sql`) captures per-request latency, status, tokens, cost. Endpoints: `POST /monitoring/metrics/ingest`, `POST /monitoring/metrics/ingest/batch`, `GET /monitoring/metrics/timeseries/{id}`. Performance endpoint now returns real p50/p95/p99 latencies. MonitorPage chart uses real timeseries with mock fallback.
 - **Guardrails configuration**: `GuardrailsPanel.tsx` slide-out drawer with safety filters, PII handling (NONE/MASK/BLOCK), keyword blocking, topic whitelisting, and rate limits. Backend `GET/PUT /deployment/endpoints/{name}/guardrails` uses Databricks SDK `put_ai_gateway()`. Row action "Configure Guardrails" added to DeployPage.
 - **Quick Wins batch**: Task board wired, attribution service fixed, DQX persistence added
   - Task board: `AppWithSidebar` and `LabelingModule` now render `LabelingWorkflow` (orchestrates jobs→tasks→annotate→review)
   - Attribution service: fixed `settings.uc_catalog`/`uc_schema` → `_get_tables()` helper, `result.get("data")` → direct list, `model_bits` → `model_training_lineage`
   - DQX results: `run_checks()` persists to `dqx_quality_results` table, `get_results()` queries history (last 10 runs)
-  - DDL: `schemas/16_bit_attribution.sql`, `schemas/17_dqx_quality_results.sql`
+  - DDL: `schemas/14_bit_attribution.sql`, `schemas/15_dqx_quality_results.sql`
 - Dead code cleanup: removed `log_attribution_to_mlflow()` and `generate_databricks_job_config()` from `mlflow_integration_service.py` (-113 lines)
 - Gap analysis service: rewrote all 4 analysis functions with real SQL queries (was using hardcoded simulated data)
   - `analyze_model_errors()` queries `model_evaluations` + `feedback_items` JOIN `endpoints_registry`
@@ -428,12 +428,12 @@ Features for mature data governance organizations.
   - `detect_emerging_topics()` queries `feedback_items` JOIN `endpoints_registry`
 - Fixed 4 bugs in gap_analysis_service.py: `settings.uc_catalog`/`uc_schema` (AttributeError), `result.get("data")` (AttributeError on list), wrong column names, nonexistent `curation_items` table
 - Fixed all persistence functions (create_gap_record, list_gaps, get_gap, update_gap_in_db, create_annotation_task, list_annotation_tasks) to use `settings.get_table()` and treat `execute_sql()` result as `list[dict]`
-- DDL: `schemas/14_identified_gaps.sql` — gap analysis persistence table
-- DDL: `schemas/15_annotation_tasks.sql` — annotation task tracking table
+- DDL: `schemas/12_identified_gaps.sql` — gap analysis persistence table
+- DDL: `schemas/13_annotation_tasks.sql` — annotation task tracking table
 - MLflow Evaluate integration: `evaluation_service.py` with `evaluate_model()`, `get_evaluation_results()`, `compare_evaluations()`
 - 3 new training endpoints: `POST /training/jobs/{id}/evaluate`, `GET /training/jobs/{id}/evaluation`, `GET /training/compare/{model_name}`
 - Evaluate tab in `TrainingJobDetail.tsx` with "Run Evaluation" button and metric cards
-- `model_evaluations` DDL (`schemas/13_model_evaluations.sql`) — per-metric evaluation storage
+- `model_evaluations` DDL (`schemas/11_model_evaluations.sql`) — per-metric evaluation storage
 - Pydantic models: `EvaluationRequest`, `EvaluationMetric`, `EvaluationResult`, `ComparisonResult`
 - Frontend types + API functions: `evaluateTrainingJob()`, `getJobEvaluation()`
 - Bug fix: `mlflow_integration_service.py` used `settings.uc_catalog`/`settings.uc_schema` (nonexistent) — now uses `settings.get_table()`

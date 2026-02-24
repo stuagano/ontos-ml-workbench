@@ -93,7 +93,7 @@ test.describe('Full Workflow - Deploy → Monitor → Improve', () => {
     // Step 5: Convert feedback to training data
     const count = await improvePage.getFeedbackCount();
     if (count > 0) {
-      await improvePage.convertToTrainingData(0, 'test-assembly-id');
+      await improvePage.convertToTrainingData(0, 'test-training-sheet-id');
       await expect(page.locator('text=Converted to training data')).toBeVisible();
     }
 

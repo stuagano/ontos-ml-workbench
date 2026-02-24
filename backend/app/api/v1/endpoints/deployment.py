@@ -26,7 +26,6 @@ _sql = get_sql_service()
 
 # Table names
 ENDPOINTS_TABLE = _settings.get_table("endpoints_registry")
-LINEAGE_TABLE = _settings.get_table("model_training_lineage")
 
 
 # ============================================================================

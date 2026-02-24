@@ -8,7 +8,7 @@
 # COMMAND ----------
 
 # Widget definitions
-dbutils.widgets.text("assembly_id", "", "Assembly ID")
+dbutils.widgets.text("training_sheet_id", "", "Training Sheet ID")
 dbutils.widgets.text("base_model", "databricks-meta-llama-3-1-8b-instruct", "Base Model")
 dbutils.widgets.text("train_path", "", "Training Data Path (JSONL)")
 dbutils.widgets.text("val_path", "", "Validation Data Path (JSONL)")
@@ -19,15 +19,15 @@ dbutils.widgets.text("output_model_name", "", "Output Model Name")
 # COMMAND ----------
 
 # Get parameters
-assembly_id = dbutils.widgets.get("assembly_id")
+training_sheet_id = dbutils.widgets.get("training_sheet_id")
 base_model = dbutils.widgets.get("base_model")
 train_path = dbutils.widgets.get("train_path")
 val_path = dbutils.widgets.get("val_path")
 epochs = int(dbutils.widgets.get("epochs"))
 learning_rate = float(dbutils.widgets.get("learning_rate"))
-output_model_name = dbutils.widgets.get("output_model_name") or f"ontos-{assembly_id[:8]}"
+output_model_name = dbutils.widgets.get("output_model_name") or f"ontos-{training_sheet_id[:8]}"
 
-print(f"Assembly: {assembly_id}")
+print(f"Training Sheet: {training_sheet_id}")
 print(f"Base model: {base_model}")
 print(f"Training data: {train_path}")
 print(f"Validation data: {val_path}")
@@ -38,10 +38,10 @@ print(f"Output model: {output_model_name}")
 # COMMAND ----------
 
 # Validate inputs
-if not assembly_id:
-    raise ValueError("assembly_id is required")
+if not training_sheet_id:
+    raise ValueError("training_sheet_id is required")
 if not train_path:
-    raise ValueError("train_path is required - export assembly first")
+    raise ValueError("train_path is required - export training sheet first")
 if not base_model:
     raise ValueError("base_model is required")
 
@@ -195,7 +195,7 @@ else:
 print("\n" + "="*60)
 print("FINE-TUNING JOB SUMMARY")
 print("="*60)
-print(f"Assembly ID:     {assembly_id}")
+print(f"Training Sheet ID:     {training_sheet_id}")
 print(f"Base Model:      {base_model}")
 print(f"Output Model:    {output_model_name}")
 print(f"Training Data:   {train_path}")
@@ -211,7 +211,7 @@ print("="*60)
 
 # Return results for job orchestration
 dbutils.notebook.exit(json.dumps({
-    "assembly_id": assembly_id,
+    "training_sheet_id": training_sheet_id,
     "fm_api_available": fm_api_available,
     "fm_api_run_id": run_id,
     "output_model_name": output_model_name,

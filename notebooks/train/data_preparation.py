@@ -107,12 +107,12 @@ items_df = spark.table(f"{CATALOG}.{SCHEMA}.curation_items").filter(
 )
 
 total_count = items_df.count()
-print(f"Found {total_count} items for training data assembly")
+print(f"Found {total_count} items for training data preparation")
 
 if total_count == 0:
-    print("No items to assemble. Exiting.")
+    print("No items to prepare. Exiting.")
     dbutils.notebook.exit(
-        json.dumps({"status": "success", "message": "No items to assemble", "total": 0})
+        json.dumps({"status": "success", "message": "No items to prepare", "total": 0})
     )
 
 # COMMAND ----------

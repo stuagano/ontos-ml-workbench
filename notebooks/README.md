@@ -3,7 +3,7 @@
 Databricks notebooks implementing the 7-stage AI lifecycle pipeline.
 
 ```
-DATA → TEMPLATE → CURATE → TRAIN → DEPLOY → MONITOR → IMPROVE
+DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
 ```
 
 ## Stages
@@ -22,7 +22,7 @@ AI-assisted labeling and data curation:
 
 ### train/
 Model training and fine-tuning:
-- `data_assembly.py` - Assemble training datasets from curated items
+- `data_preparation.py` - Prepare training datasets from approved items
 - `finetune_fmapi.py` - Fine-tune models via Foundation Model API
 - `model_evaluation.py` - Evaluate models against physics benchmarks
 

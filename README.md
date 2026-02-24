@@ -77,8 +77,7 @@ targets:
 
 ```bash
 # In Databricks SQL Editor, run these files in order:
-# schemas/01_create_catalog.sql through 08_example_store.sql
-# schemas/seed_sheets.sql
+# schemas/00_create_catalog.sql through 33_platform_connectors.sql
 
 # Or use the bootstrap script:
 ./scripts/bootstrap.sh <workspace-name>

@@ -365,7 +365,18 @@ export type ConceptType = "entity" | "event" | "metric" | "dimension";
 export type SemanticLinkType =
   | "maps_to" | "derived_from" | "aggregates" | "represents"
   | "produces" | "trains_on" | "deployed_as" | "generated_from" | "labeled_by" | "feeds_into"
-  | "produced_by" | "used_to_train" | "deployment_of" | "generates" | "labels" | "fed_by" | "mapped_from" | "derives";
+  | "produced_by" | "used_to_train" | "deployment_of" | "generates" | "labels" | "fed_by" | "mapped_from" | "derives"
+  | "in_domain" | "domain_contains" | "exposes" | "exposed_by" | "governs" | "governed_by" | "targets" | "targeted_by"
+  | "contains_task" | "task_in" | "contains_item" | "item_in"
+  | "evaluated_with" | "evaluation_of" | "evaluates_model" | "model_evaluated_by"
+  | "attributed_to" | "attributes"
+  | "owned_by_team" | "team_owns"
+  | "parent_of" | "child_of"
+  | "reviews" | "reviewed_by"
+  | "identifies_gap" | "gap_found_in" | "gap_for_model" | "model_has_gap"
+  | "remediates" | "remediated_by"
+  | "sourced_from" | "source_for"
+  | "subscribes_to" | "subscribed_by";
 export type SemanticModelStatus = "draft" | "published" | "archived";
 
 export interface SemanticProperty {
@@ -714,7 +725,11 @@ export interface ConnectorStats {
 // Lineage Graph (extends G10)
 // ============================================================================
 
-export type LineageEntityType = "sheet" | "template" | "training_sheet" | "model" | "endpoint";
+export type LineageEntityType =
+  | "sheet" | "template" | "training_sheet" | "model" | "endpoint"
+  | "canonical_label" | "domain" | "data_product" | "data_contract" | "labeling_job"
+  | "labeling_task" | "labeled_item" | "model_evaluation" | "team" | "project"
+  | "identified_gap" | "annotation_task" | "asset_review" | "example" | "connector";
 
 export interface LineageNode {
   entity_type: LineageEntityType;
@@ -752,6 +767,12 @@ export interface ImpactReport {
   affected_training_sheets: LineageNode[];
   affected_models: LineageNode[];
   affected_endpoints: LineageNode[];
+  affected_canonical_labels: LineageNode[];
+  affected_data_products: LineageNode[];
+  affected_data_contracts: LineageNode[];
+  affected_labeling_jobs: LineageNode[];
+  affected_teams: LineageNode[];
+  affected_identified_gaps: LineageNode[];
   total_affected: number;
   risk_level: "low" | "medium" | "high" | "critical";
   paths: LineageEdge[][];
@@ -768,10 +789,18 @@ export interface TraversalResult {
 /** Forward lineage link types (data flows in this direction) */
 export const LINEAGE_FORWARD_TYPES: ReadonlySet<string> = new Set([
   "produces", "trains_on", "deployed_as", "generated_from", "labeled_by", "feeds_into",
+  "in_domain", "exposes", "governs", "targets",
+  "contains_task", "contains_item", "evaluated_with", "evaluates_model",
+  "attributed_to", "owned_by_team", "parent_of", "reviews",
+  "identifies_gap", "gap_for_model", "remediates", "sourced_from", "subscribes_to",
 ]);
 
 /** All lineage link types (forward + inverse) */
 export const LINEAGE_ALL_TYPES: ReadonlySet<string> = new Set([
   ...LINEAGE_FORWARD_TYPES,
   "produced_by", "used_to_train", "deployment_of", "generates", "labels", "fed_by", "mapped_from", "derives",
+  "domain_contains", "exposed_by", "governed_by", "targeted_by",
+  "task_in", "item_in", "evaluation_of", "model_evaluated_by",
+  "attributes", "team_owns", "child_of", "reviewed_by",
+  "gap_found_in", "model_has_gap", "remediated_by", "source_for", "subscribed_by",
 ]);

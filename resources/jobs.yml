@@ -81,13 +81,13 @@ resources:
             client: "1"
 
     # TRAIN Stage Jobs
-    data_assembly:
-      name: "[Ontos ML] Data Assembly"
-      description: "Assemble approved items into training dataset"
+    data_preparation:
+      name: "[Ontos ML] Data Preparation"
+      description: "Prepare approved items into training dataset"
       tasks:
-        - task_key: data_assembly
+        - task_key: data_preparation
           notebook_task:
-            notebook_path: ../notebooks/train/data_assembly.py
+            notebook_path: ../notebooks/train/data_preparation.py
           environment_key: serverless_env
       environments:
         - environment_key: serverless_env

@@ -217,14 +217,8 @@ databricks sql exec --file=99_validate_and_seed.sql --warehouse-id=$WAREHOUSE_ID
 #### Step 3: Seed Sample Data (Optional)
 
 ```bash
-# Seed simple test data
-databricks sql exec --file=seed_simple.sql --warehouse-id=$WAREHOUSE_ID --profile=your-profile
-
-# Seed full sample sheets
-databricks sql exec --file=seed_sheets.sql --warehouse-id=$WAREHOUSE_ID --profile=your-profile
-
-# Seed prompt templates
-databricks sql exec --file=seed_templates.sql --warehouse-id=$WAREHOUSE_ID --profile=your-profile
+# Seed test data (PCB defect detection samples)
+databricks sql exec --file=scripts/seed_test_data.sql --warehouse-id=$WAREHOUSE_ID --profile=your-profile
 ```
 
 #### Step 4: Verify Tables

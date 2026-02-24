@@ -163,10 +163,7 @@ CREATE TABLE training_sheets (
 To verify your code matches the actual database schema:
 
 ```bash
-# Run schema verification script
-python schemas/verify_schema.py
-
-# Or manually check a table
+# Manually check a table
 cd backend && python << 'EOF'
 from app.services.sql_service import get_sql_service
 sql_service = get_sql_service()

@@ -313,6 +313,12 @@ class GraphQueryService:
         affected_training_sheets: list[LineageNode] = []
         affected_models: list[LineageNode] = []
         affected_endpoints: list[LineageNode] = []
+        affected_canonical_labels: list[LineageNode] = []
+        affected_data_products: list[LineageNode] = []
+        affected_data_contracts: list[LineageNode] = []
+        affected_labeling_jobs: list[LineageNode] = []
+        affected_teams: list[LineageNode] = []
+        affected_identified_gaps: list[LineageNode] = []
 
         for node in traversal.graph.nodes:
             # Skip the root entity itself
@@ -324,19 +330,37 @@ class GraphQueryService:
                 affected_models.append(node)
             elif node.entity_type == LineageEntityType.ENDPOINT.value:
                 affected_endpoints.append(node)
+            elif node.entity_type == LineageEntityType.CANONICAL_LABEL.value:
+                affected_canonical_labels.append(node)
+            elif node.entity_type == LineageEntityType.DATA_PRODUCT.value:
+                affected_data_products.append(node)
+            elif node.entity_type == LineageEntityType.DATA_CONTRACT.value:
+                affected_data_contracts.append(node)
+            elif node.entity_type == LineageEntityType.LABELING_JOB.value:
+                affected_labeling_jobs.append(node)
+            elif node.entity_type == LineageEntityType.TEAM.value:
+                affected_teams.append(node)
+            elif node.entity_type == LineageEntityType.IDENTIFIED_GAP.value:
+                affected_identified_gaps.append(node)
 
         total_affected = (
             len(affected_training_sheets)
             + len(affected_models)
             + len(affected_endpoints)
+            + len(affected_canonical_labels)
+            + len(affected_data_products)
+            + len(affected_data_contracts)
+            + len(affected_labeling_jobs)
+            + len(affected_teams)
+            + len(affected_identified_gaps)
         )
 
         # Determine risk level based on what is affected
-        if affected_endpoints:
+        if affected_endpoints or affected_data_products:
             risk_level = "critical"
         elif affected_models:
             risk_level = "high"
-        elif affected_training_sheets:
+        elif affected_training_sheets or affected_data_contracts or affected_labeling_jobs:
             risk_level = "medium"
         else:
             risk_level = "low"
@@ -346,6 +370,12 @@ class GraphQueryService:
             affected_training_sheets=affected_training_sheets,
             affected_models=affected_models,
             affected_endpoints=affected_endpoints,
+            affected_canonical_labels=affected_canonical_labels,
+            affected_data_products=affected_data_products,
+            affected_data_contracts=affected_data_contracts,
+            affected_labeling_jobs=affected_labeling_jobs,
+            affected_teams=affected_teams,
+            affected_identified_gaps=affected_identified_gaps,
             total_affected=total_affected,
             risk_level=risk_level,
         )

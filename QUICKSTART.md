@@ -40,19 +40,18 @@ databricks warehouses list
 
 ### Step 2: Initialize Database (3 minutes)
 
-Upload and run `schemas/check_and_seed.py` in your Databricks workspace, or run the schema files manually:
+Run the schema setup script:
 
 ```bash
-# In Databricks SQL Editor, run these files in order:
-# 1. schemas/01_create_catalog.sql through 08_example_store.sql
-# 2. schemas/seed_sheets.sql
+cd schemas && ./execute_all.sh
 ```
 
-This creates:
-- All required Delta tables
-- 3 sample Training Sheets (defect detection, sensor monitoring, anomaly detection)
-- 3 prompt templates
-- Sample canonical labels
+This creates all required Delta tables and seeds default RBAC roles.
+
+To optionally add test data:
+```bash
+databricks sql --file scripts/seed_test_data.sql
+```
 
 ### Step 3: Start the Application (2 minutes)
 

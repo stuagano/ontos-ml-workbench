@@ -766,6 +766,42 @@ class LinkType(str, Enum):
     FED_BY = "fed_by"
     MAPPED_FROM = "mapped_from"
     DERIVES = "derives"
+    # Extended lineage types (domain, product, contract, labeling)
+    IN_DOMAIN = "in_domain"
+    DOMAIN_CONTAINS = "domain_contains"
+    EXPOSES = "exposes"
+    EXPOSED_BY = "exposed_by"
+    GOVERNS = "governs"
+    GOVERNED_BY = "governed_by"
+    TARGETS = "targets"
+    TARGETED_BY = "targeted_by"
+    # Full-coverage lineage types (labeling workflow, eval, org, gap, etc.)
+    CONTAINS_TASK = "contains_task"
+    TASK_IN = "task_in"
+    CONTAINS_ITEM = "contains_item"
+    ITEM_IN = "item_in"
+    EVALUATED_WITH = "evaluated_with"
+    EVALUATION_OF = "evaluation_of"
+    EVALUATES_MODEL = "evaluates_model"
+    MODEL_EVALUATED_BY = "model_evaluated_by"
+    ATTRIBUTED_TO = "attributed_to"
+    ATTRIBUTES = "attributes"
+    OWNED_BY_TEAM = "owned_by_team"
+    TEAM_OWNS = "team_owns"
+    PARENT_OF = "parent_of"
+    CHILD_OF = "child_of"
+    REVIEWS = "reviews"
+    REVIEWED_BY = "reviewed_by"
+    IDENTIFIES_GAP = "identifies_gap"
+    GAP_FOUND_IN = "gap_found_in"
+    GAP_FOR_MODEL = "gap_for_model"
+    MODEL_HAS_GAP = "model_has_gap"
+    REMEDIATES = "remediates"
+    REMEDIATED_BY = "remediated_by"
+    SOURCED_FROM = "sourced_from"
+    SOURCE_FOR = "source_for"
+    SUBSCRIBES_TO = "subscribes_to"
+    SUBSCRIBED_BY = "subscribed_by"
 
 
 # Lineage link type relationships (forward → inverse)
@@ -778,6 +814,23 @@ LINEAGE_INVERSE_MAP: dict[str, str] = {
     "feeds_into": "fed_by",
     "maps_to": "mapped_from",
     "derived_from": "derives",
+    "in_domain": "domain_contains",
+    "exposes": "exposed_by",
+    "governs": "governed_by",
+    "targets": "targeted_by",
+    "contains_task": "task_in",
+    "contains_item": "item_in",
+    "evaluated_with": "evaluation_of",
+    "evaluates_model": "model_evaluated_by",
+    "attributed_to": "attributes",
+    "owned_by_team": "team_owns",
+    "parent_of": "child_of",
+    "reviews": "reviewed_by",
+    "identifies_gap": "gap_found_in",
+    "gap_for_model": "model_has_gap",
+    "remediates": "remediated_by",
+    "sourced_from": "source_for",
+    "subscribes_to": "subscribed_by",
 }
 
 LINEAGE_FORWARD_TYPES = frozenset(LINEAGE_INVERSE_MAP.keys())
@@ -1411,6 +1464,21 @@ class LineageEntityType(str, Enum):
     TRAINING_SHEET = "training_sheet"
     MODEL = "model"
     ENDPOINT = "endpoint"
+    CANONICAL_LABEL = "canonical_label"
+    DOMAIN = "domain"
+    DATA_PRODUCT = "data_product"
+    DATA_CONTRACT = "data_contract"
+    LABELING_JOB = "labeling_job"
+    LABELING_TASK = "labeling_task"
+    LABELED_ITEM = "labeled_item"
+    MODEL_EVALUATION = "model_evaluation"
+    TEAM = "team"
+    PROJECT = "project"
+    IDENTIFIED_GAP = "identified_gap"
+    ANNOTATION_TASK = "annotation_task"
+    ASSET_REVIEW = "asset_review"
+    EXAMPLE = "example"
+    CONNECTOR = "connector"
 
 
 class LineageNode(BaseModel):
@@ -1454,6 +1522,12 @@ class ImpactReport(BaseModel):
     affected_training_sheets: list[LineageNode] = Field(default_factory=list)
     affected_models: list[LineageNode] = Field(default_factory=list)
     affected_endpoints: list[LineageNode] = Field(default_factory=list)
+    affected_canonical_labels: list[LineageNode] = Field(default_factory=list)
+    affected_data_products: list[LineageNode] = Field(default_factory=list)
+    affected_data_contracts: list[LineageNode] = Field(default_factory=list)
+    affected_labeling_jobs: list[LineageNode] = Field(default_factory=list)
+    affected_teams: list[LineageNode] = Field(default_factory=list)
+    affected_identified_gaps: list[LineageNode] = Field(default_factory=list)
     total_affected: int = 0
     risk_level: str = "low"
     paths: list[list[LineageEdge]] = Field(default_factory=list)
