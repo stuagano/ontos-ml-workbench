@@ -171,7 +171,7 @@ class E2ETest:
             return False
 
     def test_create_training_sheet(self) -> bool:
-        """Test 4: Create Training Sheet (Assembly)."""
+        """Test 4: Create Training Sheet."""
         self.log(f"\n{Colors.BOLD}=== Stage 2: GENERATE - Create Training Sheet ==={Colors.RESET}")
 
         if "sheet_id" not in self.test_resources or "template_id" not in self.test_resources:
@@ -192,7 +192,7 @@ class E2ETest:
         }
 
         try:
-            response = self.client.post("/api/v1/assemblies", json=payload)
+            response = self.client.post("/api/v1/training-sheets", json=payload)
             if not self.assert_status(response, 201, "Create training sheet"):
                 return False
 
@@ -288,7 +288,7 @@ class E2ETest:
         checks = [
             ("sheet_id", "/api/v1/sheets/"),
             ("template_id", "/api/v1/templates/"),
-            ("training_sheet_id", "/api/v1/assemblies/"),
+            ("training_sheet_id", "/api/v1/training-sheets/"),
             ("label_id", "/api/v1/canonical-labels/"),
         ]
 
@@ -316,7 +316,7 @@ class E2ETest:
         cleanup_order = [
             ("training_job_id", "/api/v1/training/jobs/"),
             ("label_id", "/api/v1/canonical-labels/"),
-            ("training_sheet_id", "/api/v1/assemblies/"),
+            ("training_sheet_id", "/api/v1/training-sheets/"),
             ("template_id", "/api/v1/templates/"),
             ("sheet_id", "/api/v1/sheets/"),
         ]

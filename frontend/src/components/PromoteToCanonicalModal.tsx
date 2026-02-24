@@ -18,7 +18,7 @@ import {
 import { createCanonicalLabel } from "../services/api";
 import { useToast } from "./Toast";
 import type {
-  AssembledRow,
+  QAPairRow,
   LabelConfidence,
   DataClassification,
   UsageType,
@@ -30,7 +30,7 @@ interface PromoteToCanonicalModalProps {
   onClose: () => void;
   onSuccess?: () => void;
   /** The Q&A pair being promoted */
-  row: AssembledRow;
+  row: QAPairRow;
   /** Sheet ID for the canonical label */
   sheetId: string;
   /** Label type from the template (e.g., "classification", "defect_detection") */

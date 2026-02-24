@@ -48,7 +48,7 @@ class CuratedDataset(BaseModel):
 
     # Source tracking
     labelset_id: str | None = None  # Associated labelset
-    assembly_ids: list[str] = Field(default_factory=list)  # Source assemblies
+    training_sheet_ids: list[str] = Field(default_factory=list)  # Source training sheets
 
     # Configuration
     split_config: DatasetSplit | None = None
@@ -80,7 +80,7 @@ class CuratedDatasetCreate(BaseModel):
     name: str
     description: str | None = None
     labelset_id: str | None = None
-    assembly_ids: list[str] = Field(default_factory=list)
+    training_sheet_ids: list[str] = Field(default_factory=list)
     split_config: DatasetSplit | None = None
     quality_threshold: float = 0.7
     tags: list[str] = Field(default_factory=list)
@@ -94,7 +94,7 @@ class CuratedDatasetUpdate(BaseModel):
 
     name: str | None = None
     description: str | None = None
-    assembly_ids: list[str] | None = None
+    training_sheet_ids: list[str] | None = None
     split_config: DatasetSplit | None = None
     quality_threshold: float | None = None
     tags: list[str] | None = None
@@ -107,7 +107,7 @@ class DatasetExample(BaseModel):
     """A single QA example from the dataset."""
 
     example_id: str
-    assembly_id: str
+    training_sheet_id: str
     prompt: str
     response: str
     label: str | None = None

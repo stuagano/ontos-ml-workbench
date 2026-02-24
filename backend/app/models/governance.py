@@ -745,10 +745,44 @@ class ConceptType(str, Enum):
 
 
 class LinkType(str, Enum):
+    # Business-concept mappings (original)
     MAPS_TO = "maps_to"
     DERIVED_FROM = "derived_from"
     AGGREGATES = "aggregates"
     REPRESENTS = "represents"
+    # Lineage forward types
+    PRODUCES = "produces"
+    TRAINS_ON = "trains_on"
+    DEPLOYED_AS = "deployed_as"
+    GENERATED_FROM = "generated_from"
+    LABELED_BY = "labeled_by"
+    FEEDS_INTO = "feeds_into"
+    # Lineage inverse types
+    PRODUCED_BY = "produced_by"
+    USED_TO_TRAIN = "used_to_train"
+    DEPLOYMENT_OF = "deployment_of"
+    GENERATES = "generates"
+    LABELS = "labels"
+    FED_BY = "fed_by"
+    MAPPED_FROM = "mapped_from"
+    DERIVES = "derives"
+
+
+# Lineage link type relationships (forward → inverse)
+LINEAGE_INVERSE_MAP: dict[str, str] = {
+    "produces": "produced_by",
+    "trains_on": "used_to_train",
+    "deployed_as": "deployment_of",
+    "generated_from": "generates",
+    "labeled_by": "labels",
+    "feeds_into": "fed_by",
+    "maps_to": "mapped_from",
+    "derived_from": "derives",
+}
+
+LINEAGE_FORWARD_TYPES = frozenset(LINEAGE_INVERSE_MAP.keys())
+LINEAGE_INVERSE_TYPES = frozenset(LINEAGE_INVERSE_MAP.values())
+LINEAGE_ALL_TYPES = LINEAGE_FORWARD_TYPES | LINEAGE_INVERSE_TYPES
 
 
 class SemanticConceptCreate(BaseModel):
@@ -1364,3 +1398,71 @@ class ConnectorStatsResponse(BaseModel):
     total_syncs: int
     connectors_by_platform: dict[str, int]
     recent_syncs: list[dict]
+
+
+# ============================================================================
+# Lineage Graph (extends G10)
+# ============================================================================
+
+
+class LineageEntityType(str, Enum):
+    SHEET = "sheet"
+    TEMPLATE = "template"
+    TRAINING_SHEET = "training_sheet"
+    MODEL = "model"
+    ENDPOINT = "endpoint"
+
+
+class LineageNode(BaseModel):
+    """A node in the lineage graph representing a pipeline entity."""
+    entity_type: str = Field(..., description="sheet | template | training_sheet | model | endpoint")
+    entity_id: str
+    entity_name: str | None = None
+    metadata: dict | None = None
+
+
+class LineageEdge(BaseModel):
+    """A directed edge in the lineage graph."""
+    source_type: str
+    source_id: str
+    target_type: str
+    target_id: str
+    link_type: str
+    confidence: float | None = None
+
+
+class MaterializeResult(BaseModel):
+    """Result of a lineage materialization run."""
+    edges_created: int = 0
+    edges_updated: int = 0
+    edges_deleted: int = 0
+    edges_by_type: dict[str, int] = Field(default_factory=dict)
+    duration_ms: float = 0
+
+
+class LineageGraph(BaseModel):
+    """Full lineage graph with nodes and edges."""
+    nodes: list[LineageNode] = Field(default_factory=list)
+    edges: list[LineageEdge] = Field(default_factory=list)
+    model_id: str | None = None
+    materialize_stats: MaterializeResult | None = None
+
+
+class ImpactReport(BaseModel):
+    """Impact analysis report showing blast radius from a source entity change."""
+    source_entity: LineageNode
+    affected_training_sheets: list[LineageNode] = Field(default_factory=list)
+    affected_models: list[LineageNode] = Field(default_factory=list)
+    affected_endpoints: list[LineageNode] = Field(default_factory=list)
+    total_affected: int = 0
+    risk_level: str = "low"
+    paths: list[list[LineageEdge]] = Field(default_factory=list)
+
+
+class TraversalResult(BaseModel):
+    """Result of a graph traversal (upstream or downstream)."""
+    root_entity: LineageNode
+    direction: str = Field(..., description="upstream | downstream")
+    max_depth: int = 10
+    graph: LineageGraph = Field(default_factory=LineageGraph)
+    entity_count_by_type: dict[str, int] = Field(default_factory=dict)

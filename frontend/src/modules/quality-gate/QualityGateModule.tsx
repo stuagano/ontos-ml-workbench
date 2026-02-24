@@ -10,12 +10,12 @@ import { QualityGatePanel } from "../../components/QualityGatePanel";
 export default function QualityGateModule({
   context,
 }: ModuleComponentProps) {
-  const collectionId = (context.assemblyId as string) || "";
+  const collectionId = (context.trainingSheetId as string) || "";
 
   if (!collectionId) {
     return (
       <div className="p-8 text-center text-db-gray-500">
-        Select an assembly to run quality gate checks.
+        Select a training sheet to run quality gate checks.
       </div>
     );
   }

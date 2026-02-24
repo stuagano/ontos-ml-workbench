@@ -23,7 +23,7 @@ class TrainingJobCreate(BaseModel):
     """Request to create a training job."""
 
     training_sheet_id: str = Field(
-        ..., description="Training Sheet (Assembly) to train from"
+        ..., description="Training Sheet to train from"
     )
     model_name: str = Field(..., description="Name for the trained model")
     base_model: str = Field(

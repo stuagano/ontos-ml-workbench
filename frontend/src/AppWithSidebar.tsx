@@ -44,9 +44,9 @@ const CuratedDatasetsPage = lazy(() =>
     default: m.CuratedDatasetsPage,
   })),
 );
-const CanonicalLabelingTool = lazy(() =>
-  import("./components/CanonicalLabelingTool").then((m) => ({
-    default: m.CanonicalLabelingTool,
+const CanonicalLabelModal = lazy(() =>
+  import("./components/CanonicalLabelModal").then((m) => ({
+    default: m.CanonicalLabelModal,
   })),
 );
 const DataQualityPage = lazy(() =>
@@ -84,6 +84,8 @@ const MarketplacePage = lazy(() =>
     default: m.MarketplacePage,
   })),
 );
+import { ModuleDrawer } from "./components/ModuleDrawer";
+import { useModules } from "./hooks/useModules";
 import { getConfig, listTemplates } from "./services/api";
 import { setWorkspaceUrl } from "./services/databricksLinks";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -124,6 +126,15 @@ function AppContent() {
 
   // Map workflow stage to pipeline stage
   const currentStage = workflow.state.currentStage as PipelineStage;
+
+  // Module drawer for current stage
+  const {
+    availableModules,
+    openModule,
+    activeModule,
+    isOpen: isModuleOpen,
+    closeModule,
+  } = useModules({ stage: currentStage });
   const setCurrentStage = (stage: PipelineStage) => {
     workflow.setCurrentStage(stage as WorkflowStage);
   };
@@ -363,6 +374,48 @@ function AppContent() {
         </Suspense>
       </ErrorBoundary>
 
+      {/* Module Drawer - floating icon buttons for current stage modules */}
+      <ModuleDrawer
+        modules={availableModules}
+        context={{ stage: currentStage }}
+        onOpenModule={openModule}
+        position="right"
+      />
+
+      {/* Module Modal */}
+      {isModuleOpen && activeModule && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-db-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {activeModule.icon && (
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg">
+                    <activeModule.icon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                )}
+                <div>
+                  <h2 className="text-xl font-semibold dark:text-white">{activeModule.name}</h2>
+                  <p className="text-sm text-db-gray-500 dark:text-gray-400">{activeModule.description}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => closeModule()}
+                className="p-2 hover:bg-db-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <span className="text-db-gray-600 dark:text-gray-400">✕</span>
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <activeModule.component
+                context={{ stage: currentStage }}
+                onClose={closeModule}
+                displayMode="modal"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Template Editor Modal */}
       {showEditor && (
         <TemplateEditor
@@ -490,22 +543,13 @@ function AppContent() {
         </div>
       )}
 
-      {/* Canonical Labeling Tool (overlays entire view) */}
-      {showCanonicalLabeling && (
-        <div className="fixed inset-0 z-50 bg-db-gray-50 dark:bg-gray-950">
-          <Suspense
-            fallback={
-              <div className="flex items-center justify-center min-h-screen">
-                <Loader2 className="w-10 h-10 animate-spin text-db-orange" />
-              </div>
-            }
-          >
-            <CanonicalLabelingTool
-              onClose={() => setShowCanonicalLabeling(false)}
-            />
-          </Suspense>
-        </div>
-      )}
+      {/* Canonical Labeling Tool Modal */}
+      <Suspense fallback={null}>
+        <CanonicalLabelModal
+          isOpen={showCanonicalLabeling}
+          onClose={() => setShowCanonicalLabeling(false)}
+        />
+      </Suspense>
 
       {/* Data Quality Tool (overlays entire view) */}
       {showDataQuality && (

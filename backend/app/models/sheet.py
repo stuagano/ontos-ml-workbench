@@ -3,7 +3,7 @@
 Key concepts (following GCP Vertex AI pattern):
 - Sheet: Raw dataset with imported columns from Unity Catalog
 - TemplateConfig: Transformation blueprint attached to a sheet (defines how to create prompts)
-- AssembledDataset: Materialized result of applying template to sheet (actual prompt/response pairs)
+- TrainingSheet: Materialized result of applying template to sheet (actual prompt/response pairs)
 """
 
 from datetime import datetime

@@ -35,10 +35,10 @@ export function CuratedDatasetForm({
   const [qualityThreshold, setQualityThreshold] = useState(
     dataset?.quality_threshold || 0.7
   );
-  const [assemblyIds, setAssemblyIds] = useState<string[]>(
-    dataset?.assembly_ids || []
+  const [trainingSheetIds, setTrainingSheetIds] = useState<string[]>(
+    dataset?.training_sheet_ids || []
   );
-  const [newAssemblyId, setNewAssemblyId] = useState('');
+  const [newTrainingSheetId, setNewTrainingSheetId] = useState('');
 
   // Split config
   const [splitConfig, setSplitConfig] = useState<DatasetSplit>(
@@ -66,15 +66,15 @@ export function CuratedDatasetForm({
   );
   const [newProhibitedUse, setNewProhibitedUse] = useState('');
 
-  const handleAddAssemblyId = () => {
-    if (newAssemblyId.trim() && !assemblyIds.includes(newAssemblyId.trim())) {
-      setAssemblyIds([...assemblyIds, newAssemblyId.trim()]);
-      setNewAssemblyId('');
+  const handleAddTrainingSheetId = () => {
+    if (newTrainingSheetId.trim() && !trainingSheetIds.includes(newTrainingSheetId.trim())) {
+      setTrainingSheetIds([...trainingSheetIds, newTrainingSheetId.trim()]);
+      setNewTrainingSheetId('');
     }
   };
 
-  const handleRemoveAssemblyId = (id: string) => {
-    setAssemblyIds(assemblyIds.filter((aid) => aid !== id));
+  const handleRemoveTrainingSheetId = (id: string) => {
+    setTrainingSheetIds(trainingSheetIds.filter((aid) => aid !== id));
   };
 
   const handleAddTag = () => {
@@ -137,7 +137,7 @@ export function CuratedDatasetForm({
           data: {
             name,
             description: description || undefined,
-            assembly_ids: assemblyIds,
+            training_sheet_ids: trainingSheetIds,
             split_config: splitConfig,
             quality_threshold: qualityThreshold,
             tags,
@@ -153,7 +153,7 @@ export function CuratedDatasetForm({
           name,
           description: description || undefined,
           labelset_id: labelsetId || undefined,
-          assembly_ids: assemblyIds,
+          training_sheet_ids: trainingSheetIds,
           split_config: splitConfig,
           quality_threshold: qualityThreshold,
           tags,
@@ -238,39 +238,39 @@ export function CuratedDatasetForm({
         </div>
       </div>
 
-      {/* Assembly IDs */}
+      {/* Training Sheet IDs */}
       <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Source Assemblies
+          Source Training Sheets
         </h2>
 
         <div className="space-y-4">
           <div className="flex gap-2">
             <input
               type="text"
-              value={newAssemblyId}
-              onChange={(e) => setNewAssemblyId(e.target.value)}
+              value={newTrainingSheetId}
+              onChange={(e) => setNewTrainingSheetId(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  handleAddAssemblyId();
+                  handleAddTrainingSheetId();
                 }
               }}
               className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              placeholder="Enter assembly ID"
+              placeholder="Enter training sheet ID"
             />
             <button
               type="button"
-              onClick={handleAddAssemblyId}
+              onClick={handleAddTrainingSheetId}
               className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700"
             >
               <Plus className="w-4 h-4" />
             </button>
           </div>
 
-          {assemblyIds.length > 0 && (
+          {trainingSheetIds.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {assemblyIds.map((id) => (
+              {trainingSheetIds.map((id) => (
                 <span
                   key={id}
                   className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-sm"
@@ -278,7 +278,7 @@ export function CuratedDatasetForm({
                   {id}
                   <button
                     type="button"
-                    onClick={() => handleRemoveAssemblyId(id)}
+                    onClick={() => handleRemoveTrainingSheetId(id)}
                     className="hover:text-blue-600 dark:hover:text-blue-400"
                   >
                     <X className="w-3 h-3" />

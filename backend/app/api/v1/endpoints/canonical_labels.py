@@ -309,7 +309,7 @@ async def lookup_canonical_label(
     Lookup a canonical label by composite key (sheet_id, item_ref, label_type).
 
     Returns None if not found (status 200 with null body).
-    This is the primary lookup method used during Training Sheet assembly.
+    This is the primary lookup method used during Training Sheet generation.
     """
     sql = f"""
         SELECT *
@@ -334,7 +334,7 @@ async def bulk_lookup_canonical_labels(
     Bulk lookup of canonical labels by composite keys.
 
     Efficiently retrieves multiple labels in a single query.
-    Used during Training Sheet assembly to check all rows at once.
+    Used during Training Sheet generation to check all rows at once.
     """
     if not lookup.items:
         return CanonicalLabelBulkLookupResponse(

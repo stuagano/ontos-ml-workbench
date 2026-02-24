@@ -5,8 +5,8 @@
  * with governance metadata (usage constraints, PII classification, confidence).
  *
  * Features:
- * - Browse Q&A pairs across all assemblies
- * - Filter by assembly, response source, status
+ * - Browse Q&A pairs across all training sheets
+ * - Filter by training sheet, response source, status
  * - Promote selected pairs with governance metadata
  * - Bulk selection support
  */
@@ -27,14 +27,14 @@ import {
 } from "lucide-react";
 import { useToast } from "./Toast";
 import {
-  listAssemblies,
-  previewAssembly,
+  listTrainingSheets,
+  previewTrainingSheet,
   createCanonicalLabel,
   getConfig,
 } from "../services/api";
 import type {
-  AssembledDataset,
-  AssembledRow,
+  TrainingSheet,
+  QAPairRow,
   ResponseSource,
   LabelConfidence,
   DataClassification,
@@ -78,7 +78,7 @@ export function CanonicalLabelingTool({ onClose }: CanonicalLabelingToolProps) {
   const queryClient = useQueryClient();
 
   // View state
-  const [selectedAssemblyId, setSelectedAssemblyId] = useState<string | null>(null);
+  const [selectedTrainingSheetId, setSelectedTrainingSheetId] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState<ResponseSource | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -87,7 +87,7 @@ export function CanonicalLabelingTool({ onClose }: CanonicalLabelingToolProps) {
 
   // Promote modal state
   const [showPromoteModal, setShowPromoteModal] = useState(false);
-  const [rowToPromote, setRowToPromote] = useState<AssembledRow | null>(null);
+  const [rowToPromote, setRowToPromote] = useState<QAPairRow | null>(null);
 
   // Promote form state
   const [confidence, setConfidence] = useState<LabelConfidence>("high");
@@ -103,30 +103,30 @@ export function CanonicalLabelingTool({ onClose }: CanonicalLabelingToolProps) {
     staleTime: Infinity,
   });
 
-  // Fetch all assemblies
-  const { data: assemblies } = useQuery({
-    queryKey: ["assemblies"],
-    queryFn: () => listAssemblies(),
+  // Fetch all training sheets
+  const { data: trainingSheets } = useQuery({
+    queryKey: ["training-sheets"],
+    queryFn: () => listTrainingSheets(),
   });
 
-  // Fetch selected assembly's rows
-  const { data: assemblyData, isLoading: rowsLoading } = useQuery({
-    queryKey: ["assembly-preview", selectedAssemblyId, sourceFilter],
+  // Fetch selected training sheet's rows
+  const { data: previewData, isLoading: rowsLoading } = useQuery({
+    queryKey: ["training-sheet-preview", selectedTrainingSheetId, sourceFilter],
     queryFn: () =>
-      previewAssembly(selectedAssemblyId!, {
+      previewTrainingSheet(selectedTrainingSheetId!, {
         limit: 200,
         response_source: sourceFilter === "all" ? undefined : sourceFilter,
       }),
-    enabled: !!selectedAssemblyId,
+    enabled: !!selectedTrainingSheetId,
   });
 
-  // Get current assembly metadata
-  const currentAssembly = assemblies?.find(
-    (a: AssembledDataset) => a.id === selectedAssemblyId
+  // Get current training sheet metadata
+  const currentTrainingSheet = trainingSheets?.find(
+    (a: TrainingSheet) => a.id === selectedTrainingSheetId
   );
 
   // Filter rows by search
-  const filteredRows = assemblyData?.rows?.filter((row) => {
+  const filteredRows = previewData?.rows?.filter((row) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -137,13 +137,13 @@ export function CanonicalLabelingTool({ onClose }: CanonicalLabelingToolProps) {
 
   // Promote mutation
   const promoteMutation = useMutation({
-    mutationFn: async (row: AssembledRow) => {
-      if (!currentAssembly) throw new Error("No assembly selected");
+    mutationFn: async (row: QAPairRow) => {
+      if (!currentTrainingSheet) throw new Error("No training sheet selected");
 
       const request: CanonicalLabelCreateRequest = {
-        sheet_id: currentAssembly.sheet_id,
+        sheet_id: currentTrainingSheet.sheet_id,
         item_ref: row.item_ref || `row_${row.row_index}`,
-        label_type: currentAssembly.template_config?.label_type || "qa",
+        label_type: currentTrainingSheet.template_config?.label_type || "qa",
         label_data: {
           prompt: row.prompt,
           response: row.response,
@@ -164,7 +164,7 @@ export function CanonicalLabelingTool({ onClose }: CanonicalLabelingToolProps) {
         "Canonical Label Created",
         "Q&A pair promoted to canonical label"
       );
-      queryClient.invalidateQueries({ queryKey: ["assembly-preview"] });
+      queryClient.invalidateQueries({ queryKey: ["training-sheet-preview"] });
       setShowPromoteModal(false);
       setRowToPromote(null);
       resetPromoteForm();
@@ -182,7 +182,7 @@ export function CanonicalLabelingTool({ onClose }: CanonicalLabelingToolProps) {
     setNotes("");
   };
 
-  const handlePromote = (row: AssembledRow) => {
+  const handlePromote = (row: QAPairRow) => {
     setRowToPromote(row);
     setShowPromoteModal(true);
   };
@@ -245,28 +245,28 @@ export function CanonicalLabelingTool({ onClose }: CanonicalLabelingToolProps) {
       {/* Filters Bar */}
       <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
         <div className="flex items-center gap-4">
-          {/* Assembly Selector */}
+          {/* Training Sheet Selector */}
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-gray-500" />
             <select
-              value={selectedAssemblyId || ""}
+              value={selectedTrainingSheetId || ""}
               onChange={(e) => {
-                setSelectedAssemblyId(e.target.value || null);
+                setSelectedTrainingSheetId(e.target.value || null);
                 setSelectedRows(new Set());
               }}
               className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-900 focus:ring-2 focus:ring-cyan-500"
             >
               <option value="">Select Training Sheet...</option>
-              {assemblies?.map((asm: AssembledDataset) => (
-                <option key={asm.id} value={asm.id}>
-                  {asm.template_config?.name || asm.sheet_name || asm.id} ({asm.total_rows} rows)
+              {trainingSheets?.map((ts: TrainingSheet) => (
+                <option key={ts.id} value={ts.id}>
+                  {ts.template_config?.name || ts.sheet_name || ts.id} ({ts.total_rows} rows)
                 </option>
               ))}
             </select>
           </div>
 
           {/* Source Filter */}
-          {selectedAssemblyId && (
+          {selectedTrainingSheetId && (
             <select
               value={sourceFilter}
               onChange={(e) => setSourceFilter(e.target.value as ResponseSource | "all")}
@@ -281,7 +281,7 @@ export function CanonicalLabelingTool({ onClose }: CanonicalLabelingToolProps) {
           )}
 
           {/* Search */}
-          {selectedAssemblyId && (
+          {selectedTrainingSheetId && (
             <div className="relative flex-1 max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
@@ -295,7 +295,7 @@ export function CanonicalLabelingTool({ onClose }: CanonicalLabelingToolProps) {
           )}
 
           {/* Stats */}
-          {currentAssembly && (
+          {currentTrainingSheet && (
             <div className="ml-auto text-sm text-gray-500 dark:text-gray-400">
               {filteredRows.length} Q&A pairs
               {selectedRows.size > 0 && (
@@ -310,8 +310,8 @@ export function CanonicalLabelingTool({ onClose }: CanonicalLabelingToolProps) {
 
       {/* Content */}
       <div className="flex-1 overflow-auto">
-        {!selectedAssemblyId ? (
-          // Empty state - no assembly selected
+        {!selectedTrainingSheetId ? (
+          // Empty state - no training sheet selected
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
             <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
               <FileText className="w-8 h-8 text-gray-400" />

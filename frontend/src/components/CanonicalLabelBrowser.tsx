@@ -342,8 +342,8 @@ export function CanonicalLabelBrowser({
                 </p>
                 <ul className="mt-1 text-xs text-amber-700 space-y-0.5">
                   {usageData.used_in.slice(0, 5).map((u) => (
-                    <li key={`${u.assembly_id}-${u.row_index}`}>
-                      {u.assembly_name} (row {u.row_index})
+                    <li key={`${u.training_sheet_id}-${u.row_index}`}>
+                      {u.training_sheet_name} (row {u.row_index})
                     </li>
                   ))}
                   {usageData.used_in.length > 5 && (

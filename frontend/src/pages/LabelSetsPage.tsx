@@ -445,8 +445,8 @@ function LabelsetDetailView({
               color="text-cyan-600"
             />
             <StatCard
-              label="Assemblies Using"
-              value={stats.assemblies_using_count}
+              label="Training Sheets Using"
+              value={stats.training_sheets_using_count}
               icon={BarChart3}
               color="text-blue-600"
             />

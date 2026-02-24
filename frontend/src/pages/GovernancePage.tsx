@@ -5,7 +5,7 @@
  * Follows the RegistriesPage tabbed pattern.
  */
 
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
@@ -56,6 +56,8 @@ import {
   RefreshCw,
   Eye,
   Copy,
+  LayoutList,
+  Network,
 } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -166,7 +168,6 @@ import type {
   DataProductStatus,
   DataProductPort,
   ConceptType,
-  SemanticLinkType,
   SemanticModelStatus,
   NamingEntityType,
   DeliveryModeType,
@@ -175,6 +176,8 @@ import type {
   ConnectorPlatform,
   SyncDirection,
 } from "../types/governance";
+
+const UnifiedGraphView = lazy(() => import("../components/semantic/UnifiedGraphView"));
 
 type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows" | "products" | "semantic" | "naming" | "delivery" | "mcp" | "connectors";
 
@@ -3319,7 +3322,7 @@ const CONCEPT_TYPE_COLORS: Record<ConceptType, string> = {
   dimension: "bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-400",
 };
 
-const LINK_TYPE_LABELS: Record<SemanticLinkType, string> = {
+const LINK_TYPE_LABELS: Record<string, string> = {
   maps_to: "Maps To",
   derived_from: "Derived From",
   aggregates: "Aggregates",
@@ -3341,6 +3344,7 @@ function SemanticModelsTab() {
   const [showCreate, setShowCreate] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("");
+  const [viewMode, setViewMode] = useState<"list" | "graph">("list");
 
   // Create form
   const [newName, setNewName] = useState("");
@@ -3520,6 +3524,20 @@ function SemanticModelsTab() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 mr-2">
+              <button
+                onClick={() => setViewMode("list")}
+                className={clsx("px-2.5 py-1 text-xs rounded-md flex items-center gap-1 transition-colors", viewMode === "list" ? "bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-white font-medium" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300")}
+              >
+                <LayoutList className="w-3.5 h-3.5" /> List
+              </button>
+              <button
+                onClick={() => setViewMode("graph")}
+                className={clsx("px-2.5 py-1 text-xs rounded-md flex items-center gap-1 transition-colors", viewMode === "graph" ? "bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-white font-medium" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300")}
+              >
+                <Network className="w-3.5 h-3.5" /> Graph
+              </button>
+            </div>
             {model.status === "draft" && (
               <button onClick={() => publishMutation.mutate(model.id)} className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center gap-1">
                 <Play className="w-3 h-3" /> Publish
@@ -3539,6 +3557,13 @@ function SemanticModelsTab() {
           </div>
         </div>
 
+        {viewMode === "graph" && (
+          <Suspense fallback={<div className="h-[500px] flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-db-orange" /></div>}>
+            <UnifiedGraphView model={model} />
+          </Suspense>
+        )}
+
+        {viewMode === "list" && <>
         {/* Concepts Section */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -3691,7 +3716,7 @@ function SemanticModelsTab() {
                 <div>
                   <label className="block text-xs font-medium text-db-gray-600 dark:text-gray-400 mb-1">Link Type</label>
                   <select value={linkType} onChange={(e) => setLinkType(e.target.value)} className="w-full px-3 py-1.5 text-sm rounded-lg border border-db-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-db-gray-800 dark:text-white">
-                    {(Object.keys(LINK_TYPE_LABELS) as SemanticLinkType[]).map((t) => (
+                    {Object.keys(LINK_TYPE_LABELS).map((t) => (
                       <option key={t} value={t}>{LINK_TYPE_LABELS[t]}</option>
                     ))}
                   </select>
@@ -3747,7 +3772,7 @@ function SemanticModelsTab() {
                     <div className="flex items-center gap-2 text-sm">
                       <span className="font-medium text-db-gray-700 dark:text-gray-300">{source?.label || link.source_id.substring(0, 8)}</span>
                       <span className="px-1.5 py-0.5 text-[10px] bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 rounded font-medium">
-                        {LINK_TYPE_LABELS[link.link_type as SemanticLinkType] || link.link_type}
+                        {LINK_TYPE_LABELS[link.link_type] || link.link_type}
                       </span>
                       <span className="text-db-gray-500 dark:text-gray-500">→</span>
                       <span className="text-[10px] px-1.5 py-0.5 bg-db-gray-100 dark:bg-gray-800 text-db-gray-500 dark:text-gray-500 rounded">{link.target_type}</span>
@@ -3765,6 +3790,7 @@ function SemanticModelsTab() {
             </div>
           )}
         </div>
+        </>}
       </div>
     );
   }
@@ -4716,6 +4742,112 @@ const INVOCATION_STATUS_CONFIG: Record<string, { label: string; color: string }>
   rate_limited: { label: "Rate Limited", color: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400" },
 };
 
+function MCPConnectionInfo() {
+  const [expanded, setExpanded] = useState(false);
+  const toast = useToast();
+  const mcpEndpoint = `${window.location.origin}/mcp/mcp`;
+
+  const claudeDesktopConfig = JSON.stringify(
+    {
+      mcpServers: {
+        "ontos-ml-workbench": {
+          url: mcpEndpoint,
+          headers: { Authorization: "Bearer <your-token>" },
+        },
+      },
+    },
+    null,
+    2,
+  );
+
+  const claudeCodeConfig = JSON.stringify(
+    {
+      mcpServers: {
+        "ontos-ml-workbench": {
+          type: "url",
+          url: mcpEndpoint,
+          headers: { Authorization: "Bearer <your-token>" },
+        },
+      },
+    },
+    null,
+    2,
+  );
+
+  return (
+    <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between p-4 text-left"
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg">
+            <Plug className="w-5 h-5 text-amber-700 dark:text-amber-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">Connect AI Assistants via MCP</h3>
+            <p className="text-xs text-amber-600 dark:text-amber-500">
+              Endpoint: <code className="bg-amber-100 dark:bg-amber-900 px-1 rounded">{mcpEndpoint}</code>
+            </p>
+          </div>
+        </div>
+        <ChevronRight
+          className={clsx(
+            "w-5 h-5 text-amber-600 transition-transform",
+            expanded && "rotate-90",
+          )}
+        />
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4 space-y-4">
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            Create a token below, then paste it into your AI assistant&apos;s MCP config to connect.
+            The server exposes 8 tools and 4 resources from this workbench.
+          </p>
+
+          {/* Claude Desktop config */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium text-amber-800 dark:text-amber-300">Claude Desktop</span>
+              <button
+                onClick={() => { navigator.clipboard.writeText(claudeDesktopConfig); toast.success("Copied"); }}
+                className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400"
+              >
+                <Copy className="w-3 h-3" /> Copy
+              </button>
+            </div>
+            <pre className="bg-gray-900 text-green-400 text-xs p-3 rounded-lg overflow-x-auto font-mono">
+              {claudeDesktopConfig}
+            </pre>
+          </div>
+
+          {/* Claude Code config */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium text-amber-800 dark:text-amber-300">Claude Code (.mcp.json)</span>
+              <button
+                onClick={() => { navigator.clipboard.writeText(claudeCodeConfig); toast.success("Copied"); }}
+                className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400"
+              >
+                <Copy className="w-3 h-3" /> Copy
+              </button>
+            </div>
+            <pre className="bg-gray-900 text-green-400 text-xs p-3 rounded-lg overflow-x-auto font-mono">
+              {claudeCodeConfig}
+            </pre>
+          </div>
+
+          <p className="text-xs text-amber-600 dark:text-amber-500 italic">
+            Replace <code className="bg-amber-100 dark:bg-amber-900 px-1 rounded">&lt;your-token&gt;</code> with
+            a token created in the Tokens tab below.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MCPIntegrationTab() {
   const qc = useQueryClient();
   const toast = useToast();
@@ -4816,6 +4948,9 @@ function MCPIntegrationTab() {
           ))}
         </div>
       )}
+
+      {/* MCP Connection Info */}
+      <MCPConnectionInfo />
 
       {/* Revealed Token Banner */}
       {revealedToken && (

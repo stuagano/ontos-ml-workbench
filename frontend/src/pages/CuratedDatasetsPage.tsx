@@ -297,7 +297,7 @@ function DatasetBrowseView({
               Curated Datasets
             </h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Training-ready QA pairs selected from reviewed assemblies
+              Training-ready QA pairs selected from reviewed training sheets
             </p>
           </div>
           <button
@@ -397,7 +397,7 @@ function DatasetCreateView({ onBack, onSaved }: DatasetCreateViewProps) {
               Create Curated Dataset
             </h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Select assemblies and configure training dataset
+              Select training sheets and configure training dataset
             </p>
           </div>
         </div>
@@ -527,10 +527,10 @@ function DatasetDetailView({ dataset, onBack, onEdit }: DatasetDetailViewProps) 
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Assemblies
+                  Training Sheets
                 </dt>
                 <dd className="mt-1 text-sm text-gray-900 dark:text-white">
-                  {currentDataset.assembly_ids.length} linked
+                  {currentDataset.training_sheet_ids.length} linked
                 </dd>
               </div>
               {currentDataset.created_by && (

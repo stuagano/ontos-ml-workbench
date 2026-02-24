@@ -124,7 +124,7 @@ export async function deleteCanonicalLabel(labelId: string): Promise<void> {
  * Lookup a canonical label by composite key (sheet_id, item_ref, label_type).
  *
  * Returns null if not found.
- * This is the primary lookup method used during Training Sheet assembly.
+ * This is the primary lookup method used during Training Sheet generation.
  *
  * @example
  * const label = await lookupCanonicalLabel({
@@ -160,7 +160,7 @@ export async function lookupCanonicalLabel(
  * Bulk lookup of canonical labels by composite keys.
  *
  * Efficiently retrieves multiple labels in a single query.
- * Used during Training Sheet assembly to check all rows at once.
+ * Used during Training Sheet generation to check all rows at once.
  *
  * @example
  * const result = await bulkLookupCanonicalLabels({
@@ -376,7 +376,7 @@ export async function checkUsageConstraints(
  * if (usage.usage_count > 0) {
  *   console.warn("Cannot delete - label is in use by:");
  *   usage.used_in.forEach(u => {
- *     console.log(`- ${u.assembly_name} (row ${u.row_index})`);
+ *     console.log(`- ${u.training_sheet_name} (row ${u.row_index})`);
  *   });
  * }
  */
@@ -384,8 +384,8 @@ export async function getCanonicalLabelUsage(labelId: string): Promise<{
   canonical_label_id: string;
   usage_count: number;
   used_in: Array<{
-    assembly_id: string;
-    assembly_name: string;
+    training_sheet_id: string;
+    training_sheet_name: string;
     sheet_id: string;
     row_index: number;
   }>;

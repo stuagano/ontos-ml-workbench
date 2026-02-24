@@ -1,7 +1,7 @@
 /**
  * LabelingJobsPage - Enterprise labeling workflow management
  *
- * NOTE: For most use cases, use CuratePage with AssembledDataset instead.
+ * NOTE: For most use cases, use CuratePage with TrainingSheet instead.
  * This page is for advanced enterprise workflows with:
  * - Formal task assignment to multiple labelers
  * - Review/approval workflows
@@ -9,7 +9,7 @@
  *
  * Features:
  * - List and manage labeling jobs
- * - Create jobs from AI Sheets (legacy) or AssembledDatasets
+ * - Create jobs from AI Sheets (legacy) or Training Sheets
  * - View job progress and statistics
  * - Navigate to task management and annotation interface
  */

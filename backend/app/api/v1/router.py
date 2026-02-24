@@ -5,7 +5,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     admin,
     agents,
-    assemblies,
+    training_sheets,
     attribution,
     canonical_labels,
     curated_datasets,
@@ -35,7 +35,7 @@ router = APIRouter(prefix="/api/v1")
 
 # Include all endpoint routers
 router.include_router(sheets_v2.router, prefix="/sheets", tags=["sheets"])
-router.include_router(assemblies.router)
+router.include_router(training_sheets.router)
 router.include_router(templates.router)
 router.include_router(
     canonical_labels.router, prefix="/canonical-labels", tags=["canonical-labels"]

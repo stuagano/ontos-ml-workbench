@@ -85,8 +85,14 @@ from app.models.governance import (
     ConnectorAssetResponse,
     ConnectorSyncResponse,
     ConnectorStatsResponse,
+    ImpactReport,
+    LineageGraph,
+    MaterializeResult,
+    TraversalResult,
 )
 from app.services.governance_service import get_governance_service
+from app.services.lineage_service import get_lineage_service
+from app.services.graph_query_service import get_graph_query_service
 
 router = APIRouter(prefix="/governance", tags=["governance"])
 
@@ -1411,3 +1417,84 @@ async def list_connector_syncs(
     """List connector sync records."""
     svc = get_governance_service()
     return svc.list_connector_syncs(connector_id=connector_id, status=status)
+
+
+# ============================================================================
+# Lineage Graph
+# ============================================================================
+
+
+@router.post("/lineage/materialize", response_model=MaterializeResult)
+async def materialize_lineage():
+    """Trigger full lineage materialization — scans training_sheets, model_training_lineage, endpoints_registry and upserts edges into semantic_links."""
+    svc = get_lineage_service()
+    return svc.materialize_all()
+
+
+@router.post("/lineage/materialize/{entity_type}/{entity_id}", response_model=MaterializeResult)
+async def materialize_entity_lineage(entity_type: str, entity_id: str):
+    """Incremental lineage materialization for a single entity."""
+    svc = get_lineage_service()
+    return svc.materialize_for_entity(entity_type, entity_id)
+
+
+@router.get("/lineage/graph", response_model=LineageGraph)
+async def get_lineage_graph():
+    """Get the full lineage graph (all materialized edges)."""
+    svc = get_lineage_service()
+    return svc.get_lineage_graph()
+
+
+@router.get("/lineage/entity/{entity_type}/{entity_id}", response_model=LineageGraph)
+async def get_entity_lineage(entity_type: str, entity_id: str):
+    """Get lineage edges involving a specific entity."""
+    svc = get_lineage_service()
+    return svc.get_entity_lineage(entity_type, entity_id)
+
+
+# ============================================================================
+# Graph Queries (Traversal, Impact, Path)
+# ============================================================================
+
+
+@router.get("/graph/traverse/{direction}/{entity_type}/{entity_id}", response_model=TraversalResult)
+async def traverse_graph(
+    direction: str,
+    entity_type: str,
+    entity_id: str,
+    max_depth: int = Query(10, ge=1, le=20),
+):
+    """Traverse the lineage graph upstream or downstream from an entity."""
+    if direction not in ("upstream", "downstream"):
+        raise HTTPException(status_code=400, detail="direction must be 'upstream' or 'downstream'")
+    svc = get_graph_query_service()
+    if direction == "upstream":
+        return svc.traverse_upstream(entity_type, entity_id, max_depth)
+    return svc.traverse_downstream(entity_type, entity_id, max_depth)
+
+
+@router.get("/graph/impact/{entity_type}/{entity_id}", response_model=ImpactReport)
+async def get_impact_analysis(entity_type: str, entity_id: str):
+    """Impact analysis — what downstream entities are affected if this entity changes."""
+    svc = get_graph_query_service()
+    return svc.impact_analysis(entity_type, entity_id)
+
+
+@router.get("/graph/path")
+async def find_graph_path(
+    from_type: str = Query(...),
+    from_id: str = Query(...),
+    to_type: str = Query(...),
+    to_id: str = Query(...),
+):
+    """Find shortest path between two entities in the lineage graph."""
+    svc = get_graph_query_service()
+    path = svc.find_path(from_type, from_id, to_type, to_id)
+    return [edge.model_dump() for edge in path]
+
+
+@router.get("/graph/context/{entity_type}/{entity_id}", response_model=LineageGraph)
+async def get_entity_context(entity_type: str, entity_id: str):
+    """Get immediate neighborhood (depth=1) of an entity in both directions."""
+    svc = get_graph_query_service()
+    return svc.get_entity_context(entity_type, entity_id)

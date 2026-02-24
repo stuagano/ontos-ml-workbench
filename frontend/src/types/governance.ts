@@ -362,7 +362,10 @@ export interface DataProduct {
 // Semantic Models (G10)
 
 export type ConceptType = "entity" | "event" | "metric" | "dimension";
-export type SemanticLinkType = "maps_to" | "derived_from" | "aggregates" | "represents";
+export type SemanticLinkType =
+  | "maps_to" | "derived_from" | "aggregates" | "represents"
+  | "produces" | "trains_on" | "deployed_as" | "generated_from" | "labeled_by" | "feeds_into"
+  | "produced_by" | "used_to_train" | "deployment_of" | "generates" | "labels" | "fed_by" | "mapped_from" | "derives";
 export type SemanticModelStatus = "draft" | "published" | "archived";
 
 export interface SemanticProperty {
@@ -394,7 +397,7 @@ export interface SemanticConcept {
 export interface SemanticLink {
   id: string;
   model_id: string;
-  source_type: "concept" | "property";
+  source_type: string;
   source_id: string;
   target_type: string;
   target_id: string | null;
@@ -706,3 +709,69 @@ export interface ConnectorStats {
   connectors_by_platform: Record<string, number>;
   recent_syncs: ConnectorSyncRecord[];
 }
+
+// ============================================================================
+// Lineage Graph (extends G10)
+// ============================================================================
+
+export type LineageEntityType = "sheet" | "template" | "training_sheet" | "model" | "endpoint";
+
+export interface LineageNode {
+  entity_type: LineageEntityType;
+  entity_id: string;
+  entity_name: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface LineageEdge {
+  source_type: string;
+  source_id: string;
+  target_type: string;
+  target_id: string;
+  link_type: SemanticLinkType;
+  confidence: number | null;
+}
+
+export interface MaterializeResult {
+  edges_created: number;
+  edges_updated: number;
+  edges_deleted: number;
+  edges_by_type: Record<string, number>;
+  duration_ms: number;
+}
+
+export interface LineageGraph {
+  nodes: LineageNode[];
+  edges: LineageEdge[];
+  model_id: string | null;
+  materialize_stats: MaterializeResult | null;
+}
+
+export interface ImpactReport {
+  source_entity: LineageNode;
+  affected_training_sheets: LineageNode[];
+  affected_models: LineageNode[];
+  affected_endpoints: LineageNode[];
+  total_affected: number;
+  risk_level: "low" | "medium" | "high" | "critical";
+  paths: LineageEdge[][];
+}
+
+export interface TraversalResult {
+  root_entity: LineageNode;
+  direction: "upstream" | "downstream";
+  max_depth: number;
+  graph: LineageGraph;
+  entity_count_by_type: Record<string, number>;
+}
+
+/** Forward lineage link types (data flows in this direction) */
+export const LINEAGE_FORWARD_TYPES: ReadonlySet<string> = new Set([
+  "produces", "trains_on", "deployed_as", "generated_from", "labeled_by", "feeds_into",
+]);
+
+/** All lineage link types (forward + inverse) */
+export const LINEAGE_ALL_TYPES: ReadonlySet<string> = new Set([
+  ...LINEAGE_FORWARD_TYPES,
+  "produced_by", "used_to_train", "deployment_of", "generates", "labels", "fed_by", "mapped_from", "derives",
+]);

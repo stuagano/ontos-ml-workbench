@@ -5,13 +5,13 @@
  * Following the GCP Vertex AI pattern:
  * - Sheet = Dataset (raw imported data)
  * - TemplateConfig = Attached to sheet (defines prompt template)
- * - AssembledDataset = Materialized prompt/response pairs
+ * - TrainingSheet = Materialized prompt/response pairs
  *
  * Flow:
  * 1. Select base table (defines row structure)
  * 2. Import columns from base or other tables
  * 3. Continue to Template Builder to attach a TemplateConfig
- * 4. Assemble the dataset to create prompt/response pairs
+ * 4. Generate the training sheet to create prompt/response pairs
  * 5. Label/verify in CuratePage
  * 6. Export for fine-tuning
  */
@@ -53,12 +53,12 @@ import {
   listTemplates,
   getTemplate,
   attachTemplateToSheet,
-  assembleSheet,
+  generateTrainingSheet,
   publishSheet,
   archiveSheet,
   deleteSheet,
+  updateSheet,
   detachTemplateFromSheet,
-  getCanonicalLabelStats,
 } from "../services/api";
 import { useToast } from "../components/Toast";
 import { ReviewPanel } from "../components/ReviewPanel";
@@ -66,12 +66,16 @@ import { useWorkflow } from "../context/WorkflowContext";
 import { useModules } from "../hooks/useModules";
 import { ColumnMappingModal, extractPlaceholders } from "../components/ColumnMappingModal";
 import { DataQualityPanel } from "../components/DataQualityPanel";
+import { CanonicalLabelStats } from "../components/CanonicalLabelStats";
+import { NoDataSources, EmptyState } from "../components/EmptyState";
+import { JoinConfigPanel } from "../components/join";
 import type {
   Sheet,
   SheetPreview,
   ColumnDefinition,
   ImportConfig,
   TemplateConfigAttachRequest,
+  MultiDatasetConfig,
 } from "../types";
 
 // ============================================================================
@@ -581,6 +585,7 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
   const [isSheetBrowserOpen, setIsSheetBrowserOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [multiSourceConfig, setMultiSourceConfig] = useState<MultiDatasetConfig | null>(null);
 
   // Column mapping for template reusability
   const [isColumnMappingOpen, setIsColumnMappingOpen] = useState(false);
@@ -619,12 +624,7 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
     enabled: step === "preview-data",
   });
 
-  // Fetch canonical label coverage stats when template selected
-  const { data: labelStats } = useQuery({
-    queryKey: ["canonical-label-stats", sheet?.id],
-    queryFn: () => getCanonicalLabelStats(sheet!.id),
-    enabled: !!sheet?.id && !!selectedTemplate,
-  });
+  // Note: Canonical label stats are now fetched by CanonicalLabelStats component
 
   // Sync step with workflow state when navigating via breadcrumbs
   useEffect(() => {
@@ -763,18 +763,18 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
 
       await attachTemplateToSheet(sheet.id, attachRequest);
 
-      // Step 3: Assemble the sheet (generate Q&A pairs)
-      const assembleResponse = await assembleSheet(sheet.id, {
+      // Step 3: Generate training sheet (create Q&A pairs)
+      const generateResponse = await generateTrainingSheet(sheet.id, {
         name: `${sheet.name} - ${template.name}`,
         description: `Training data generated from ${sheet.name} using ${template.name} template`,
       });
 
       // Store the training sheet ID in workflow context so Training Data stage can load it
-      workflow.setSelectedAssemblyId(assembleResponse.training_sheet_id);
+      workflow.setSelectedTrainingSheetId(generateResponse.training_sheet_id);
 
       toast.success(
         "Training data generated!",
-        `Created ${assembleResponse.total_items} Q&A pairs. Moving to Training Data stage...`
+        `Created ${generateResponse.total_items} Q&A pairs. Moving to Training Data stage...`
       );
 
       // Auto-advance to LABEL stage to review the generated Q&A pairs
@@ -992,6 +992,27 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
               )}
             </div>
 
+            {/* Multi-Source Join Section */}
+            {sheet.source_table && (
+              <JoinConfigPanel
+                primaryTable={sheet.source_table}
+                initialConfig={
+                  sheet.join_config
+                    ? (JSON.parse(sheet.join_config) as MultiDatasetConfig)
+                    : multiSourceConfig
+                }
+                onConfigChange={(config) => {
+                  setMultiSourceConfig(config);
+                  // Persist join_config to sheet
+                  updateSheet(sheet.id, {
+                    join_config: config ? JSON.stringify(config) : undefined,
+                  }).catch((err) =>
+                    console.error("Failed to save join config:", err)
+                  );
+                }}
+              />
+            )}
+
             {/* Template Selection Section */}
             <div className="bg-white rounded-lg border border-db-gray-200 shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
@@ -1063,23 +1084,8 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
             </div>
 
             {/* Canonical Label Coverage */}
-            {selectedTemplate && labelStats && labelStats.total_labels > 0 && (
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200 p-4">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <div className="flex-1">
-                    <h4 className="text-sm font-medium text-green-900">
-                      Canonical Label Coverage: {labelStats.coverage_percent != null
-                        ? `${Math.round(labelStats.coverage_percent)}%`
-                        : `${labelStats.total_labels} labels`}
-                    </h4>
-                    <p className="text-xs text-green-700 mt-0.5">
-                      {labelStats.total_labels} expert-validated label{labelStats.total_labels !== 1 ? "s" : ""} found for this dataset.
-                      Matching Q&A pairs will be auto-approved during generation.
-                    </p>
-                  </div>
-                </div>
-              </div>
+            {selectedTemplate && sheet && (
+              <CanonicalLabelStats sheetId={sheet.id} />
             )}
 
             {/* Generate Button */}
@@ -1278,24 +1284,13 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
     ];
 
     const emptyState = (
-      <div className="text-center py-20 bg-white rounded-lg">
-        <Table2 className="w-16 h-16 text-db-gray-300 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-db-gray-700 mb-2">
-          No sheets found
-        </h3>
-        <p className="text-db-gray-500 mb-6">
-          {searchQuery
-            ? "Try adjusting your search"
-            : "Create your first AI Dataset from a Unity Catalog table"}
-        </p>
-        <button
-          onClick={() => setStageMode("create")}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <Plus className="w-4 h-4" />
-          Create Dataset
-        </button>
-      </div>
+      <NoDataSources
+        action={{
+          label: "Create Dataset",
+          onClick: () => setStageMode("create"),
+        }}
+        className="bg-white rounded-lg"
+      />
     );
 
     return (
@@ -1507,27 +1502,17 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
       );
     }
     return (
-      <div className="flex items-center justify-center h-full bg-db-gray-50">
-        <div className="text-center max-w-md">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
-            <Table2 className="w-8 h-8 text-blue-600" />
-          </div>
-          <h2 className="text-2xl font-semibold text-db-gray-800 mb-2">
-            AI Sheets
-          </h2>
-          <p className="text-db-gray-500 mb-6">
-            Browse your existing sheets or create a new one from a Unity Catalog
-            table.
-          </p>
-          <button
-            onClick={() => setIsSheetBrowserOpen(true)}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 font-medium"
-          >
-            <Database className="w-5 h-5" />
-            Browse & Create Datasets
-          </button>
-        </div>
-      </div>
+      <EmptyState
+        icon={Database}
+        title="AI Sheets"
+        description="Browse your existing sheets or create a new one from a Unity Catalog table."
+        action={{
+          label: "Browse & Create Datasets",
+          onClick: () => setIsSheetBrowserOpen(true),
+          icon: Database,
+        }}
+        variant="centered"
+      />
     );
   }
 

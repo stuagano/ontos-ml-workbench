@@ -93,7 +93,7 @@ async def bust_cache():
 
 @router.get("/debug/data-flow", response_model=DataFlowDiagnostic)
 async def diagnose_data_flow():
-    """Diagnose the data flow from sheets -> assemblies -> training.
+    """Diagnose the data flow from sheets -> training sheets -> training.
 
     Returns counts, status breakdowns, and identified issues.
     """
@@ -131,37 +131,37 @@ async def diagnose_data_flow():
 
     if sheets_count > 0 and sheets_with_templates == 0:
         issues.append("No sheets have templates attached")
-        recommendations.append("Attach templates to sheets before assembling")
+        recommendations.append("Attach templates to sheets before generating training sheets")
 
-    # Count training sheets (formerly assemblies)
+    # Count training sheets
     training_sheets_table = settings.get_table("training_sheets")
     try:
-        assemblies_result = sql_service.execute(f"SELECT COUNT(*) as cnt FROM {training_sheets_table}")
-        assemblies_count = int(assemblies_result[0]["cnt"]) if assemblies_result else 0
+        ts_result = sql_service.execute(f"SELECT COUNT(*) as cnt FROM {training_sheets_table}")
+        training_sheets_count = int(ts_result[0]["cnt"]) if ts_result else 0
     except Exception as e:
-        assemblies_count = 0
+        training_sheets_count = 0
         issues.append(f"Cannot query training_sheets table: {e}")
 
     # Training sheets by status
-    assemblies_by_status = {}
+    ts_by_status = {}
     try:
         status_result = sql_service.execute(
             f"SELECT status, COUNT(*) as cnt FROM {training_sheets_table} GROUP BY status"
         )
         for row in status_result:
-            assemblies_by_status[row["status"]] = int(row["cnt"])
+            ts_by_status[row["status"]] = int(row["cnt"])
     except Exception:
         pass
 
-    if assemblies_by_status.get("assembling", 0) > 0:
-        issues.append(f"{assemblies_by_status['assembling']} assemblies stuck in 'assembling' status")
-        recommendations.append("Check assembly jobs for errors")
+    if ts_by_status.get("assembling", 0) > 0:
+        issues.append(f"{ts_by_status['assembling']} training sheets stuck in 'assembling' status")
+        recommendations.append("Check training sheet generation jobs for errors")
 
-    if sheets_with_templates > 0 and assemblies_count == 0:
-        issues.append("Sheets have templates but no assemblies created")
-        recommendations.append("Run assemble on sheets to create training datasets")
+    if sheets_with_templates > 0 and training_sheets_count == 0:
+        issues.append("Sheets have templates but no training sheets created")
+        recommendations.append("Generate training sheets from sheets to create Q&A datasets")
 
-    # Q&A pairs by review status (formerly assembly_rows by response_source)
+    # Q&A pairs by review status
     qa_pairs_table = settings.get_table("qa_pairs")
     qa_pairs_by_status = {}
     try:
@@ -187,7 +187,7 @@ async def diagnose_data_flow():
         recommendations.append("Approve more Q&A pairs in Label stage before training")
 
     # Check if training can proceed
-    if assemblies_by_status.get("review", 0) > 0 and approved_count >= 10:
+    if ts_by_status.get("review", 0) > 0 and approved_count >= 10:
         recommendations.append("Ready to train! Go to Train stage to configure fine-tuning")
 
     return DataFlowDiagnostic(
@@ -195,19 +195,19 @@ async def diagnose_data_flow():
         lakebase_initialized=lakebase_initialized,
         sheets_count=sheets_count,
         sheets_with_templates=sheets_with_templates,
-        training_sheets_count=assemblies_count,
-        training_sheets_by_status=assemblies_by_status,
+        training_sheets_count=training_sheets_count,
+        training_sheets_by_status=ts_by_status,
         qa_pairs_by_review_status=qa_pairs_by_status,
         data_flow_issues=issues,
         recommendations=recommendations,
     )
 
 
-@router.get("/debug/assembly/{assembly_id}/trace")
-async def trace_assembly(assembly_id: str):
-    """Trace a specific assembly's data flow.
+@router.get("/debug/training-sheet/{training_sheet_id}/trace")
+async def trace_training_sheet(training_sheet_id: str):
+    """Trace a specific training sheet's data flow.
 
-    Shows the complete path from sheet -> template -> assembly rows.
+    Shows the complete path from sheet -> template -> Q&A pairs.
     """
     sql_service = get_sql_service()
     settings = get_settings()
@@ -218,10 +218,10 @@ async def trace_assembly(assembly_id: str):
 
     # Get training sheet
     ts_result = sql_service.execute(
-        f"SELECT * FROM {training_sheets_table} WHERE id = '{assembly_id}'"
+        f"SELECT * FROM {training_sheets_table} WHERE id = '{training_sheet_id}'"
     )
     if not ts_result:
-        return {"error": f"Training Sheet {assembly_id} not found"}
+        return {"error": f"Training Sheet {training_sheet_id} not found"}
 
     training_sheet = ts_result[0]
 
@@ -239,7 +239,7 @@ async def trace_assembly(assembly_id: str):
             COUNT(*) as count,
             SUM(CASE WHEN quality_flags IS NOT NULL AND SIZE(quality_flags) > 0 THEN 1 ELSE 0 END) as flagged
         FROM {qa_pairs_table}
-        WHERE training_sheet_id = '{assembly_id}'
+        WHERE training_sheet_id = '{training_sheet_id}'
         GROUP BY review_status
     """)
 
@@ -248,14 +248,14 @@ async def trace_assembly(assembly_id: str):
         SELECT sequence_number, SUBSTRING(CAST(messages AS STRING), 1, 100) as messages_preview,
                review_status, quality_flags, quality_score
         FROM {qa_pairs_table}
-        WHERE training_sheet_id = '{assembly_id}'
+        WHERE training_sheet_id = '{training_sheet_id}'
         ORDER BY sequence_number
         LIMIT 5
     """)
 
     return {
         "training_sheet": {
-            "id": assembly_id,
+            "id": training_sheet_id,
             "status": training_sheet.get("status"),
             "generated_count": training_sheet.get("generated_count"),
             "created_at": str(training_sheet.get("created_at")),
@@ -307,7 +307,7 @@ class SeedTestDataResponse(BaseModel):
     success: bool = True
     sheets_created: int = 1
     templates_created: int = 1
-    assemblies_created: int = 1
+    training_sheets_created: int = 1
     message: str = "Test data seeded successfully!"
     errors: list[str] = []
 
@@ -317,7 +317,7 @@ class SeedTestDataResponse(BaseModel):
                 "success": True,
                 "sheets_created": 1,
                 "templates_created": 1,
-                "assemblies_created": 1,
+                "training_sheets_created": 1,
                 "message": "Test data seeded successfully!",
                 "errors": []
             }
@@ -332,7 +332,7 @@ async def seed_test_data():
     Creates:
     - 1 sample sheet pointing to a synthetic defect detection table
     - 1 sample template for defect classification
-    - 1 sample assembly (training sheet) with Q&A pairs
+    - 1 sample training sheet with Q&A pairs
 
     Use this to quickly test the DATA → GENERATE → LABEL workflow.
     """
@@ -347,7 +347,7 @@ async def seed_test_data():
 
     sheets_created = 0
     templates_created = 0
-    assemblies_created = 0
+    training_sheets_created = 0
 
     # 1. Create sample sheet
     sheet_id = f"sheet-test-{uuid.uuid4().hex[:8]}"
@@ -425,7 +425,7 @@ async def seed_test_data():
         errors.append(f"Template creation failed: {str(e)}")
         logger.error(f"Failed to create test template: {e}")
 
-    # 3. Create sample training sheet (assembly) - matching actual schema
+    # 3. Create sample training sheet - matching actual schema
     training_sheet_id = f"ts-test-{uuid.uuid4().hex[:8]}"
     training_sheets_table = settings.get_table("training_sheets")
     qa_pairs_table = settings.get_table("qa_pairs")
@@ -524,7 +524,7 @@ async def seed_test_data():
             """
             sql_service.execute_update(qa_sql)
 
-        assemblies_created = 1
+        training_sheets_created = 1
         logger.info(f"✓ Created test training sheet with 3 Q&A pairs: {training_sheet_id}")
 
     except Exception as e:
@@ -538,7 +538,7 @@ async def seed_test_data():
         success=success,
         sheets_created=sheets_created,
         templates_created=templates_created,
-        assemblies_created=assemblies_created,
+        training_sheets_created=training_sheets_created,
         message=message,
         errors=errors,
     )
@@ -566,7 +566,7 @@ class InferenceTestResponse(BaseModel):
 async def test_inference(request: InferenceTestRequest):
     """Test AI inference directly.
 
-    Useful for debugging why AI generation fails during assembly.
+    Useful for debugging why AI generation fails during training sheet generation.
     """
     inference_service = get_inference_service()
 

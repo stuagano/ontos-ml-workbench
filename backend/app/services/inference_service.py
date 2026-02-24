@@ -387,7 +387,7 @@ Output:"""
         max_tokens: int = 1024,
     ) -> dict[str, Any]:
         """
-        Direct chat completion for testing and assembly generation.
+        Direct chat completion for testing and training sheet generation.
 
         Args:
             messages: List of message dicts with 'role' and 'content'

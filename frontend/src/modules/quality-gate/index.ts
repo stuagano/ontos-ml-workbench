@@ -18,7 +18,7 @@ export const qualityGateModule: OntosModule = {
 
   hooks: {
     canActivate: (context) => {
-      return !!context.assemblyId;
+      return !!context.trainingSheetId;
     },
   },
 

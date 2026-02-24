@@ -36,19 +36,19 @@ import type {
   FineTuningExportRequest,
   FineTuningExportResponse,
   ColumnDefinition,
-  // Template Config & Assembly types (GCP pattern)
+  // Template Config & Training Sheet types (GCP pattern)
   TemplateConfig,
   TemplateConfigAttachRequest,
-  AssembleRequest,
-  AssembleResponse,
-  AssembledDataset,
-  AssembledRow,
-  AssemblyPreviewResponse,
-  AssembledRowUpdateRequest,
-  AssemblyGenerateRequest,
-  AssemblyGenerateResponse,
-  AssemblyExportRequest,
-  AssemblyExportResponse,
+  CreateTrainingSheetRequest,
+  CreateTrainingSheetResponse,
+  TrainingSheet,
+  QAPairRow,
+  TrainingSheetPreviewResponse,
+  QAPairUpdateRequest,
+  TrainingSheetGenerateRequest,
+  TrainingSheetGenerateResponse,
+  TrainingSheetExportRequest,
+  TrainingSheetExportResponse,
   // Labeling types
   LabelingJob,
   LabelingJobCreateRequest,
@@ -907,7 +907,7 @@ export async function createSheet(data: SheetCreateRequest): Promise<Sheet> {
  */
 export async function updateSheet(
   id: string,
-  data: { name?: string; description?: string },
+  data: { name?: string; description?: string; join_config?: string },
 ): Promise<Sheet> {
   return fetchJson(`${API_BASE}/sheets/${id}`, {
     method: "PUT",
@@ -1046,7 +1046,7 @@ export async function exportForFineTuning(
 }
 
 // ============================================================================
-// Template Config & Assembly (GCP Vertex AI Pattern)
+// Template Config & Training Sheet (GCP Vertex AI Pattern)
 // ============================================================================
 
 /**
@@ -1082,73 +1082,121 @@ export async function getSheetTemplate(
 }
 
 /**
- * Assemble a sheet into prompt/response pairs
- * Following GCP Vertex AI pattern: dataset.assemble()
+ * Generate a training sheet from a sheet's data + template
  */
-export async function assembleSheet(
+export async function generateTrainingSheet(
   sheetId: string,
-  request?: AssembleRequest,
-): Promise<AssembleResponse> {
-  return fetchJson(`${API_BASE}/sheets/${sheetId}/assemble`, {
+  request?: CreateTrainingSheetRequest,
+): Promise<CreateTrainingSheetResponse> {
+  return fetchJson(`${API_BASE}/sheets/${sheetId}/generate-training-sheet`, {
     method: "POST",
     body: JSON.stringify(request || {}),
   });
 }
 
+// ============================================================================
+// Multi-Source Join Operations
+// ============================================================================
+
 /**
- * List all assemblies for a sheet
+ * Suggest join keys between two UC tables.
+ * Uses layered scoring: name matching + type compatibility + value overlap.
  */
-export async function listSheetAssemblies(
-  sheetId: string,
-): Promise<{ assemblies: AssembledDataset[] }> {
-  return fetchJson(`${API_BASE}/sheets/${sheetId}/assemblies`);
+export async function suggestJoinKeys(request: {
+  source_table: string;
+  target_table: string;
+  sample_size?: number;
+}): Promise<import("../types").SuggestJoinKeysResponse> {
+  return fetchJson(`${API_BASE}/sheets/suggest-join-keys`, {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
 }
 
 /**
- * List all assemblies
+ * Preview a JOIN between multiple tables.
+ * Returns preview rows, match stats, and generated SQL.
  */
-export async function listAssemblies(params?: {
+export async function previewJoin(request: {
+  sources: {
+    sourceTable: string;
+    role?: string;
+    alias?: string;
+    joinKeys?: string[];
+    selectedColumns?: string[];
+  }[];
+  joinConfig: {
+    keyMappings: import("../types").JoinKeyMapping[];
+    joinType: "inner" | "left" | "full";
+    timeWindow?: {
+      enabled: boolean;
+      column1: string;
+      column2: string;
+      windowMinutes: number;
+    };
+  };
+  limit?: number;
+}): Promise<import("../types").PreviewJoinResponse> {
+  return fetchJson(`${API_BASE}/sheets/preview-join`, {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
+
+/**
+ * List all training sheets for a sheet
+ */
+export async function listSheetTrainingSheets(
+  sheetId: string,
+): Promise<{ training_sheets: TrainingSheet[] }> {
+  return fetchJson(`${API_BASE}/sheets/${sheetId}/training-sheets`);
+}
+
+/**
+ * List all training sheets
+ */
+export async function listTrainingSheets(params?: {
   status?: string;
   limit?: number;
-}): Promise<AssembledDataset[]> {
+}): Promise<TrainingSheet[]> {
   const query = new URLSearchParams();
   if (params?.status) query.append("status", params.status);
   if (params?.limit) query.append("limit", params.limit.toString());
   return fetchJson(
-    `${API_BASE}/assemblies/list${query.toString() ? `?${query}` : ""}`,
+    `${API_BASE}/training-sheets/list${query.toString() ? `?${query}` : ""}`,
   );
 }
 
 /**
- * Get an assembled dataset by ID
+ * Get a training sheet by ID
  */
-export async function getAssembly(
-  assemblyId: string,
-): Promise<AssembledDataset> {
-  return fetchJson(`${API_BASE}/assemblies/${assemblyId}`);
+export async function getTrainingSheet(
+  trainingSheetId: string,
+): Promise<TrainingSheet> {
+  return fetchJson(`${API_BASE}/training-sheets/${trainingSheetId}`);
 }
 
 /**
- * Delete an assembled dataset
+ * Delete a training sheet
  */
-export async function deleteAssembly(assemblyId: string): Promise<void> {
-  return fetchJson(`${API_BASE}/assemblies/${assemblyId}`, {
+export async function deleteTrainingSheet(trainingSheetId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/training-sheets/${trainingSheetId}`, {
     method: "DELETE",
   });
 }
 
 /**
- * Preview assembled rows with optional filtering
+ * Preview training sheet rows with optional filtering
  */
-export async function previewAssembly(
-  assemblyId: string,
+export async function previewTrainingSheet(
+  trainingSheetId: string,
   params?: {
     offset?: number;
     limit?: number;
     response_source?: string;
     flagged_only?: boolean;
   },
-): Promise<AssemblyPreviewResponse> {
+): Promise<TrainingSheetPreviewResponse> {
   const queryParams = new URLSearchParams();
   if (params?.offset !== undefined)
     queryParams.append("offset", String(params.offset));
@@ -1162,45 +1210,45 @@ export async function previewAssembly(
   }
   const query = queryParams.toString();
   return fetchJson(
-    `${API_BASE}/assemblies/${assemblyId}/preview${query ? `?${query}` : ""}`,
+    `${API_BASE}/training-sheets/${trainingSheetId}/preview${query ? `?${query}` : ""}`,
   );
 }
 
 /**
- * Update an assembled row (for labeling/verification)
+ * Update a Q&A pair (for labeling/verification)
  */
-export async function updateAssembledRow(
-  assemblyId: string,
+export async function updateQAPair(
+  trainingSheetId: string,
   rowIndex: number,
-  request: AssembledRowUpdateRequest,
-): Promise<AssembledRow> {
-  return fetchJson(`${API_BASE}/assemblies/${assemblyId}/rows/${rowIndex}`, {
+  request: QAPairUpdateRequest,
+): Promise<QAPairRow> {
+  return fetchJson(`${API_BASE}/training-sheets/${trainingSheetId}/rows/${rowIndex}`, {
     method: "PUT",
     body: JSON.stringify(request),
   });
 }
 
 /**
- * Generate AI responses for assembled rows
+ * Generate AI responses for training sheet rows
  */
-export async function generateAssemblyResponses(
-  assemblyId: string,
-  request?: AssemblyGenerateRequest,
-): Promise<AssemblyGenerateResponse> {
-  return fetchJson(`${API_BASE}/assemblies/${assemblyId}/generate`, {
+export async function generateResponses(
+  trainingSheetId: string,
+  request?: TrainingSheetGenerateRequest,
+): Promise<TrainingSheetGenerateResponse> {
+  return fetchJson(`${API_BASE}/training-sheets/${trainingSheetId}/generate`, {
     method: "POST",
     body: JSON.stringify(request || {}),
   });
 }
 
 /**
- * Export assembly for fine-tuning
+ * Export training sheet for fine-tuning
  */
-export async function exportAssembly(
-  assemblyId: string,
-  request: AssemblyExportRequest,
-): Promise<AssemblyExportResponse> {
-  return fetchJson(`${API_BASE}/assemblies/${assemblyId}/export`, {
+export async function exportTrainingSheet(
+  trainingSheetId: string,
+  request: TrainingSheetExportRequest,
+): Promise<TrainingSheetExportResponse> {
+  return fetchJson(`${API_BASE}/training-sheets/${trainingSheetId}/export`, {
     method: "POST",
     body: JSON.stringify(request),
   });

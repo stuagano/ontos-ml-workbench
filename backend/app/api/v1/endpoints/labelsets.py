@@ -91,6 +91,15 @@ async def create_labelset(
     )
     tags_json = json.dumps(labelset.tags) if labelset.tags else None
 
+    esc_name = labelset.name.replace("'", "''")
+    esc_desc = labelset.description.replace("'", "''") if labelset.description else None
+    esc_classes = label_classes_json.replace("'", "''")
+    esc_schema = response_schema_json.replace("'", "''") if response_schema_json else None
+    esc_allowed = allowed_uses_json.replace("'", "''") if allowed_uses_json else None
+    esc_prohibited = prohibited_uses_json.replace("'", "''") if prohibited_uses_json else None
+    esc_tags = tags_json.replace("'", "''") if tags_json else None
+    esc_use_case = labelset.use_case.replace("'", "''") if labelset.use_case else None
+
     sql = f"""
         INSERT INTO {LABELSETS_TABLE} (
             id, name, description, label_classes, response_schema, label_type,
@@ -98,21 +107,21 @@ async def create_labelset(
             created_by, created_at, updated_at, tags, use_case
         ) VALUES (
             '{labelset_id}',
-            '{labelset.name.replace("'", "''")}',
-            {f"'{labelset.description.replace("'", "''")}'" if labelset.description else "NULL"},
-            '{label_classes_json.replace("'", "''")}',
-            {f"'{response_schema_json.replace("'", "''")}'" if response_schema_json else "NULL"},
+            '{esc_name}',
+            {f"'{esc_desc}'" if esc_desc else "NULL"},
+            '{esc_classes}',
+            {f"'{esc_schema}'" if esc_schema else "NULL"},
             '{labelset.label_type}',
             0,
             'draft',
             '1.0.0',
-            {f"'{allowed_uses_json.replace("'", "''")}'" if allowed_uses_json else "NULL"},
-            {f"'{prohibited_uses_json.replace("'", "''")}'" if prohibited_uses_json else "NULL"},
+            {f"'{esc_allowed}'" if esc_allowed else "NULL"},
+            {f"'{esc_prohibited}'" if esc_prohibited else "NULL"},
             '{created_by}',
             '{now}',
             '{now}',
-            {f"'{tags_json.replace("'", "''")}'" if tags_json else "NULL"},
-            {f"'{labelset.use_case.replace("'", "''")}'" if labelset.use_case else "NULL"}
+            {f"'{esc_tags}'" if esc_tags else "NULL"},
+            {f"'{esc_use_case}'" if esc_use_case else "NULL"}
         )
     """
 
@@ -237,9 +246,11 @@ async def update_labelset(labelset_id: str, updates: LabelsetUpdate) -> Labelset
         update_fields.append(f"prohibited_uses = '{escaped_prohibited}'")
     if updates.tags is not None:
         tags_json = json.dumps(updates.tags)
-        update_fields.append(f"tags = '{tags_json.replace("'", "''")}'")
+        escaped_tags = tags_json.replace("'", "''")
+        update_fields.append(f"tags = '{escaped_tags}'")
     if updates.use_case is not None:
-        update_fields.append(f"use_case = '{updates.use_case.replace("'", "''")}'")
+        escaped_use_case = updates.use_case.replace("'", "''")
+        update_fields.append(f"use_case = '{escaped_use_case}'")
     if updates.version is not None:
         update_fields.append(f"version = '{updates.version}'")
 
@@ -318,9 +329,11 @@ async def list_labelsets(
     if status:
         where_conditions.append(f"status = '{status}'")
     if use_case:
-        where_conditions.append(f"use_case = '{use_case.replace("'", "''")}'")
+        esc_uc = use_case.replace("'", "''")
+        where_conditions.append(f"use_case = '{esc_uc}'")
     if label_type:
-        where_conditions.append(f"label_type = '{label_type.replace("'", "''")}'")
+        esc_lt = label_type.replace("'", "''")
+        where_conditions.append(f"label_type = '{esc_lt}'")
     if tags:
         # Check if any tag matches (JSON array contains)
         tag_conditions = [f"tags LIKE '%\"{tag}\"%'" for tag in tags]
@@ -546,7 +559,7 @@ async def get_labelset_stats(labelset_id: str) -> LabelsetStats:
         labelset_id: Labelset ID
 
     Returns:
-        Usage statistics including canonical label count, assemblies using, etc.
+        Usage statistics including canonical label count, training sheets using, etc.
     """
     _sql = get_sql_service()
 
@@ -562,9 +575,9 @@ async def get_labelset_stats(labelset_id: str) -> LabelsetStats:
     canonical_result = _sql.execute(canonical_count_sql)
     canonical_count = canonical_result[0]["count"] if canonical_result else 0
 
-    # TODO: Count assemblies using this labelset (when Assembly-Labelset link is implemented)
+    # TODO: Count training sheets using this labelset (when TrainingSheet-Labelset link is implemented)
     # For now, return 0
-    assemblies_count = 0
+    training_sheets_count = 0
 
     # TODO: Count training jobs using this labelset (when training jobs track labelsets)
     training_jobs_count = 0
@@ -583,7 +596,7 @@ async def get_labelset_stats(labelset_id: str) -> LabelsetStats:
         labelset_name=labelset.name,
         canonical_label_count=canonical_count,
         total_label_classes=len(labelset.label_classes),
-        assemblies_using_count=assemblies_count,
+        training_sheets_using_count=training_sheets_count,
         training_jobs_count=training_jobs_count,
-        coverage_stats=None,  # TODO: Calculate coverage across assemblies
+        coverage_stats=None,  # TODO: Calculate coverage across training sheets
     )

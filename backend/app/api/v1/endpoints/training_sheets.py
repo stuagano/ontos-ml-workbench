@@ -1,4 +1,4 @@
-"""Assembly API endpoints - operations on assembled datasets (materialized prompt/response pairs)."""
+"""Training Sheet API endpoints - operations on training sheets (materialized Q&A pairs)."""
 
 import json
 import logging
@@ -11,16 +11,16 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.core.config import get_settings
 from app.core.databricks import get_current_user, get_workspace_client
-from app.models.assembly import (
-    AssembledDataset,
-    AssembledRow,
-    AssemblyExportRequest,
-    AssemblyExportResponse,
-    AssemblyGenerateRequest,
-    AssemblyGenerateResponse,
-    AssemblyPreviewResponse,
-    AssemblyRowUpdate,
-    AssemblyStatus,
+from app.models.training_sheet import (
+    TrainingSheet,
+    QAPairRow,
+    ExportRequest,
+    ExportResponse,
+    GenerateRequest,
+    GenerateResponse,
+    TrainingSheetPreviewResponse,
+    QAPairUpdate,
+    TrainingSheetStatus,
     ResponseSource,
 )
 from app.models.sheet import TemplateConfig
@@ -28,13 +28,13 @@ from app.services.inference_service import FewShotExample, get_inference_service
 from app.services.lakebase_service import get_lakebase_service
 from app.services.sql_service import get_sql_service
 
-router = APIRouter(prefix="/assemblies", tags=["assemblies"])
+router = APIRouter(prefix="/training-sheets", tags=["training-sheets"])
 logger = logging.getLogger(__name__)
 
 # Get fully qualified table names (PRD v2.3 - training_sheets + qa_pairs)
 _settings = get_settings()
-ASSEMBLIES_TABLE = _settings.get_table("training_sheets")
-ASSEMBLY_ROWS_TABLE = _settings.get_table("qa_pairs")
+TRAINING_SHEETS_TABLE = _settings.get_table("training_sheets")
+QA_PAIRS_TABLE = _settings.get_table("qa_pairs")
 
 # Lakebase service for fast reads
 _lakebase = get_lakebase_service()
@@ -47,10 +47,10 @@ def _escape_sql(value: str | None) -> str:
     return f"'{value.replace(chr(39), chr(39) + chr(39))}'"
 
 
-def _row_to_assembly(row: dict) -> AssembledDataset:
-    """Convert a database row to AssembledDataset.
+def _row_to_training_sheet(row: dict) -> TrainingSheet:
+    """Convert a database row to TrainingSheet.
 
-    Handles both old assemblies schema and new PRD v2.3 training_sheets schema.
+    Handles both old schema and new PRD v2.3 training_sheets schema.
     """
     template_config_data = row.get("template_config")
     if isinstance(template_config_data, str):
@@ -80,7 +80,7 @@ def _row_to_assembly(row: dict) -> AssembledDataset:
         template_config_dict["target_column"] = row["target_column"]
 
     # Handle different column names between old and new schemas
-    assembly_id = row.get("assembly_id") or row.get("id")
+    training_sheet_id = row.get("training_sheet_id") or row.get("id")
 
     # Calculate empty count (handle both int and str types from different backends)
     def to_int(value, default=0):
@@ -95,14 +95,14 @@ def _row_to_assembly(row: dict) -> AssembledDataset:
                 return default
         return default
 
-    # Map PRD v2.3 columns to old schema
+    # Map PRD v2.3 columns to schema
     total = to_int(row.get("total_rows") or row.get("total_items"), 0)
     ai_count = to_int(row.get("ai_generated_count") or row.get("generated_count"), 0)
     human_count = to_int(row.get("human_labeled_count") or row.get("approved_count"), 0)
     verified_count = to_int(row.get("human_verified_count") or row.get("auto_approved_count"), 0)
     empty_count = max(0, total - ai_count - human_count - verified_count)
 
-    # Map PRD v2.3 status values to old AssemblyStatus enum
+    # Map PRD v2.3 status values to TrainingSheetStatus enum
     status_value = row.get("status", "ready")
     status_mapping = {
         "generating": "assembling",
@@ -110,7 +110,7 @@ def _row_to_assembly(row: dict) -> AssembledDataset:
         "approved": "ready",
         "rejected": "failed",
         "exported": "archived",
-        # Old values pass through
+        # Direct values pass through
         "assembling": "assembling",
         "ready": "ready",
         "failed": "failed",
@@ -118,12 +118,12 @@ def _row_to_assembly(row: dict) -> AssembledDataset:
     }
     mapped_status = status_mapping.get(status_value, "ready")
 
-    return AssembledDataset(
-        id=assembly_id,
+    return TrainingSheet(
+        id=training_sheet_id,
         sheet_id=row["sheet_id"],
         sheet_name=row.get("sheet_name") or row.get("name"),  # PRD v2.3: "name" instead of "sheet_name"
         template_config=TemplateConfig(**template_config_dict),
-        status=AssemblyStatus(mapped_status),
+        status=TrainingSheetStatus(mapped_status),
         total_rows=total,
         ai_generated_count=ai_count,
         human_labeled_count=human_count,
@@ -138,10 +138,10 @@ def _row_to_assembly(row: dict) -> AssembledDataset:
     )
 
 
-def _row_to_assembled_row(row: dict) -> AssembledRow:
-    """Convert a database row to AssembledRow.
+def _row_to_qa_pair(row: dict) -> QAPairRow:
+    """Convert a database row to QAPairRow.
 
-    Handles both old schema (assembly_rows) and new PRD v2.3 (qa_pairs with messages).
+    Handles both old schema and new PRD v2.3 (qa_pairs with messages).
     """
     import base64
 
@@ -216,7 +216,7 @@ def _row_to_assembled_row(row: dict) -> AssembledRow:
         else:
             source_data = {}
 
-    return AssembledRow(
+    return QAPairRow(
         row_index=row_index,
         prompt=prompt,
         source_data=source_data,
@@ -235,29 +235,29 @@ def _row_to_assembled_row(row: dict) -> AssembledRow:
 
 
 # ============================================================================
-# Assembly CRUD
+# Training Sheet CRUD
 # ============================================================================
 
 
 @router.get("/list")
-async def list_assemblies(
-    status: AssemblyStatus | None = None,
+async def list_training_sheets(
+    status: TrainingSheetStatus | None = None,
     limit: int = Query(default=50, ge=1, le=200),
-) -> list[AssembledDataset]:
-    """List all assemblies, optionally filtered by status.
+) -> list[TrainingSheet]:
+    """List all training sheets, optionally filtered by status.
 
     Uses Lakebase for sub-10ms reads when available, falls back to Delta Lake.
     """
     # Try Lakebase first for fast reads
     if _lakebase.is_available:
-        logger.debug("Using Lakebase for list_assemblies")
-        rows = _lakebase.list_assemblies(
+        logger.debug("Using Lakebase for list_training_sheets")
+        rows = _lakebase.list_training_sheets(
             status=status.value if status else None,
             limit=limit,
         )
         # Only use Lakebase results if we got data; otherwise fall back to Delta
         if rows:
-            return [_row_to_assembly(row) for row in rows]
+            return [_row_to_training_sheet(row) for row in rows]
         # Fall through to Delta Lake if Lakebase returned no results
 
     # Fallback to Delta Lake
@@ -268,109 +268,107 @@ async def list_assemblies(
         conditions.append(f"status = '{status.value}'")
 
     where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-    sql = f"SELECT * FROM {ASSEMBLIES_TABLE} {where_clause} ORDER BY created_at DESC LIMIT {limit}"
+    sql = f"SELECT * FROM {TRAINING_SHEETS_TABLE} {where_clause} ORDER BY created_at DESC LIMIT {limit}"
 
-    logger.debug(f"Using Delta Lake for list_assemblies: {sql}")
+    logger.debug(f"Using Delta Lake for list_training_sheets: {sql}")
 
     try:
         rows = sql_service.execute(sql)
-        return [_row_to_assembly(row) for row in rows]
+        return [_row_to_training_sheet(row) for row in rows]
     except Exception as e:
-        # Handle missing table gracefully (PRD v2.3 renamed assemblies to training_sheets)
         if "TABLE_OR_VIEW_NOT_FOUND" in str(e) or "cannot be found" in str(e):
-            logger.warning(f"Assemblies table not found: {ASSEMBLIES_TABLE}. Returning empty list.")
+            logger.warning(f"Training sheets table not found: {TRAINING_SHEETS_TABLE}. Returning empty list.")
             return []
         raise
 
 
-@router.get("/{assembly_id}", response_model=AssembledDataset)
-async def get_assembly(assembly_id: str):
-    """Get an assembly by ID.
+@router.get("/{training_sheet_id}", response_model=TrainingSheet)
+async def get_training_sheet(training_sheet_id: str):
+    """Get a training sheet by ID.
 
     Uses Lakebase for sub-10ms reads when available, falls back to Delta Lake.
     """
     # Try Lakebase first for fast reads
     if _lakebase.is_available:
-        row = _lakebase.get_assembly(assembly_id)
+        row = _lakebase.get_training_sheet(training_sheet_id)
         if row:
-            return _row_to_assembly(row)
+            return _row_to_training_sheet(row)
         # Fall through to Delta Lake if not found in Lakebase
 
     # Fallback to Delta Lake
     sql_service = get_sql_service()
-    sql = f"SELECT * FROM {ASSEMBLIES_TABLE} WHERE id = '{assembly_id}'"
+    sql = f"SELECT * FROM {TRAINING_SHEETS_TABLE} WHERE id = '{training_sheet_id}'"
 
     try:
         rows = sql_service.execute(sql)
     except Exception as e:
-        # Handle missing table gracefully
         if "TABLE_OR_VIEW_NOT_FOUND" in str(e) or "cannot be found" in str(e):
-            raise HTTPException(status_code=404, detail="Assembly not found (table does not exist)")
+            raise HTTPException(status_code=404, detail="Training sheet not found (table does not exist)")
         raise
 
     if not rows:
-        raise HTTPException(status_code=404, detail="Assembly not found")
+        raise HTTPException(status_code=404, detail="Training sheet not found")
 
-    return _row_to_assembly(rows[0])
+    return _row_to_training_sheet(rows[0])
 
 
-@router.delete("/{assembly_id}", status_code=204)
-async def delete_assembly(assembly_id: str):
-    """Delete an assembly and its rows."""
+@router.delete("/{training_sheet_id}", status_code=204)
+async def delete_training_sheet(training_sheet_id: str):
+    """Delete a training sheet and its Q&A pairs."""
     sql_service = get_sql_service()
 
     # Verify exists
-    await get_assembly(assembly_id)
+    await get_training_sheet(training_sheet_id)
 
-    # Delete rows first (PRD v2.3: training_sheet_id)
+    # Delete Q&A pairs first
     sql_service.execute_update(
-        f"DELETE FROM {ASSEMBLY_ROWS_TABLE} WHERE training_sheet_id = '{assembly_id}'"
+        f"DELETE FROM {QA_PAIRS_TABLE} WHERE training_sheet_id = '{training_sheet_id}'"
     )
     # Delete training sheet
     sql_service.execute_update(
-        f"DELETE FROM {ASSEMBLIES_TABLE} WHERE id = '{assembly_id}'"
+        f"DELETE FROM {TRAINING_SHEETS_TABLE} WHERE id = '{training_sheet_id}'"
     )
 
 
 # ============================================================================
-# Assembly Row Operations
+# Q&A Pair Row Operations
 # ============================================================================
 
 
-@router.get("/{assembly_id}/preview", response_model=AssemblyPreviewResponse)
-async def get_assembly_preview(
-    assembly_id: str,
+@router.get("/{training_sheet_id}/preview", response_model=TrainingSheetPreviewResponse)
+async def get_training_sheet_preview(
+    training_sheet_id: str,
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
     response_source: ResponseSource | None = None,
     flagged_only: bool = False,
 ):
-    """Get preview of assembled rows with optional filtering.
+    """Get preview of Q&A pairs with optional filtering.
 
     Uses Lakebase for sub-10ms reads when available, falls back to Delta Lake.
     """
-    assembly = await get_assembly(assembly_id)
-    assembled_rows = []
+    training_sheet = await get_training_sheet(training_sheet_id)
+    qa_pair_rows = []
 
     # Try Lakebase first for fast reads
     if _lakebase.is_available:
-        rows = _lakebase.list_assembly_rows(
-            assembly_id=assembly_id,
+        rows = _lakebase.list_qa_pair_rows(
+            training_sheet_id=training_sheet_id,
             limit=limit,
             offset=offset,
             response_source=response_source.value if response_source else None,
             is_flagged=True if flagged_only else None,
         )
         if rows:
-            assembled_rows = [_row_to_assembled_row(row) for row in rows]
+            qa_pair_rows = [_row_to_qa_pair(row) for row in rows]
         # Fall through to Delta Lake if Lakebase returned no results
 
     # Fallback to Delta Lake if no results from Lakebase
-    if not assembled_rows:
+    if not qa_pair_rows:
         sql_service = get_sql_service()
 
-        # PRD v2.3: training_sheet_id instead of assembly_id, sequence_number instead of row_index
-        conditions = [f"training_sheet_id = '{assembly_id}'"]
+        # PRD v2.3: training_sheet_id, sequence_number
+        conditions = [f"training_sheet_id = '{training_sheet_id}'"]
         if response_source:
             # Map old response_source to new review_status
             if response_source.value == "ai_generated":
@@ -383,104 +381,104 @@ async def get_assembly_preview(
         where_clause = " AND ".join(conditions)
 
         query_sql = f"""
-        SELECT * FROM {ASSEMBLY_ROWS_TABLE}
+        SELECT * FROM {QA_PAIRS_TABLE}
         WHERE {where_clause}
         ORDER BY sequence_number
         LIMIT {limit} OFFSET {offset}
         """
         rows = sql_service.execute(query_sql)
-        assembled_rows = [_row_to_assembled_row(row) for row in rows]
+        qa_pair_rows = [_row_to_qa_pair(row) for row in rows]
 
     # Calculate empty count
-    empty_count = assembly.total_rows - (
-        assembly.ai_generated_count
-        + assembly.human_labeled_count
-        + assembly.human_verified_count
+    empty_count = training_sheet.total_rows - (
+        training_sheet.ai_generated_count
+        + training_sheet.human_labeled_count
+        + training_sheet.human_verified_count
     )
     if empty_count < 0:
         empty_count = 0
 
-    return AssemblyPreviewResponse(
-        assembly_id=assembly_id,
-        rows=assembled_rows,
-        total_rows=assembly.total_rows,
-        preview_rows=len(assembled_rows),
+    return TrainingSheetPreviewResponse(
+        training_sheet_id=training_sheet_id,
+        rows=qa_pair_rows,
+        total_rows=training_sheet.total_rows,
+        preview_rows=len(qa_pair_rows),
         offset=offset,
         limit=limit,
-        ai_generated_count=assembly.ai_generated_count,
-        human_labeled_count=assembly.human_labeled_count,
-        human_verified_count=assembly.human_verified_count,
-        flagged_count=assembly.flagged_count,
+        ai_generated_count=training_sheet.ai_generated_count,
+        human_labeled_count=training_sheet.human_labeled_count,
+        human_verified_count=training_sheet.human_verified_count,
+        flagged_count=training_sheet.flagged_count,
         empty_count=empty_count,
     )
 
 
-@router.get("/{assembly_id}/rows/{row_index}", response_model=AssembledRow)
-async def get_assembly_row(
-    assembly_id: str,
+@router.get("/{training_sheet_id}/rows/{row_index}", response_model=QAPairRow)
+async def get_qa_pair_row(
+    training_sheet_id: str,
     row_index: int,
 ):
-    """Get a single assembled row by index.
+    """Get a single Q&A pair by index.
 
     Uses Lakebase for sub-10ms reads when available, falls back to Delta Lake.
     """
-    # Verify assembly exists
-    await get_assembly(assembly_id)
+    # Verify training sheet exists
+    await get_training_sheet(training_sheet_id)
 
     # Try Lakebase first for fast reads
     if _lakebase.is_available:
-        row = _lakebase.get_assembly_row(assembly_id, row_index)
+        row = _lakebase.get_qa_pair_row(training_sheet_id, row_index)
         if row:
-            return _row_to_assembled_row(row)
+            return _row_to_qa_pair(row)
         raise HTTPException(
-            status_code=404, detail=f"Row {row_index} not found in assembly"
+            status_code=404, detail=f"Row {row_index} not found in training sheet"
         )
 
     # Fallback to Delta Lake (PRD v2.3: training_sheet_id, sequence_number)
     sql_service = get_sql_service()
     row_sql = f"""
-    SELECT * FROM {ASSEMBLY_ROWS_TABLE}
-    WHERE training_sheet_id = '{assembly_id}' AND sequence_number = {row_index}
+    SELECT * FROM {QA_PAIRS_TABLE}
+    WHERE training_sheet_id = '{training_sheet_id}' AND sequence_number = {row_index}
     """
     rows = sql_service.execute(row_sql)
 
     if not rows:
         raise HTTPException(
-            status_code=404, detail=f"Row {row_index} not found in assembly"
+            status_code=404, detail=f"Row {row_index} not found in training sheet"
         )
 
-    return _row_to_assembled_row(rows[0])
+    return _row_to_qa_pair(rows[0])
 
 
-@router.put("/{assembly_id}/rows/{row_index}", response_model=AssembledRow)
-async def update_assembly_row(
-    assembly_id: str,
+@router.put("/{training_sheet_id}/rows/{row_index}", response_model=QAPairRow)
+async def update_qa_pair(
+    training_sheet_id: str,
     row_index: int,
-    update: AssemblyRowUpdate,
+    update: QAPairUpdate,
 ):
     """
-    Update an assembled row (for labeling/verification).
+    Update a Q&A pair (for labeling/verification).
 
     When a response is provided, it's treated as a human label.
     """
     sql_service = get_sql_service()
     user = get_current_user()
 
-    # Verify assembly exists
-    assembly = await get_assembly(assembly_id)
+    # Verify training sheet exists
+    training_sheet = await get_training_sheet(training_sheet_id)
 
     # Get existing row (PRD v2.3: training_sheet_id, sequence_number)
     row_sql = f"""
-    SELECT * FROM {ASSEMBLY_ROWS_TABLE}
-    WHERE training_sheet_id = '{assembly_id}' AND sequence_number = {row_index}
+    SELECT * FROM {QA_PAIRS_TABLE}
+    WHERE training_sheet_id = '{training_sheet_id}' AND sequence_number = {row_index}
     """
     rows = sql_service.execute(row_sql)
     if not rows:
         raise HTTPException(
-            status_code=404, detail=f"Row {row_index} not found in assembly"
+            status_code=404, detail=f"Row {row_index} not found in training sheet"
         )
 
-    existing = _row_to_assembled_row(rows[0])
+    existing = _row_to_qa_pair(rows[0])
     existing_row_data = rows[0]
 
     # Build update fields for PRD v2.3 qa_pairs schema
@@ -544,23 +542,23 @@ async def update_assembly_row(
 
     # Update row (PRD v2.3: training_sheet_id, sequence_number)
     update_sql = f"""
-    UPDATE {ASSEMBLY_ROWS_TABLE}
+    UPDATE {QA_PAIRS_TABLE}
     SET {", ".join(updates)}
-    WHERE training_sheet_id = '{assembly_id}' AND sequence_number = {row_index}
+    WHERE training_sheet_id = '{training_sheet_id}' AND sequence_number = {row_index}
     """
     try:
         sql_service.execute_update(update_sql)
     except Exception as e:
-        logger.error(f"Failed to update row {row_index} in assembly {assembly_id}: {e}")
+        logger.error(f"Failed to update row {row_index} in training sheet {training_sheet_id}: {e}")
         logger.error(f"SQL was: {update_sql[:500]}...")
         raise HTTPException(status_code=500, detail=f"Database update failed: {str(e)}")
 
-    # Update assembly stats
+    # Update training sheet stats
     if stats_updates:
         stats_sql = f"""
-        UPDATE {ASSEMBLIES_TABLE}
+        UPDATE {TRAINING_SHEETS_TABLE}
         SET {", ".join(stats_updates)}, updated_at = current_timestamp()
-        WHERE id = '{assembly_id}'
+        WHERE id = '{training_sheet_id}'
         """
         sql_service.execute_update(stats_sql)
 
@@ -571,8 +569,8 @@ async def update_assembly_row(
             updated_rows = sql_service.execute(row_sql)
             if updated_rows:
                 row_dict = updated_rows[0]
-                _lakebase.update_assembly_row(
-                    assembly_id=assembly_id,
+                _lakebase.update_qa_pair_row(
+                    training_sheet_id=training_sheet_id,
                     row_index=row_index,
                     updates={
                         "response": row_dict.get("response"),
@@ -585,15 +583,15 @@ async def update_assembly_row(
                         "flag_reason": row_dict.get("flag_reason"),
                     }
                 )
-            # Also update assembly stats in Lakebase
+            # Also update training sheet stats in Lakebase
             if stats_updates:
-                _lakebase.update_assembly_stats(assembly_id)
+                _lakebase.update_training_sheet_stats(training_sheet_id)
         except Exception as lb_err:
             logger.warning(f"Lakebase sync failed for row update: {lb_err}")
 
     # Return updated row
     rows = sql_service.execute(row_sql)
-    return _row_to_assembled_row(rows[0])
+    return _row_to_qa_pair(rows[0])
 
 
 # ============================================================================
@@ -601,13 +599,13 @@ async def update_assembly_row(
 # ============================================================================
 
 
-@router.post("/{assembly_id}/generate", response_model=AssemblyGenerateResponse)
+@router.post("/{training_sheet_id}/generate", response_model=GenerateResponse)
 async def generate_responses(
-    assembly_id: str,
-    request: AssemblyGenerateRequest | None = None,
+    training_sheet_id: str,
+    request: GenerateRequest | None = None,
 ):
     """
-    Generate AI responses for assembled rows.
+    Generate AI responses for Q&A pairs.
 
     Uses the template's model config and optionally includes
     human-labeled rows as few-shot examples.
@@ -615,11 +613,11 @@ async def generate_responses(
     sql_service = get_sql_service()
     inference_service = get_inference_service()
 
-    assembly = await get_assembly(assembly_id)
-    template = assembly.template_config
+    training_sheet = await get_training_sheet(training_sheet_id)
+    template = training_sheet.template_config
 
     # Build query for rows to generate (PRD v2.3: training_sheet_id, sequence_number, review_status)
-    conditions = [f"training_sheet_id = '{assembly_id}'"]
+    conditions = [f"training_sheet_id = '{training_sheet_id}'"]
 
     if request and request.row_indices:
         indices_str = ", ".join(str(i) for i in request.row_indices)
@@ -633,15 +631,15 @@ async def generate_responses(
 
     # Get rows to generate
     query_sql = f"""
-    SELECT * FROM {ASSEMBLY_ROWS_TABLE}
+    SELECT * FROM {QA_PAIRS_TABLE}
     WHERE {where_clause}
     ORDER BY sequence_number
     """
     rows_to_generate = sql_service.execute(query_sql)
 
     if not rows_to_generate:
-        return AssemblyGenerateResponse(
-            assembly_id=assembly_id,
+        return GenerateResponse(
+            training_sheet_id=training_sheet_id,
             generated_count=0,
             failed_count=0,
             errors=None,
@@ -651,8 +649,8 @@ async def generate_responses(
     few_shot_examples: list[FewShotExample] = []
     if request is None or request.include_examples:
         examples_sql = f"""
-        SELECT messages FROM {ASSEMBLY_ROWS_TABLE}
-        WHERE training_sheet_id = '{assembly_id}'
+        SELECT messages FROM {QA_PAIRS_TABLE}
+        WHERE training_sheet_id = '{training_sheet_id}'
           AND review_status = 'approved'
         ORDER BY reviewed_at DESC
         LIMIT 10
@@ -684,7 +682,7 @@ async def generate_responses(
                 )
 
         logger.info(
-            f"Collected {len(few_shot_examples)} few-shot examples for assembly {assembly_id}"
+            f"Collected {len(few_shot_examples)} few-shot examples for training sheet {training_sheet_id}"
         )
 
     # Generate responses
@@ -749,11 +747,11 @@ async def generate_responses(
             messages_json = json.dumps(new_messages).replace("\\", "\\\\").replace("'", "''")
 
             update_sql = f"""
-            UPDATE {ASSEMBLY_ROWS_TABLE}
+            UPDATE {QA_PAIRS_TABLE}
             SET messages = '{messages_json}',
                 review_status = 'pending',
                 updated_at = current_timestamp()
-            WHERE training_sheet_id = '{assembly_id}' AND sequence_number = {row["sequence_number"]}
+            WHERE training_sheet_id = '{training_sheet_id}' AND sequence_number = {row["sequence_number"]}
             """
             sql_service.execute_update(update_sql)
             generated_count += 1
@@ -768,21 +766,21 @@ async def generate_responses(
             )
             logger.warning(f"Failed to generate for row {row.get('sequence_number')}: {e}")
 
-    # Update assembly stats
+    # Update training sheet stats
     stats_sql = f"""
-    UPDATE {ASSEMBLIES_TABLE}
+    UPDATE {TRAINING_SHEETS_TABLE}
     SET ai_generated_count = ai_generated_count + {generated_count},
         updated_at = current_timestamp()
-    WHERE id = '{assembly_id}'
+    WHERE id = '{training_sheet_id}'
     """
     sql_service.execute_update(stats_sql)
 
     logger.info(
-        f"Generated {generated_count} responses for assembly {assembly_id}, {failed_count} failed"
+        f"Generated {generated_count} responses for training sheet {training_sheet_id}, {failed_count} failed"
     )
 
-    return AssemblyGenerateResponse(
-        assembly_id=assembly_id,
+    return GenerateResponse(
+        training_sheet_id=training_sheet_id,
         generated_count=generated_count,
         failed_count=failed_count,
         errors=errors if errors else None,
@@ -794,21 +792,21 @@ async def generate_responses(
 # ============================================================================
 
 
-@router.post("/{assembly_id}/export", response_model=AssemblyExportResponse)
-async def export_assembly(
-    assembly_id: str,
-    request: AssemblyExportRequest,
+@router.post("/{training_sheet_id}/export", response_model=ExportResponse)
+async def export_training_sheet(
+    training_sheet_id: str,
+    request: ExportRequest,
 ):
     """
-    Export assembly as a fine-tuning dataset in JSONL format.
+    Export training sheet as a fine-tuning dataset in JSONL format.
 
     Exports human-labeled/verified rows in a format suitable for
     fine-tuning LLMs (OpenAI chat, Anthropic, or Gemini format).
     """
     sql_service = get_sql_service()
 
-    assembly = await get_assembly(assembly_id)
-    template = assembly.template_config
+    training_sheet = await get_training_sheet(training_sheet_id)
+    template = training_sheet.template_config
 
     # Determine which response sources to include
     include_sources = request.include_sources
@@ -819,7 +817,7 @@ async def export_assembly(
 
     # Build query
     conditions = [
-        f"assembly_id = '{assembly_id}'",
+        f"training_sheet_id = '{training_sheet_id}'",
         f"response_source IN ({sources_str})",
         "response IS NOT NULL",
     ]
@@ -830,7 +828,7 @@ async def export_assembly(
     where_clause = " AND ".join(conditions)
 
     query_sql = f"""
-    SELECT * FROM {ASSEMBLY_ROWS_TABLE}
+    SELECT * FROM {QA_PAIRS_TABLE}
     WHERE {where_clause}
     ORDER BY row_index
     """
@@ -942,7 +940,7 @@ async def export_assembly(
         val_count = len(val_examples)
 
         logger.info(
-            f"Exported assembly {assembly_id} with train/val split: "
+            f"Exported training sheet {training_sheet_id} with train/val split: "
             f"{train_count} train, {val_count} val (seed={request.random_seed})"
         )
     else:
@@ -961,11 +959,11 @@ async def export_assembly(
             )
 
         logger.info(
-            f"Exported {len(examples)} examples from assembly {assembly_id} to {request.volume_path}"
+            f"Exported {len(examples)} examples from training sheet {training_sheet_id} to {request.volume_path}"
         )
 
-    return AssemblyExportResponse(
-        assembly_id=assembly_id,
+    return ExportResponse(
+        training_sheet_id=training_sheet_id,
         volume_path=request.volume_path,
         examples_exported=len(examples),
         format=request.format,

@@ -41,7 +41,7 @@ async def create_curated_dataset(
     now = datetime.now(timezone.utc)
 
     # Serialize JSON fields
-    assembly_ids_json = json.dumps(dataset.assembly_ids)
+    training_sheet_ids_json = json.dumps(dataset.training_sheet_ids)
     split_config_json = json.dumps(
         dataset.split_config.model_dump() if dataset.split_config else None
     )
@@ -52,7 +52,7 @@ async def create_curated_dataset(
     _sql.execute(
         f"""
         INSERT INTO {_lakebase_table('curated_datasets')} (
-            id, name, description, labelset_id, assembly_ids,
+            id, name, description, labelset_id, training_sheet_ids,
             split_config, quality_threshold, status, version,
             created_at, created_by, tags, use_case,
             intended_models, prohibited_uses, example_count
@@ -63,7 +63,7 @@ async def create_curated_dataset(
             dataset.name,
             dataset.description,
             dataset.labelset_id,
-            assembly_ids_json,
+            training_sheet_ids_json,
             split_config_json,
             dataset.quality_threshold,
             DatasetStatus.DRAFT.value,
@@ -99,7 +99,7 @@ async def get_curated_dataset(dataset_id: str):
     row = result[0]
 
     # Parse JSON fields
-    assembly_ids = json.loads(row["assembly_ids"]) if row["assembly_ids"] else []
+    training_sheet_ids = json.loads(row["training_sheet_ids"]) if row["training_sheet_ids"] else []
     split_config = json.loads(row["split_config"]) if row["split_config"] else None
     tags = json.loads(row["tags"]) if row["tags"] else []
     intended_models = (
@@ -117,7 +117,7 @@ async def get_curated_dataset(dataset_id: str):
         name=row["name"],
         description=row.get("description"),
         labelset_id=row.get("labelset_id"),
-        assembly_ids=assembly_ids,
+        training_sheet_ids=training_sheet_ids,
         split_config=split_config,
         quality_threshold=row["quality_threshold"],
         status=row["status"],
@@ -164,9 +164,9 @@ async def update_curated_dataset(
         update_fields.append("description = ?")
         params.append(updates.description)
 
-    if updates.assembly_ids is not None:
-        update_fields.append("assembly_ids = ?")
-        params.append(json.dumps(updates.assembly_ids))
+    if updates.training_sheet_ids is not None:
+        update_fields.append("training_sheet_ids = ?")
+        params.append(json.dumps(updates.training_sheet_ids))
 
     if updates.split_config is not None:
         update_fields.append("split_config = ?")
@@ -291,7 +291,7 @@ async def list_curated_datasets(
     datasets = []
     for row in results:
         # Parse JSON fields
-        assembly_ids = json.loads(row["assembly_ids"]) if row["assembly_ids"] else []
+        training_sheet_ids = json.loads(row["training_sheet_ids"]) if row["training_sheet_ids"] else []
         split_config = json.loads(row["split_config"]) if row["split_config"] else None
         tags_parsed = json.loads(row["tags"]) if row["tags"] else []
         intended_models = (
@@ -310,7 +310,7 @@ async def list_curated_datasets(
                 name=row["name"],
                 description=row.get("description"),
                 labelset_id=row.get("labelset_id"),
-                assembly_ids=assembly_ids,
+                training_sheet_ids=training_sheet_ids,
                 split_config=split_config,
                 quality_threshold=row["quality_threshold"],
                 status=row["status"],
@@ -348,7 +348,7 @@ async def preview_dataset(
     # Get dataset
     dataset = await get_curated_dataset(dataset_id)
 
-    if not dataset.assembly_ids:
+    if not dataset.training_sheet_ids:
         return DatasetPreview(
             dataset_id=dataset_id,
             total_examples=0,
@@ -356,22 +356,22 @@ async def preview_dataset(
             quality_metrics=dataset.quality_metrics or QualityMetrics(),
         )
 
-    # Get examples from assemblies
-    assembly_ids_str = ", ".join([f"'{aid}'" for aid in dataset.assembly_ids])
+    # Get examples from training sheets
+    training_sheet_ids_str = ", ".join([f"'{tid}'" for tid in dataset.training_sheet_ids])
 
     results = _sql.execute(
         f"""
         SELECT
             id as example_id,
-            assembly_id,
+            training_sheet_id,
             prompt,
             response,
             label,
             confidence,
             source_mode,
             reviewed
-        FROM {_lakebase_table('assembled_datasets')}
-        WHERE assembly_id IN ({assembly_ids_str})
+        FROM {_lakebase_table('qa_pairs')}
+        WHERE training_sheet_id IN ({training_sheet_ids_str})
         AND (confidence >= ? OR confidence IS NULL)
         LIMIT ?
     """,
@@ -383,7 +383,7 @@ async def preview_dataset(
         examples.append(
             DatasetExample(
                 example_id=row["example_id"],
-                assembly_id=row["assembly_id"],
+                training_sheet_id=row["training_sheet_id"],
                 prompt=row["prompt"],
                 response=row["response"],
                 label=row.get("label"),
@@ -498,7 +498,7 @@ async def compute_dataset_metrics(dataset_id: str):
     # Get dataset
     dataset = await get_curated_dataset(dataset_id)
 
-    if not dataset.assembly_ids:
+    if not dataset.training_sheet_ids:
         # Empty dataset
         metrics = QualityMetrics()
         _sql.execute(
@@ -511,8 +511,8 @@ async def compute_dataset_metrics(dataset_id: str):
         )
         return await get_curated_dataset(dataset_id)
 
-    # Get examples from assemblies
-    assembly_ids_str = ", ".join([f"'{aid}'" for aid in dataset.assembly_ids])
+    # Get examples from training sheets
+    training_sheet_ids_str = ", ".join([f"'{tid}'" for tid in dataset.training_sheet_ids])
 
     results = _sql.execute(
         f"""
@@ -524,8 +524,8 @@ async def compute_dataset_metrics(dataset_id: str):
             SUM(CASE WHEN reviewed = TRUE THEN 1 ELSE 0 END) as human_verified_count,
             SUM(CASE WHEN source_mode = 'AI_GENERATED' THEN 1 ELSE 0 END) as ai_generated_count,
             SUM(CASE WHEN source_mode = 'EXISTING_COLUMN' THEN 1 ELSE 0 END) as pre_labeled_count
-        FROM {_lakebase_table('assembled_datasets')}
-        WHERE assembly_id IN ({assembly_ids_str})
+        FROM {_lakebase_table('qa_pairs')}
+        WHERE training_sheet_id IN ({training_sheet_ids_str})
         AND (confidence >= ? OR confidence IS NULL)
     """,
         [dataset.quality_threshold],
@@ -537,8 +537,8 @@ async def compute_dataset_metrics(dataset_id: str):
     label_results = _sql.execute(
         f"""
         SELECT label, COUNT(*) as count
-        FROM {_lakebase_table('assembled_datasets')}
-        WHERE assembly_id IN ({assembly_ids_str})
+        FROM {_lakebase_table('qa_pairs')}
+        WHERE training_sheet_id IN ({training_sheet_ids_str})
         AND label IS NOT NULL
         AND (confidence >= ? OR confidence IS NULL)
         GROUP BY label
@@ -592,13 +592,13 @@ async def export_dataset(
             detail=f"Cannot export dataset with status '{dataset.status}'. Dataset must be approved first.",
         )
 
-    if not dataset.assembly_ids:
+    if not dataset.training_sheet_ids:
         raise HTTPException(status_code=400, detail="Cannot export empty dataset.")
 
-    # Get examples from assemblies
-    assembly_ids_str = ", ".join([f"'{aid}'" for aid in dataset.assembly_ids])
+    # Get examples from training sheets
+    training_sheet_ids_str = ", ".join([f"'{tid}'" for tid in dataset.training_sheet_ids])
 
-    where_clause = f"assembly_id IN ({assembly_ids_str})"
+    where_clause = f"training_sheet_id IN ({training_sheet_ids_str})"
     if split:
         where_clause += f" AND split = '{split}'"
 
@@ -606,7 +606,7 @@ async def export_dataset(
         f"""
         SELECT
             id as example_id,
-            assembly_id,
+            training_sheet_id,
             prompt,
             response,
             label,
@@ -614,7 +614,7 @@ async def export_dataset(
             source_mode,
             reviewed,
             split
-        FROM {_lakebase_table('assembled_datasets')}
+        FROM {_lakebase_table('qa_pairs')}
         WHERE {where_clause}
         AND (confidence >= ? OR confidence IS NULL)
     """,
@@ -626,7 +626,7 @@ async def export_dataset(
         examples.append(
             {
                 "example_id": row["example_id"],
-                "assembly_id": row["assembly_id"],
+                "training_sheet_id": row["training_sheet_id"],
                 "prompt": row["prompt"],
                 "response": row["response"],
                 "label": row.get("label"),

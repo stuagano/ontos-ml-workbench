@@ -265,7 +265,7 @@ Remove flag from a feedback item.
 #### `POST /feedback/{feedback_id}/to-training`
 Convert feedback into training data.
 - **Path Params**: `feedback_id` - Feedback ID
-- **Query Params**: `assembly_id` - Target Training Sheet ID
+- **Query Params**: `training_sheet_id` - Target Training Sheet ID
 - **Returns**: Created training row details
 - **Purpose**: Enables continuous improvement by converting real-world feedback into training examples
 
@@ -297,7 +297,7 @@ Stores alert configurations and their status.
 
 ## Implementation Patterns
 
-All endpoints follow these patterns from `assemblies.py` and `canonical_labels.py`:
+All endpoints follow these patterns from `training_sheets.py` and `canonical_labels.py`:
 
 ### 1. Consistent Error Handling
 ```python

@@ -57,9 +57,9 @@ export interface WorkflowState {
   // New multi-dataset configuration
   datasetConfig: MultiDatasetConfig | null;
 
-  // Stage 2: GENERATE selections (template + assembly)
+  // Stage 2: GENERATE selections (template + training sheet)
   selectedTemplate: Template | null;
-  selectedAssemblyId: string | null;
+  selectedTrainingSheetId: string | null;
 
   // Stage 3: LABEL config
   curationConfig: {
@@ -113,7 +113,7 @@ interface WorkflowContextType {
 
   // Stage 2: GENERATE (template selection)
   setSelectedTemplate: (template: Template | null) => void;
-  setSelectedAssemblyId: (assemblyId: string | null) => void;
+  setSelectedTrainingSheetId: (trainingSheetId: string | null) => void;
 
   // Stage 3: LABEL
   setCurationConfig: (config: Partial<WorkflowState["curationConfig"]>) => void;
@@ -167,7 +167,7 @@ const initialState: WorkflowState = {
   sourceColumns: [],
   datasetConfig: null,
   selectedTemplate: null,
-  selectedAssemblyId: null,
+  selectedTrainingSheetId: null,
   curationConfig: {},
   trainingConfig: {},
   deploymentConfig: {},
@@ -414,10 +414,10 @@ export function WorkflowProvider({ children }: WorkflowProviderProps) {
     }));
   }, []);
 
-  const setSelectedAssemblyId = useCallback((assemblyId: string | null) => {
+  const setSelectedTrainingSheetId = useCallback((trainingSheetId: string | null) => {
     setState((prev) => ({
       ...prev,
-      selectedAssemblyId: assemblyId,
+      selectedTrainingSheetId: trainingSheetId,
       lastUpdatedAt: new Date(),
     }));
   }, []);
@@ -498,7 +498,7 @@ export function WorkflowProvider({ children }: WorkflowProviderProps) {
     getAllSourceColumns,
     // Other stages
     setSelectedTemplate,
-    setSelectedAssemblyId,
+    setSelectedTrainingSheetId,
     setCurationConfig,
     setTrainingConfig,
     setDeploymentConfig,

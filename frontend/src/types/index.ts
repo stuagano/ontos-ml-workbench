@@ -167,7 +167,7 @@ export interface LabelsetStats {
   labelset_name: string;
   canonical_label_count: number;
   total_label_classes: number;
-  assemblies_using_count: number;
+  training_sheets_using_count: number;
   training_jobs_count: number;
   coverage_stats?: Record<string, any>;
 }
@@ -201,7 +201,7 @@ export interface CuratedDataset {
   name: string;
   description?: string;
   labelset_id?: string;
-  assembly_ids: string[];
+  training_sheet_ids: string[];
   split_config?: DatasetSplit;
   quality_threshold: number;
   status: DatasetStatus;
@@ -223,7 +223,7 @@ export interface CuratedDatasetCreate {
   name: string;
   description?: string;
   labelset_id?: string;
-  assembly_ids?: string[];
+  training_sheet_ids?: string[];
   split_config?: DatasetSplit;
   quality_threshold?: number;
   tags?: string[];
@@ -235,7 +235,7 @@ export interface CuratedDatasetCreate {
 export interface CuratedDatasetUpdate {
   name?: string;
   description?: string;
-  assembly_ids?: string[];
+  training_sheet_ids?: string[];
   split_config?: DatasetSplit;
   quality_threshold?: number;
   tags?: string[];
@@ -246,7 +246,7 @@ export interface CuratedDatasetUpdate {
 
 export interface DatasetExample {
   example_id: string;
-  assembly_id: string;
+  training_sheet_id: string;
   prompt: string;
   response: string;
   label?: string;
@@ -823,6 +823,7 @@ export interface Sheet {
   // Template configuration (attached to sheet)
   has_template?: boolean;
   template_config?: TemplateConfig;
+  join_config?: string; // JSON string: MultiDatasetConfig for multi-source joins
   columns?: ColumnDefinition[]; // Column definitions for legacy components
 
   created_by: string;
@@ -897,7 +898,43 @@ export interface SheetCreateRequest {
   sample_size?: number;
   filter_expression?: string;
 
+  join_config?: string; // JSON string: MultiDatasetConfig for multi-source joins
   status?: string;
+}
+
+/**
+ * Join key suggestion from the backend inference service
+ */
+export interface JoinKeySuggestion {
+  source_column: string;
+  target_column: string;
+  confidence: number; // 0-1
+  reason: string;
+  value_overlap_ratio?: number; // 0-1
+}
+
+/**
+ * Response from POST /sheets/suggest-join-keys
+ */
+export interface SuggestJoinKeysResponse {
+  source_table: string;
+  target_table: string;
+  suggestions: JoinKeySuggestion[];
+}
+
+/**
+ * Response from POST /sheets/preview-join
+ */
+export interface PreviewJoinResponse {
+  rows: Record<string, unknown>[];
+  total_rows: number;
+  match_stats: {
+    totalPrimaryRows: number;
+    matchedRows: number;
+    unmatchedRows: number;
+    matchPercentage: number;
+  };
+  generated_sql: string;
 }
 
 /**
@@ -961,7 +998,7 @@ export interface FineTuningExportResponse {
 }
 
 // ============================================================================
-// Template Config & Assembly Types (GCP Vertex AI Pattern)
+// Template Config & Training Sheet Types (GCP Vertex AI Pattern)
 // ============================================================================
 
 /**
@@ -1056,9 +1093,9 @@ export interface TemplateConfigAttachRequest {
 }
 
 /**
- * Assembly lifecycle status
+ * Training Sheet lifecycle status
  */
-export type AssemblyStatus = "assembling" | "ready" | "failed" | "archived";
+export type TrainingSheetStatus = "assembling" | "ready" | "failed" | "archived";
 
 /**
  * How the response was sourced
@@ -1072,9 +1109,9 @@ export type ResponseSource =
   | "canonical"; // PRD v2.3: From canonical labels
 
 /**
- * A single assembled row with rendered prompt and response
+ * A single Q&A pair row with rendered prompt and response
  */
-export interface AssembledRow {
+export interface QAPairRow {
   row_index: number;
   prompt: string;
   source_data: Record<string, unknown>;
@@ -1100,14 +1137,14 @@ export interface AssembledRow {
 }
 
 /**
- * An assembled dataset - materialized result of applying template to sheet
+ * A training sheet - materialized result of applying template to sheet
  */
-export interface AssembledDataset {
+export interface TrainingSheet {
   id: string;
   sheet_id: string;
   sheet_name?: string;
   template_config: TemplateConfig;
-  status: AssemblyStatus;
+  status: TrainingSheetStatus;
   total_rows: number;
   empty_count?: number;
   ai_generated_count: number;
@@ -1127,20 +1164,19 @@ export interface AssembledDataset {
 }
 
 /**
- * Request to create an assembly from a sheet
+ * Request to create a training sheet from a sheet
  */
-export interface AssembleRequest {
+export interface CreateTrainingSheetRequest {
   name?: string;
   description?: string;
   row_indices?: number[]; // Subset of rows (null = all)
 }
 
 /**
- * Response from assembly creation (PRD v2.3 - training_sheets)
+ * Response from training sheet creation (PRD v2.3 - training_sheets)
  */
-export interface AssembleResponse {
+export interface CreateTrainingSheetResponse {
   training_sheet_id: string;
-  assembly_id: string; // Alias for training_sheet_id for backwards compatibility
   sheet_id: string;
   status: string;
   total_items: number;
@@ -1148,9 +1184,9 @@ export interface AssembleResponse {
 }
 
 /**
- * Request to preview assembled rows
+ * Request to preview Q&A pair rows
  */
-export interface AssemblyPreviewRequest {
+export interface TrainingSheetPreviewRequest {
   offset?: number;
   limit?: number;
   response_source?: ResponseSource;
@@ -1158,11 +1194,11 @@ export interface AssemblyPreviewRequest {
 }
 
 /**
- * Response from assembly preview
+ * Response from training sheet preview
  */
-export interface AssemblyPreviewResponse {
-  assembly_id: string;
-  rows: AssembledRow[];
+export interface TrainingSheetPreviewResponse {
+  training_sheet_id: string;
+  rows: QAPairRow[];
   total_rows: number;
   preview_rows: number;
   offset: number;
@@ -1176,18 +1212,18 @@ export interface AssemblyPreviewResponse {
 }
 
 /**
- * Request to update an assembled row (for labeling)
+ * Request to update a Q&A pair (for labeling)
  */
-export interface AssembledRowUpdateRequest {
+export interface QAPairUpdateRequest {
   response: string;
   mark_as_verified?: boolean;
   notes?: string;
 }
 
 /**
- * Request to generate AI responses for assembled rows
+ * Request to generate AI responses for training sheet rows
  */
-export interface AssemblyGenerateRequest {
+export interface TrainingSheetGenerateRequest {
   row_indices?: number[]; // Rows to generate (null = all empty)
   include_few_shot?: boolean;
   few_shot_count?: number;
@@ -1196,8 +1232,8 @@ export interface AssemblyGenerateRequest {
 /**
  * Response from AI generation
  */
-export interface AssemblyGenerateResponse {
-  assembly_id: string;
+export interface TrainingSheetGenerateResponse {
+  training_sheet_id: string;
   generated_count: number;
   errors?: Array<{ row_index: number; error: string }>;
 }
@@ -1208,9 +1244,9 @@ export interface AssemblyGenerateResponse {
 export type ExportFormat = "openai_chat" | "anthropic" | "gemini";
 
 /**
- * Request to export assembly for fine-tuning
+ * Request to export training sheet for fine-tuning
  */
-export interface AssemblyExportRequest {
+export interface TrainingSheetExportRequest {
   format: ExportFormat;
   volume_path: string;
   include_only_verified?: boolean;
@@ -1221,10 +1257,10 @@ export interface AssemblyExportRequest {
 }
 
 /**
- * Response from assembly export
+ * Response from training sheet export
  */
-export interface AssemblyExportResponse {
-  assembly_id: string;
+export interface TrainingSheetExportResponse {
+  training_sheet_id: string;
   volume_path: string;
   format: ExportFormat;
   examples_exported: number;

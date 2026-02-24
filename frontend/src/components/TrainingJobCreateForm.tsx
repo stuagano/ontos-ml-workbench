@@ -12,10 +12,10 @@ import { useMutation } from "@tanstack/react-query";
 import { Play, Loader2, Info } from "lucide-react";
 import { createTrainingJob } from "../services/api";
 import { useToast } from "./Toast";
-import type { AssembledDataset, TrainingJobCreateRequest } from "../types";
+import type { TrainingSheet, TrainingJobCreateRequest } from "../types";
 
 interface TrainingJobCreateFormProps {
-  assembly: AssembledDataset;
+  trainingSheet: TrainingSheet;
   onSuccess: (jobId: string) => void;
   onCancel: () => void;
 }
@@ -47,11 +47,11 @@ const TRAINING_MODELS = [
   },
 ];
 
-export function TrainingJobCreateForm({ assembly, onSuccess, onCancel }: TrainingJobCreateFormProps) {
+export function TrainingJobCreateForm({ trainingSheet, onSuccess, onCancel }: TrainingJobCreateFormProps) {
   const { success: successToast, error: errorToast } = useToast();
 
   // Form state (UI only - not business logic)
-  const [modelName, setModelName] = useState(`${assembly.sheet_name || 'model'}-v1`.replace(/\s+/g, '-').toLowerCase());
+  const [modelName, setModelName] = useState(`${trainingSheet.sheet_name || 'model'}-v1`.replace(/\s+/g, '-').toLowerCase());
   const [baseModel, setBaseModel] = useState(TRAINING_MODELS[1].id);
   const [trainSplit, setTrainSplit] = useState(0.8); // Backend expects 0.8 not 80
   const [epochs, setEpochs] = useState(3);
@@ -59,7 +59,7 @@ export function TrainingJobCreateForm({ assembly, onSuccess, onCancel }: Trainin
   const [registerToUC, setRegisterToUC] = useState(true);
 
   // Calculate eligible pairs count (readonly - for display only)
-  const labeledCount = assembly.human_labeled_count + assembly.human_verified_count;
+  const labeledCount = trainingSheet.human_labeled_count + trainingSheet.human_verified_count;
   const eligibleForTraining = labeledCount; // Backend will apply governance filters
 
   // Create job mutation
@@ -92,7 +92,7 @@ export function TrainingJobCreateForm({ assembly, onSuccess, onCancel }: Trainin
 
     // Submit to backend (backend validates and calculates everything)
     createJob.mutate({
-      training_sheet_id: assembly.id,
+      training_sheet_id: trainingSheet.id,
       model_name: modelName,
       base_model: baseModel,
       train_val_split: trainSplit,
@@ -108,15 +108,15 @@ export function TrainingJobCreateForm({ assembly, onSuccess, onCancel }: Trainin
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Assembly Info */}
+      {/* Training Sheet Info */}
       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
         <h3 className="font-medium text-green-800 mb-2">
-          {assembly.sheet_name || `Assembly ${assembly.id.slice(0, 8)}`}
+          {trainingSheet.sheet_name || `Training Sheet ${trainingSheet.id.slice(0, 8)}`}
         </h3>
         <div className="grid grid-cols-3 gap-4 text-sm text-green-700">
           <div>
             <div className="font-medium">Total Rows</div>
-            <div className="text-lg">{assembly.total_rows}</div>
+            <div className="text-lg">{trainingSheet.total_rows}</div>
           </div>
           <div>
             <div className="font-medium">Labeled (Approved)</div>
@@ -127,7 +127,7 @@ export function TrainingJobCreateForm({ assembly, onSuccess, onCancel }: Trainin
             <div className="text-lg">{eligibleForTraining}</div>
           </div>
         </div>
-        {eligibleForTraining < assembly.total_rows && (
+        {eligibleForTraining < trainingSheet.total_rows && (
           <div className="mt-2 flex items-start gap-2 text-sm text-green-700">
             <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
             <span>

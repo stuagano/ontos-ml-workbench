@@ -17,7 +17,15 @@ from app.models.sheet_simple import (
     SheetResponse,
     SheetListResponse
 )
+from app.models.join_config import (
+    SuggestJoinKeysRequest,
+    SuggestJoinKeysResponse,
+    PreviewJoinRequest,
+    PreviewJoinResponse,
+    MatchStats,
+)
 from app.services.sheet_service import SheetService
+from app.services.join_service import JoinService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -84,6 +92,73 @@ async def list_sheets(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to list sheets: {str(e)}"
+        )
+
+
+@router.post("/suggest-join-keys", response_model=SuggestJoinKeysResponse)
+async def suggest_join_keys(request: SuggestJoinKeysRequest):
+    """
+    Suggest join keys between two Unity Catalog tables.
+
+    Uses layered scoring: exact name match, suffix match, fuzzy match,
+    type compatibility filter, and value overlap analysis for top candidates.
+    """
+    try:
+        service = JoinService()
+        suggestions = service.suggest_join_keys(
+            source_table=request.source_table,
+            target_table=request.target_table,
+            sample_size=request.sample_size,
+        )
+
+        return SuggestJoinKeysResponse(
+            source_table=request.source_table,
+            target_table=request.target_table,
+            suggestions=suggestions,
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except NotFound as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to suggest join keys: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to suggest join keys: {str(e)}"
+        )
+
+
+@router.post("/preview-join", response_model=PreviewJoinResponse)
+async def preview_join(request: PreviewJoinRequest):
+    """
+    Execute a JOIN between multiple tables and return preview rows + match statistics.
+
+    Returns the first N rows of the joined result, match stats comparing
+    primary row count vs joined rows, and the generated SQL for transparency.
+    """
+    try:
+        service = JoinService()
+        result = service.preview_join(
+            sources=request.sources,
+            join_config=request.join_config,
+            limit=request.limit,
+        )
+
+        return PreviewJoinResponse(
+            rows=result["rows"],
+            total_rows=result["total_rows"],
+            match_stats=result["match_stats"],
+            generated_sql=result["generated_sql"],
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to preview join: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to preview join: {str(e)}"
         )
 
 
@@ -300,7 +375,31 @@ async def get_sheet_preview(
                 detail="Sheet has no source_table configured"
             )
 
-        # Get preview data using SheetService
+        # If sheet has join_config, use JOIN query for preview
+        join_config_str = sheet.get("join_config")
+        if join_config_str:
+            import json
+            from app.models.join_config import MultiDatasetConfig as MDC
+            try:
+                mdc = MDC.model_validate(json.loads(join_config_str))
+                join_svc = JoinService()
+                result = join_svc.preview_join(
+                    sources=mdc.sources,
+                    join_config=mdc.join_config,
+                    limit=limit,
+                )
+                return {
+                    "sheet_id": sheet_id,
+                    "source_table": source_table,
+                    "rows": result["rows"],
+                    "count": result["total_rows"],
+                    "limit": limit,
+                    "join_active": True,
+                }
+            except Exception as e:
+                logger.warning(f"Join preview failed, falling back to single-table: {e}")
+
+        # Single-table preview (default)
         preview_data = service.get_table_preview(source_table, limit=limit)
 
         return {
@@ -419,8 +518,8 @@ async def attach_template(sheet_id: str, template_config: dict, _auth: CurrentUs
         )
 
 
-@router.post("/{sheet_id}/assemble", status_code=status.HTTP_201_CREATED)
-async def assemble_sheet(sheet_id: str, request: dict, _auth: CurrentUser = Depends(require_permission("sheets", "write"))):
+@router.post("/{sheet_id}/generate-training-sheet", status_code=status.HTTP_201_CREATED)
+async def generate_training_sheet(sheet_id: str, request: dict, _auth: CurrentUser = Depends(require_permission("sheets", "write"))):
     """
     Generate Q&A pairs from sheet data + template (PRD v2.3)
 
@@ -650,8 +749,8 @@ async def assemble_sheet(sheet_id: str, request: dict, _auth: CurrentUser = Depe
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to assemble sheet {sheet_id}: {e}", exc_info=True)
+        logger.error(f"Failed to generate training sheet from sheet {sheet_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to assemble sheet: {str(e)}"
+            detail=f"Failed to generate training sheet: {str(e)}"
         )

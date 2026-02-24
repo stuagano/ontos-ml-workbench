@@ -237,7 +237,7 @@ export function useDeleteCanonicalLabel() {
 /**
  * Bulk lookup canonical labels
  *
- * Use this for Training Sheet assembly to check many items at once.
+ * Use this for Training Sheet generation to check many items at once.
  */
 export function useBulkLookupCanonicalLabels() {
   return useMutation({

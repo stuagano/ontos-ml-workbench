@@ -560,10 +560,10 @@ const JOB_CONFIGS: Record<string, JobConfig> = {
     ],
   },
   // TRAIN stage jobs
-  data_assembly: {
-    type: "data_assembly",
-    name: "Training Data Assembly",
-    description: "Assemble curated data into training format",
+  training_sheet_generation: {
+    type: "training_sheet_generation",
+    name: "Training Sheet Generation",
+    description: "Generate Q&A pairs from sheet data + template",
     icon: FolderOpen,
     fields: [
       {

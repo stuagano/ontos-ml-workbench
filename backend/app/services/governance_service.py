@@ -3,6 +3,7 @@
 import json
 import logging
 import uuid
+from datetime import datetime, timedelta
 
 from app.core.config import get_settings
 from app.services.sql_service import get_sql_service
@@ -24,6 +25,14 @@ class GovernanceService:
 
     def _table(self, name: str) -> str:
         return self.settings.get_table(name)
+
+    def _sql(self, query: str) -> list:
+        """Execute SQL — uses execute for SELECT, execute_update for DML."""
+        stripped = query.strip().upper()
+        if stripped.startswith("SELECT") or stripped.startswith("WITH"):
+            return self.sql.execute(query)
+        self.sql.execute_update(query)
+        return []
 
     # ========================================================================
     # Roles
@@ -2216,6 +2225,11 @@ class GovernanceService:
                     row[field] = json.loads(val)
                 except (json.JSONDecodeError, TypeError):
                     row[field] = None
+        # Ensure numeric fields are not None (Delta Lake has no DEFAULT)
+        if row.get("usage_count") is None:
+            row["usage_count"] = 0
+        if row.get("rate_limit_per_minute") is None:
+            row["rate_limit_per_minute"] = 60
         return row
 
     def _parse_mcp_tool(self, row: dict) -> dict:
@@ -2279,13 +2293,14 @@ class GovernanceService:
         self._sql(
             f"INSERT INTO {self._table('mcp_tokens')} "
             f"(id, name, description, token_hash, token_prefix, scope, allowed_tools, allowed_resources, "
-            f"owner_email, team_id, is_active, expires_at, rate_limit_per_minute, created_at, created_by, updated_at, updated_by) "
+            f"owner_email, team_id, is_active, expires_at, rate_limit_per_minute, usage_count, "
+            f"created_at, created_by, updated_at, updated_by) "
             f"VALUES ('{token_id}', '{_esc(data['name'])}', "
             f"'{_esc(data.get('description') or '')}', '{token_hash}', '{token_prefix}', "
             f"'{_esc(data.get('scope', 'read'))}', "
             f"{tools_val}, {resources_val}, "
             f"'{_esc(user)}', {team_val}, "
-            f"true, {expires_val}, {rate}, "
+            f"true, {expires_val}, {rate}, 0, "
             f"'{now}', '{_esc(user)}', '{now}', '{_esc(user)}')"
         )
         token = self.get_mcp_token(token_id)

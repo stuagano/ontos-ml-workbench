@@ -1,8 +1,8 @@
 /**
- * CuratePage - CURATE stage for reviewing and labeling assembled data
+ * CuratePage - CURATE stage for reviewing and labeling training data
  *
  * Following the GCP Vertex AI pattern:
- * - Works with AssembledDataset (prompt/response pairs)
+ * - Works with TrainingSheet (prompt/response pairs)
  * - Allows human labeling and verification of responses
  * - Supports AI generation of responses
  *
@@ -10,7 +10,7 @@
  * - Item grid/list view with prompt preview
  * - Side panel for detailed review (prompt, response, source data)
  * - Keyboard shortcuts for efficient labeling
- * - Workflow integration showing selected sheet and assembly
+ * - Workflow integration showing selected sheet and training sheet
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -45,14 +45,14 @@ import { StageSubNav, StageMode } from "../components/StageSubNav";
 import { clsx } from "clsx";
 import { useWorkflow } from "../context/WorkflowContext";
 import {
-  listAssemblies,
-  getAssembly,
-  previewAssembly,
-  updateAssembledRow,
-  generateAssemblyResponses,
-  exportAssembly,
+  listTrainingSheets,
+  getTrainingSheet,
+  previewTrainingSheet,
+  updateQAPair,
+  generateResponses,
+  exportTrainingSheet,
   listSheets,
-  assembleSheet,
+  generateTrainingSheet,
 } from "../services/api";
 import { useToast } from "../components/Toast";
 import { SkeletonCard } from "../components/Skeleton";
@@ -79,7 +79,7 @@ import { QualityGatePanel } from "../components/QualityGatePanel";
 import { LabelVersionHistory } from "../components/LabelVersionHistory";
 import { ReviewPanel } from "../components/ReviewPanel";
 import { getConfig } from "../services/api";
-import type { AssembledDataset, AssembledRow, ResponseSource } from "../types";
+import type { TrainingSheet, QAPairRow, ResponseSource } from "../types";
 
 // ============================================================================
 // Status Colors and Labels
@@ -173,9 +173,9 @@ function extractImageUrl(sourceData: Record<string, unknown>): string | null {
 }
 
 /**
- * Check if an assembly contains image data
+ * Check if a training sheet contains image data
  */
-function assemblyHasImages(rows: AssembledRow[]): boolean {
+function trainingSheetHasImages(rows: QAPairRow[]): boolean {
   if (!rows || rows.length === 0) return false;
   // Check first few rows for image URLs
   return rows
@@ -187,30 +187,30 @@ function assemblyHasImages(rows: AssembledRow[]): boolean {
 // Stats Bar
 // ============================================================================
 
-function StatsBar({ assembly }: { assembly: AssembledDataset }) {
-  const total = assembly.total_rows || 1;
+function StatsBar({ trainingSheet }: { trainingSheet: TrainingSheet }) {
+  const total = trainingSheet.total_rows || 1;
   const segments = [
     {
       key: "human_verified",
-      count: assembly.human_verified_count,
+      count: trainingSheet.human_verified_count,
       color: "bg-emerald-500",
       label: "Verified",
     },
     {
       key: "human_labeled",
-      count: assembly.human_labeled_count,
+      count: trainingSheet.human_labeled_count,
       color: "bg-green-500",
       label: "Labeled",
     },
     {
       key: "ai_generated",
-      count: assembly.ai_generated_count,
+      count: trainingSheet.ai_generated_count,
       color: "bg-purple-500",
       label: "AI Generated",
     },
     {
       key: "empty",
-      count: assembly.empty_count || 0,
+      count: trainingSheet.empty_count || 0,
       color: "bg-gray-300",
       label: "Empty",
     },
@@ -249,7 +249,7 @@ function StatsBar({ assembly }: { assembly: AssembledDataset }) {
 // ============================================================================
 
 interface RowCardProps {
-  row: AssembledRow;
+  row: QAPairRow;
   isSelected: boolean;
   onSelect: () => void;
 }
@@ -303,8 +303,8 @@ function RowCard({ row, isSelected, onSelect }: RowCardProps) {
 // ============================================================================
 
 interface DetailPanelProps {
-  row: AssembledRow;
-  assembly: AssembledDataset;
+  row: QAPairRow;
+  trainingSheet: TrainingSheet;
   onClose: () => void;
   onSave: (response: string, markAsVerified: boolean) => void;
   onNext: () => void;
@@ -317,7 +317,7 @@ interface DetailPanelProps {
 
 function DetailPanel({
   row,
-  assembly,
+  trainingSheet,
   onClose,
   onSave,
   onNext,
@@ -348,14 +348,14 @@ function DetailPanel({
 
   // Canonical label lookup for current source item
   const { data: matchedLabel, isLoading: lookupLoading } = useLookupCanonicalLabel(
-    assembly.sheet_id,
+    trainingSheet.sheet_id,
     itemRef ? String(itemRef) : undefined,
-    assembly.template_config?.label_type
+    trainingSheet.template_config?.label_type
   );
 
   // All labelsets for current source item
   const { data: labelsets } = useItemLabelsets(
-    assembly.sheet_id,
+    trainingSheet.sheet_id,
     itemRef ? String(itemRef) : undefined
   );
 
@@ -645,34 +645,34 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
   const [sourceFilter, setSourceFilter] = useState<ResponseSource | "">("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const [showAssemblyPicker, setShowAssemblyPicker] = useState(false);
+  const [showTrainingSheetPicker, setShowTrainingSheetPicker] = useState(false);
   const [annotationMode, setAnnotationMode] = useState<"text" | "image">(
     "text",
   );
-  const [selectedAssemblyId, setSelectedAssemblyId] = useState<string | null>(
+  const [selectedTrainingSheetId, setSelectedTrainingSheetId] = useState<string | null>(
     null,
   );
-  const [isAssembling, setIsAssembling] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [showCanonicalLabelModal, setShowCanonicalLabelModal] = useState(false);
   const queryClient = useQueryClient();
   const toast = useToast();
   const { state: workflowState } = useWorkflow();
 
-  // Auto-load assembly from workflow context if available (e.g., after generating training data)
+  // Auto-load training sheet from workflow context if available (e.g., after generating training data)
   useEffect(() => {
-    if (workflowState.selectedAssemblyId && !selectedAssemblyId) {
-      setSelectedAssemblyId(workflowState.selectedAssemblyId);
+    if (workflowState.selectedTrainingSheetId && !selectedTrainingSheetId) {
+      setSelectedTrainingSheetId(workflowState.selectedTrainingSheetId);
       setStageMode("browse"); // Switch to browse mode automatically
     }
-  }, [workflowState.selectedAssemblyId, selectedAssemblyId]);
+  }, [workflowState.selectedTrainingSheetId, selectedTrainingSheetId]);
 
-  // Get assembly ID from local state only (template ID is NOT an assembly ID)
-  const assemblyId = selectedAssemblyId;
+  // Get training sheet ID from local state only (template ID is NOT a training sheet ID)
+  const trainingSheetId = selectedTrainingSheetId;
 
-  // Fetch list of all assemblies for the picker
-  const { data: assemblies, isLoading: assembliesLoading } = useQuery({
-    queryKey: ["assemblies"],
-    queryFn: () => listAssemblies(),
+  // Fetch list of all training sheets for the picker
+  const { data: trainingSheets, isLoading: trainingSheetsLoading } = useQuery({
+    queryKey: ["training-sheets"],
+    queryFn: () => listTrainingSheets(),
   });
 
   // Fetch config to get current user
@@ -686,43 +686,43 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
   const { data: sheetsData, isLoading: sheetsLoading } = useQuery({
     queryKey: ["sheets"],
     queryFn: () => listSheets({ limit: 50 }),
-    enabled: stageMode === "create" && !selectedAssemblyId,
+    enabled: stageMode === "create" && !selectedTrainingSheetId,
   });
 
-  // Fetch assembly metadata
-  const { data: assembly, isLoading: assemblyLoading } = useQuery({
-    queryKey: ["assembly", assemblyId],
-    queryFn: () => getAssembly(assemblyId!),
-    enabled: !!assemblyId,
+  // Fetch training sheet metadata
+  const { data: trainingSheet, isLoading: trainingSheetLoading } = useQuery({
+    queryKey: ["training-sheet", trainingSheetId],
+    queryFn: () => getTrainingSheet(trainingSheetId!),
+    enabled: !!trainingSheetId,
   });
 
-  // Fetch assembled rows
+  // Fetch Q&A pair rows
   const { data: previewData, isLoading: rowsLoading } = useQuery({
-    queryKey: ["assemblyPreview", assemblyId, sourceFilter],
+    queryKey: ["trainingSheetPreview", trainingSheetId, sourceFilter],
     queryFn: () =>
-      previewAssembly(assemblyId!, {
+      previewTrainingSheet(trainingSheetId!, {
         limit: 100,
         response_source: sourceFilter || undefined,
       }),
-    enabled: !!assemblyId,
+    enabled: !!trainingSheetId,
   });
 
   // Fetch canonical label stats for the sheet
-  const { data: canonicalStats } = useSheetCanonicalStats(assembly?.sheet_id);
+  const { data: canonicalStats } = useSheetCanonicalStats(trainingSheet?.sheet_id);
 
   const rows = previewData?.rows || [];
   const selectedRow =
     rows.find((r) => r.row_index === selectedRowIndex) || null;
   const selectedIndex = rows.findIndex((r) => r.row_index === selectedRowIndex);
 
-  // Detect if this assembly contains images (for manual labeling with image annotation)
+  // Detect if this training sheet contains images (for manual labeling with image annotation)
   const isManualLabelingMode =
-    assembly?.template_config?.response_source_mode === "manual_labeling";
-  const hasImages = useMemo(() => assemblyHasImages(rows), [rows]);
+    trainingSheet?.template_config?.response_source_mode === "manual_labeling";
+  const hasImages = useMemo(() => trainingSheetHasImages(rows), [rows]);
   const showImageAnnotation =
     isManualLabelingMode && hasImages && annotationMode === "image";
 
-  // Auto-detect annotation mode when assembly loads
+  // Auto-detect annotation mode when training sheet loads
   useEffect(() => {
     if (isManualLabelingMode && hasImages) {
       setAnnotationMode("image");
@@ -733,7 +733,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
   const annotationTasks: AnnotationTask[] = useMemo(() => {
     if (!showImageAnnotation) return [];
     return rows.map((row) => ({
-      id: `${assemblyId}-${row.row_index}`,
+      id: `${trainingSheetId}-${row.row_index}`,
       imageUrl: extractImageUrl(row.source_data) || "",
       rowIndex: row.row_index,
       prompt: row.prompt,
@@ -746,12 +746,12 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
             ? "pending"
             : "annotated",
     }));
-  }, [showImageAnnotation, rows, assemblyId]);
+  }, [showImageAnnotation, rows, trainingSheetId]);
 
   // Label classes from template_config, with fallback to defaults
   const annotationLabels: LabelConfig[] = useMemo(() => {
     // Pull from template_config if available
-    const templateLabels = assembly?.template_config?.label_classes;
+    const templateLabels = trainingSheet?.template_config?.label_classes;
     if (templateLabels && templateLabels.length > 0) {
       return templateLabels.map((l) => ({
         name: l.name,
@@ -765,7 +765,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
       { name: "Warning", color: "#f59e0b" },
       { name: "Unknown", color: "#6b7280" },
     ];
-  }, [assembly?.template_config?.label_classes]);
+  }, [trainingSheet?.template_config?.label_classes]);
 
   // Update row mutation
   const updateMutation = useMutation({
@@ -778,13 +778,13 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
       response: string;
       markAsVerified: boolean;
     }) =>
-      updateAssembledRow(assemblyId!, rowIndex, {
+      updateQAPair(trainingSheetId!, rowIndex, {
         response,
         mark_as_verified: markAsVerified,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assemblyPreview"] });
-      queryClient.invalidateQueries({ queryKey: ["assembly"] });
+      queryClient.invalidateQueries({ queryKey: ["trainingSheetPreview"] });
+      queryClient.invalidateQueries({ queryKey: ["training-sheet"] });
       toast.success("Response saved");
     },
     onError: (error) =>
@@ -797,10 +797,10 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
   // Generate AI responses mutation
   const generateMutation = useMutation({
     mutationFn: () =>
-      generateAssemblyResponses(assemblyId!, { include_few_shot: true }),
+      generateResponses(trainingSheetId!, { include_few_shot: true }),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ["assemblyPreview"] });
-      queryClient.invalidateQueries({ queryKey: ["assembly"] });
+      queryClient.invalidateQueries({ queryKey: ["trainingSheetPreview"] });
+      queryClient.invalidateQueries({ queryKey: ["training-sheet"] });
       toast.success(
         "AI generation complete",
         `Generated ${result.generated_count} responses`,
@@ -816,9 +816,9 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
   // Export mutation
   const exportMutation = useMutation({
     mutationFn: () =>
-      exportAssembly(assemblyId!, {
+      exportTrainingSheet(trainingSheetId!, {
         format: "openai_chat",
-        volume_path: `/Volumes/main/ontos_ml_workbench/exports/assembly_${assemblyId}.jsonl`,
+        volume_path: `/Volumes/main/ontos_ml_workbench/exports/training_sheet_${trainingSheetId}.jsonl`,
         include_only_verified: true,
         include_system_instruction: true,
       }),
@@ -889,40 +889,40 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
     });
   };
 
-  const isLoading = assemblyLoading || rowsLoading;
+  const isLoading = trainingSheetLoading || rowsLoading;
 
-  // Handle assembly selection
-  const handleSelectAssembly = (id: string) => {
-    setSelectedAssemblyId(id);
-    queryClient.invalidateQueries({ queryKey: ["assembly", id] });
-    queryClient.invalidateQueries({ queryKey: ["assemblyPreview", id] });
+  // Handle training sheet selection
+  const handleSelectTrainingSheet = (id: string) => {
+    setSelectedTrainingSheetId(id);
+    queryClient.invalidateQueries({ queryKey: ["training-sheet", id] });
+    queryClient.invalidateQueries({ queryKey: ["trainingSheetPreview", id] });
   };
 
-  // Handle creating assembly from sheet
-  const handleCreateAssembly = async (sheetId: string) => {
-    setIsAssembling(true);
+  // Handle creating training sheet from sheet
+  const handleCreateTrainingSheet = async (sheetId: string) => {
+    setIsGenerating(true);
     try {
-      const result = await assembleSheet(sheetId, {});
+      const result = await generateTrainingSheet(sheetId, {});
       toast.success(
         "Training Data created!",
         `Created ${result.total_items} prompt/response pairs`,
       );
-      setSelectedAssemblyId(result.assembly_id);
-      queryClient.invalidateQueries({ queryKey: ["assemblies"] });
+      setSelectedTrainingSheetId(result.training_sheet_id);
+      queryClient.invalidateQueries({ queryKey: ["training-sheets"] });
     } catch (err) {
       toast.error(
         "Failed to create training data",
         err instanceof Error ? err.message : "Unknown error",
       );
     } finally {
-      setIsAssembling(false);
+      setIsGenerating(false);
     }
   };
 
-  // No assembly selected - show browse/create modes with table
-  if (!assemblyId) {
-    const filteredAssemblies = (assemblies || []).filter((asm) =>
-      (asm.sheet_name || asm.id)
+  // No training sheet selected - show browse/create modes with table
+  if (!trainingSheetId) {
+    const filteredTrainingSheets = (trainingSheets || []).filter((ts) =>
+      (ts.sheet_name || ts.id)
         .toLowerCase()
         .includes(searchQuery.toLowerCase()),
     );
@@ -934,24 +934,24 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
       sheet.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
 
-    // BROWSE MODE: Show table of existing assemblies
+    // BROWSE MODE: Show table of existing training sheets
     if (stageMode === "browse") {
-      // Define table columns for assemblies
-      const columns: Column<AssembledDataset>[] = [
+      // Define table columns for training sheets
+      const columns: Column<TrainingSheet>[] = [
         {
           key: "name",
           header: "Training Data Name",
           width: "35%",
-          render: (asm) => (
+          render: (ts) => (
             <div className="flex items-center gap-3">
               <Layers className="w-4 h-4 text-teal-600 flex-shrink-0" />
               <div className="min-w-0">
                 <div className="font-medium text-db-gray-900">
-                  {asm.sheet_name || asm.id.slice(0, 8)}
+                  {ts.sheet_name || ts.id.slice(0, 8)}
                 </div>
-                {asm.template_config?.name && (
+                {ts.template_config?.name && (
                   <div className="text-sm text-db-gray-500 truncate">
-                    Template: {asm.template_config.name}
+                    Template: {ts.template_config.name}
                   </div>
                 )}
               </div>
@@ -962,9 +962,9 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
           key: "rows",
           header: "Total Rows",
           width: "15%",
-          render: (asm) => (
+          render: (ts) => (
             <span className="text-sm text-db-gray-600">
-              {asm.total_rows.toLocaleString()}
+              {ts.total_rows.toLocaleString()}
             </span>
           ),
         },
@@ -972,18 +972,18 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
           key: "verified",
           header: "Verified",
           width: "15%",
-          render: (asm) => (
+          render: (ts) => (
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-db-gray-200 rounded-full h-2">
                 <div
                   className="bg-green-600 h-2 rounded-full"
                   style={{
-                    width: `${(asm.human_verified_count / asm.total_rows) * 100}%`,
+                    width: `${(ts.human_verified_count / ts.total_rows) * 100}%`,
                   }}
                 />
               </div>
               <span className="text-sm text-db-gray-600">
-                {asm.human_verified_count}
+                {ts.human_verified_count}
               </span>
             </div>
           ),
@@ -992,16 +992,16 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
           key: "type",
           header: "Type",
           width: "15%",
-          render: (asm) => (
+          render: (ts) => (
             <span
               className={clsx(
                 "px-2 py-1 rounded-full text-xs font-medium",
-                asm.template_config?.response_source_mode === "manual_labeling"
+                ts.template_config?.response_source_mode === "manual_labeling"
                   ? "bg-blue-100 text-blue-700"
                   : "bg-purple-100 text-purple-700",
               )}
             >
-              {asm.template_config?.response_source_mode === "manual_labeling"
+              {ts.template_config?.response_source_mode === "manual_labeling"
                 ? "Manual Labeling"
                 : "AI Generated"}
             </span>
@@ -1011,10 +1011,10 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
           key: "updated",
           header: "Last Updated",
           width: "20%",
-          render: (asm) => (
+          render: (ts) => (
             <span className="text-sm text-db-gray-500">
-              {asm.updated_at
-                ? new Date(asm.updated_at).toLocaleDateString()
+              {ts.updated_at
+                ? new Date(ts.updated_at).toLocaleDateString()
                 : "N/A"}
             </span>
           ),
@@ -1022,21 +1022,21 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
       ];
 
       // Define row actions
-      const rowActions: RowAction<AssembledDataset>[] = [
+      const rowActions: RowAction<TrainingSheet>[] = [
         {
           label: "Open",
           icon: Eye,
-          onClick: (asm) => handleSelectAssembly(asm.id),
+          onClick: (ts) => handleSelectTrainingSheet(ts.id),
           className: "text-teal-600",
         },
         {
           label: "Export",
           icon: Download,
-          onClick: async (asm) => {
+          onClick: async (ts) => {
             try {
-              await exportAssembly(asm.id, {
+              await exportTrainingSheet(ts.id, {
                 format: "openai_chat",
-                volume_path: `/Volumes/main/default/datasets/assembly_${asm.id}.jsonl`,
+                volume_path: `/Volumes/main/default/datasets/training_sheet_${ts.id}.jsonl`,
                 include_only_verified: false,
                 include_system_instruction: true,
               });
@@ -1069,7 +1069,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-2xl font-bold text-db-gray-900">
-                    Assembled Datasets
+                    Training Sheets
                   </h1>
                   <p className="text-db-gray-600 mt-1">
                     Review and label prompt/response pairs for fine-tuning
@@ -1077,7 +1077,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
                 </div>
                 <button
                   onClick={() =>
-                    queryClient.invalidateQueries({ queryKey: ["assemblies"] })
+                    queryClient.invalidateQueries({ queryKey: ["training-sheets"] })
                   }
                   className="flex items-center gap-2 px-3 py-2 text-db-gray-600 hover:text-db-gray-800 hover:bg-db-gray-100 rounded-lg transition-colors"
                 >
@@ -1093,7 +1093,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
             stage="label"
             mode={stageMode}
             onModeChange={setStageMode}
-            browseCount={assemblies?.length}
+            browseCount={trainingSheets?.length}
           />
 
           {/* Search */}
@@ -1105,7 +1105,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-db-gray-400" />
                   <input
                     type="text"
-                    placeholder="Search assemblies..."
+                    placeholder="Search training sheets..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 border-0 focus:outline-none focus:ring-0"
@@ -1126,16 +1126,16 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
           {/* Table */}
           <div className="flex-1 px-6 pb-6 pt-4 overflow-auto">
             <div className="max-w-7xl mx-auto">
-              {assembliesLoading ? (
+              {trainingSheetsLoading ? (
                 <div className="flex items-center justify-center py-20">
                   <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
                 </div>
               ) : (
                 <DataTable
-                  data={filteredAssemblies}
+                  data={filteredTrainingSheets}
                   columns={columns}
-                  rowKey={(asm) => asm.id}
-                  onRowClick={(asm) => handleSelectAssembly(asm.id)}
+                  rowKey={(ts) => ts.id}
+                  onRowClick={(ts) => handleSelectTrainingSheet(ts.id)}
                   rowActions={rowActions}
                   emptyState={emptyState}
                 />
@@ -1146,7 +1146,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
       );
     }
 
-    // CREATE MODE: Show sheet selection to create new assembly
+    // CREATE MODE: Show sheet selection to create new training sheet
     if (stageMode === "create") {
       return (
         <div className="flex-1 flex flex-col bg-db-gray-50">
@@ -1167,7 +1167,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
             stage="label"
             mode={stageMode}
             onModeChange={setStageMode}
-            browseCount={assemblies?.length}
+            browseCount={trainingSheets?.length}
           />
 
           {/* Search */}
@@ -1192,12 +1192,12 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
           {/* Sheets Grid */}
           <div className="flex-1 px-6 pb-6 pt-4 overflow-auto">
             <div className="max-w-7xl mx-auto">
-              {sheetsLoading || isAssembling ? (
+              {sheetsLoading || isGenerating ? (
                 <div className="flex items-center justify-center py-20">
                   <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
-                  {isAssembling && (
+                  {isGenerating && (
                     <span className="ml-3 text-db-gray-600">
-                      Creating assembly...
+                      Creating training sheet...
                     </span>
                   )}
                 </div>
@@ -1206,8 +1206,8 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
                   {filteredSheets.map((sheet) => (
                     <button
                       key={sheet.id}
-                      onClick={() => handleCreateAssembly(sheet.id)}
-                      disabled={isAssembling}
+                      onClick={() => handleCreateTrainingSheet(sheet.id)}
+                      disabled={isGenerating}
                       className="p-4 text-left border border-db-gray-200 rounded-lg hover:border-teal-400 hover:bg-teal-50 transition-colors bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <div className="flex items-start gap-3">
@@ -1314,27 +1314,27 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
           </div>
 
           {/* Training Data Info & Actions */}
-          {assembly && (
+          {trainingSheet && (
             <div className="bg-white rounded-lg border border-db-gray-200 p-4 mb-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div>
                     <h2 className="font-medium text-db-gray-800">
-                      {assembly.template_config.name || "Training Data"}
+                      {trainingSheet.template_config.name || "Training Data"}
                     </h2>
                     <p className="text-sm text-db-gray-500">
-                      {assembly.total_rows} rows · Status: {assembly.status}
+                      {trainingSheet.total_rows} rows · Status: {trainingSheet.status}
                     </p>
                   </div>
                   <button
-                    onClick={() => setShowAssemblyPicker(true)}
+                    onClick={() => setShowTrainingSheetPicker(true)}
                     className="text-xs text-purple-600 hover:text-purple-800 underline"
                   >
                     Change
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
-                  {(assembly.empty_count || 0) > 0 && (
+                  {(trainingSheet.empty_count || 0) > 0 && (
                     <button
                       onClick={() => generateMutation.mutate()}
                       disabled={generateMutation.isPending}
@@ -1345,10 +1345,10 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
                       ) : (
                         <Wand2 className="w-4 h-4" />
                       )}
-                      Generate {assembly.empty_count} Empty
+                      Generate {trainingSheet.empty_count} Empty
                     </button>
                   )}
-                  {assembly.human_verified_count > 0 && (
+                  {trainingSheet.human_verified_count > 0 && (
                     <button
                       onClick={() => exportMutation.mutate()}
                       disabled={exportMutation.isPending}
@@ -1359,52 +1359,52 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
                       ) : (
                         <Download className="w-4 h-4" />
                       )}
-                      Export {assembly.human_verified_count} Verified
+                      Export {trainingSheet.human_verified_count} Verified
                     </button>
                   )}
                 </div>
               </div>
 
               {/* Stats */}
-              <StatsBar assembly={assembly} />
+              <StatsBar trainingSheet={trainingSheet} />
             </div>
           )}
 
           {/* Asset Review */}
-          {assembly && (
+          {trainingSheet && (
             <div className="mb-6">
               <ReviewPanel
                 assetType="training_sheet"
-                assetId={assembly.id}
-                assetName={assembly.template_config.name || "Training Data"}
+                assetId={trainingSheet.id}
+                assetName={trainingSheet.template_config.name || "Training Data"}
               />
             </div>
           )}
 
           {/* Canonical Label Stats */}
-          {assembly?.sheet_id && (
+          {trainingSheet?.sheet_id && (
             <div className="mb-6">
-              <CanonicalLabelStats sheetId={assembly.sheet_id} />
+              <CanonicalLabelStats sheetId={trainingSheet.sheet_id} />
             </div>
           )}
 
           {/* Canonical Label Browser */}
-          {assembly?.sheet_id && canonicalStats && canonicalStats.total_labels > 0 && (
+          {trainingSheet?.sheet_id && canonicalStats && canonicalStats.total_labels > 0 && (
             <div className="mb-6">
               <details className="group">
                 <summary className="cursor-pointer text-sm font-medium text-db-gray-700 hover:text-db-gray-900 flex items-center gap-2 mb-2">
                   <ChevronRight className="w-4 h-4 group-open:rotate-90 transition-transform" />
                   Browse Canonical Labels ({canonicalStats.total_labels})
                 </summary>
-                <CanonicalLabelBrowser sheetId={assembly.sheet_id} compact />
+                <CanonicalLabelBrowser sheetId={trainingSheet.sheet_id} compact />
               </details>
             </div>
           )}
 
           {/* Quality Gate */}
-          {assemblyId && (
+          {trainingSheetId && (
             <div className="mb-6">
-              <QualityGatePanel collectionId={assemblyId} />
+              <QualityGatePanel collectionId={trainingSheetId} />
             </div>
           )}
 
@@ -1422,7 +1422,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
               description={
                 sourceFilter
                   ? `No rows with status "${sourceLabels[sourceFilter]}"`
-                  : "The assembly has no rows yet"
+                  : "The training sheet has no rows yet"
               }
               variant="compact"
             />
@@ -1512,10 +1512,10 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
       </div>
 
       {/* Detail Panel - Text mode or Image Annotation mode */}
-      {selectedRow && assembly && !showImageAnnotation && (
+      {selectedRow && trainingSheet && !showImageAnnotation && (
         <DetailPanel
           row={selectedRow}
-          assembly={assembly}
+          trainingSheet={trainingSheet}
           onClose={() => setSelectedRowIndex(null)}
           onSave={handleSaveRow}
           onNext={() => {
@@ -1599,36 +1599,36 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
       )}
 
       {/* Training Data Picker Modal */}
-      {showAssemblyPicker && (
+      {showTrainingSheetPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Select Training Data</h2>
               <button
-                onClick={() => setShowAssemblyPicker(false)}
+                onClick={() => setShowTrainingSheetPicker(false)}
                 className="text-db-gray-400 hover:text-db-gray-600"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {assembliesLoading ? (
+            {trainingSheetsLoading ? (
               <div className="text-center py-8 text-gray-400">
                 <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                Loading assemblies...
+                Loading training sheets...
               </div>
-            ) : assemblies && assemblies.length > 0 ? (
+            ) : trainingSheets && trainingSheets.length > 0 ? (
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {assemblies.map((asm) => (
+                {trainingSheets.map((ts) => (
                   <button
-                    key={asm.id}
+                    key={ts.id}
                     onClick={() => {
-                      setSelectedAssemblyId(asm.id);
-                      setShowAssemblyPicker(false);
+                      setSelectedTrainingSheetId(ts.id);
+                      setShowTrainingSheetPicker(false);
                     }}
                     className={clsx(
                       "w-full text-left px-4 py-3 border rounded-lg transition-colors",
-                      asm.id === assemblyId
+                      ts.id === trainingSheetId
                         ? "border-purple-500 bg-purple-50"
                         : "border-gray-200 hover:border-purple-400 hover:bg-purple-50",
                     )}
@@ -1636,21 +1636,21 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="font-medium text-gray-800">
-                          {asm.template_config?.name || asm.id}
+                          {ts.template_config?.name || ts.id}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {asm.total_rows} rows · {asm.human_verified_count}{" "}
+                          {ts.total_rows} rows · {ts.human_verified_count}{" "}
                           verified
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {asm.template_config?.response_source_mode ===
+                        {ts.template_config?.response_source_mode ===
                           "manual_labeling" && (
                           <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
                             Manual Labeling
                           </span>
                         )}
-                        {asm.id === assemblyId && (
+                        {ts.id === trainingSheetId && (
                           <CheckCircle className="w-5 h-5 text-purple-600" />
                         )}
                       </div>
@@ -1660,7 +1660,7 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
               </div>
             ) : (
               <div className="text-center py-8 text-gray-400">
-                No assemblies found. Create one from the Template Builder.
+                No training sheets found. Create one from the Template Builder.
               </div>
             )}
           </div>
@@ -1668,13 +1668,13 @@ export function CuratePage({ mode = "browse" }: CuratePageProps) {
       )}
 
       {/* Promote to Canonical Label Modal */}
-      {selectedRow && assembly && (
+      {selectedRow && trainingSheet && (
         <PromoteToCanonicalModal
           isOpen={showCanonicalLabelModal}
           onClose={() => setShowCanonicalLabelModal(false)}
           row={selectedRow}
-          sheetId={assembly.sheet_id}
-          labelType={assembly.template_config?.label_type || "classification"}
+          sheetId={trainingSheet.sheet_id}
+          labelType={trainingSheet.template_config?.label_type || "classification"}
           labeledBy={config?.current_user || "unknown"}
         />
       )}

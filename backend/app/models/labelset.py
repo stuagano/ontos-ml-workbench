@@ -165,12 +165,12 @@ class LabelsetStats(BaseModel):
     labelset_name: str
     canonical_label_count: int
     total_label_classes: int
-    assemblies_using_count: int = Field(
-        default=0, description="Number of assemblies using this labelset"
+    training_sheets_using_count: int = Field(
+        default=0, description="Number of training sheets using this labelset"
     )
     training_jobs_count: int = Field(
         default=0, description="Number of training jobs using this labelset"
     )
     coverage_stats: dict[str, Any] | None = Field(
-        None, description="Coverage statistics across assemblies"
+        None, description="Coverage statistics across training sheets"
     )

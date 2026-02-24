@@ -90,18 +90,22 @@ async def create_tool(tool: ToolCreate, _auth: CurrentUser = Depends(require_per
         json.dumps(tool.examples).replace("'", "''") if tool.examples else None
     )
 
+    esc_tool_name = tool.name.replace("'", "''")
+    esc_tool_desc = tool.description.replace("'", "''") if tool.description else None
+    esc_tool_docs = tool.documentation.replace("'", "''") if tool.documentation else None
+
     sql = f"""
     INSERT INTO tools_registry (
         id, name, description, uc_function_path, parameters_schema, return_type,
         documentation, examples, version, status, created_by, created_at, updated_at
     ) VALUES (
         '{tool_id}',
-        '{tool.name.replace("'", "''")}',
-        {f"'{tool.description.replace(chr(39), chr(39) + chr(39))}'" if tool.description else "NULL"},
+        '{esc_tool_name}',
+        {f"'{esc_tool_desc}'" if esc_tool_desc else "NULL"},
         {f"'{tool.uc_function_path}'" if tool.uc_function_path else "NULL"},
         {f"'{params_json}'" if params_json else "NULL"},
         {f"'{tool.return_type}'" if tool.return_type else "NULL"},
-        {f"'{tool.documentation.replace(chr(39), chr(39) + chr(39))}'" if tool.documentation else "NULL"},
+        {f"'{esc_tool_docs}'" if esc_tool_docs else "NULL"},
         {f"'{examples_json}'" if examples_json else "NULL"},
         '1.0.0', 'draft', '{user}',
         current_timestamp(), current_timestamp()
@@ -226,16 +230,20 @@ async def create_agent(agent: AgentCreate, _auth: CurrentUser = Depends(require_
 
     tools_json = json.dumps(agent.tools).replace("'", "''") if agent.tools else None
 
+    esc_agent_name = agent.name.replace("'", "''")
+    esc_agent_desc = agent.description.replace("'", "''") if agent.description else None
+    esc_sys_prompt = agent.system_prompt.replace("'", "''") if agent.system_prompt else None
+
     sql = f"""
     INSERT INTO agents_registry (
         id, name, description, model_endpoint, system_prompt, tools, template_id,
         temperature, max_tokens, version, status, created_by, created_at, updated_at
     ) VALUES (
         '{agent_id}',
-        '{agent.name.replace("'", "''")}',
-        {f"'{agent.description.replace(chr(39), chr(39) + chr(39))}'" if agent.description else "NULL"},
+        '{esc_agent_name}',
+        {f"'{esc_agent_desc}'" if esc_agent_desc else "NULL"},
         {f"'{agent.model_endpoint}'" if agent.model_endpoint else "NULL"},
-        {f"'{agent.system_prompt.replace(chr(39), chr(39) + chr(39))}'" if agent.system_prompt else "NULL"},
+        {f"'{esc_sys_prompt}'" if esc_sys_prompt else "NULL"},
         {f"'{tools_json}'" if tools_json else "NULL"},
         {f"'{agent.template_id}'" if agent.template_id else "NULL"},
         {agent.temperature}, {agent.max_tokens},
@@ -368,6 +376,9 @@ async def create_endpoint(endpoint: EndpointCreate, _auth: CurrentUser = Depends
         else None
     )
 
+    esc_ep_name = endpoint.name.replace("'", "''")
+    esc_ep_desc = endpoint.description.replace("'", "''") if endpoint.description else None
+
     sql = f"""
     INSERT INTO endpoints_registry (
         id, name, description, endpoint_name, endpoint_type,
@@ -375,8 +386,8 @@ async def create_endpoint(endpoint: EndpointCreate, _auth: CurrentUser = Depends
         status, created_by, created_at, updated_at
     ) VALUES (
         '{endpoint_id}',
-        '{endpoint.name.replace("'", "''")}',
-        {f"'{endpoint.description.replace(chr(39), chr(39) + chr(39))}'" if endpoint.description else "NULL"},
+        '{esc_ep_name}',
+        {f"'{esc_ep_desc}'" if esc_ep_desc else "NULL"},
         '{endpoint.endpoint_name}',
         '{endpoint.endpoint_type.value}',
         {f"'{endpoint.agent_id}'" if endpoint.agent_id else "NULL"},

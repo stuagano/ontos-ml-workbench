@@ -31,6 +31,8 @@ class SheetBase(BaseModel):
     sample_size: Optional[int] = Field(None, ge=1, description="Number of items to sample (null = all)")
     filter_expression: Optional[str] = Field(None, description="SQL WHERE clause to filter items")
 
+    join_config: Optional[str] = Field(None, description="JSON: multi-source join configuration (sources, key mappings, join type)")
+
     status: Optional[str] = Field(default="active", description="Status: active, archived, deleted")
 
     @field_validator("source_type")
@@ -84,6 +86,8 @@ class SheetUpdateRequest(BaseModel):
     sampling_strategy: Optional[str] = None
     sample_size: Optional[int] = Field(None, ge=1)
     filter_expression: Optional[str] = None
+
+    join_config: Optional[str] = None
 
     status: Optional[str] = None
 

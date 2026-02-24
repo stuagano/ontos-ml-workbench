@@ -1,6 +1,6 @@
 /**
  * Curated Datasets API Service
- * Training-ready QA pairs selected from reviewed assemblies
+ * Training-ready QA pairs selected from reviewed training sheets
  */
 
 import {

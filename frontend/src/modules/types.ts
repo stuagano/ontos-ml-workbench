@@ -16,7 +16,7 @@ export interface ModuleContext {
   // Resource IDs
   templateId?: string;
   template?: any; // Template object
-  assemblyId?: string;
+  trainingSheetId?: string;
   endpointId?: string;
   sheetId?: string;
   sheetName?: string;

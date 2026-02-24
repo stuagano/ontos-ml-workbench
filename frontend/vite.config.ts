@@ -29,6 +29,7 @@ export default defineConfig({
           "vendor-query": ["@tanstack/react-query"],
           "vendor-ui": ["lucide-react", "clsx"],
           "vendor-state": ["zustand"],
+          "vendor-graph": ["reactflow", "dagre"],
         },
       },
     },

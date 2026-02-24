@@ -223,11 +223,10 @@ describe('API Service', () => {
     });
   });
 
-  describe('Assembly API', () => {
-    it('should assemble sheet', async () => {
+  describe('Training Sheet API', () => {
+    it('should generate training sheet', async () => {
       const mockResponse = {
         training_sheet_id: 'ts-1',
-        assembly_id: 'ts-1',
         sheet_id: 'sheet-1',
         status: 'assembling',
         total_items: 100,
@@ -238,13 +237,13 @@ describe('API Service', () => {
         json: async () => mockResponse,
       });
 
-      const result = await api.assembleSheet('sheet-1', { name: 'Test Assembly' });
+      const result = await api.generateTrainingSheet('sheet-1', { name: 'Test Training Sheet' });
       expect(result).toEqual(mockResponse);
     });
 
-    it('should generate assembly responses', async () => {
+    it('should generate responses', async () => {
       const mockResponse = {
-        assembly_id: 'assembly-1',
+        training_sheet_id: 'ts-1',
         generated_count: 10,
       };
 
@@ -253,7 +252,7 @@ describe('API Service', () => {
         json: async () => mockResponse,
       });
 
-      const result = await api.generateAssemblyResponses('assembly-1');
+      const result = await api.generateResponses('ts-1');
       expect(result).toEqual(mockResponse);
     });
   });

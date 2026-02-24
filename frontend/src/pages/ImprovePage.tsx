@@ -31,7 +31,7 @@ import {
   convertFeedbackToCuration,
   listTemplates,
   createGapTask,
-  listAssemblies,
+  listTrainingSheets,
   createTrainingJob,
 } from "../services/api";
 import { useToast } from "../components/Toast";
@@ -162,8 +162,8 @@ export function ImprovePage({ mode = "browse", onModeChange }: ImprovePageProps)
 
   // Fetch training sheets for retrain modal
   const { data: trainingSheets = [] } = useQuery({
-    queryKey: ["assemblies"],
-    queryFn: () => listAssemblies({ status: "approved", limit: 50 }),
+    queryKey: ["training-sheets"],
+    queryFn: () => listTrainingSheets({ status: "approved", limit: 50 }),
   });
 
   // Retrain state

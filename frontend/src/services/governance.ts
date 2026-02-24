@@ -60,6 +60,11 @@ import type {
   ConnectorAsset,
   ConnectorSyncRecord,
   ConnectorStats,
+  LineageGraph,
+  LineageEdge,
+  MaterializeResult,
+  TraversalResult,
+  ImpactReport,
 } from "../types/governance";
 
 const API_BASE = "/api/v1/governance";
@@ -1112,4 +1117,70 @@ export async function listConnectorSyncs(connectorId?: string, status?: string):
   if (status) params.set("status", status);
   const qs = params.toString();
   return fetchJson(`${API_BASE}/connector-syncs${qs ? `?${qs}` : ""}`);
+}
+
+// ============================================================================
+// Lineage Graph
+// ============================================================================
+
+export async function materializeLineage(): Promise<MaterializeResult> {
+  return fetchJson(`${API_BASE}/lineage/materialize`, { method: "POST" });
+}
+
+export async function materializeEntityLineage(
+  entityType: string,
+  entityId: string,
+): Promise<MaterializeResult> {
+  return fetchJson(`${API_BASE}/lineage/materialize/${entityType}/${entityId}`, {
+    method: "POST",
+  });
+}
+
+export async function getLineageGraph(): Promise<LineageGraph> {
+  return fetchJson(`${API_BASE}/lineage/graph`);
+}
+
+export async function getEntityLineage(
+  entityType: string,
+  entityId: string,
+): Promise<LineageGraph> {
+  return fetchJson(`${API_BASE}/lineage/entity/${entityType}/${entityId}`);
+}
+
+export async function traverseLineage(
+  direction: "upstream" | "downstream",
+  entityType: string,
+  entityId: string,
+  maxDepth = 10,
+): Promise<TraversalResult> {
+  return fetchJson(
+    `${API_BASE}/graph/traverse/${direction}/${entityType}/${entityId}?max_depth=${maxDepth}`,
+  );
+}
+
+export async function getImpactAnalysis(
+  entityType: string,
+  entityId: string,
+): Promise<ImpactReport> {
+  return fetchJson(`${API_BASE}/graph/impact/${entityType}/${entityId}`);
+}
+
+export async function findLineagePath(
+  fromType: string,
+  fromId: string,
+  toType: string,
+  toId: string,
+): Promise<LineageEdge[]> {
+  const params = new URLSearchParams({
+    from_type: fromType, from_id: fromId,
+    to_type: toType, to_id: toId,
+  });
+  return fetchJson(`${API_BASE}/graph/path?${params}`);
+}
+
+export async function getEntityContext(
+  entityType: string,
+  entityId: string,
+): Promise<LineageGraph> {
+  return fetchJson(`${API_BASE}/graph/context/${entityType}/${entityId}`);
 }

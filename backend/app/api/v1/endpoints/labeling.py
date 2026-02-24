@@ -194,6 +194,12 @@ async def create_job(job: LabelingJobCreate):
     target_columns_json = json.dumps(job.target_columns)
     label_schema_json = json.dumps(job.label_schema.model_dump())
 
+    esc_name = job.name.replace("'", "''")
+    esc_desc = job.description.replace("'", "''") if job.description else None
+    esc_targets = target_columns_json.replace("'", "''")
+    esc_schema = label_schema_json.replace("'", "''")
+    esc_instructions = job.instructions.replace("'", "''") if job.instructions else None
+
     insert_sql = f"""
     INSERT INTO labeling_jobs (
         id, name, description, sheet_id, target_columns, label_schema,
@@ -201,11 +207,11 @@ async def create_job(job: LabelingJobCreate):
         default_batch_size, status, total_items, labeled_items, reviewed_items,
         approved_items, created_at, updated_at
     ) VALUES (
-        '{job_id}', '{job.name.replace("'", "''")}',
-        {f"'{job.description.replace(chr(39), chr(39) + chr(39))}'" if job.description else "NULL"},
-        '{job.sheet_id}', '{target_columns_json.replace("'", "''")}',
-        '{label_schema_json.replace("'", "''")}',
-        {f"'{job.instructions.replace(chr(39), chr(39) + chr(39))}'" if job.instructions else "NULL"},
+        '{job_id}', '{esc_name}',
+        {f"'{esc_desc}'" if esc_desc else "NULL"},
+        '{job.sheet_id}', '{esc_targets}',
+        '{esc_schema}',
+        {f"'{esc_instructions}'" if esc_instructions else "NULL"},
         {job.ai_assist_enabled}, {f"'{job.ai_model}'" if job.ai_model else "NULL"},
         '{job.assignment_strategy.value}', {job.default_batch_size},
         'draft', {total_items}, 0, 0, 0,
@@ -905,10 +911,11 @@ async def label_item(
 
     now = datetime.utcnow().isoformat()
     human_labels_json = json.dumps(update.human_labels)
+    esc_labels = human_labels_json.replace("'", "''")
 
     sql.execute_update(f"""
         UPDATE labeled_items
-        SET human_labels = '{human_labels_json.replace("'", "''")}',
+        SET human_labels = '{esc_labels}',
             labeled_by = '{labeler}',
             labeled_at = '{now}',
             status = 'human_labeled',
@@ -956,10 +963,11 @@ async def skip_item(item_id: str, skip: LabeledItemSkip):
     sql = get_sql_service()
 
     now = datetime.utcnow().isoformat()
+    esc_reason = skip.skip_reason.replace("'", "''")
     sql.execute_update(f"""
         UPDATE labeled_items
         SET status = 'skipped',
-            skip_reason = '{skip.skip_reason.replace("'", "''")}',
+            skip_reason = '{esc_reason}',
             updated_at = '{now}'
         WHERE id = '{item_id}'
     """)
@@ -1041,6 +1049,7 @@ async def create_user(user: WorkspaceUserCreate):
 
     user_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
+    esc_display_name = user.display_name.replace("'", "''")
 
     sql.execute_update(f"""
         INSERT INTO workspace_users (
@@ -1048,7 +1057,7 @@ async def create_user(user: WorkspaceUserCreate):
             current_task_count, total_labeled, total_reviewed,
             is_active, created_at, updated_at
         ) VALUES (
-            '{user_id}', '{user.email}', '{user.display_name.replace("'", "''")}',
+            '{user_id}', '{user.email}', '{esc_display_name}',
             '{user.role.value}', {user.max_concurrent_tasks},
             0, 0, 0, TRUE, '{now}', '{now}'
         )

@@ -1,14 +1,9 @@
-"""Pydantic models for Training Sheets (AssembledDataset) - materialized Q&A pairs.
+"""Pydantic models for Training Sheets - materialized Q&A pairs.
 
 PRD v2.3: Training Sheets are materialized Q&A pairs generated from Sheets + Templates.
 - Supports canonical label lookup for automatic pre-approval
 - Tracks canonical label reuse statistics
 - Includes usage constraints for data governance
-
-Following GCP Vertex AI pattern:
-- assembly_table, assembly = dataset.assemble(template_config)
-- The assembly is the concrete result of applying the template to the dataset
-- Contains actual rendered prompts and responses ready for labeling/training
 """
 
 from datetime import datetime
@@ -20,12 +15,12 @@ from pydantic import BaseModel, Field
 from app.models.sheet import TemplateConfig
 
 
-class AssemblyStatus(str, Enum):
-    """Assembly lifecycle status."""
+class TrainingSheetStatus(str, Enum):
+    """Training Sheet lifecycle status."""
 
-    ASSEMBLING = "assembling"  # Currently being assembled
-    READY = "ready"  # Assembly complete, ready for use
-    FAILED = "failed"  # Assembly failed
+    ASSEMBLING = "assembling"  # Currently being generated
+    READY = "ready"  # Generation complete, ready for use
+    FAILED = "failed"  # Generation failed
     ARCHIVED = "archived"
 
 
@@ -48,8 +43,8 @@ class LabelingMode(str, Enum):
     CANONICAL = "canonical"  # PRD v2.3: Reused from canonical label
 
 
-class AssembledRow(BaseModel):
-    """A single assembled row with rendered prompt and response (PRD v2.3: added canonical label support)."""
+class QAPairRow(BaseModel):
+    """A single Q&A pair row with rendered prompt and response (PRD v2.3: added canonical label support)."""
 
     row_index: int = Field(..., description="Index into the source sheet")
 
@@ -112,12 +107,12 @@ class AssembledRow(BaseModel):
     )
 
 
-class AssembledDataset(BaseModel):
+class TrainingSheet(BaseModel):
     """
     Materialized result of applying a template to a sheet.
 
-    This is the concrete output of sheet.assemble() - actual prompt/response pairs
-    that can be used for labeling, review, and fine-tuning export.
+    Contains actual prompt/response pairs (Q&A pairs) that can be used
+    for labeling, review, and fine-tuning export.
     """
 
     id: str
@@ -125,12 +120,12 @@ class AssembledDataset(BaseModel):
     # Source references
     sheet_id: str = Field(..., description="ID of the source sheet")
     sheet_name: str | None = Field(
-        default=None, description="Name of source sheet at assembly time"
+        default=None, description="Name of source sheet at generation time"
     )
 
-    # Frozen template config (snapshot at assembly time)
+    # Frozen template config (snapshot at generation time)
     template_config: TemplateConfig = Field(
-        ..., description="Snapshot of template config used for this assembly"
+        ..., description="Snapshot of template config used for this training sheet"
     )
 
     # PRD v2.3: Label type for canonical label matching
@@ -139,9 +134,9 @@ class AssembledDataset(BaseModel):
         description="Label type from template (for canonical label lookup)",
     )
 
-    # Assembly metadata
-    status: AssemblyStatus = AssemblyStatus.ASSEMBLING
-    total_rows: int = Field(default=0, description="Total number of assembled rows")
+    # Training Sheet metadata
+    status: TrainingSheetStatus = TrainingSheetStatus.ASSEMBLING
+    total_rows: int = Field(default=0, description="Total number of Q&A pairs")
 
     # Statistics (PRD v2.3: added canonical_reused_count)
     ai_generated_count: int = Field(
@@ -159,7 +154,7 @@ class AssembledDataset(BaseModel):
     created_at: datetime | None = None
     created_by: str | None = None
     updated_at: datetime | None = None
-    completed_at: datetime | None = None  # When assembly finished
+    completed_at: datetime | None = None  # When generation finished
 
     # Error info (if status == FAILED)
     error_message: str | None = None
@@ -173,8 +168,8 @@ class AssembledDataset(BaseModel):
 # ============================================================================
 
 
-class AssembleRequest(BaseModel):
-    """Request body for assembling a sheet."""
+class CreateTrainingSheetRequest(BaseModel):
+    """Request body for creating a training sheet from a sheet."""
 
     # Optional: override the sheet's attached template
     template_config: TemplateConfig | None = Field(
@@ -187,29 +182,29 @@ class AssembleRequest(BaseModel):
         default=None,
         ge=1,
         le=100000,
-        description="Limit number of rows to assemble (for preview/testing)",
+        description="Limit number of rows to generate (for preview/testing)",
     )
     generate_responses: bool = Field(
         default=False,
-        description="If True, also run AI generation on assembled rows",
+        description="If True, also run AI generation on Q&A pairs",
     )
 
 
-class AssembleResponse(BaseModel):
-    """Response from assembly operation."""
+class CreateTrainingSheetResponse(BaseModel):
+    """Response from training sheet creation."""
 
-    assembly_id: str
+    training_sheet_id: str
     sheet_id: str
-    status: AssemblyStatus
+    status: TrainingSheetStatus
     total_rows: int
     message: str | None = None
 
 
-class AssemblyPreviewResponse(BaseModel):
-    """Response for previewing assembled rows."""
+class TrainingSheetPreviewResponse(BaseModel):
+    """Response for previewing Q&A pairs in a training sheet."""
 
-    assembly_id: str
-    rows: list[AssembledRow]
+    training_sheet_id: str
+    rows: list[QAPairRow]
     total_rows: int
     preview_rows: int
 
@@ -225,8 +220,8 @@ class AssemblyPreviewResponse(BaseModel):
     empty_count: int = Field(default=0, description="Rows without responses")
 
 
-class AssemblyRowUpdate(BaseModel):
-    """Request to update a single assembled row."""
+class QAPairUpdate(BaseModel):
+    """Request to update a single Q&A pair row."""
 
     response: str | None = Field(default=None, description="New response value")
     is_flagged: bool | None = Field(default=None, description="Flag for review")
@@ -234,8 +229,8 @@ class AssemblyRowUpdate(BaseModel):
     mark_as_verified: bool = Field(default=False, description="Mark as human verified")
 
 
-class AssemblyGenerateRequest(BaseModel):
-    """Request to generate AI responses for assembled rows."""
+class GenerateRequest(BaseModel):
+    """Request to generate AI responses for Q&A pairs."""
 
     row_indices: list[int] | None = Field(
         default=None,
@@ -251,17 +246,17 @@ class AssemblyGenerateRequest(BaseModel):
     )
 
 
-class AssemblyGenerateResponse(BaseModel):
-    """Response from AI generation on assembly."""
+class GenerateResponse(BaseModel):
+    """Response from AI generation on training sheet."""
 
-    assembly_id: str
+    training_sheet_id: str
     generated_count: int
     failed_count: int
     errors: list[dict[str, Any]] | None = None
 
 
-class AssemblyExportRequest(BaseModel):
-    """Request to export assembly for fine-tuning."""
+class ExportRequest(BaseModel):
+    """Request to export training sheet for fine-tuning."""
 
     # Export destination
     volume_path: str = Field(
@@ -302,10 +297,10 @@ class AssemblyExportRequest(BaseModel):
     )
 
 
-class AssemblyExportResponse(BaseModel):
+class ExportResponse(BaseModel):
     """Response from export operation."""
 
-    assembly_id: str
+    training_sheet_id: str
     volume_path: str
     examples_exported: int
     format: str
@@ -322,10 +317,10 @@ class AssemblyExportResponse(BaseModel):
     )
 
 
-class AssemblyListResponse(BaseModel):
-    """Response for listing assemblies."""
+class TrainingSheetListResponse(BaseModel):
+    """Response for listing training sheets."""
 
-    assemblies: list[AssembledDataset]
+    training_sheets: list[TrainingSheet]
     total: int
     page: int
     page_size: int

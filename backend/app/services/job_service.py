@@ -26,7 +26,7 @@ JOB_TYPE_MAP = {
     "labeling_agent": "[Ontos ML] Labeling Agent",
     "quality_scoring": "[Ontos ML] Quality Scoring",
     # TRAIN stage
-    "data_assembly": "[Ontos ML] Data Assembly",
+    "training_sheet_generation": "[Ontos ML] Training Sheet Generation",
     "finetune_fmapi": "[Ontos ML] Fine-tune (FMAPI)",
     "model_evaluation": "[Ontos ML] Model Evaluation",
     # MONITOR stage
@@ -64,7 +64,7 @@ class JobService:
             return "DATA"
         elif job_type in ["labeling_agent", "quality_scoring"]:
             return "CURATE"
-        elif job_type in ["data_assembly", "finetune_fmapi", "model_evaluation"]:
+        elif job_type in ["training_sheet_generation", "finetune_fmapi", "model_evaluation"]:
             return "TRAIN"
         elif job_type in ["drift_detection", "feedback_analysis"]:
             return "MONITOR"
@@ -124,6 +124,7 @@ class JobService:
         # Record in job_runs table
         run_id = str(uuid.uuid4())
         user = get_current_user()
+        esc_config = json.dumps(config).replace("'", "''")
 
         sql = f"""
         INSERT INTO job_runs (
@@ -136,7 +137,7 @@ class JobService:
             {f"'{model_id}'" if model_id else "NULL"},
             {f"'{endpoint_id}'" if endpoint_id else "NULL"},
             '{run.run_id}', '{job_id}', 'running',
-            '{json.dumps(config).replace("'", "''")}',
+            '{esc_config}',
             current_timestamp(), current_timestamp(), '{user}'
         )
         """

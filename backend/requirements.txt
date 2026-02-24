@@ -17,6 +17,9 @@ databricks-connect~=15.4
 pydantic>=2.5.0
 pydantic-settings>=2.1.0
 
+# MCP (Model Context Protocol) server
+mcp[cli]>=1.0.0
+
 # Utilities
 python-dotenv>=1.0.0
 httpx>=0.26.0

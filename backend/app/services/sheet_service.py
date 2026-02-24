@@ -182,6 +182,32 @@ class SheetService:
             logger.error(f"Failed to get columns for {table_path}: {e}")
             return []
 
+    def get_table_columns_with_types(self, table_path: str) -> List[Dict[str, str]]:
+        """
+        Get column names with type information for a Unity Catalog table.
+
+        Returns:
+            List of dicts with keys: name, type_text, comment
+        """
+        parts = table_path.split(".")
+        if len(parts) != 3:
+            raise ValueError(f"Invalid table path: {table_path}")
+
+        try:
+            table_info = self.client.tables.get(table_path)
+            result = []
+            if table_info.columns:
+                for col in table_info.columns:
+                    result.append({
+                        "name": col.name,
+                        "type_text": col.type_text or "STRING",
+                        "comment": col.comment or "",
+                    })
+            return result
+        except Exception as e:
+            logger.error(f"Failed to get typed columns for {table_path}: {e}")
+            return []
+
     def get_table_preview(self, table_path: str, limit: int = 50, timeout_seconds: int = 30) -> Dict[str, Any]:
         """
         Get preview data from a Unity Catalog table
@@ -314,7 +340,7 @@ class SheetService:
         sql = f"""
         SELECT id, name, description, status, source_type, source_table, source_volume, source_path,
                item_id_column, text_columns, image_columns, metadata_columns,
-               sampling_strategy, sample_size, filter_expression, template_config,
+               sampling_strategy, sample_size, filter_expression, template_config, join_config,
                item_count, last_validated_at, created_at, created_by, updated_at, updated_by
         FROM {self.table_name}
         WHERE id = '{sheet_id}' AND status != 'deleted'
@@ -356,7 +382,7 @@ class SheetService:
                     columns = ["id", "name", "description", "status", "source_type", "source_table",
                               "source_volume", "source_path", "item_id_column", "text_columns",
                               "image_columns", "metadata_columns", "sampling_strategy", "sample_size",
-                              "filter_expression", "template_config", "item_count", "last_validated_at",
+                              "filter_expression", "template_config", "join_config", "item_count", "last_validated_at",
                               "created_at", "created_by", "updated_at", "updated_by"]
                     sheet_dict = dict(zip(columns, row))
 
@@ -399,7 +425,7 @@ class SheetService:
         sql = f"""
         SELECT id, name, description, status, source_type, source_table, source_volume, source_path,
                item_id_column, text_columns, image_columns, metadata_columns,
-               sampling_strategy, sample_size, filter_expression, template_config,
+               sampling_strategy, sample_size, filter_expression, template_config, join_config,
                item_count, last_validated_at, created_at, created_by, updated_at, updated_by
         FROM {self.table_name}
         {where_clause}
@@ -442,7 +468,7 @@ class SheetService:
                     columns = ["id", "name", "description", "status", "source_type", "source_table",
                               "source_volume", "source_path", "item_id_column", "text_columns",
                               "image_columns", "metadata_columns", "sampling_strategy", "sample_size",
-                              "filter_expression", "template_config", "item_count", "last_validated_at",
+                              "filter_expression", "template_config", "join_config", "item_count", "last_validated_at",
                               "created_at", "created_by", "updated_at", "updated_by"]
 
                     sheets = []

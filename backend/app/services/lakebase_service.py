@@ -194,23 +194,23 @@ class LakebaseService:
         return rows > 0
 
     # =========================================================================
-    # Assembly Operations
+    # Training Sheet Operations
     # =========================================================================
 
-    def get_assembly(self, assembly_id: str) -> dict[str, Any] | None:
-        """Get an assembly by ID."""
+    def get_training_sheet(self, training_sheet_id: str) -> dict[str, Any] | None:
+        """Get a training sheet by ID."""
         self._ensure_initialized()
         if not self._available:
             return None
 
         return self.execute_one(
-            f"SELECT * FROM {self._table('assemblies')} WHERE assembly_id = {self._escape_sql(assembly_id)}"
+            f"SELECT * FROM {self._table('training_sheets')} WHERE training_sheet_id = {self._escape_sql(training_sheet_id)}"
         )
 
-    def list_assemblies(
+    def list_training_sheets(
         self, sheet_id: str | None = None, status: str | None = None, limit: int = 50
     ) -> list[dict[str, Any]]:
-        """List assemblies with optional filters."""
+        """List training sheets with optional filters."""
         self._ensure_initialized()
         if not self._available:
             return []
@@ -225,63 +225,63 @@ class LakebaseService:
 
         return self.execute(
             f"""
-            SELECT * FROM {self._table('assemblies')}
+            SELECT * FROM {self._table('training_sheets')}
             {where_clause}
             ORDER BY updated_at DESC
             LIMIT {limit}
             """
         )
 
-    def upsert_assembly(self, assembly_data: dict[str, Any]) -> dict[str, Any]:
-        """Insert or update an assembly."""
+    def upsert_training_sheet(self, training_sheet_data: dict[str, Any]) -> dict[str, Any]:
+        """Insert or update a training sheet."""
         self._ensure_initialized()
-        template_json = json.dumps(assembly_data["template_config"])
+        template_json = json.dumps(training_sheet_data["template_config"])
 
         sql = f"""
-        MERGE INTO {self._table('assemblies')} AS target
-        USING (SELECT {self._escape_sql(assembly_data['assembly_id'])} AS assembly_id) AS source
-        ON target.assembly_id = source.assembly_id
+        MERGE INTO {self._table('training_sheets')} AS target
+        USING (SELECT {self._escape_sql(training_sheet_data['training_sheet_id'])} AS training_sheet_id) AS source
+        ON target.training_sheet_id = source.training_sheet_id
         WHEN MATCHED THEN UPDATE SET
-            status = {self._escape_sql(assembly_data.get('status', 'assembling'))},
-            total_rows = {assembly_data.get('total_rows', 0)},
-            ai_generated_count = {assembly_data.get('ai_generated_count', 0)},
-            human_labeled_count = {assembly_data.get('human_labeled_count', 0)},
-            human_verified_count = {assembly_data.get('human_verified_count', 0)},
-            flagged_count = {assembly_data.get('flagged_count', 0)},
-            error_message = {self._escape_sql(assembly_data.get('error_message'))},
+            status = {self._escape_sql(training_sheet_data.get('status', 'assembling'))},
+            total_rows = {training_sheet_data.get('total_rows', 0)},
+            ai_generated_count = {training_sheet_data.get('ai_generated_count', 0)},
+            human_labeled_count = {training_sheet_data.get('human_labeled_count', 0)},
+            human_verified_count = {training_sheet_data.get('human_verified_count', 0)},
+            flagged_count = {training_sheet_data.get('flagged_count', 0)},
+            error_message = {self._escape_sql(training_sheet_data.get('error_message'))},
             updated_at = current_timestamp()
         WHEN NOT MATCHED THEN INSERT (
-            assembly_id, sheet_id, sheet_name, template_config,
+            training_sheet_id, sheet_id, sheet_name, template_config,
             status, total_rows,
             ai_generated_count, human_labeled_count, human_verified_count, flagged_count,
             error_message, created_by, created_at, updated_at
         ) VALUES (
-            {self._escape_sql(assembly_data['assembly_id'])},
-            {self._escape_sql(assembly_data['sheet_id'])},
-            {self._escape_sql(assembly_data.get('sheet_name'))},
+            {self._escape_sql(training_sheet_data['training_sheet_id'])},
+            {self._escape_sql(training_sheet_data['sheet_id'])},
+            {self._escape_sql(training_sheet_data.get('sheet_name'))},
             {self._escape_sql(template_json)},
-            {self._escape_sql(assembly_data.get('status', 'assembling'))},
-            {assembly_data.get('total_rows', 0)},
-            {assembly_data.get('ai_generated_count', 0)},
-            {assembly_data.get('human_labeled_count', 0)},
-            {assembly_data.get('human_verified_count', 0)},
-            {assembly_data.get('flagged_count', 0)},
-            {self._escape_sql(assembly_data.get('error_message'))},
-            {self._escape_sql(assembly_data.get('created_by'))},
+            {self._escape_sql(training_sheet_data.get('status', 'assembling'))},
+            {training_sheet_data.get('total_rows', 0)},
+            {training_sheet_data.get('ai_generated_count', 0)},
+            {training_sheet_data.get('human_labeled_count', 0)},
+            {training_sheet_data.get('human_verified_count', 0)},
+            {training_sheet_data.get('flagged_count', 0)},
+            {self._escape_sql(training_sheet_data.get('error_message'))},
+            {self._escape_sql(training_sheet_data.get('created_by'))},
             current_timestamp(),
             current_timestamp()
         )
         """
         self.execute_update(sql)
-        return self.get_assembly(assembly_data['assembly_id'])
+        return self.get_training_sheet(training_sheet_data['training_sheet_id'])
 
-    def update_assembly_stats(self, assembly_id: str) -> None:
-        """Recalculate assembly statistics from rows."""
+    def update_training_sheet_stats(self, training_sheet_id: str) -> None:
+        """Recalculate training sheet statistics from Q&A pair rows."""
         self._ensure_initialized()
         if not self._available:
             return
 
-        # Get counts from assembly_rows
+        # Get counts from qa_pairs
         stats = self.execute_one(f"""
             SELECT
                 COUNT(*) as total_rows,
@@ -289,55 +289,55 @@ class LakebaseService:
                 SUM(CASE WHEN response_source = 'human_labeled' THEN 1 ELSE 0 END) as human_labeled_count,
                 SUM(CASE WHEN response_source = 'human_verified' THEN 1 ELSE 0 END) as human_verified_count,
                 SUM(CASE WHEN is_flagged = TRUE THEN 1 ELSE 0 END) as flagged_count
-            FROM {self._table('assembly_rows')}
-            WHERE assembly_id = {self._escape_sql(assembly_id)}
+            FROM {self._table('qa_pairs')}
+            WHERE training_sheet_id = {self._escape_sql(training_sheet_id)}
         """)
 
         if stats:
             self.execute_update(f"""
-                UPDATE {self._table('assemblies')} SET
+                UPDATE {self._table('training_sheets')} SET
                     total_rows = {stats.get('total_rows', 0)},
                     ai_generated_count = {stats.get('ai_generated_count', 0)},
                     human_labeled_count = {stats.get('human_labeled_count', 0)},
                     human_verified_count = {stats.get('human_verified_count', 0)},
                     flagged_count = {stats.get('flagged_count', 0)},
                     updated_at = current_timestamp()
-                WHERE assembly_id = {self._escape_sql(assembly_id)}
+                WHERE training_sheet_id = {self._escape_sql(training_sheet_id)}
             """)
 
     # =========================================================================
-    # Assembly Row Operations
+    # Q&A Pair Row Operations
     # =========================================================================
 
-    def get_assembly_row(
-        self, assembly_id: str, row_index: int
+    def get_qa_pair_row(
+        self, training_sheet_id: str, row_index: int
     ) -> dict[str, Any] | None:
-        """Get a single assembly row."""
+        """Get a single Q&A pair row."""
         self._ensure_initialized()
         if not self._available:
             return None
 
         return self.execute_one(
             f"""
-            SELECT * FROM {self._table('assembly_rows')}
-            WHERE assembly_id = {self._escape_sql(assembly_id)} AND row_index = {row_index}
+            SELECT * FROM {self._table('qa_pairs')}
+            WHERE training_sheet_id = {self._escape_sql(training_sheet_id)} AND row_index = {row_index}
             """
         )
 
-    def list_assembly_rows(
+    def list_qa_pair_rows(
         self,
-        assembly_id: str,
+        training_sheet_id: str,
         limit: int = 50,
         offset: int = 0,
         response_source: str | None = None,
         is_flagged: bool | None = None,
     ) -> list[dict[str, Any]]:
-        """List assembly rows with optional filters."""
+        """List Q&A pair rows with optional filters."""
         self._ensure_initialized()
         if not self._available:
             return []
 
-        conditions = [f"assembly_id = {self._escape_sql(assembly_id)}"]
+        conditions = [f"training_sheet_id = {self._escape_sql(training_sheet_id)}"]
 
         if response_source:
             conditions.append(f"response_source = {self._escape_sql(response_source)}")
@@ -348,22 +348,22 @@ class LakebaseService:
 
         return self.execute(
             f"""
-            SELECT * FROM {self._table('assembly_rows')}
+            SELECT * FROM {self._table('qa_pairs')}
             {where_clause}
             ORDER BY row_index
             LIMIT {limit} OFFSET {offset}
             """
         )
 
-    def upsert_assembly_row(self, row_data: dict[str, Any]) -> dict[str, Any]:
-        """Insert or update an assembly row."""
+    def upsert_qa_pair_row(self, row_data: dict[str, Any]) -> dict[str, Any]:
+        """Insert or update a Q&A pair row."""
         self._ensure_initialized()
         source_data_json = json.dumps(row_data.get("source_data", {}))
 
         sql = f"""
-        MERGE INTO {self._table('assembly_rows')} AS target
-        USING (SELECT {self._escape_sql(row_data['assembly_id'])} AS assembly_id, {row_data['row_index']} AS row_index) AS source
-        ON target.assembly_id = source.assembly_id AND target.row_index = source.row_index
+        MERGE INTO {self._table('qa_pairs')} AS target
+        USING (SELECT {self._escape_sql(row_data['training_sheet_id'])} AS training_sheet_id, {row_data['row_index']} AS row_index) AS source
+        ON target.training_sheet_id = source.training_sheet_id AND target.row_index = source.row_index
         WHEN MATCHED THEN UPDATE SET
             response = {self._escape_sql(row_data.get('response'))},
             response_source = {self._escape_sql(row_data.get('response_source', 'empty'))},
@@ -375,11 +375,11 @@ class LakebaseService:
             flag_reason = {self._escape_sql(row_data.get('flag_reason'))},
             confidence_score = {row_data.get('confidence_score') or 'NULL'}
         WHEN NOT MATCHED THEN INSERT (
-            row_id, assembly_id, row_index, prompt, source_data,
+            row_id, training_sheet_id, row_index, prompt, source_data,
             response, response_source, is_flagged
         ) VALUES (
             uuid(),
-            {self._escape_sql(row_data['assembly_id'])},
+            {self._escape_sql(row_data['training_sheet_id'])},
             {row_data['row_index']},
             {self._escape_sql(row_data['prompt'])},
             {self._escape_json_for_sql(source_data_json)},
@@ -389,12 +389,12 @@ class LakebaseService:
         )
         """
         self.execute_update(sql)
-        return self.get_assembly_row(row_data['assembly_id'], row_data['row_index'])
+        return self.get_qa_pair_row(row_data['training_sheet_id'], row_data['row_index'])
 
-    def update_assembly_row(
-        self, assembly_id: str, row_index: int, updates: dict[str, Any]
+    def update_qa_pair_row(
+        self, training_sheet_id: str, row_index: int, updates: dict[str, Any]
     ) -> dict[str, Any] | None:
-        """Update specific fields on an assembly row."""
+        """Update specific fields on a Q&A pair row."""
         self._ensure_initialized()
         if not self._available:
             return None
@@ -421,17 +421,17 @@ class LakebaseService:
             set_clauses.append(f"confidence_score = {updates['confidence_score'] or 'NULL'}")
 
         if not set_clauses:
-            return self.get_assembly_row(assembly_id, row_index)
+            return self.get_qa_pair_row(training_sheet_id, row_index)
 
         self.execute_update(
             f"""
-            UPDATE {self._table('assembly_rows')}
+            UPDATE {self._table('qa_pairs')}
             SET {", ".join(set_clauses)}
-            WHERE assembly_id = {self._escape_sql(assembly_id)} AND row_index = {row_index}
+            WHERE training_sheet_id = {self._escape_sql(training_sheet_id)} AND row_index = {row_index}
             """
         )
 
-        return self.get_assembly_row(assembly_id, row_index)
+        return self.get_qa_pair_row(training_sheet_id, row_index)
 
     # =========================================================================
     # Label Class Operations

@@ -239,7 +239,7 @@ class TestCanonicalLabelsAPI:
 
 
 class TestTrainingSheetsAPI:
-    """Tests for /api/v1/assemblies (Training Sheets) endpoints."""
+    """Tests for /api/v1/training-sheets (Training Sheets) endpoints."""
 
     def test_create_training_sheet(self, client, mock_sql_service):
         """Create a new training sheet (Q&A dataset)."""
@@ -264,7 +264,7 @@ class TestTrainingSheetsAPI:
                     "created_at": datetime.now().isoformat()
                 }]
 
-                response = client.post("/api/v1/assemblies", json=payload)
+                response = client.post("/api/v1/training-sheets", json=payload)
 
         assert response.status_code in [200, 201]
         data = response.json()
@@ -280,8 +280,8 @@ class TestTrainingSheetsAPI:
             "status": "PENDING"
         }
 
-        with patch("app.api.v1.endpoints.assemblies.get_job_service", return_value=mock_job_service):
-            response = client.post(f"/api/v1/assemblies/{training_sheet_id}/generate")
+        with patch("app.api.v1.endpoints.training_sheets.get_job_service", return_value=mock_job_service):
+            response = client.post(f"/api/v1/training-sheets/{training_sheet_id}/generate")
 
         assert response.status_code in [200, 202]
         data = response.json()

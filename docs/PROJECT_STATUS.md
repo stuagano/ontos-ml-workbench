@@ -1,8 +1,8 @@
 # Ontos ML Workbench - Project Status
 
-**Last Updated:** February 22, 2026
+**Last Updated:** February 24, 2026
 **PRD Version:** 2.3
-**Overall Progress:** ~90% backend, ~80% frontend (ML Pipeline); Ontos Governance G1–G10 + G14–G15 complete
+**Overall Progress:** ~90% backend, ~80% frontend (ML Pipeline); Ontos Governance G1–G15 complete; Lineage Graph (4 phases) complete
 
 > This is the single source of truth for implementation status. It replaces the stale
 > `GAP_ANALYSIS_V2.md`, `SPRINT_PLAN.md`, `BACKLOG.md`, and `prd/v2.3-implementation-status.md`.
@@ -37,7 +37,7 @@
 | Publish / Archive / Delete lifecycle | DONE | Status-aware row actions (just wired) |
 | Attach template to sheet | DONE | Template selection + column mapping modal |
 | Detach template from sheet | DONE | "Detach" button on template indicator (just wired) |
-| Assemble sheet (generate Q&A pairs) | DONE | `assembleSheet` API, triggers Training Sheet creation |
+| Generate training sheet (create Q&A pairs) | DONE | `generateTrainingSheet` API, triggers Training Sheet creation |
 | Export to Delta | DONE | `exportSheet` API |
 | Data Quality (DQX) inline panel | DONE | `DataQualityPanel` component in sheet detail view |
 | Multimodal data fusion (images + sensor + metadata) | DONE | Columns support text, image, metadata categories |
@@ -47,8 +47,8 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Select Sheet + Template → generate Training Sheet | DONE | Assemble flow in SheetBuilder |
-| AI inference for response generation (FMAPI) | DONE | `POST /assemblies/{id}/generate`, `InferenceService` |
+| Select Sheet + Template → generate Training Sheet | DONE | Generate flow in SheetBuilder |
+| AI inference for response generation (FMAPI) | DONE | `POST /training-sheets/{id}/generate`, `InferenceService` |
 | Training Sheet browse / preview Q&A pairs | DONE | `CuratePage.tsx` browse + detail modes |
 | Column mapping (template variables → sheet columns) | DONE | `ColumnMappingModal` with Jinja2 placeholder extraction |
 | Canonical label lookup during generation | DONE | Coverage stats shown in SheetBuilder before generation |
@@ -60,7 +60,7 @@
 | **Mode A: Training Sheet Review** | | |
 | Review Q&A pairs (approve/edit/reject/flag) | DONE | `CuratePage.tsx` detail mode with inline editing |
 | AI-assisted generation for blank responses | DONE | Generate mutation in CuratePage |
-| Export approved Training Sheets (JSONL) | DONE | `POST /assemblies/{id}/export` (openai_chat / anthropic / gemini formats) |
+| Export approved Training Sheets (JSONL) | DONE | `POST /training-sheets/{id}/export` (openai_chat / anthropic / gemini formats) |
 | **Mode B: Canonical Labeling Tool** | | |
 | Browse sheets and label source items | DONE | `CanonicalLabelingTool.tsx` in sidebar |
 | Create / edit canonical labels | DONE | Full CRUD wired to 13 backend endpoints |
@@ -79,7 +79,7 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Browse Training Sheets for training | DONE | `TrainPage.tsx` lists assemblies |
+| Browse Training Sheets for training | DONE | `TrainPage.tsx` lists training sheets |
 | Configure and submit FMAPI training job | DONE | `TrainingJobCreateForm` → `createTrainingJob` API → `TrainingService` |
 | Monitor training job progress | DONE | `TrainingJobDetail` with auto-polling, events, metrics |
 | Dual quality gates (status + governance) | DONE | Export filters by status + usage constraints |
@@ -164,7 +164,7 @@
 | Router | Endpoints | Status |
 |--------|-----------|--------|
 | Sheets | 9 | Fully implemented |
-| Assemblies (Training Sheets) | 8 | Fully implemented |
+| Training Sheets | 8 | Fully implemented |
 | Templates | 8 | Fully implemented |
 | Canonical Labels | 13 | Fully implemented |
 | Labelsets | 9 | Fully implemented |
@@ -184,7 +184,7 @@
 | Agents | 3 | Fully implemented |
 | Settings/Admin | 7 | Fully implemented |
 | Data Quality (DQX) | 4 | Fully implemented — results persisted to `dqx_quality_results` table |
-| Governance | 101 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree, reviews, projects, contracts, policies, evaluations, workflows, executions, data products, ports, subscriptions, semantic models, concepts, properties, links, naming conventions (CRUD + validate + toggle), marketplace (search + stats + detail + subscriptions) |
+| Governance | 109 | Fully implemented — RBAC roles, user assignments, teams, team members, domains, domain tree, reviews, projects, contracts, policies, evaluations, workflows, executions, data products, ports, subscriptions, semantic models, concepts, properties, links, naming conventions (CRUD + validate + toggle), marketplace (search + stats + detail + subscriptions), lineage materialization (full + incremental), lineage graph (full + per-entity), graph traversal (upstream/downstream), impact analysis, path finding, entity context |
 | Auth Core | 0 (middleware) | `get_current_user`, `require_permission`, `require_role` dependencies; `enforce_auth=false` default |
 | Quality Proxy | 1 | Fully implemented |
 
@@ -277,8 +277,8 @@ Features for mature data governance organizations.
 | # | Feature | Description | What We Have | What's Missing | Effort |
 |---|---------|-------------|-------------|----------------|--------|
 | ~~G9~~ | ~~**Data Products**~~ | ~~Curated asset collections (Source, Source-Aligned, Aggregate, Consumer-Aligned). Input/Output ports. Marketplace publishing, subscriptions.~~ | ~~DONE — Data product entity with 4 product types, input/output ports with entity linking, subscription system with approve/reject/revoke lifecycle. DDL: `32_data_products.sql` (data_products + data_product_ports + data_product_subscriptions). Backend: 15 API endpoints (CRUD, status transitions, port management, subscription workflow). UI: Products tab in GovernancePage with type/status filters, port editor (input/output with entity type), tag management, subscription panel with approve/reject/revoke actions, lifecycle buttons (Publish/Deprecate/Retire).~~ | ~~Full marketplace search/discovery. Cross-product lineage visualization.~~ | ~~L~~ |
-| ~~G10~~ | ~~**Semantic Models**~~ | ~~Knowledge graphs connecting technical assets to business concepts. Business Concepts, Business Properties, three-tier semantic linking.~~ | ~~DONE — Semantic model entity with concepts (entity/event/metric/dimension), business properties (typed, with required/enum support), and semantic links (maps_to/derived_from/aggregates/represents) connecting concepts to data assets (table/column/sheet/contract/product). DDL: `33_semantic_models.sql` (4 tables). Backend: 16 API endpoints. UI: Semantic tab in GovernancePage with concept editor, property builder, link editor with confidence scores, publish/archive lifecycle.~~ | ~~RDF/RDFS export. Visual graph rendering.~~ | ~~L~~ |
-| ~~G11~~ | ~~**MCP Integration**~~ | ~~Model Context Protocol for AI assistant access. Token management, scoped access (read/write/special), tool discovery.~~ | ~~DONE — MCP token management (create with SHA-256 hashing, revoke, delete), scoped access (read/read_write/admin), tool registry (8 seeded tools mapping to workbench API), invocation audit log. DDL: `36_mcp_integration.sql` (3 tables: mcp_tokens, mcp_tools, mcp_invocations). Backend: 14 API endpoints (token CRUD + revoke, tool CRUD, invocations list, stats). UI: MCP tab in GovernancePage with 3 sub-views (Tokens, Tools, Audit Log), stats overview, token creation with one-time value reveal, tool registration with category/scope/endpoint.~~ | ~~Actual MCP server protocol implementation. Token-based auth middleware.~~ | ~~L~~ |
+| ~~G10~~ | ~~**Semantic Models**~~ | ~~Knowledge graphs connecting technical assets to business concepts. Business Concepts, Business Properties, three-tier semantic linking.~~ | ~~DONE — Semantic model entity with concepts (entity/event/metric/dimension), business properties (typed, with required/enum support), and semantic links (maps_to/derived_from/aggregates/represents + 14 lineage types) connecting concepts to data assets (table/column/sheet/contract/product). DDL: `33_semantic_models.sql` (4 tables). Backend: 16 API endpoints + 8 lineage/graph endpoints. UI: Semantic tab in GovernancePage with concept editor, property builder, link editor, ReactFlow graph visualization (dual-mode: Business Concepts + Data Lineage), dagre layout.~~ | ~~RDF/RDFS export.~~ | ~~L~~ |
+| ~~G11~~ | ~~**MCP Integration**~~ | ~~Model Context Protocol for AI assistant access. Token management, scoped access (read/write/special), tool discovery.~~ | ~~DONE — MCP token management (create with SHA-256 hashing, revoke, delete), scoped access (read/read_write/admin), tool registry (11 seeded tools mapping to workbench API, including 3 lineage graph tools), invocation audit log. DDL: `36_mcp_integration.sql` (3 tables: mcp_tokens, mcp_tools, mcp_invocations). Backend: 14 API endpoints + FastMCP server with traverse_lineage, impact_analysis, find_related_assets tools + workbench://lineage-graph resource. UI: MCP tab in GovernancePage with 3 sub-views (Tokens, Tools, Audit Log), stats overview, token creation with one-time value reveal, tool registration with category/scope/endpoint.~~ | ~~Token-based auth middleware.~~ | ~~L~~ |
 | ~~G12~~ | ~~**Delivery Modes**~~ | ~~Direct (immediate), Indirect (GitOps), Manual deployment. Git repository setup, YAML configs, version control integration.~~ | ~~DONE — 3 delivery mode types (direct/indirect/manual) with per-mode configuration: Git repo/branch/path for indirect, manual instructions for manual, environment targeting (dev/staging/production), approval requirements with role gating. Delivery record tracking with status lifecycle (pending→approved→in_progress→completed/failed/rejected). DDL: `35_delivery_modes.sql` (2 tables + 3 seeded modes). Backend: 8 API endpoints (mode CRUD + record CRUD + status transitions). UI: Delivery tab in GovernancePage with mode cards, create form with type-specific fields, delivery records table with approve/reject/start/complete actions.~~ | ~~Actual Git push integration. YAML config generation. Scheduled deployment support.~~ | ~~M~~ |
 | ~~G13~~ | ~~**Multi-Platform Connectors**~~ | ~~Pluggable platform adapters (Unity Catalog, Snowflake, Kafka, Power BI). Unified governance across platforms.~~ | ~~DONE — Platform connector management (6 platform types: Unity Catalog, Snowflake, Kafka, Power BI, S3, Custom), connection testing, asset discovery, sync operations with bidirectional/inbound/outbound support. DDL: `37_platform_connectors.sql` (3 tables: platform_connectors, connector_assets, connector_sync_records + 1 seeded UC connector). Backend: 9 API endpoints (connector CRUD, test, assets, sync, sync records, stats). UI: Connectors tab in GovernancePage with platform badges, test/sync actions, asset list panel, sync history.~~ | ~~Actual platform SDK adapters (Snowflake connector, Kafka connector). Real asset discovery.~~ | ~~L~~ |
 | ~~G14~~ | ~~**Dataset Marketplace**~~ | ~~Publishing datasets for discovery, subscriptions, access requests.~~ | ~~DONE — Marketplace search/discovery with full-text search, faceted filtering (product type, domain, team, tags), paginated results, overview stats. Backend: 4 API endpoints (`/marketplace/search`, `/marketplace/stats`, `/marketplace/products/{id}`, `/marketplace/my-subscriptions`). Frontend: standalone `MarketplacePage.tsx` with card-based product catalog, filter sidebar with facet counts, product detail with ports display, subscription request form. Sidebar entry in Tools section.~~ | ~~Usage analytics. Product recommendations. Cross-product lineage visualization.~~ | ~~M~~ |
@@ -295,6 +295,14 @@ Features for mature data governance organizations.
 **Phase 4 — Platform (G9–G15):** ALL DONE. G9 (Data Products), G10 (Semantic Models), G11 (MCP Integration), G12 (Delivery Modes), G13 (Multi-Platform Connectors), G14 (Dataset Marketplace), G15 (Naming Conventions). The complete governance platform is implemented across all 15 feature areas.
 
 ---
+
+## Recently Completed (Feb 24, 2026)
+
+- **Ontology-Inspired Graph Capabilities (4 phases)**: Full-stack lineage graph implementation:
+  - **Phase 1 — Lineage as Graph Edges**: Extended `LinkType` enum with 14 lineage types (6 forward + 6 inverse + 2 mapping inverses). `LineageService` materializes implicit pipeline lineage (Sheet→Template→Training Sheet→Model→Endpoint) as typed edges in `semantic_links` table under `_system_lineage` model. Full + incremental materialization. `MaterializeResult`, `LineageNode`, `LineageEdge`, `LineageGraph`, `ImpactReport`, `TraversalResult` response models.
+  - **Phase 2 — Graph Query Engine**: `GraphQueryService` with recursive CTE traversal (Databricks SQL DBR 13+) + Python BFS fallback. `traverse_upstream/downstream()`, `impact_analysis()` with risk scoring (critical=endpoints, high=models, medium=training_sheets, low=otherwise), `find_path()` (BFS shortest path), `get_entity_context()` (immediate neighborhood). 8 new API endpoints.
+  - **Phase 3 — MCP Graph Tools**: 3 new FastMCP tools (`traverse_lineage`, `impact_analysis`, `find_related_assets`) + `workbench://lineage-graph` resource. Registered in MCP server. 3 seed rows added to `36_mcp_integration.sql` (tools 009–011).
+  - **Phase 4 — Frontend Lineage Graph**: `LineageNode.tsx` (entity-type-specific colors/icons: Sheet=teal, Template=orange, Training Sheet=cyan, Model=rose, Endpoint=emerald). `useLineageGraphLayout()` with dagre stage-based ranking. `UnifiedGraphView.tsx` (dual-mode toggle: Business Concepts ↔ Data Lineage, materialization trigger, result toast). `LineageDetailsPanel.tsx` (3 tabs: Upstream/Downstream/Impact with react-query). Integrated into GovernancePage Semantic tab replacing standalone graph component.
 
 ## Recently Completed (Feb 22, 2026)
 
