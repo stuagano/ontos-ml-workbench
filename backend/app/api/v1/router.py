@@ -30,6 +30,7 @@ from app.api.v1.endpoints import (
     training,
     unity_catalog,
 )
+from app.api.v1 import schema
 
 router = APIRouter(prefix="/api/v1")
 
@@ -89,6 +90,9 @@ router.include_router(admin.router)
 
 # Governance - RBAC roles, teams, and data domains
 router.include_router(governance.router)
+
+# Schema - Unity Catalog schema health and deployment
+router.include_router(schema.router)
 
 # Images - Proxy for Unity Catalog volume images
 router.include_router(images.router)

@@ -164,6 +164,23 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   }
 }
 
+// Generic API client for simple requests
+export const api = {
+  get: <T>(url: string): Promise<T> => fetchJson<T>(url),
+  post: <T>(url: string, data?: unknown): Promise<T> =>
+    fetchJson<T>(url, {
+      method: "POST",
+      body: data ? JSON.stringify(data) : undefined,
+    }),
+  put: <T>(url: string, data?: unknown): Promise<T> =>
+    fetchJson<T>(url, {
+      method: "PUT",
+      body: data ? JSON.stringify(data) : undefined,
+    }),
+  delete: <T>(url: string): Promise<T> =>
+    fetchJson<T>(url, { method: "DELETE" }),
+};
+
 // ============================================================================
 // Config
 // ============================================================================

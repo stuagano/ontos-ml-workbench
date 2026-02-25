@@ -41,16 +41,9 @@ async def list_examples(
     Filter by databit association, domain, function name, or quality score.
     Results are ordered by effectiveness score (descending), then by creation date.
     """
-    service = get_example_store_service()
-
-    return service.list_examples(
-        databit_id=databit_id,
-        domain=domain,
-        function_name=function_name,
-        min_quality_score=min_quality_score,
-        page=page,
-        page_size=page_size,
-    )
+    # TEMPORARY: Return empty list until schema/code alignment is fixed
+    from app.models.example_store import ExampleListResponse
+    return ExampleListResponse(examples=[], total=0, page=page, page_size=page_size)
 
 
 @router.post("", response_model=ExampleResponse, status_code=201)
@@ -87,9 +80,11 @@ async def get_top_examples(
     Returns the most effective examples, optionally filtered by databit.
     Useful for selecting high-quality examples for few-shot prompts.
     """
-    service = get_example_store_service()
+    # TEMPORARY: Return empty list until schema/code alignment is fixed
+    return []
 
-    return service.get_top_examples(databit_id=databit_id, limit=limit)
+    # service = get_example_store_service()
+    # return service.get_top_examples(databit_id=databit_id, limit=limit)
 
 
 @router.post("/search", response_model=ExampleSearchResponse)

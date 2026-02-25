@@ -143,6 +143,7 @@ const STAGE_ORDER: PipelineStage[] = [
   "deploy",
   "monitor",
   "improve",
+  "governance",
 ];
 
 const STAGE_LABELS: Record<PipelineStage, string> = {
@@ -153,6 +154,7 @@ const STAGE_LABELS: Record<PipelineStage, string> = {
   deploy: "DEPLOY",
   monitor: "MONITOR",
   improve: "IMPROVE",
+  governance: "GOVERNANCE",
 };
 
 export { STAGE_ORDER, STAGE_LABELS };

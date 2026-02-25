@@ -28,8 +28,17 @@ import {
   FileCheck,
   Package,
   Shield,
-  GraduationCap,
   Store,
+  Users,
+  FolderTree,
+  Briefcase,
+  ShieldAlert,
+  GitBranch,
+  Brain,
+  Type,
+  Truck,
+  Plug,
+  Settings,
 } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -347,18 +356,9 @@ interface ToolsNavProps {
   onToggleRegistries: () => void;
   showMarketplace: boolean;
   onToggleMarketplace: () => void;
+  showSettings: boolean;
+  onToggleSettings: () => void;
 }
-
-// Admin section config
-const ADMIN_CONFIG = {
-  governance: {
-    id: "governance",
-    label: "Governance",
-    icon: Shield,
-    color: "text-amber-600",
-    description: "Roles, teams, and domains",
-  },
-};
 
 function ToolsNav({
   showPromptTemplates,
@@ -379,6 +379,8 @@ function ToolsNav({
   onToggleRegistries,
   showMarketplace,
   onToggleMarketplace,
+  showSettings,
+  onToggleSettings,
 }: ToolsNavProps) {
   const { open } = useSidebar();
   const PromptTemplatesIcon = TOOLS_CONFIG.promptTemplates.icon;
@@ -565,43 +567,23 @@ function ToolsNav({
             {open && <span>{TOOLS_CONFIG.marketplace.label}</span>}
           </SidebarMenuButton>
         </SidebarMenuItem>
-      </SidebarMenu>
-    </SidebarGroup>
-  );
-}
 
-// ============================================================================
-// Admin Section (Internal Governance)
-// ============================================================================
-
-interface AdminNavProps {
-  showGovernance: boolean;
-  onToggleGovernance: () => void;
-}
-
-function AdminNav({ showGovernance, onToggleGovernance }: AdminNavProps) {
-  const { open } = useSidebar();
-  const GovernanceIcon = ADMIN_CONFIG.governance.icon;
-
-  return (
-    <SidebarGroup>
-      <SidebarGroupLabel>Admin</SidebarGroupLabel>
-      <SidebarMenu>
+        {/* Settings */}
         <SidebarMenuItem>
           <SidebarMenuButton
-            isActive={showGovernance}
-            tooltip={ADMIN_CONFIG.governance.description}
-            onClick={onToggleGovernance}
+            isActive={showSettings}
+            tooltip="Database schema status and deployment"
+            onClick={onToggleSettings}
           >
-            <GovernanceIcon
+            <Settings
               className={clsx(
                 "w-5 h-5 flex-shrink-0",
-                showGovernance
-                  ? ADMIN_CONFIG.governance.color
+                showSettings
+                  ? "text-blue-600"
                   : "text-db-gray-500",
               )}
             />
-            {open && <span>{ADMIN_CONFIG.governance.label}</span>}
+            {open && <span>Settings</span>}
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>
@@ -610,7 +592,7 @@ function AdminNav({ showGovernance, onToggleGovernance }: AdminNavProps) {
 }
 
 // ============================================================================
-// Governance Quick Links (open GovernancePage at specific tab)
+// Governance Navigation
 // ============================================================================
 
 type GovernanceTabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows" | "products" | "semantic" | "naming" | "delivery" | "mcp" | "connectors";
@@ -624,34 +606,82 @@ interface GovernanceLink {
 
 const GOVERNANCE_LINKS: GovernanceLink[] = [
   {
-    label: "Data Contracts",
+    label: "Roles",
+    tabId: "roles",
+    icon: Shield,
+    description: "RBAC role management",
+  },
+  {
+    label: "Teams",
+    tabId: "teams",
+    icon: Users,
+    description: "Team management and members",
+  },
+  {
+    label: "Domains",
+    tabId: "domains",
+    icon: FolderTree,
+    description: "Data domain organization",
+  },
+  {
+    label: "Projects",
+    tabId: "projects",
+    icon: Briefcase,
+    description: "Project workspace management",
+  },
+  {
+    label: "Contracts",
     tabId: "contracts",
     icon: FileCheck,
-    description: "Manage data contracts and SLAs",
+    description: "Data contracts and SLAs",
   },
   {
-    label: "Data Products",
-    tabId: "products",
-    icon: Package,
-    description: "Browse and manage data products",
-  },
-  {
-    label: "Compliance",
+    label: "Policies",
     tabId: "policies",
-    icon: Shield,
+    icon: ShieldAlert,
     description: "Compliance policies and audits",
   },
   {
     label: "Workflows",
     tabId: "workflows",
-    icon: GraduationCap,
+    icon: GitBranch,
     description: "Governance workflows",
   },
   {
-    label: "Semantic Layer",
+    label: "Products",
+    tabId: "products",
+    icon: Package,
+    description: "Data products catalog",
+  },
+  {
+    label: "Semantic",
     tabId: "semantic",
-    icon: BookOpen,
-    description: "Semantic models and business glossary",
+    icon: Brain,
+    description: "Semantic models and glossary",
+  },
+  {
+    label: "Naming",
+    tabId: "naming",
+    icon: Type,
+    description: "Naming conventions",
+  },
+  {
+    label: "Delivery",
+    tabId: "delivery",
+    icon: Truck,
+    description: "Delivery modes and schedules",
+  },
+  {
+    label: "MCP",
+    tabId: "mcp",
+    icon: Cpu,
+    description: "MCP integration and tokens",
+  },
+  {
+    label: "Connectors",
+    tabId: "connectors",
+    icon: Plug,
+    description: "External data connectors",
   },
 ];
 
@@ -718,8 +748,8 @@ interface AppLayoutProps {
   onToggleRegistries: () => void;
   showMarketplace: boolean;
   onToggleMarketplace: () => void;
-  showGovernance: boolean;
-  onToggleGovernance: () => void;
+  showSettings: boolean;
+  onToggleSettings: () => void;
 }
 
 export function AppLayout({
@@ -748,8 +778,8 @@ export function AppLayout({
   onToggleRegistries,
   showMarketplace,
   onToggleMarketplace,
-  showGovernance,
-  onToggleGovernance,
+  showSettings,
+  onToggleSettings,
 }: AppLayoutProps) {
   return (
     <SidebarProvider>
@@ -783,10 +813,8 @@ export function AppLayout({
             onToggleRegistries={onToggleRegistries}
             showMarketplace={showMarketplace}
             onToggleMarketplace={onToggleMarketplace}
-          />
-          <AdminNav
-            showGovernance={showGovernance}
-            onToggleGovernance={onToggleGovernance}
+            showSettings={showSettings}
+            onToggleSettings={onToggleSettings}
           />
           <GovernanceNav onOpenTab={onGovernanceTabOpen} />
         </SidebarContent>

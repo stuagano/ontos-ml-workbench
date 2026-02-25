@@ -23,9 +23,9 @@ class SheetBase(BaseModel):
     source_path: Optional[str] = Field(None, description="Path within volume if source_type is uc_volume")
 
     item_id_column: Optional[str] = Field(None, description="Column name to use as item_ref in canonical labels")
-    text_columns: List[str] = Field(default_factory=list, description="Column names containing text data")
-    image_columns: List[str] = Field(default_factory=list, description="Column names with image paths")
-    metadata_columns: List[str] = Field(default_factory=list, description="Additional columns for context")
+    text_columns: Optional[List[str]] = Field(default_factory=list, description="Column names containing text data")
+    image_columns: Optional[List[str]] = Field(default_factory=list, description="Column names with image paths")
+    metadata_columns: Optional[List[str]] = Field(default_factory=list, description="Additional columns for context")
 
     sampling_strategy: Optional[str] = Field(default="all", description="Sampling strategy: all, random, stratified")
     sample_size: Optional[int] = Field(None, ge=1, description="Number of items to sample (null = all)")

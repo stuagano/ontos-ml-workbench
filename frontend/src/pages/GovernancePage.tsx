@@ -5,7 +5,7 @@
  * Follows the RegistriesPage tabbed pattern.
  */
 
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
@@ -182,8 +182,9 @@ const UnifiedGraphView = lazy(() => import("../components/semantic/UnifiedGraphV
 export type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows" | "products" | "semantic" | "naming" | "delivery" | "mcp" | "connectors";
 
 interface GovernancePageProps {
-  onClose: () => void;
+  onClose?: () => void;
   initialTab?: TabId;
+  hideHeader?: boolean;
 }
 
 // ============================================================================
@@ -5490,55 +5491,70 @@ const TABS: { id: TabId; label: string; icon: typeof Shield }[] = [
   { id: "connectors", label: "Connectors", icon: Plug },
 ];
 
-export function GovernancePage({ onClose, initialTab }: GovernancePageProps) {
+export function GovernancePage({ onClose, initialTab, hideHeader = false }: GovernancePageProps) {
   const [activeTab, setActiveTab] = useState<TabId>(initialTab ?? "roles");
+  const initializedRef = useRef(false);
 
   // Sync with initialTab when it changes (e.g., clicking different sidebar links)
   useEffect(() => {
-    if (initialTab) setActiveTab(initialTab);
-  }, [initialTab]);
+    if (initialTab && !initializedRef.current) {
+      setActiveTab(initialTab);
+      initializedRef.current = true;
+    } else if (initialTab && initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab, activeTab]);
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-900 border-b border-db-gray-200 dark:border-gray-700 p-4 sticky top-0 z-10">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-3">
-            <Shield className="w-6 h-6 text-amber-600" />
-            <h1 className="text-2xl font-bold text-db-gray-800 dark:text-white">
-              Governance & Projects
-            </h1>
-          </div>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm text-db-gray-600 hover:text-db-gray-800 dark:text-gray-400 dark:hover:text-white"
-          >
-            Close
-          </button>
-        </div>
+      {!hideHeader && (
+        <>
+          {/* Header */}
+          <div className="bg-white dark:bg-gray-900 border-b border-db-gray-200 dark:border-gray-700 p-4 sticky top-0 z-10">
+            <div className="flex items-center justify-between max-w-7xl mx-auto">
+              <div className="flex items-center gap-3">
+                <Shield className="w-6 h-6 text-amber-600" />
+                <h1 className="text-2xl font-bold text-db-gray-800 dark:text-white">
+                  Governance & Projects
+                </h1>
+              </div>
+              {onClose && (
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 text-sm text-db-gray-600 hover:text-db-gray-800 dark:text-gray-400 dark:hover:text-white"
+                >
+                  Close
+                </button>
+              )}
+            </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 mt-4 max-w-7xl mx-auto">
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={clsx(
-                  "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
-                  activeTab === tab.id
-                    ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400"
-                    : "text-db-gray-600 dark:text-gray-400 hover:bg-db-gray-100 dark:hover:bg-gray-800",
-                )}
-              >
-                <Icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+            {/* Tabs - styled to match sidebar navigation */}
+            <div className="flex gap-2 mt-4 max-w-7xl mx-auto flex-wrap items-center">
+              {TABS.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={clsx(
+                      "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all",
+                      activeTab === tab.id
+                        ? "bg-db-gray-100 dark:bg-gray-800 text-db-gray-900 dark:text-white shadow-sm"
+                        : "text-db-gray-600 dark:text-gray-400 hover:bg-db-gray-50 dark:hover:bg-gray-800/50",
+                    )}
+                  >
+                    <Icon className={clsx(
+                      "w-4 h-4 flex-shrink-0",
+                      activeTab === tab.id ? "text-db-orange" : "text-db-gray-500 dark:text-gray-500"
+                    )} />
+                    <span className="whitespace-nowrap">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">

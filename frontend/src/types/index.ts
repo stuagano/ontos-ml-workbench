@@ -1,4 +1,4 @@
-// Pipeline stages (7-stage workflow)
+// Pipeline stages (7-stage workflow + governance)
 export type PipelineStage =
   | "data"      // Select data, preview, configure template, generate training data
   | "label"     // Review and label Q&A pairs
@@ -6,7 +6,8 @@ export type PipelineStage =
   | "train"     // Fine-tune models
   | "deploy"    // Deploy to endpoints
   | "monitor"   // Track performance
-  | "improve";  // Feedback and retraining
+  | "improve"   // Feedback and retraining
+  | "governance"; // RBAC, teams, domains, projects, policies
 
 export const PIPELINE_STAGES: {
   id: PipelineStage;

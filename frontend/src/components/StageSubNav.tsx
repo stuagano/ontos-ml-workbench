@@ -62,6 +62,12 @@ const stageLabels: Record<PipelineStage, { browse: string; create: string; brows
     browseIcon: Library,
     createIcon: Plus,
   },
+  governance: {
+    browse: "Governance",
+    create: "New Item",
+    browseIcon: Library,
+    createIcon: Plus,
+  },
 };
 
 // Stage colors (matching PipelineBreadcrumb)
@@ -73,6 +79,7 @@ const stageColors: Record<PipelineStage, { active: string; inactive: string }> =
   deploy: { active: "bg-cyan-600 text-white", inactive: "text-cyan-700 hover:bg-cyan-50" },
   monitor: { active: "bg-rose-600 text-white", inactive: "text-rose-700 hover:bg-rose-50" },
   improve: { active: "bg-indigo-600 text-white", inactive: "text-indigo-700 hover:bg-indigo-50" },
+  governance: { active: "bg-amber-600 text-white", inactive: "text-amber-700 hover:bg-amber-50" },
 };
 
 export function StageSubNav({ stage, mode, onModeChange, browseCount }: StageSubNavProps) {

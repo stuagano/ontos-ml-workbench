@@ -71,8 +71,8 @@ class TemplateCreate(BaseModel):
     )
 
     # Schema
-    input_schema: list[SchemaField] | None = None
-    output_schema: list[SchemaField] | None = None
+    input_schema: list[SchemaField] | dict | None = None
+    output_schema: list[SchemaField] | dict | None = None
 
     # Prompts
     prompt_template: str | None = None
@@ -140,8 +140,8 @@ class TemplateResponse(BaseModel):
         default=None, description="Dependent variable (output/target)"
     )
 
-    input_schema: list[SchemaField] | None = None
-    output_schema: list[SchemaField] | None = None
+    input_schema: list[SchemaField] | dict | None = None
+    output_schema: list[SchemaField] | dict | None = None
 
     prompt_template: str | None = None
     system_prompt: str | None = None

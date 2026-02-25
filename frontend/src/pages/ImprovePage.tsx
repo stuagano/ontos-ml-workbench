@@ -22,6 +22,7 @@ import { DataTable, Column, RowAction } from "../components/DataTable";
 import { StatsCard } from "../components/StatsCard";
 import { WorkflowBanner } from "../components/WorkflowBanner";
 import { ExampleEffectivenessDashboard } from "./ExampleEffectivenessDashboard";
+import { StageSubNav } from "../components/StageSubNav";
 import { clsx } from "clsx";
 import {
   listEndpoints,
@@ -247,12 +248,28 @@ export function ImprovePage({ mode = "browse", onModeChange }: ImprovePageProps)
   const isLoading = endpointsLoading || feedbackLoading;
 
   return (
-    <div className="flex-1 p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Workflow Banner */}
-        <WorkflowBanner stage="improve" />
+    <div className="flex-1 flex flex-col bg-db-gray-50">
+      {/* Workflow Banner */}
+      <div className="px-6 pt-6">
+        <div className="max-w-6xl mx-auto">
+          <WorkflowBanner stage="improve" />
+        </div>
+      </div>
 
-        {/* Header */}
+      {/* Stage SubNav */}
+      <div className="bg-white border-b border-db-gray-200 mt-6">
+        <StageSubNav
+          stage="improve"
+          mode={mode}
+          onModeChange={(newMode) => {
+            onModeChange?.(newMode);
+          }}
+        />
+      </div>
+
+      <div className="flex-1 p-6">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-db-gray-900">Improve</h1>
@@ -665,6 +682,7 @@ export function ImprovePage({ mode = "browse", onModeChange }: ImprovePageProps)
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

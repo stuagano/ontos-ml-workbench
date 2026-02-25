@@ -48,6 +48,7 @@ import { DataTable, Column, RowAction } from "../components/DataTable";
 import { GuardrailsPanel } from "../components/GuardrailsPanel";
 import { WorkflowBanner } from "../components/WorkflowBanner";
 import { StatusBadge } from "../components/StatusBadge";
+import { StageSubNav } from "../components/StageSubNav";
 import {
   ENDPOINT_STATUS_CONFIG,
   getStatusConfig,
@@ -797,17 +798,19 @@ export function DeployPage({ mode = "browse" }: DeployPageProps) {
                 <ExternalLink className="w-4 h-4" />
                 Model Serving
               </button>
-              <button
-                onClick={() => setShowWizard(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
-              >
-                <Rocket className="w-4 h-4" />
-                Deploy Model
-              </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Stage SubNav */}
+      <StageSubNav
+        stage="deploy"
+        mode={showWizard ? "create" : "browse"}
+        onModeChange={(newMode) => {
+          setShowWizard(newMode === "create");
+        }}
+      />
 
       {/* Workflow Banner */}
       <div className="px-6 py-4">

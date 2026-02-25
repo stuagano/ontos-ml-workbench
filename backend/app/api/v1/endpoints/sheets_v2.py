@@ -448,9 +448,9 @@ async def attach_template(sheet_id: str, template_config: dict, _auth: CurrentUs
 
         # Get all column names from the sheet
         all_columns = set()
-        all_columns.update(sheet.get("text_columns", []))
-        all_columns.update(sheet.get("image_columns", []))
-        all_columns.update(sheet.get("metadata_columns", []))
+        all_columns.update(sheet.get("text_columns") or [])
+        all_columns.update(sheet.get("image_columns") or [])
+        all_columns.update(sheet.get("metadata_columns") or [])
 
         # Get column_mapping if provided (enables template reusability)
         column_mapping = template_config.get("column_mapping")

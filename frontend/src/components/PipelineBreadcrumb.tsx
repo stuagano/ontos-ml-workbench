@@ -64,6 +64,12 @@ const stageColors: Record<
     border: "border-indigo-500",
     completedBg: "bg-indigo-100",
   },
+  governance: {
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    border: "border-amber-500",
+    completedBg: "bg-amber-100",
+  },
 };
 
 export function PipelineBreadcrumb({

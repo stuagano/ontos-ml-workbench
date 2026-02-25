@@ -141,6 +141,283 @@ WHEN NOT MATCHED THEN INSERT (
 )
 """, "Seed teams (2)")
 
+    def seed_roles_and_assignments(self) -> None:
+        """Seed app_roles (6) and user_role_assignments (8)."""
+        logger.info("── Tier 1a2: Roles & Assignments ──")
+
+        self.execute_sql(f"""
+MERGE INTO {self.tbl('app_roles')} AS t
+USING (
+  SELECT * FROM (VALUES
+    ('demo-role-admin', 'Administrator',
+     'Full platform access including user management, system configuration, and all data operations',
+     '{json.dumps({"sheets": "admin", "templates": "admin", "labels": "admin", "training": "admin", "deploy": "admin", "governance": "admin"})}',
+     '{json.dumps(["data", "label", "curate", "train", "deploy", "monitor", "improve", "governance"])}',
+     false, 'demo_seed', 'demo_seed'),
+    ('demo-role-qa-lead', 'QA Lead',
+     'Quality assurance team lead with approval authority for QA domain data and models',
+     '{json.dumps({"sheets": "write", "templates": "write", "labels": "write", "training": "write", "deploy": "read", "governance": "read"})}',
+     '{json.dumps(["data", "label", "curate", "train", "deploy"])}',
+     false, 'demo_seed', 'demo_seed'),
+    ('demo-role-physicist', 'Physicist',
+     'Radiation safety physicist with calibration and anomaly analysis permissions',
+     '{json.dumps({"sheets": "read", "templates": "read", "labels": "write", "training": "read", "deploy": "read", "governance": "read"})}',
+     '{json.dumps(["label", "curate"])}',
+     false, 'demo_seed', 'demo_seed'),
+    ('demo-role-maint-eng', 'Maintenance Engineer',
+     'Equipment maintenance engineer with predictive maintenance data access',
+     '{json.dumps({"sheets": "read", "templates": "read", "labels": "write", "training": "read", "deploy": "read", "governance": "read"})}',
+     '{json.dumps(["data", "label", "monitor"])}',
+     false, 'demo_seed', 'demo_seed'),
+    ('demo-role-compliance', 'Compliance Officer',
+     'Regulatory compliance officer with policy management and audit trail access',
+     '{json.dumps({"sheets": "read", "templates": "read", "labels": "read", "training": "read", "deploy": "read", "governance": "write"})}',
+     '{json.dumps(["governance", "monitor"])}',
+     false, 'demo_seed', 'demo_seed'),
+    ('demo-role-data-steward', 'Data Steward',
+     'Data quality steward with data governance and lineage tracking permissions',
+     '{json.dumps({"sheets": "write", "templates": "read", "labels": "read", "training": "read", "deploy": "read", "governance": "write"})}',
+     '{json.dumps(["data", "governance"])}',
+     false, 'demo_seed', 'demo_seed')
+  ) AS v(id, name, description, feature_permissions, allowed_stages, is_default, created_by, updated_by)
+) AS s ON t.id = s.id
+WHEN NOT MATCHED THEN INSERT (
+  id, name, description, feature_permissions, allowed_stages, is_default,
+  created_at, created_by, updated_at, updated_by
+) VALUES (
+  s.id, s.name, s.description, s.feature_permissions, s.allowed_stages, s.is_default,
+  current_timestamp(), s.created_by, current_timestamp(), s.updated_by
+)
+""", "Seed app_roles (6)")
+
+        self.execute_sql(f"""
+MERGE INTO {self.tbl('user_role_assignments')} AS t
+USING (
+  SELECT * FROM (VALUES
+    ('demo-ura-01', 'alice@acme-instruments.com', 'Alice Chen', 'demo-role-qa-lead', 'admin@acme-instruments.com'),
+    ('demo-ura-02', 'bob@acme-instruments.com', 'Bob Martinez', 'demo-role-maint-eng', 'admin@acme-instruments.com'),
+    ('demo-ura-03', 'compliance@acme-instruments.com', 'Carol Johnson', 'demo-role-compliance', 'admin@acme-instruments.com'),
+    ('demo-ura-04', 'qa-lead@acme-instruments.com', 'Dave Wilson', 'demo-role-admin', 'admin@acme-instruments.com'),
+    ('demo-ura-05', 'pm-lead@acme-instruments.com', 'Emily Davis', 'demo-role-admin', 'admin@acme-instruments.com'),
+    ('demo-ura-06', 'physicist1@acme-instruments.com', 'Frank Torres', 'demo-role-physicist', 'admin@acme-instruments.com'),
+    ('demo-ura-07', 'physicist2@acme-instruments.com', 'Grace Kim', 'demo-role-physicist', 'admin@acme-instruments.com'),
+    ('demo-ura-08', 'data-steward@acme-instruments.com', 'Henry Lee', 'demo-role-data-steward', 'admin@acme-instruments.com')
+  ) AS v(id, user_email, user_display_name, role_id, assigned_by)
+) AS s ON t.id = s.id
+WHEN NOT MATCHED THEN INSERT (
+  id, user_email, user_display_name, role_id, assigned_at, assigned_by
+) VALUES (
+  s.id, s.user_email, s.user_display_name, s.role_id, current_timestamp(), s.assigned_by
+)
+""", "Seed user_role_assignments (8)")
+
+    def seed_team_and_project_members(self) -> None:
+        """Seed team_members (6), projects (3), and project_members (9)."""
+        logger.info("── Tier 1a3: Team & Project Members ──")
+
+        self.execute_sql(f"""
+MERGE INTO {self.tbl('team_members')} AS t
+USING (
+  SELECT * FROM (VALUES
+    ('demo-tm-01', 'demo-team-qa', 'alice@acme-instruments.com', 'Alice Chen', 'demo-role-qa-lead', 'admin@acme-instruments.com'),
+    ('demo-tm-02', 'demo-team-qa', 'physicist1@acme-instruments.com', 'Frank Torres', NULL, 'admin@acme-instruments.com'),
+    ('demo-tm-03', 'demo-team-qa', 'physicist2@acme-instruments.com', 'Grace Kim', NULL, 'admin@acme-instruments.com'),
+    ('demo-tm-04', 'demo-team-maint', 'bob@acme-instruments.com', 'Bob Martinez', 'demo-role-maint-eng', 'admin@acme-instruments.com'),
+    ('demo-tm-05', 'demo-team-maint', 'maintenance-tech@acme-instruments.com', 'Isaac Brown', NULL, 'admin@acme-instruments.com'),
+    ('demo-tm-06', 'demo-team-maint', 'operator1@acme-instruments.com', 'Jane Smith', NULL, 'admin@acme-instruments.com')
+  ) AS v(id, team_id, user_email, user_display_name, role_override, added_by)
+) AS s ON t.id = s.id
+WHEN NOT MATCHED THEN INSERT (
+  id, team_id, user_email, user_display_name, role_override, added_at, added_by
+) VALUES (
+  s.id, s.team_id, s.user_email, s.user_display_name, s.role_override, current_timestamp(), s.added_by
+)
+""", "Seed team_members (6)")
+
+        self.execute_sql(f"""
+MERGE INTO {self.tbl('projects')} AS t
+USING (
+  SELECT * FROM (VALUES
+    ('demo-proj-defect', 'PCB Defect Detection Initiative',
+     'Automated PCB defect detection system to reduce manual inspection time by 70% and improve defect catch rate',
+     'team', 'demo-team-qa', 'alice@acme-instruments.com', true, 'admin@acme-instruments.com', 'admin@acme-instruments.com'),
+    ('demo-proj-predmaint', 'Predictive Maintenance System',
+     'ML-powered equipment failure prediction to minimize unplanned downtime and optimize maintenance schedules',
+     'team', 'demo-team-maint', 'bob@acme-instruments.com', true, 'admin@acme-instruments.com', 'admin@acme-instruments.com'),
+    ('demo-proj-safety-dash', 'Radiation Safety Dashboard',
+     'Executive dashboard consolidating QA, maintenance, and compliance metrics for radiation safety oversight',
+     'personal', NULL, 'compliance@acme-instruments.com', true, 'admin@acme-instruments.com', 'admin@acme-instruments.com')
+  ) AS v(id, name, description, project_type, team_id, owner_email, is_active, created_by, updated_by)
+) AS s ON t.id = s.id
+WHEN NOT MATCHED THEN INSERT (
+  id, name, description, project_type, team_id, owner_email, is_active,
+  created_at, created_by, updated_at, updated_by
+) VALUES (
+  s.id, s.name, s.description, s.project_type, s.team_id, s.owner_email, s.is_active,
+  current_timestamp(), s.created_by, current_timestamp(), s.updated_by
+)
+""", "Seed projects (3)")
+
+        self.execute_sql(f"""
+MERGE INTO {self.tbl('project_members')} AS t
+USING (
+  SELECT * FROM (VALUES
+    ('demo-pm-01', 'demo-proj-defect', 'alice@acme-instruments.com', 'Alice Chen', 'owner', 'admin@acme-instruments.com'),
+    ('demo-pm-02', 'demo-proj-defect', 'physicist1@acme-instruments.com', 'Frank Torres', 'member', 'admin@acme-instruments.com'),
+    ('demo-pm-03', 'demo-proj-defect', 'qa-lead@acme-instruments.com', 'Dave Wilson', 'admin', 'admin@acme-instruments.com'),
+    ('demo-pm-04', 'demo-proj-predmaint', 'bob@acme-instruments.com', 'Bob Martinez', 'owner', 'admin@acme-instruments.com'),
+    ('demo-pm-05', 'demo-proj-predmaint', 'maintenance-tech@acme-instruments.com', 'Isaac Brown', 'member', 'admin@acme-instruments.com'),
+    ('demo-pm-06', 'demo-proj-predmaint', 'pm-lead@acme-instruments.com', 'Emily Davis', 'admin', 'admin@acme-instruments.com'),
+    ('demo-pm-07', 'demo-proj-safety-dash', 'compliance@acme-instruments.com', 'Carol Johnson', 'owner', 'admin@acme-instruments.com'),
+    ('demo-pm-08', 'demo-proj-safety-dash', 'alice@acme-instruments.com', 'Alice Chen', 'member', 'admin@acme-instruments.com'),
+    ('demo-pm-09', 'demo-proj-safety-dash', 'bob@acme-instruments.com', 'Bob Martinez', 'member', 'admin@acme-instruments.com')
+  ) AS v(id, project_id, user_email, user_display_name, role, added_by)
+) AS s ON t.id = s.id
+WHEN NOT MATCHED THEN INSERT (
+  id, project_id, user_email, user_display_name, role, added_at, added_by
+) VALUES (
+  s.id, s.project_id, s.user_email, s.user_display_name, s.role, current_timestamp(), s.added_by
+)
+""", "Seed project_members (9)")
+
+    def seed_policies_and_workflows(self) -> None:
+        """Seed compliance_policies (4) and workflows (3)."""
+        logger.info("── Tier 1a4: Policies & Workflows ──")
+
+        self.execute_sql(f"""
+MERGE INTO {self.tbl('compliance_policies')} AS t
+USING (
+  SELECT * FROM (VALUES
+    ('demo-policy-alara', 'ALARA Compliance Policy',
+     'As Low As Reasonably Achievable radiation exposure policy enforcing dose limits and monitoring requirements per 10 CFR 20',
+     'retention', 'critical', 'enabled',
+     '{json.dumps([{"field": "annual_dose", "operator": "<=", "value": "50 mSv", "message": "Annual dose limit exceeded per 10 CFR 20.1201"}])}',
+     '{json.dumps({"catalog": "serverless_dxukih_catalog", "schema": "ontos_ml", "asset_types": ["training_sheets", "qa_pairs"]})}',
+     '0 6 * * 1', 'compliance@acme-instruments.com',
+     'admin@acme-instruments.com', 'admin@acme-instruments.com'),
+    ('demo-policy-retention', 'Data Retention Policy',
+     'Specifies retention periods for training data, model artifacts, and audit logs to comply with FDA 21 CFR Part 11',
+     'retention', 'warning', 'enabled',
+     '{json.dumps([{"field": "created_at", "operator": "<", "value": "7 years", "message": "Training data retention period expired"}])}',
+     '{json.dumps({"catalog": "serverless_dxukih_catalog", "schema": "ontos_ml", "tables": ["training_sheets", "qa_pairs", "model_training_lineage"]})}',
+     '0 2 1 * *', 'qa-lead@acme-instruments.com',
+     'admin@acme-instruments.com', 'admin@acme-instruments.com'),
+    ('demo-policy-model-accuracy', 'Model Accuracy Standards',
+     'Minimum accuracy thresholds for deployed ML models in safety-critical applications',
+     'data_quality', 'critical', 'enabled',
+     '{json.dumps([{"field": "f1_score", "operator": ">=", "value": 0.95, "message": "Defect detection model below minimum F1 threshold"}])}',
+     '{json.dumps({"catalog": "serverless_dxukih_catalog", "schema": "ontos_ml", "asset_types": ["model_evaluations"]})}',
+     '0 8 * * *', 'qa-lead@acme-instruments.com',
+     'admin@acme-instruments.com', 'admin@acme-instruments.com'),
+    ('demo-policy-access', 'Data Access Control Policy',
+     'Role-based access control for sensitive radiation monitoring data and PII',
+     'access_control', 'warning', 'enabled',
+     '{json.dumps([{"field": "sensitivity_level", "operator": "==", "value": "sensitive", "message": "Access requires physicist role or higher"}])}',
+     '{json.dumps({"catalog": "serverless_dxukih_catalog", "schema": "ontos_ml"})}',
+     NULL, 'compliance@acme-instruments.com',
+     'admin@acme-instruments.com', 'admin@acme-instruments.com')
+  ) AS v(id, name, description, category, severity, status, rules, scope, schedule, owner_email, created_by, updated_by)
+) AS s ON t.id = s.id
+WHEN NOT MATCHED THEN INSERT (
+  id, name, description, category, severity, status, rules, scope, schedule, owner_email,
+  created_at, created_by, updated_at, updated_by
+) VALUES (
+  s.id, s.name, s.description, s.category, s.severity, s.status, s.rules, s.scope, s.schedule, s.owner_email,
+  current_timestamp(), s.created_by, current_timestamp(), s.updated_by
+)
+""", "Seed compliance_policies (4)")
+
+        self.execute_sql(f"""
+MERGE INTO {self.tbl('workflows')} AS t
+USING (
+  SELECT * FROM (VALUES
+    ('demo-wf-training', 'Model Training Approval Workflow',
+     'Multi-stage approval workflow for production model training requiring QA lead sign-off and compliance review',
+     'on_create', '{json.dumps({"entity_type": "training_sheet", "conditions": {"status": "pending_approval"}})}',
+     '{json.dumps([{"step_id": "submit", "name": "Submit for Review", "type": "manual", "action": "submit_training_request", "config": {"actor": "data_scientist"}, "next_step": "qa_review"}, {"step_id": "qa_review", "name": "QA Review", "type": "approval", "action": "review_data_quality", "config": {"actor": "qa_lead", "required": True}, "next_step": "compliance_review"}, {"step_id": "compliance_review", "name": "Compliance Review", "type": "approval", "action": "verify_policy_compliance", "config": {"actor": "compliance_officer", "required": True}, "next_step": "deploy"}, {"step_id": "deploy", "name": "Deploy to Production", "type": "automated", "action": "deploy_to_production", "config": {"actor": "system"}}])}',
+     'active', 'qa-lead@acme-instruments.com', 'admin@acme-instruments.com', 'admin@acme-instruments.com'),
+    ('demo-wf-data-quality', 'Data Quality Review Workflow',
+     'Automated data quality checks followed by manual review for datasets failing validation rules',
+     'scheduled', '{json.dumps({"schedule": "0 2 * * *", "entity_type": "sheet"})}',
+     '{json.dumps([{"step_id": "dq_check", "name": "Run Quality Checks", "type": "automated", "action": "run_quality_checks", "config": {"actor": "system"}, "next_step": "manual_review"}, {"step_id": "manual_review", "name": "Manual Review", "type": "conditional", "action": "review_flagged_data", "config": {"actor": "data_steward", "condition": "quality_check_failed"}, "next_step": "remediation"}, {"step_id": "remediation", "name": "Fix Data Issues", "type": "manual", "action": "fix_data_issues", "config": {"actor": "data_owner"}, "next_step": "revalidate"}, {"step_id": "revalidate", "name": "Rerun Quality Checks", "type": "automated", "action": "rerun_quality_checks", "config": {"actor": "system"}}])}',
+     'active', 'data-steward@acme-instruments.com', 'admin@acme-instruments.com', 'admin@acme-instruments.com'),
+    ('demo-wf-compliance-audit', 'Quarterly Compliance Audit Workflow',
+     'Quarterly audit process for ALARA policy compliance and model performance validation',
+     'scheduled', '{json.dumps({"schedule": "0 9 15 */3 *"})}',
+     '{json.dumps([{"step_id": "initiate", "name": "Create Audit Checklist", "type": "manual", "action": "create_audit_checklist", "config": {"actor": "compliance_officer"}, "next_step": "data_review"}, {"step_id": "data_review", "name": "Verify Retention Compliance", "type": "manual", "action": "verify_retention_compliance", "config": {"actor": "data_steward"}, "next_step": "model_review"}, {"step_id": "model_review", "name": "Validate Model Accuracy", "type": "manual", "action": "validate_model_accuracy", "config": {"actor": "qa_lead"}, "next_step": "report"}, {"step_id": "report", "name": "Generate Audit Report", "type": "automated", "action": "generate_audit_report", "config": {"actor": "system"}, "next_step": "submit"}, {"step_id": "submit", "name": "Submit to Regulator", "type": "manual", "action": "submit_to_regulator", "config": {"actor": "compliance_officer"}}])}',
+     'active', 'compliance@acme-instruments.com', 'admin@acme-instruments.com', 'admin@acme-instruments.com')
+  ) AS v(id, name, description, trigger_type, trigger_config, steps, status, owner_email, created_by, updated_by)
+) AS s ON t.id = s.id
+WHEN NOT MATCHED THEN INSERT (
+  id, name, description, trigger_type, trigger_config, steps, status, owner_email,
+  created_at, created_by, updated_at, updated_by
+) VALUES (
+  s.id, s.name, s.description, s.trigger_type, s.trigger_config, s.steps, s.status, s.owner_email,
+  current_timestamp(), s.created_by, current_timestamp(), s.updated_by
+)
+""", "Seed workflows (3)")
+
+    def seed_semantic_models(self) -> None:
+        """Seed semantic_models (3) and semantic_concepts (12)."""
+        logger.info("── Tier 1a5: Semantic Models ──")
+
+        self.execute_sql(f"""
+MERGE INTO {self.tbl('semantic_models')} AS t
+USING (
+  SELECT * FROM (VALUES
+    ('demo-sem-radiation', 'Radiation Safety Ontology',
+     'Standardized terminology and relationships for radiation safety, dosimetry, and regulatory compliance',
+     'demo-domain-rc', 'compliance@acme-instruments.com', 'published', '1.0.0',
+     '{json.dumps({"standards": ["ANSI N42.17A", "10 CFR 20"], "coverage": "detector types, dose units, regulatory limits"})}',
+     'admin@acme-instruments.com', 'admin@acme-instruments.com'),
+    ('demo-sem-equipment', 'Equipment Maintenance Glossary',
+     'Business glossary for predictive maintenance covering equipment types, failure modes, and maintenance procedures',
+     'demo-domain-pm', 'bob@acme-instruments.com', 'published', '1.2.0',
+     '{json.dumps({"coverage": "equipment taxonomy, failure modes, sensor types"})}',
+     'admin@acme-instruments.com', 'admin@acme-instruments.com'),
+    ('demo-sem-quality', 'Quality Assurance Terminology',
+     'QA domain terminology including defect classifications, inspection standards, and quality metrics',
+     'demo-domain-qa', 'alice@acme-instruments.com', 'published', '2.1.0',
+     '{json.dumps({"standards": ["IPC-A-610"], "coverage": "PCB defects, inspection criteria, quality thresholds"})}',
+     'admin@acme-instruments.com', 'admin@acme-instruments.com')
+  ) AS v(id, name, description, domain_id, owner_email, status, version, metadata, created_by, updated_by)
+) AS s ON t.id = s.id
+WHEN NOT MATCHED THEN INSERT (
+  id, name, description, domain_id, owner_email, status, version, metadata,
+  created_at, created_by, updated_at, updated_by
+) VALUES (
+  s.id, s.name, s.description, s.domain_id, s.owner_email, s.status, s.version, s.metadata,
+  current_timestamp(), s.created_by, current_timestamp(), s.updated_by
+)
+""", "Seed semantic_models (3)")
+
+        self.execute_sql(f"""
+MERGE INTO {self.tbl('semantic_concepts')} AS t
+USING (
+  SELECT * FROM (VALUES
+    ('demo-con-01', 'demo-sem-radiation', 'Absorbed Dose', 'The energy deposited by ionizing radiation per unit mass of material (Gray or rad)', NULL, 'metric', '{json.dumps(["dosimetry", "radiation_safety"])}', 'admin@acme-instruments.com'),
+    ('demo-con-02', 'demo-sem-radiation', 'Dose Equivalent', 'Absorbed dose weighted by radiation type and tissue sensitivity (Sievert or rem)', NULL, 'metric', '{json.dumps(["dosimetry", "regulatory"])}', 'admin@acme-instruments.com'),
+    ('demo-con-03', 'demo-sem-radiation', 'ALARA', 'As Low As Reasonably Achievable - radiation exposure optimization principle per 10 CFR 20.1003', NULL, 'entity', '{json.dumps(["regulatory", "compliance"])}', 'admin@acme-instruments.com'),
+    ('demo-con-04', 'demo-sem-radiation', 'Detector Efficiency', 'Ratio of detected events to actual radiation events (percentage or fractional per ANSI N42.17A)', NULL, 'metric', '{json.dumps(["calibration", "quality"])}', 'admin@acme-instruments.com'),
+    ('demo-con-05', 'demo-sem-equipment', 'Mean Time Between Failures', 'Average operating time between equipment failures under normal conditions (hours per MIL-HDBK-217)', NULL, 'metric', '{json.dumps(["maintenance", "reliability"])}', 'admin@acme-instruments.com'),
+    ('demo-con-06', 'demo-sem-equipment', 'Vibration Signature', 'Characteristic frequency spectrum of equipment vibration indicating mechanical health (Hz and amplitude per ISO 10816)', NULL, 'metric', '{json.dumps(["predictive_maintenance", "monitoring"])}', 'admin@acme-instruments.com'),
+    ('demo-con-07', 'demo-sem-equipment', 'Bearing Fault', 'Mechanical failure mode in rotating equipment bearings due to wear or contamination', NULL, 'event', '{json.dumps(["failure_mode", "maintenance"])}', 'admin@acme-instruments.com'),
+    ('demo-con-08', 'demo-sem-equipment', 'Thermal Runaway', 'Self-reinforcing increase in temperature leading to equipment failure', NULL, 'event', '{json.dumps(["failure_mode", "safety"])}', 'admin@acme-instruments.com'),
+    ('demo-con-09', 'demo-sem-quality', 'Solder Bridge', 'PCB defect where solder unintentionally connects two or more conductors (IPC-A-610 Class 3)', NULL, 'entity', '{json.dumps(["pcb_defect", "soldering"])}', 'admin@acme-instruments.com'),
+    ('demo-con-10', 'demo-sem-quality', 'Tombstone Defect', 'Component stands vertically on one end due to uneven heating during reflow (IPC-A-610)', NULL, 'entity', '{json.dumps(["pcb_defect", "reflow"])}', 'admin@acme-instruments.com'),
+    ('demo-con-11', 'demo-sem-quality', 'Flux Residue', 'Remaining flux material after soldering that may cause contamination or corrosion (IPC-A-610 Section 10)', NULL, 'entity', '{json.dumps(["pcb_defect", "contamination"])}', 'admin@acme-instruments.com'),
+    ('demo-con-12', 'demo-sem-quality', 'Critical Defect', 'Defect likely to result in hazardous or unsafe product operation (IPC-A-610 severity classification)', NULL, 'dimension', '{json.dumps(["quality", "severity"])}', 'admin@acme-instruments.com')
+  ) AS v(id, model_id, name, description, parent_id, concept_type, tags, created_by)
+) AS s ON t.id = s.id
+WHEN NOT MATCHED THEN INSERT (
+  id, model_id, name, description, parent_id, concept_type, tags,
+  created_at, created_by
+) VALUES (
+  s.id, s.model_id, s.name, s.description, s.parent_id, s.concept_type, s.tags,
+  current_timestamp(), s.created_by
+)
+""", "Seed semantic_concepts (12)")
+
     def seed_sheets(self) -> None:
         """Seed sheets (5) — the 5 Acme Instruments use cases."""
         logger.info("── Tier 1b: Sheets ──")
@@ -151,28 +428,28 @@ USING (
   SELECT * FROM (VALUES
     ('demo-sheet-pcb', 'PCB Defect Images',
      'High-resolution PCB board images for automated defect detection. Includes solder joint close-ups, component alignment views, and trace inspection imagery.',
-     'uc_table', 'ontos_ml.source_data.pcb_images', 'image_id',
-     ARRAY('defect_notes', 'inspection_comment'), ARRAY('image_path'),
+     'uc_table', 'serverless_dxukih_catalog.ontos_ml.sheets', 'id',
+     ARRAY('name', 'description'), ARRAY(),
      'active', 'demo_seed', 'demo_seed'),
     ('demo-sheet-telemetry', 'Equipment Telemetry',
      'Real-time sensor readings from radiation monitoring equipment. Covers temperature, pressure, vibration, and dose-rate measurements at 1-second intervals.',
-     'uc_table', 'ontos_ml.source_data.equipment_telemetry', 'reading_id',
-     ARRAY('sensor_notes', 'maintenance_log'), ARRAY(),
+     'uc_table', 'serverless_dxukih_catalog.ontos_ml.sheets', 'id',
+     ARRAY('name', 'description'), ARRAY(),
      'active', 'demo_seed', 'demo_seed'),
     ('demo-sheet-anomaly', 'Sensor Anomalies',
      'Time-series anomaly candidates flagged by threshold monitors. Each record includes a 60-second window of sensor data surrounding the anomaly event.',
-     'uc_table', 'ontos_ml.source_data.sensor_anomalies', 'anomaly_id',
-     ARRAY('anomaly_description', 'operator_notes'), ARRAY(),
+     'uc_table', 'serverless_dxukih_catalog.ontos_ml.sheets', 'id',
+     ARRAY('name', 'description'), ARRAY(),
      'active', 'demo_seed', 'demo_seed'),
     ('demo-sheet-cal', 'Calibration Records',
      'Monte Carlo simulation outputs for detector calibration. Contains energy spectra, efficiency curves, and uncertainty estimates from MCNP6 transport calculations.',
-     'uc_volume', 'ontos_ml.volumes.calibration_records', 'record_id',
-     ARRAY('simulation_params', 'calibration_notes'), ARRAY('spectrum_plot_path'),
+     'uc_table', 'serverless_dxukih_catalog.ontos_ml.sheets', 'id',
+     ARRAY('name', 'description'), ARRAY(),
      'active', 'demo_seed', 'demo_seed'),
     ('demo-sheet-compliance', 'Compliance Documents',
      'Regulatory filings, ALARA reports, and NRC correspondence. Scanned PDFs and structured forms requiring field extraction for compliance tracking.',
-     'uc_volume', 'ontos_ml.volumes.compliance_docs', 'document_id',
-     ARRAY('doc_title', 'filing_notes'), ARRAY('document_path'),
+     'uc_table', 'serverless_dxukih_catalog.ontos_ml.sheets', 'id',
+     ARRAY('name', 'description'), ARRAY(),
      'active', 'demo_seed', 'demo_seed')
   ) AS v(id, name, description, source_type, source_table, item_id_column,
          text_columns, image_columns, status, created_by, updated_by)
@@ -1236,6 +1513,10 @@ WHEN NOT MATCHED THEN INSERT (
 
         # Tier 1: Core ML Pipeline
         self.seed_domains_and_teams()
+        self.seed_roles_and_assignments()
+        self.seed_team_and_project_members()
+        self.seed_policies_and_workflows()
+        self.seed_semantic_models()
         self.seed_sheets()
         self.seed_templates()
         self.seed_canonical_labels()

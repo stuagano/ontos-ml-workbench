@@ -51,20 +51,61 @@ TRAINING_SHEETS_TABLE = _settings.get_table("training_sheets")
 QA_PAIRS_TABLE = _settings.get_table("qa_pairs")
 
 
+def _confidence_to_double(confidence: str) -> float:
+    """Map string confidence (high/medium/low) to DOUBLE (0.0-1.0) for DB storage."""
+    return {"high": 0.95, "medium": 0.7, "low": 0.4}.get(confidence, 0.7)
+
+
+def _double_to_confidence(value) -> str:
+    """Map DOUBLE label_confidence back to string enum for API."""
+    if value is None:
+        return "high"
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return str(value) if value else "high"
+    if v >= 0.85:
+        return "high"
+    if v >= 0.55:
+        return "medium"
+    return "low"
+
+
 def _row_to_canonical_label(row: dict) -> CanonicalLabelResponse:
     """Convert database row to CanonicalLabelResponse model."""
-    # Parse JSON columns
+    # Parse JSON columns — use `or` to handle NULL (None) values from Delta
+    # VARIANT columns can be double-encoded: string containing a JSON string
     label_data = row.get("label_data")
-    if isinstance(label_data, str):
-        label_data = json.loads(label_data)
+    if label_data is None:
+        label_data = {}
+    else:
+        # Unwrap until we get a dict or list (handles double-encoded VARIANT)
+        for _ in range(3):
+            if isinstance(label_data, (dict, list)):
+                break
+            try:
+                label_data = json.loads(str(label_data))
+            except (json.JSONDecodeError, TypeError, ValueError):
+                label_data = {"raw": str(label_data)}
+                break
 
-    allowed_uses = row.get("allowed_uses", [])
-    if isinstance(allowed_uses, str):
-        allowed_uses = json.loads(allowed_uses)
+    allowed_uses = row.get("allowed_uses")
+    if allowed_uses and not isinstance(allowed_uses, list):
+        try:
+            allowed_uses = json.loads(str(allowed_uses))
+        except (json.JSONDecodeError, TypeError, ValueError):
+            allowed_uses = []
+    if not allowed_uses:
+        allowed_uses = []
 
-    prohibited_uses = row.get("prohibited_uses", [])
-    if isinstance(prohibited_uses, str):
-        prohibited_uses = json.loads(prohibited_uses)
+    prohibited_uses = row.get("prohibited_uses")
+    if prohibited_uses and not isinstance(prohibited_uses, list):
+        try:
+            prohibited_uses = json.loads(str(prohibited_uses))
+        except (json.JSONDecodeError, TypeError, ValueError):
+            prohibited_uses = []
+    if not prohibited_uses:
+        prohibited_uses = []
 
     return CanonicalLabelResponse(
         id=row["id"],
@@ -72,20 +113,20 @@ def _row_to_canonical_label(row: dict) -> CanonicalLabelResponse:
         item_ref=row["item_ref"],
         label_type=row["label_type"],
         label_data=label_data,
-        confidence=row.get("confidence", "high"),
+        confidence=_double_to_confidence(row.get("label_confidence") or row.get("confidence")),
         notes=row.get("notes"),
         allowed_uses=allowed_uses,
         prohibited_uses=prohibited_uses,
         usage_reason=row.get("usage_reason"),
-        data_classification=row.get("data_classification", "internal"),
-        labeled_by=row["labeled_by"],
-        labeled_at=row["labeled_at"],
-        last_modified_by=row.get("last_modified_by"),
-        last_modified_at=row.get("last_modified_at"),
-        version=row.get("version", 1),
-        reuse_count=row.get("reuse_count", 0),
-        last_used_at=row.get("last_used_at"),
-        created_at=row["labeled_at"],  # Use labeled_at as created_at (table has no created_at column)
+        data_classification=row.get("data_classification") or "internal",
+        labeled_by=row.get("created_by"),
+        labeled_at=row.get("created_at"),
+        last_modified_by=row.get("updated_by"),
+        last_modified_at=row.get("updated_at"),
+        version=row.get("version") or 1,
+        reuse_count=row.get("reuse_count") or 0,
+        last_used_at=row.get("last_reused_at"),
+        created_at=row.get("created_at")
     )
 
 
@@ -147,12 +188,12 @@ async def create_canonical_label(
     allowed_uses_json = json.dumps(label.allowed_uses)
     prohibited_uses_json = json.dumps(label.prohibited_uses)
 
-    # Insert canonical label
+    # Insert canonical label (columns match DDL in schemas/03_canonical_labels.sql)
     insert_sql = f"""
         INSERT INTO {CANONICAL_LABELS_TABLE} (
             id, sheet_id, item_ref, label_type, label_data,
-            confidence, notes, allowed_uses, prohibited_uses,
-            usage_reason, data_classification, labeled_by,
+            label_confidence, labeling_mode, allowed_uses, prohibited_uses,
+            data_classification, created_by, updated_by,
             reuse_count, version
         )
         VALUES (
@@ -161,12 +202,12 @@ async def create_canonical_label(
             '{label.item_ref}',
             '{label.label_type}',
             '{label_data_json}',
-            '{label.confidence}',
-            {f"'{label.notes}'" if label.notes else "NULL"},
+            {_confidence_to_double(label.confidence)},
+            'standalone_tool',
             '{allowed_uses_json}',
             '{prohibited_uses_json}',
-            {f"'{label.usage_reason}'" if label.usage_reason else "NULL"},
             '{label.data_classification}',
+            '{label.labeled_by}',
             '{label.labeled_by}',
             0,
             1
@@ -233,9 +274,7 @@ async def update_canonical_label(
         label_data_json = json.dumps(updates.label_data)
         update_parts.append(f"label_data = '{label_data_json}'")
     if updates.confidence is not None:
-        update_parts.append(f"confidence = '{updates.confidence}'")
-    if updates.notes is not None:
-        update_parts.append(f"notes = '{updates.notes}'")
+        update_parts.append(f"label_confidence = {_confidence_to_double(updates.confidence)}")
     if updates.allowed_uses is not None:
         allowed_uses_json = json.dumps(updates.allowed_uses)
         update_parts.append(f"allowed_uses = '{allowed_uses_json}'")
@@ -247,11 +286,11 @@ async def update_canonical_label(
     if updates.data_classification is not None:
         update_parts.append(f"data_classification = '{updates.data_classification}'")
     if updates.last_modified_by is not None:
-        update_parts.append(f"last_modified_by = '{updates.last_modified_by}'")
+        update_parts.append(f"updated_by = '{updates.last_modified_by}'")
 
     # Increment version
     update_parts.append(f"version = {current_label.version + 1}")
-    update_parts.append("last_modified_at = current_timestamp()")
+    update_parts.append("updated_at = current_timestamp()")
 
     if update_parts:
         update_sql = f"""
@@ -421,7 +460,7 @@ async def list_canonical_labels(
         SELECT *
         FROM {CANONICAL_LABELS_TABLE}
         {where_clause}
-        ORDER BY labeled_at DESC
+        ORDER BY created_at DESC
         LIMIT {page_size} OFFSET {offset}
     """
     result = _sql.execute(list_sql)
@@ -445,7 +484,7 @@ async def get_sheet_canonical_stats(sheet_id: str) -> CanonicalLabelStats:
     """Get canonical label statistics for a sheet."""
     # Verify sheet exists
     sheet_sql = (
-        f"SELECT COUNT(*) as count FROM {SHEETS_TABLE} WHERE sheet_id = '{sheet_id}'"
+        f"SELECT COUNT(*) as count FROM {SHEETS_TABLE} WHERE id = '{sheet_id}'"
     )
     sheet_result = _sql.execute(sheet_sql)
     if not sheet_result or sheet_result[0]["count"] == 0:
@@ -492,10 +531,10 @@ async def get_sheet_canonical_stats(sheet_id: str) -> CanonicalLabelStats:
 
     # Coverage calculation
     sheet_data_sql = (
-        f"SELECT row_count FROM {SHEETS_TABLE} WHERE sheet_id = '{sheet_id}'"
+        f"SELECT item_count FROM {SHEETS_TABLE} WHERE id = '{sheet_id}'"
     )
     sheet_data_result = _sql.execute(sheet_data_sql)
-    row_count = sheet_data_result[0]["row_count"] if sheet_data_result else None
+    row_count = sheet_data_result[0]["item_count"] if sheet_data_result else None
 
     coverage_percent = None
     if row_count and row_count > 0:
@@ -649,8 +688,8 @@ async def get_canonical_label_versions(label_id: str) -> list[CanonicalLabelVers
             CanonicalLabelVersion(
                 version=row["version"],
                 label_data=label_data,
-                confidence=row["confidence"],
-                notes=row.get("notes"),
+                confidence=_double_to_confidence(row.get("label_confidence") or row.get("confidence")),
+                notes=row.get("notes"),  # notes column may not exist in versions table
                 modified_by=row["modified_by"],
                 modified_at=row["modified_at"],
             )

@@ -79,6 +79,11 @@ const GovernancePage = lazy(() =>
     default: m.GovernancePage,
   })),
 );
+const SettingsPage = lazy(() =>
+  import("./pages/SettingsPage").then((m) => ({
+    default: m.SettingsPage,
+  })),
+);
 import type { TabId as GovernanceTabId } from "./pages/GovernancePage";
 const MarketplacePage = lazy(() =>
   import("./pages/MarketplacePage").then((m) => ({
@@ -109,13 +114,13 @@ function AppContent() {
   const [showPromptTemplates, setShowPromptTemplates] = useState(false);
   const [showExampleStore, setShowExampleStore] = useState(false);
   const [showDSPyOptimizer, setShowDSPyOptimizer] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [showCanonicalLabeling, setShowCanonicalLabeling] = useState(false);
   const [showDataQuality, setShowDataQuality] = useState(false);
   const [showLabelingJobs, setShowLabelingJobs] = useState(false);
   const [showLabelSets, setShowLabelSets] = useState(false);
   const [showRegistries, setShowRegistries] = useState(false);
   const [showMarketplace, setShowMarketplace] = useState(false);
-  const [showGovernance, setShowGovernance] = useState(false);
   const [governanceTab, setGovernanceTab] = useState<GovernanceTabId | undefined>(undefined);
   const [selectedDSPyTemplate, setSelectedDSPyTemplate] = useState<Template | null>(null);
   const [datasetContext, setDatasetContext] = useState<{
@@ -213,8 +218,9 @@ function AppContent() {
     if (showLabelSets) setShowLabelSets(false);
     if (showRegistries) setShowRegistries(false);
     if (showMarketplace) setShowMarketplace(false);
-    if (showGovernance) setShowGovernance(false);
-  }, [showEditor, showPromptTemplates, showExampleStore, showDSPyOptimizer, showCanonicalLabeling, showDataQuality, showLabelingJobs, showLabelSets, showRegistries, showMarketplace, showGovernance]);
+    if (showSettings) setShowSettings(false);
+    if (currentStage === "governance") setCurrentStage("data");
+  }, [showEditor, showPromptTemplates, showExampleStore, showDSPyOptimizer, showCanonicalLabeling, showDataQuality, showLabelingJobs, showLabelSets, showRegistries, showMarketplace, showSettings, currentStage]);
 
   // Register keyboard shortcuts
   useKeyboardShortcuts([
@@ -328,6 +334,8 @@ function AppContent() {
         return <MonitorPage />;
       case "improve":
         return <ImprovePage />;
+      case "governance":
+        return <GovernancePage hideHeader={true} initialTab={governanceTab} />;
       default:
         return <SheetBuilder />;
     }
@@ -342,7 +350,7 @@ function AppContent() {
       workspaceUrl={config?.workspace_url}
       onGovernanceTabOpen={(tabId: string) => {
         setGovernanceTab(tabId as GovernanceTabId);
-        setShowGovernance(true);
+        setCurrentStage("governance");
       }}
       showPromptTemplates={showPromptTemplates}
       onTogglePromptTemplates={() =>
@@ -364,8 +372,8 @@ function AppContent() {
       onToggleRegistries={() => setShowRegistries(!showRegistries)}
       showMarketplace={showMarketplace}
       onToggleMarketplace={() => setShowMarketplace(!showMarketplace)}
-      showGovernance={showGovernance}
-      onToggleGovernance={() => setShowGovernance(!showGovernance)}
+      showSettings={showSettings}
+      onToggleSettings={() => setShowSettings(!showSettings)}
     >
       <ErrorBoundary>
         <Suspense
@@ -663,23 +671,21 @@ function AppContent() {
         </div>
       )}
 
-      {/* Governance (overlays entire view) */}
-      {showGovernance && (
-        <div className="fixed inset-0 z-50 bg-db-gray-50 dark:bg-gray-950 overflow-auto">
+      {/* Settings (overlays entire view) */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-50 to-slate-100 overflow-auto">
           <Suspense
             fallback={
               <div className="flex items-center justify-center min-h-screen">
-                <Loader2 className="w-10 h-10 animate-spin text-db-orange" />
+                <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
               </div>
             }
           >
-            <GovernancePage
-              onClose={() => setShowGovernance(false)}
-              initialTab={governanceTab}
-            />
+            <SettingsPage onClose={() => setShowSettings(false)} />
           </Suspense>
         </div>
       )}
+
     </AppLayout>
   );
 }

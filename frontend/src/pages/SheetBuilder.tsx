@@ -626,6 +626,34 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
 
   // Note: Canonical label stats are now fetched by CanonicalLabelStats component
 
+  // Mutations for browse mode (must be declared at top level, not conditionally)
+  const publishMutation = useMutation({
+    mutationFn: publishSheet,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sheets"] });
+      toast.success("Sheet published");
+    },
+    onError: (error: Error) => toast.error("Publish failed", error.message),
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: archiveSheet,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sheets"] });
+      toast.info("Sheet archived");
+    },
+    onError: (error: Error) => toast.error("Archive failed", error.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteSheet,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sheets"] });
+      toast.success("Sheet deleted");
+    },
+    onError: (error: Error) => toast.error("Delete failed", error.message),
+  });
+
   // Sync step with workflow state when navigating via breadcrumbs
   useEffect(() => {
     if (workflow.state.selectedSource && step === "no-sheet") {
@@ -1162,33 +1190,6 @@ export function SheetBuilder({ mode = "browse", onModeChange }: SheetBuilderProp
     const filteredSheets = sheets.filter((s) =>
       s.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
-
-    const publishMutation = useMutation({
-      mutationFn: publishSheet,
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["sheets"] });
-        toast.success("Sheet published");
-      },
-      onError: (error: Error) => toast.error("Publish failed", error.message),
-    });
-
-    const archiveMutation = useMutation({
-      mutationFn: archiveSheet,
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["sheets"] });
-        toast.info("Sheet archived");
-      },
-      onError: (error: Error) => toast.error("Archive failed", error.message),
-    });
-
-    const deleteMutation = useMutation({
-      mutationFn: deleteSheet,
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["sheets"] });
-        toast.success("Sheet deleted");
-      },
-      onError: (error: Error) => toast.error("Delete failed", error.message),
-    });
 
     // Define table columns for sheets
     const columns: Column<Sheet>[] = [

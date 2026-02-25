@@ -133,12 +133,8 @@ class ExampleStoreService:
             Example if found, None otherwise.
         """
         sql = f"""
-        SELECT
-            e.*,
-            t.name as databit_name
+        SELECT e.*
         FROM {self.table} e
-        LEFT JOIN {self.settings.databricks_catalog}.{self.settings.databricks_schema}.templates t
-            ON e.databit_id = t.id
         WHERE e.example_id = '{example_id}'
         """
 
@@ -247,8 +243,9 @@ class ExampleStoreService:
         """
         # Build WHERE clause
         conditions = []
-        if databit_id:
-            conditions.append(f"e.databit_id = '{databit_id}'")
+        # NOTE: databit_id filtering removed - example_store schema doesn't have this column
+        # if databit_id:
+        #     conditions.append(f"e.databit_id = '{databit_id}'")
         if domain:
             conditions.append(f"e.domain = '{domain}'")
         if function_name:
@@ -266,12 +263,8 @@ class ExampleStoreService:
         # Get page of results
         offset = (page - 1) * page_size
         sql = f"""
-        SELECT
-            e.*,
-            t.name as databit_name
+        SELECT e.*
         FROM {self.table} e
-        LEFT JOIN {self.settings.databricks_catalog}.{self.settings.databricks_schema}.templates t
-            ON e.databit_id = t.id
         {where_clause}
         ORDER BY e.effectiveness_score DESC NULLS LAST, e.created_at DESC
         LIMIT {page_size} OFFSET {offset}
@@ -326,8 +319,9 @@ class ExampleStoreService:
         """
         conditions = []
 
-        if query.databit_id:
-            conditions.append(f"e.databit_id = '{query.databit_id}'")
+        # NOTE: databit_id filtering removed - example_store schema doesn't have this column
+        # if query.databit_id:
+        #     conditions.append(f"e.databit_id = '{query.databit_id}'")
         if query.domain:
             domain = query.domain.value if hasattr(query.domain, 'value') else str(query.domain)
             conditions.append(f"e.domain = '{domain}'")
@@ -362,12 +356,8 @@ class ExampleStoreService:
         order_dir = "DESC" if query.sort_desc else "ASC"
 
         sql = f"""
-        SELECT
-            e.*,
-            t.name as databit_name
+        SELECT e.*
         FROM {self.table} e
-        LEFT JOIN {self.settings.databricks_catalog}.{self.settings.databricks_schema}.templates t
-            ON e.databit_id = t.id
         {where_clause}
         ORDER BY e.{order_field} {order_dir} NULLS LAST
         LIMIT {query.k}
@@ -503,15 +493,12 @@ class ExampleStoreService:
         Returns:
             List of top examples.
         """
-        where_clause = f"WHERE e.databit_id = '{databit_id}'" if databit_id else ""
+        # NOTE: databit_id filtering removed - example_store schema doesn't have this column
+        where_clause = ""  # f"WHERE e.databit_id = '{databit_id}'" if databit_id else ""
 
         sql = f"""
-        SELECT
-            e.*,
-            t.name as databit_name
+        SELECT e.*
         FROM {self.table} e
-        LEFT JOIN {self.settings.databricks_catalog}.{self.settings.databricks_schema}.templates t
-            ON e.databit_id = t.id
         {where_clause}
         ORDER BY e.effectiveness_score DESC NULLS LAST
         LIMIT {limit}
