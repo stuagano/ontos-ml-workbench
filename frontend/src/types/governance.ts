@@ -376,7 +376,22 @@ export type SemanticLinkType =
   | "identifies_gap" | "gap_found_in" | "gap_for_model" | "model_has_gap"
   | "remediates" | "remediated_by"
   | "sourced_from" | "source_for"
-  | "subscribes_to" | "subscribed_by";
+  | "subscribes_to" | "subscribed_by"
+  | "quality_check_for" | "quality_checked_by"
+  | "contains_qa_pair" | "qa_pair_in" | "linked_to_label" | "label_for_qa"
+  | "member_of_team" | "team_has_member" | "member_of_project" | "project_has_member"
+  | "assigned_role" | "role_assigned_to"
+  | "measures_endpoint" | "endpoint_measured_by" | "feedback_for" | "has_feedback"
+  | "delivered_via" | "mode_used_for" | "delivers_model" | "model_delivered_by"
+  | "registers_model" | "model_registered_in"
+  | "concept_in_model" | "model_has_concept" | "property_of" | "has_property"
+  | "evaluates_policy" | "policy_evaluated_by"
+  | "executes_workflow" | "workflow_executed_by"
+  | "discovered_by" | "discovers" | "sync_for" | "has_sync"
+  | "token_for_team" | "team_has_token" | "invoked_with_token" | "token_used_in"
+  | "invokes_tool" | "tool_invoked_by"
+  | "job_uses_template" | "template_used_by_job" | "job_trains_model" | "model_trained_by_job"
+  | "job_targets_endpoint" | "endpoint_targeted_by_job";
 export type SemanticModelStatus = "draft" | "published" | "archived";
 
 export interface SemanticProperty {
@@ -729,7 +744,13 @@ export type LineageEntityType =
   | "sheet" | "template" | "training_sheet" | "model" | "endpoint"
   | "canonical_label" | "domain" | "data_product" | "data_contract" | "labeling_job"
   | "labeling_task" | "labeled_item" | "model_evaluation" | "team" | "project"
-  | "identified_gap" | "annotation_task" | "asset_review" | "example" | "connector";
+  | "identified_gap" | "annotation_task" | "asset_review" | "example" | "connector"
+  | "dqx_quality_result" | "qa_pair" | "team_member" | "project_member"
+  | "user_role_assignment" | "app_role" | "endpoint_metric" | "feedback_item"
+  | "delivery_mode" | "delivery_record" | "endpoint_registry" | "semantic_model"
+  | "semantic_concept" | "semantic_property" | "compliance_policy" | "policy_evaluation"
+  | "workflow" | "workflow_execution" | "connector_asset" | "connector_sync"
+  | "mcp_token" | "mcp_tool" | "mcp_invocation" | "job_run";
 
 export interface LineageNode {
   entity_type: LineageEntityType;
@@ -793,6 +814,16 @@ export const LINEAGE_FORWARD_TYPES: ReadonlySet<string> = new Set([
   "contains_task", "contains_item", "evaluated_with", "evaluates_model",
   "attributed_to", "owned_by_team", "parent_of", "reviews",
   "identifies_gap", "gap_for_model", "remediates", "sourced_from", "subscribes_to",
+  "quality_check_for",
+  "contains_qa_pair", "linked_to_label",
+  "member_of_team", "member_of_project", "assigned_role",
+  "measures_endpoint", "feedback_for",
+  "delivered_via", "delivers_model", "registers_model",
+  "concept_in_model", "property_of",
+  "evaluates_policy", "executes_workflow",
+  "discovered_by", "sync_for",
+  "token_for_team", "invoked_with_token", "invokes_tool",
+  "job_uses_template", "job_trains_model", "job_targets_endpoint",
 ]);
 
 /** All lineage link types (forward + inverse) */
@@ -803,4 +834,14 @@ export const LINEAGE_ALL_TYPES: ReadonlySet<string> = new Set([
   "task_in", "item_in", "evaluation_of", "model_evaluated_by",
   "attributes", "team_owns", "child_of", "reviewed_by",
   "gap_found_in", "model_has_gap", "remediated_by", "source_for", "subscribed_by",
+  "quality_checked_by",
+  "qa_pair_in", "label_for_qa",
+  "team_has_member", "project_has_member", "role_assigned_to",
+  "endpoint_measured_by", "has_feedback",
+  "mode_used_for", "model_delivered_by", "model_registered_in",
+  "model_has_concept", "has_property",
+  "policy_evaluated_by", "workflow_executed_by",
+  "discovers", "has_sync",
+  "team_has_token", "token_used_in", "tool_invoked_by",
+  "template_used_by_job", "model_trained_by_job", "endpoint_targeted_by_job",
 ]);

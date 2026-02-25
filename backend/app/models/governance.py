@@ -802,6 +802,63 @@ class LinkType(str, Enum):
     SOURCE_FOR = "source_for"
     SUBSCRIBES_TO = "subscribes_to"
     SUBSCRIBED_BY = "subscribed_by"
+    # DQX quality integration
+    QUALITY_CHECK_FOR = "quality_check_for"
+    QUALITY_CHECKED_BY = "quality_checked_by"
+    # QA pair containment
+    CONTAINS_QA_PAIR = "contains_qa_pair"
+    QA_PAIR_IN = "qa_pair_in"
+    LINKED_TO_LABEL = "linked_to_label"
+    LABEL_FOR_QA = "label_for_qa"
+    # Membership
+    MEMBER_OF_TEAM = "member_of_team"
+    TEAM_HAS_MEMBER = "team_has_member"
+    MEMBER_OF_PROJECT = "member_of_project"
+    PROJECT_HAS_MEMBER = "project_has_member"
+    ASSIGNED_ROLE = "assigned_role"
+    ROLE_ASSIGNED_TO = "role_assigned_to"
+    # Monitoring
+    MEASURES_ENDPOINT = "measures_endpoint"
+    ENDPOINT_MEASURED_BY = "endpoint_measured_by"
+    FEEDBACK_FOR = "feedback_for"
+    HAS_FEEDBACK = "has_feedback"
+    # Delivery
+    DELIVERED_VIA = "delivered_via"
+    MODE_USED_FOR = "mode_used_for"
+    DELIVERS_MODEL = "delivers_model"
+    MODEL_DELIVERED_BY = "model_delivered_by"
+    REGISTERS_MODEL = "registers_model"
+    MODEL_REGISTERED_IN = "model_registered_in"
+    # Semantic layer
+    CONCEPT_IN_MODEL = "concept_in_model"
+    MODEL_HAS_CONCEPT = "model_has_concept"
+    PROPERTY_OF = "property_of"
+    HAS_PROPERTY = "has_property"
+    # Governance
+    EVALUATES_POLICY = "evaluates_policy"
+    POLICY_EVALUATED_BY = "policy_evaluated_by"
+    # Workflow
+    EXECUTES_WORKFLOW = "executes_workflow"
+    WORKFLOW_EXECUTED_BY = "workflow_executed_by"
+    # Connectors
+    DISCOVERED_BY = "discovered_by"
+    DISCOVERS = "discovers"
+    SYNC_FOR = "sync_for"
+    HAS_SYNC = "has_sync"
+    # MCP
+    TOKEN_FOR_TEAM = "token_for_team"
+    TEAM_HAS_TOKEN = "team_has_token"
+    INVOKED_WITH_TOKEN = "invoked_with_token"
+    TOKEN_USED_IN = "token_used_in"
+    INVOKES_TOOL = "invokes_tool"
+    TOOL_INVOKED_BY = "tool_invoked_by"
+    # Jobs
+    JOB_USES_TEMPLATE = "job_uses_template"
+    TEMPLATE_USED_BY_JOB = "template_used_by_job"
+    JOB_TRAINS_MODEL = "job_trains_model"
+    MODEL_TRAINED_BY_JOB = "model_trained_by_job"
+    JOB_TARGETS_ENDPOINT = "job_targets_endpoint"
+    ENDPOINT_TARGETED_BY_JOB = "endpoint_targeted_by_job"
 
 
 # Lineage link type relationships (forward → inverse)
@@ -831,6 +888,29 @@ LINEAGE_INVERSE_MAP: dict[str, str] = {
     "remediates": "remediated_by",
     "sourced_from": "source_for",
     "subscribes_to": "subscribed_by",
+    "quality_check_for": "quality_checked_by",
+    "contains_qa_pair": "qa_pair_in",
+    "linked_to_label": "label_for_qa",
+    "member_of_team": "team_has_member",
+    "member_of_project": "project_has_member",
+    "assigned_role": "role_assigned_to",
+    "measures_endpoint": "endpoint_measured_by",
+    "feedback_for": "has_feedback",
+    "delivered_via": "mode_used_for",
+    "delivers_model": "model_delivered_by",
+    "registers_model": "model_registered_in",
+    "concept_in_model": "model_has_concept",
+    "property_of": "has_property",
+    "evaluates_policy": "policy_evaluated_by",
+    "executes_workflow": "workflow_executed_by",
+    "discovered_by": "discovers",
+    "sync_for": "has_sync",
+    "token_for_team": "team_has_token",
+    "invoked_with_token": "token_used_in",
+    "invokes_tool": "tool_invoked_by",
+    "job_uses_template": "template_used_by_job",
+    "job_trains_model": "model_trained_by_job",
+    "job_targets_endpoint": "endpoint_targeted_by_job",
 }
 
 LINEAGE_FORWARD_TYPES = frozenset(LINEAGE_INVERSE_MAP.keys())
@@ -1479,6 +1559,30 @@ class LineageEntityType(str, Enum):
     ASSET_REVIEW = "asset_review"
     EXAMPLE = "example"
     CONNECTOR = "connector"
+    DQX_QUALITY_RESULT = "dqx_quality_result"
+    QA_PAIR = "qa_pair"
+    TEAM_MEMBER = "team_member"
+    PROJECT_MEMBER = "project_member"
+    USER_ROLE_ASSIGNMENT = "user_role_assignment"
+    APP_ROLE = "app_role"
+    ENDPOINT_METRIC = "endpoint_metric"
+    FEEDBACK_ITEM = "feedback_item"
+    DELIVERY_MODE = "delivery_mode"
+    DELIVERY_RECORD = "delivery_record"
+    ENDPOINT_REGISTRY = "endpoint_registry"
+    SEMANTIC_MODEL = "semantic_model"
+    SEMANTIC_CONCEPT = "semantic_concept"
+    SEMANTIC_PROPERTY = "semantic_property"
+    COMPLIANCE_POLICY = "compliance_policy"
+    POLICY_EVALUATION = "policy_evaluation"
+    WORKFLOW = "workflow"
+    WORKFLOW_EXECUTION = "workflow_execution"
+    CONNECTOR_ASSET = "connector_asset"
+    CONNECTOR_SYNC = "connector_sync"
+    MCP_TOKEN = "mcp_token"
+    MCP_TOOL = "mcp_tool"
+    MCP_INVOCATION = "mcp_invocation"
+    JOB_RUN = "job_run"
 
 
 class LineageNode(BaseModel):

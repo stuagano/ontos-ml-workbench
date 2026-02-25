@@ -612,6 +612,397 @@ class LineageService:
             )
             _track("subscribes_to", 2)
 
+        # ------------------------------------------------------------------
+        # 19. dqx_quality_results -> quality_check_for (dqx_result -> sheet)
+        # ------------------------------------------------------------------
+        dqx_rows = self.sql.execute(
+            f"SELECT id, sheet_id FROM {self._table('dqx_quality_results')} "
+            f"WHERE sheet_id IS NOT NULL"
+        )
+        for dqx in dqx_rows:
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="dqx_quality_result",
+                source_id=dqx["id"],
+                target_type="sheet",
+                target_id=dqx["sheet_id"],
+                link_type="quality_check_for",
+            )
+            _track("quality_check_for", 2)
+
+        # ------------------------------------------------------------------
+        # 20. qa_pairs -> contains_qa_pair (training_sheet -> qa_pair)
+        #              -> linked_to_label (qa_pair -> canonical_label)
+        # ------------------------------------------------------------------
+        qa_rows = self.sql.execute(
+            f"SELECT id, training_sheet_id, canonical_label_id "
+            f"FROM {self._table('qa_pairs')}"
+        )
+        for qa in qa_rows:
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="training_sheet",
+                source_id=qa["training_sheet_id"],
+                target_type="qa_pair",
+                target_id=qa["id"],
+                link_type="contains_qa_pair",
+            )
+            _track("contains_qa_pair", 2)
+
+            if qa.get("canonical_label_id"):
+                self._insert_edge_with_inverse(
+                    model_id,
+                    source_type="qa_pair",
+                    source_id=qa["id"],
+                    target_type="canonical_label",
+                    target_id=qa["canonical_label_id"],
+                    link_type="linked_to_label",
+                )
+                _track("linked_to_label", 2)
+
+        # ------------------------------------------------------------------
+        # 21. team_members -> member_of_team (team_member -> team)
+        # ------------------------------------------------------------------
+        tm_rows = self.sql.execute(
+            f"SELECT id, team_id FROM {self._table('team_members')}"
+        )
+        for tm in tm_rows:
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="team_member",
+                source_id=tm["id"],
+                target_type="team",
+                target_id=tm["team_id"],
+                link_type="member_of_team",
+            )
+            _track("member_of_team", 2)
+
+        # ------------------------------------------------------------------
+        # 22. project_members -> member_of_project (project_member -> project)
+        # ------------------------------------------------------------------
+        pm_rows = self.sql.execute(
+            f"SELECT id, project_id FROM {self._table('project_members')}"
+        )
+        for pm in pm_rows:
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="project_member",
+                source_id=pm["id"],
+                target_type="project",
+                target_id=pm["project_id"],
+                link_type="member_of_project",
+            )
+            _track("member_of_project", 2)
+
+        # ------------------------------------------------------------------
+        # 23. user_role_assignments -> assigned_role (user_role_assignment -> app_role)
+        # ------------------------------------------------------------------
+        ura_rows = self.sql.execute(
+            f"SELECT id, role_id FROM {self._table('user_role_assignments')}"
+        )
+        for ura in ura_rows:
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="user_role_assignment",
+                source_id=ura["id"],
+                target_type="app_role",
+                target_id=ura["role_id"],
+                link_type="assigned_role",
+            )
+            _track("assigned_role", 2)
+
+        # ------------------------------------------------------------------
+        # 24. endpoint_metrics -> measures_endpoint (endpoint_metric -> endpoint)
+        # ------------------------------------------------------------------
+        em_rows = self.sql.execute(
+            f"SELECT id, endpoint_id FROM {self._table('endpoint_metrics')}"
+        )
+        for em in em_rows:
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="endpoint_metric",
+                source_id=em["id"],
+                target_type="endpoint",
+                target_id=em["endpoint_id"],
+                link_type="measures_endpoint",
+            )
+            _track("measures_endpoint", 2)
+
+        # ------------------------------------------------------------------
+        # 25. feedback_items -> feedback_for (feedback_item -> endpoint)
+        # ------------------------------------------------------------------
+        fi_rows = self.sql.execute(
+            f"SELECT id, endpoint_id FROM {self._table('feedback_items')} "
+            f"WHERE endpoint_id IS NOT NULL"
+        )
+        for fi in fi_rows:
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="feedback_item",
+                source_id=fi["id"],
+                target_type="endpoint",
+                target_id=fi["endpoint_id"],
+                link_type="feedback_for",
+            )
+            _track("feedback_for", 2)
+
+        # ------------------------------------------------------------------
+        # 26. delivery_records -> delivered_via (delivery_record -> delivery_mode)
+        #                      -> delivers_model (delivery_record -> model)
+        # ------------------------------------------------------------------
+        dr_rows = self.sql.execute(
+            f"SELECT id, delivery_mode_id, model_name "
+            f"FROM {self._table('delivery_records')}"
+        )
+        for dr in dr_rows:
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="delivery_record",
+                source_id=dr["id"],
+                target_type="delivery_mode",
+                target_id=dr["delivery_mode_id"],
+                link_type="delivered_via",
+            )
+            _track("delivered_via", 2)
+
+            if dr.get("model_name"):
+                self._insert_edge_with_inverse(
+                    model_id,
+                    source_type="delivery_record",
+                    source_id=dr["id"],
+                    target_type="model",
+                    target_id=dr["model_name"],
+                    link_type="delivers_model",
+                    target_name=dr["model_name"],
+                )
+                _track("delivers_model", 2)
+
+        # ------------------------------------------------------------------
+        # 27. endpoints_registry -> registers_model (endpoint_registry -> model)
+        # ------------------------------------------------------------------
+        er_rows = self.sql.execute(
+            f"SELECT id, model_name FROM {self._table('endpoints_registry')} "
+            f"WHERE model_name IS NOT NULL"
+        )
+        for er in er_rows:
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="endpoint_registry",
+                source_id=er["id"],
+                target_type="model",
+                target_id=er["model_name"],
+                link_type="registers_model",
+                target_name=er["model_name"],
+            )
+            _track("registers_model", 2)
+
+        # ------------------------------------------------------------------
+        # 28. semantic_concepts -> concept_in_model (concept -> semantic_model)
+        #                       -> parent_of (parent concept -> child concept)
+        # ------------------------------------------------------------------
+        sc_rows = self.sql.execute(
+            f"SELECT id, name, model_id AS concept_model_id, parent_id "
+            f"FROM {self._table('semantic_concepts')}"
+        )
+        for sc in sc_rows:
+            concept_model = sc.get("concept_model_id")
+            if concept_model and concept_model != model_id:
+                self._insert_edge_with_inverse(
+                    model_id,
+                    source_type="semantic_concept",
+                    source_id=sc["id"],
+                    target_type="semantic_model",
+                    target_id=concept_model,
+                    link_type="concept_in_model",
+                    source_name=sc.get("name"),
+                )
+                _track("concept_in_model", 2)
+
+            if sc.get("parent_id"):
+                self._insert_edge_with_inverse(
+                    model_id,
+                    source_type="semantic_concept",
+                    source_id=sc["parent_id"],
+                    target_type="semantic_concept",
+                    target_id=sc["id"],
+                    link_type="parent_of",
+                    target_name=sc.get("name"),
+                )
+                _track("parent_of", 2)
+
+        # ------------------------------------------------------------------
+        # 29. semantic_properties -> property_of (property -> concept)
+        # ------------------------------------------------------------------
+        sp_rows = self.sql.execute(
+            f"SELECT id, name, concept_id FROM {self._table('semantic_properties')}"
+        )
+        for sp in sp_rows:
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="semantic_property",
+                source_id=sp["id"],
+                target_type="semantic_concept",
+                target_id=sp["concept_id"],
+                link_type="property_of",
+                source_name=sp.get("name"),
+            )
+            _track("property_of", 2)
+
+        # ------------------------------------------------------------------
+        # 30. policy_evaluations -> evaluates_policy (policy_evaluation -> compliance_policy)
+        # ------------------------------------------------------------------
+        pe_rows = self.sql.execute(
+            f"SELECT id, policy_id FROM {self._table('policy_evaluations')}"
+        )
+        for pe in pe_rows:
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="policy_evaluation",
+                source_id=pe["id"],
+                target_type="compliance_policy",
+                target_id=pe["policy_id"],
+                link_type="evaluates_policy",
+            )
+            _track("evaluates_policy", 2)
+
+        # ------------------------------------------------------------------
+        # 31. workflow_executions -> executes_workflow (workflow_execution -> workflow)
+        # ------------------------------------------------------------------
+        we_rows = self.sql.execute(
+            f"SELECT id, workflow_id FROM {self._table('workflow_executions')}"
+        )
+        for we in we_rows:
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="workflow_execution",
+                source_id=we["id"],
+                target_type="workflow",
+                target_id=we["workflow_id"],
+                link_type="executes_workflow",
+            )
+            _track("executes_workflow", 2)
+
+        # ------------------------------------------------------------------
+        # 32. connector_assets -> discovered_by (connector_asset -> connector)
+        # ------------------------------------------------------------------
+        ca_rows = self.sql.execute(
+            f"SELECT id, connector_id FROM {self._table('connector_assets')}"
+        )
+        for ca in ca_rows:
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="connector_asset",
+                source_id=ca["id"],
+                target_type="connector",
+                target_id=ca["connector_id"],
+                link_type="discovered_by",
+            )
+            _track("discovered_by", 2)
+
+        # ------------------------------------------------------------------
+        # 33. connector_sync_records -> sync_for (connector_sync -> connector)
+        # ------------------------------------------------------------------
+        cs_rows = self.sql.execute(
+            f"SELECT id, connector_id FROM {self._table('connector_sync_records')}"
+        )
+        for cs in cs_rows:
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="connector_sync",
+                source_id=cs["id"],
+                target_type="connector",
+                target_id=cs["connector_id"],
+                link_type="sync_for",
+            )
+            _track("sync_for", 2)
+
+        # ------------------------------------------------------------------
+        # 34. mcp_tokens -> token_for_team (mcp_token -> team)
+        # ------------------------------------------------------------------
+        mt_rows = self.sql.execute(
+            f"SELECT id, team_id FROM {self._table('mcp_tokens')} "
+            f"WHERE team_id IS NOT NULL"
+        )
+        for mt in mt_rows:
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="mcp_token",
+                source_id=mt["id"],
+                target_type="team",
+                target_id=mt["team_id"],
+                link_type="token_for_team",
+            )
+            _track("token_for_team", 2)
+
+        # ------------------------------------------------------------------
+        # 35. mcp_invocations -> invoked_with_token + invokes_tool
+        # ------------------------------------------------------------------
+        mi_rows = self.sql.execute(
+            f"SELECT id, token_id, tool_id FROM {self._table('mcp_invocations')}"
+        )
+        for mi in mi_rows:
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="mcp_invocation",
+                source_id=mi["id"],
+                target_type="mcp_token",
+                target_id=mi["token_id"],
+                link_type="invoked_with_token",
+            )
+            _track("invoked_with_token", 2)
+
+            self._insert_edge_with_inverse(
+                model_id,
+                source_type="mcp_invocation",
+                source_id=mi["id"],
+                target_type="mcp_tool",
+                target_id=mi["tool_id"],
+                link_type="invokes_tool",
+            )
+            _track("invokes_tool", 2)
+
+        # ------------------------------------------------------------------
+        # 36. job_runs -> job_uses_template / job_trains_model / job_targets_endpoint
+        # ------------------------------------------------------------------
+        jr_rows = self.sql.execute(
+            f"SELECT id, template_id, model_id AS job_model_id, endpoint_id "
+            f"FROM {self._table('job_runs')}"
+        )
+        for jr in jr_rows:
+            if jr.get("template_id"):
+                self._insert_edge_with_inverse(
+                    model_id,
+                    source_type="job_run",
+                    source_id=jr["id"],
+                    target_type="template",
+                    target_id=jr["template_id"],
+                    link_type="job_uses_template",
+                )
+                _track("job_uses_template", 2)
+
+            if jr.get("job_model_id"):
+                self._insert_edge_with_inverse(
+                    model_id,
+                    source_type="job_run",
+                    source_id=jr["id"],
+                    target_type="model",
+                    target_id=jr["job_model_id"],
+                    link_type="job_trains_model",
+                    target_name=jr["job_model_id"],
+                )
+                _track("job_trains_model", 2)
+
+            if jr.get("endpoint_id"):
+                self._insert_edge_with_inverse(
+                    model_id,
+                    source_type="job_run",
+                    source_id=jr["id"],
+                    target_type="endpoint",
+                    target_id=jr["endpoint_id"],
+                    link_type="job_targets_endpoint",
+                )
+                _track("job_targets_endpoint", 2)
+
         duration_ms = (time.time() - t0) * 1000
         result = MaterializeResult(
             edges_created=edges_created,
@@ -667,6 +1058,18 @@ class LineageService:
                     source_name=ts.get("name"),
                 )
                 _track("generated_from", 2)
+
+            # Re-scan DQX quality results that reference this sheet
+            dqx_rows = self.sql.execute(
+                f"SELECT id FROM {self._table('dqx_quality_results')} "
+                f"WHERE sheet_id = '{_esc(entity_id)}'"
+            )
+            for dqx in dqx_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "dqx_quality_result", dqx["id"],
+                    "sheet", entity_id, "quality_check_for",
+                )
+                _track("quality_check_for", 2)
 
         elif entity_type == "template":
             # Re-scan training_sheets that reference this template
@@ -738,6 +1141,24 @@ class LineageService:
                     )
                     _track("deployed_as", 2)
 
+            # Re-scan qa_pairs for this training_sheet
+            qa_rows = self.sql.execute(
+                f"SELECT id, canonical_label_id FROM {self._table('qa_pairs')} "
+                f"WHERE training_sheet_id = '{_esc(entity_id)}'"
+            )
+            for qa in qa_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "training_sheet", entity_id,
+                    "qa_pair", qa["id"], "contains_qa_pair",
+                )
+                _track("contains_qa_pair", 2)
+                if qa.get("canonical_label_id"):
+                    self._insert_edge_with_inverse(
+                        model_id, "qa_pair", qa["id"],
+                        "canonical_label", qa["canonical_label_id"], "linked_to_label",
+                    )
+                    _track("linked_to_label", 2)
+
         elif entity_type == "model":
             # Re-scan model_training_lineage for this model
             lineage_rows = self.sql.execute(
@@ -781,6 +1202,28 @@ class LineageService:
                     source_name=row["model_name"],
                 )
                 _track("deployed_as", 2)
+            # Re-scan endpoint_metrics for this endpoint
+            em_rows = self.sql.execute(
+                f"SELECT id FROM {self._table('endpoint_metrics')} "
+                f"WHERE endpoint_id = '{_esc(entity_id)}'"
+            )
+            for em in em_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "endpoint_metric", em["id"],
+                    "endpoint", entity_id, "measures_endpoint",
+                )
+                _track("measures_endpoint", 2)
+            # Re-scan feedback_items for this endpoint
+            fi_rows = self.sql.execute(
+                f"SELECT id FROM {self._table('feedback_items')} "
+                f"WHERE endpoint_id = '{_esc(entity_id)}'"
+            )
+            for fi in fi_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "feedback_item", fi["id"],
+                    "endpoint", entity_id, "feedback_for",
+                )
+                _track("feedback_for", 2)
 
         elif entity_type == "canonical_label":
             # Re-scan this canonical label's sheet_id
@@ -1006,6 +1449,28 @@ class LineageService:
                     "data_product", sub["product_id"], "subscribes_to",
                 )
                 _track("subscribes_to", 2)
+            # Re-scan team_members for this team
+            tm_rows = self.sql.execute(
+                f"SELECT id FROM {self._table('team_members')} "
+                f"WHERE team_id = '{_esc(entity_id)}'"
+            )
+            for tm in tm_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "team_member", tm["id"],
+                    "team", entity_id, "member_of_team",
+                )
+                _track("member_of_team", 2)
+            # Re-scan mcp_tokens for this team
+            mt_rows = self.sql.execute(
+                f"SELECT id FROM {self._table('mcp_tokens')} "
+                f"WHERE team_id = '{_esc(entity_id)}'"
+            )
+            for mt in mt_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "mcp_token", mt["id"],
+                    "team", entity_id, "token_for_team",
+                )
+                _track("token_for_team", 2)
 
         elif entity_type == "project":
             # Re-scan team_id for this project
@@ -1020,6 +1485,17 @@ class LineageService:
                     source_name=p.get("name"),
                 )
                 _track("owned_by_team", 2)
+            # Re-scan project_members for this project
+            pm_rows = self.sql.execute(
+                f"SELECT id FROM {self._table('project_members')} "
+                f"WHERE project_id = '{_esc(entity_id)}'"
+            )
+            for pm in pm_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "project_member", pm["id"],
+                    "project", entity_id, "member_of_project",
+                )
+                _track("member_of_project", 2)
 
         elif entity_type == "identified_gap":
             # Re-scan template_id and model_name
@@ -1107,6 +1583,415 @@ class LineageService:
                     source_name=c.get("name"),
                 )
                 _track("owned_by_team", 2)
+            # Re-scan connector_assets for this connector
+            ca_rows = self.sql.execute(
+                f"SELECT id FROM {self._table('connector_assets')} "
+                f"WHERE connector_id = '{_esc(entity_id)}'"
+            )
+            for ca in ca_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "connector_asset", ca["id"],
+                    "connector", entity_id, "discovered_by",
+                )
+                _track("discovered_by", 2)
+            # Re-scan connector_sync_records for this connector
+            cs_rows = self.sql.execute(
+                f"SELECT id FROM {self._table('connector_sync_records')} "
+                f"WHERE connector_id = '{_esc(entity_id)}'"
+            )
+            for cs in cs_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "connector_sync", cs["id"],
+                    "connector", entity_id, "sync_for",
+                )
+                _track("sync_for", 2)
+
+        elif entity_type == "dqx_quality_result":
+            # Re-scan sheet_id for this DQX quality result
+            dqx_rows = self.sql.execute(
+                f"SELECT id, sheet_id FROM {self._table('dqx_quality_results')} "
+                f"WHERE id = '{_esc(entity_id)}' AND sheet_id IS NOT NULL"
+            )
+            for dqx in dqx_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "dqx_quality_result", entity_id,
+                    "sheet", dqx["sheet_id"], "quality_check_for",
+                )
+                _track("quality_check_for", 2)
+
+        elif entity_type == "qa_pair":
+            # Re-scan this qa_pair's training_sheet and canonical_label
+            qa_rows = self.sql.execute(
+                f"SELECT id, training_sheet_id, canonical_label_id "
+                f"FROM {self._table('qa_pairs')} "
+                f"WHERE id = '{_esc(entity_id)}'"
+            )
+            for qa in qa_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "training_sheet", qa["training_sheet_id"],
+                    "qa_pair", entity_id, "contains_qa_pair",
+                )
+                _track("contains_qa_pair", 2)
+                if qa.get("canonical_label_id"):
+                    self._insert_edge_with_inverse(
+                        model_id, "qa_pair", entity_id,
+                        "canonical_label", qa["canonical_label_id"], "linked_to_label",
+                    )
+                    _track("linked_to_label", 2)
+
+        elif entity_type == "team_member":
+            tm_rows = self.sql.execute(
+                f"SELECT id, team_id FROM {self._table('team_members')} "
+                f"WHERE id = '{_esc(entity_id)}'"
+            )
+            for tm in tm_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "team_member", entity_id,
+                    "team", tm["team_id"], "member_of_team",
+                )
+                _track("member_of_team", 2)
+
+        elif entity_type == "project_member":
+            pm_rows = self.sql.execute(
+                f"SELECT id, project_id FROM {self._table('project_members')} "
+                f"WHERE id = '{_esc(entity_id)}'"
+            )
+            for pm in pm_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "project_member", entity_id,
+                    "project", pm["project_id"], "member_of_project",
+                )
+                _track("member_of_project", 2)
+
+        elif entity_type == "user_role_assignment":
+            ura_rows = self.sql.execute(
+                f"SELECT id, role_id FROM {self._table('user_role_assignments')} "
+                f"WHERE id = '{_esc(entity_id)}'"
+            )
+            for ura in ura_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "user_role_assignment", entity_id,
+                    "app_role", ura["role_id"], "assigned_role",
+                )
+                _track("assigned_role", 2)
+
+        elif entity_type == "app_role":
+            # Reverse: scan user_role_assignments WHERE role_id = this
+            ura_rows = self.sql.execute(
+                f"SELECT id FROM {self._table('user_role_assignments')} "
+                f"WHERE role_id = '{_esc(entity_id)}'"
+            )
+            for ura in ura_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "user_role_assignment", ura["id"],
+                    "app_role", entity_id, "assigned_role",
+                )
+                _track("assigned_role", 2)
+
+        elif entity_type == "endpoint_metric":
+            em_rows = self.sql.execute(
+                f"SELECT id, endpoint_id FROM {self._table('endpoint_metrics')} "
+                f"WHERE id = '{_esc(entity_id)}'"
+            )
+            for em in em_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "endpoint_metric", entity_id,
+                    "endpoint", em["endpoint_id"], "measures_endpoint",
+                )
+                _track("measures_endpoint", 2)
+
+        elif entity_type == "feedback_item":
+            fi_rows = self.sql.execute(
+                f"SELECT id, endpoint_id FROM {self._table('feedback_items')} "
+                f"WHERE id = '{_esc(entity_id)}' AND endpoint_id IS NOT NULL"
+            )
+            for fi in fi_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "feedback_item", entity_id,
+                    "endpoint", fi["endpoint_id"], "feedback_for",
+                )
+                _track("feedback_for", 2)
+
+        elif entity_type == "delivery_record":
+            dr_rows = self.sql.execute(
+                f"SELECT id, delivery_mode_id, model_name "
+                f"FROM {self._table('delivery_records')} "
+                f"WHERE id = '{_esc(entity_id)}'"
+            )
+            for dr in dr_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "delivery_record", entity_id,
+                    "delivery_mode", dr["delivery_mode_id"], "delivered_via",
+                )
+                _track("delivered_via", 2)
+                if dr.get("model_name"):
+                    self._insert_edge_with_inverse(
+                        model_id, "delivery_record", entity_id,
+                        "model", dr["model_name"], "delivers_model",
+                        target_name=dr["model_name"],
+                    )
+                    _track("delivers_model", 2)
+
+        elif entity_type == "delivery_mode":
+            # Reverse: scan delivery_records WHERE delivery_mode_id = this
+            dr_rows = self.sql.execute(
+                f"SELECT id, model_name FROM {self._table('delivery_records')} "
+                f"WHERE delivery_mode_id = '{_esc(entity_id)}'"
+            )
+            for dr in dr_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "delivery_record", dr["id"],
+                    "delivery_mode", entity_id, "delivered_via",
+                )
+                _track("delivered_via", 2)
+                if dr.get("model_name"):
+                    self._insert_edge_with_inverse(
+                        model_id, "delivery_record", dr["id"],
+                        "model", dr["model_name"], "delivers_model",
+                        target_name=dr["model_name"],
+                    )
+                    _track("delivers_model", 2)
+
+        elif entity_type == "endpoint_registry":
+            er_rows = self.sql.execute(
+                f"SELECT id, model_name FROM {self._table('endpoints_registry')} "
+                f"WHERE id = '{_esc(entity_id)}' AND model_name IS NOT NULL"
+            )
+            for er in er_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "endpoint_registry", entity_id,
+                    "model", er["model_name"], "registers_model",
+                    target_name=er["model_name"],
+                )
+                _track("registers_model", 2)
+
+        elif entity_type == "semantic_model":
+            # Reverse: scan semantic_concepts WHERE model_id = this
+            sc_rows = self.sql.execute(
+                f"SELECT id, name FROM {self._table('semantic_concepts')} "
+                f"WHERE model_id = '{_esc(entity_id)}'"
+            )
+            for sc in sc_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "semantic_concept", sc["id"],
+                    "semantic_model", entity_id, "concept_in_model",
+                    source_name=sc.get("name"),
+                )
+                _track("concept_in_model", 2)
+
+        elif entity_type == "semantic_concept":
+            sc_rows = self.sql.execute(
+                f"SELECT id, name, model_id AS concept_model_id, parent_id "
+                f"FROM {self._table('semantic_concepts')} "
+                f"WHERE id = '{_esc(entity_id)}'"
+            )
+            for sc in sc_rows:
+                concept_model = sc.get("concept_model_id")
+                if concept_model and concept_model != model_id:
+                    self._insert_edge_with_inverse(
+                        model_id, "semantic_concept", entity_id,
+                        "semantic_model", concept_model, "concept_in_model",
+                        source_name=sc.get("name"),
+                    )
+                    _track("concept_in_model", 2)
+                if sc.get("parent_id"):
+                    self._insert_edge_with_inverse(
+                        model_id, "semantic_concept", sc["parent_id"],
+                        "semantic_concept", entity_id, "parent_of",
+                        target_name=sc.get("name"),
+                    )
+                    _track("parent_of", 2)
+            # Re-scan properties for this concept
+            sp_rows = self.sql.execute(
+                f"SELECT id, name FROM {self._table('semantic_properties')} "
+                f"WHERE concept_id = '{_esc(entity_id)}'"
+            )
+            for sp in sp_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "semantic_property", sp["id"],
+                    "semantic_concept", entity_id, "property_of",
+                    source_name=sp.get("name"),
+                )
+                _track("property_of", 2)
+            # Re-scan child concepts
+            child_rows = self.sql.execute(
+                f"SELECT id, name FROM {self._table('semantic_concepts')} "
+                f"WHERE parent_id = '{_esc(entity_id)}'"
+            )
+            for child in child_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "semantic_concept", entity_id,
+                    "semantic_concept", child["id"], "parent_of",
+                    target_name=child.get("name"),
+                )
+                _track("parent_of", 2)
+
+        elif entity_type == "semantic_property":
+            sp_rows = self.sql.execute(
+                f"SELECT id, name, concept_id FROM {self._table('semantic_properties')} "
+                f"WHERE id = '{_esc(entity_id)}'"
+            )
+            for sp in sp_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "semantic_property", entity_id,
+                    "semantic_concept", sp["concept_id"], "property_of",
+                    source_name=sp.get("name"),
+                )
+                _track("property_of", 2)
+
+        elif entity_type == "compliance_policy":
+            # Reverse: scan policy_evaluations WHERE policy_id = this
+            pe_rows = self.sql.execute(
+                f"SELECT id FROM {self._table('policy_evaluations')} "
+                f"WHERE policy_id = '{_esc(entity_id)}'"
+            )
+            for pe in pe_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "policy_evaluation", pe["id"],
+                    "compliance_policy", entity_id, "evaluates_policy",
+                )
+                _track("evaluates_policy", 2)
+
+        elif entity_type == "policy_evaluation":
+            pe_rows = self.sql.execute(
+                f"SELECT id, policy_id FROM {self._table('policy_evaluations')} "
+                f"WHERE id = '{_esc(entity_id)}'"
+            )
+            for pe in pe_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "policy_evaluation", entity_id,
+                    "compliance_policy", pe["policy_id"], "evaluates_policy",
+                )
+                _track("evaluates_policy", 2)
+
+        elif entity_type == "workflow":
+            # Reverse: scan workflow_executions WHERE workflow_id = this
+            we_rows = self.sql.execute(
+                f"SELECT id FROM {self._table('workflow_executions')} "
+                f"WHERE workflow_id = '{_esc(entity_id)}'"
+            )
+            for we in we_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "workflow_execution", we["id"],
+                    "workflow", entity_id, "executes_workflow",
+                )
+                _track("executes_workflow", 2)
+
+        elif entity_type == "workflow_execution":
+            we_rows = self.sql.execute(
+                f"SELECT id, workflow_id FROM {self._table('workflow_executions')} "
+                f"WHERE id = '{_esc(entity_id)}'"
+            )
+            for we in we_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "workflow_execution", entity_id,
+                    "workflow", we["workflow_id"], "executes_workflow",
+                )
+                _track("executes_workflow", 2)
+
+        elif entity_type == "connector_asset":
+            ca_rows = self.sql.execute(
+                f"SELECT id, connector_id FROM {self._table('connector_assets')} "
+                f"WHERE id = '{_esc(entity_id)}'"
+            )
+            for ca in ca_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "connector_asset", entity_id,
+                    "connector", ca["connector_id"], "discovered_by",
+                )
+                _track("discovered_by", 2)
+
+        elif entity_type == "connector_sync":
+            cs_rows = self.sql.execute(
+                f"SELECT id, connector_id FROM {self._table('connector_sync_records')} "
+                f"WHERE id = '{_esc(entity_id)}'"
+            )
+            for cs in cs_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "connector_sync", entity_id,
+                    "connector", cs["connector_id"], "sync_for",
+                )
+                _track("sync_for", 2)
+
+        elif entity_type == "mcp_token":
+            mt_rows = self.sql.execute(
+                f"SELECT id, team_id FROM {self._table('mcp_tokens')} "
+                f"WHERE id = '{_esc(entity_id)}' AND team_id IS NOT NULL"
+            )
+            for mt in mt_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "mcp_token", entity_id,
+                    "team", mt["team_id"], "token_for_team",
+                )
+                _track("token_for_team", 2)
+            # Re-scan invocations using this token
+            mi_rows = self.sql.execute(
+                f"SELECT id, tool_id FROM {self._table('mcp_invocations')} "
+                f"WHERE token_id = '{_esc(entity_id)}'"
+            )
+            for mi in mi_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "mcp_invocation", mi["id"],
+                    "mcp_token", entity_id, "invoked_with_token",
+                )
+                _track("invoked_with_token", 2)
+
+        elif entity_type == "mcp_tool":
+            # Reverse: scan mcp_invocations WHERE tool_id = this
+            mi_rows = self.sql.execute(
+                f"SELECT id FROM {self._table('mcp_invocations')} "
+                f"WHERE tool_id = '{_esc(entity_id)}'"
+            )
+            for mi in mi_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "mcp_invocation", mi["id"],
+                    "mcp_tool", entity_id, "invokes_tool",
+                )
+                _track("invokes_tool", 2)
+
+        elif entity_type == "mcp_invocation":
+            mi_rows = self.sql.execute(
+                f"SELECT id, token_id, tool_id FROM {self._table('mcp_invocations')} "
+                f"WHERE id = '{_esc(entity_id)}'"
+            )
+            for mi in mi_rows:
+                self._insert_edge_with_inverse(
+                    model_id, "mcp_invocation", entity_id,
+                    "mcp_token", mi["token_id"], "invoked_with_token",
+                )
+                _track("invoked_with_token", 2)
+                self._insert_edge_with_inverse(
+                    model_id, "mcp_invocation", entity_id,
+                    "mcp_tool", mi["tool_id"], "invokes_tool",
+                )
+                _track("invokes_tool", 2)
+
+        elif entity_type == "job_run":
+            jr_rows = self.sql.execute(
+                f"SELECT id, template_id, model_id AS job_model_id, endpoint_id "
+                f"FROM {self._table('job_runs')} "
+                f"WHERE id = '{_esc(entity_id)}'"
+            )
+            for jr in jr_rows:
+                if jr.get("template_id"):
+                    self._insert_edge_with_inverse(
+                        model_id, "job_run", entity_id,
+                        "template", jr["template_id"], "job_uses_template",
+                    )
+                    _track("job_uses_template", 2)
+                if jr.get("job_model_id"):
+                    self._insert_edge_with_inverse(
+                        model_id, "job_run", entity_id,
+                        "model", jr["job_model_id"], "job_trains_model",
+                        target_name=jr["job_model_id"],
+                    )
+                    _track("job_trains_model", 2)
+                if jr.get("endpoint_id"):
+                    self._insert_edge_with_inverse(
+                        model_id, "job_run", entity_id,
+                        "endpoint", jr["endpoint_id"], "job_targets_endpoint",
+                    )
+                    _track("job_targets_endpoint", 2)
 
         duration_ms = (time.time() - t0) * 1000
         result = MaterializeResult(
