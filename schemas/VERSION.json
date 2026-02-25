@@ -1,0 +1,46 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-02-25T12:00:00Z",
+  "changes": [
+    {
+      "version": "1.0.0",
+      "date": "2026-02-25",
+      "description": "Initial schema with 33 tables for Ontos ML Workbench",
+      "tables_added": [
+        "sheets",
+        "templates",
+        "canonical_labels",
+        "training_sheets",
+        "qa_pairs",
+        "model_training_lineage",
+        "example_store",
+        "labeling_jobs",
+        "labeling_tasks",
+        "labeled_items",
+        "model_evaluations",
+        "identified_gaps",
+        "annotation_tasks",
+        "bit_attribution",
+        "dqx_quality_results",
+        "endpoint_metrics",
+        "app_roles",
+        "user_role_assignments",
+        "teams",
+        "team_members",
+        "data_domains",
+        "asset_reviews",
+        "projects",
+        "project_members",
+        "data_contracts",
+        "compliance_policies",
+        "workflows",
+        "data_products",
+        "semantic_models",
+        "naming_conventions",
+        "delivery_modes",
+        "mcp_integration",
+        "platform_connectors"
+      ]
+    }
+  ]
+}
