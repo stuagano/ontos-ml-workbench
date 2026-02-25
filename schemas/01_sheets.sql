@@ -31,6 +31,10 @@ CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.sheets (
   -- Template configuration (attached via /sheets/{id}/attach-template)
   template_config STRING COMMENT 'JSON: prompt_template, system_instruction, model, temperature, max_tokens, label_type, column_mapping, etc.',
 
+  -- Domain & join configuration
+  domain_id STRING COMMENT 'FK to data_domains.id',
+  join_config STRING COMMENT 'JSON: multi-source join configuration (sources, key mappings, join type, time window)',
+
   -- Status tracking
   status STRING DEFAULT 'active' COMMENT 'Status: active, archived, deleted',
   item_count INT COMMENT 'Cached count of items in dataset',

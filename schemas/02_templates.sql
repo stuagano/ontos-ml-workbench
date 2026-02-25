@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.templates (
   -- Few-shot examples
   few_shot_examples ARRAY<STRING> COMMENT 'Array of example prompt/completion pairs',
 
+  -- Domain scoping
+  domain_id STRING COMMENT 'FK to data_domains.id',
+
   -- Version tracking
   version STRING,
   parent_template_id STRING COMMENT 'ID of template this was derived from',

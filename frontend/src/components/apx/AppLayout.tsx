@@ -610,12 +610,14 @@ function AdminNav({ showGovernance, onToggleGovernance }: AdminNavProps) {
 }
 
 // ============================================================================
-// Governance Links (External - Ontos Platform)
+// Governance Quick Links (open GovernancePage at specific tab)
 // ============================================================================
+
+type GovernanceTabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows" | "products" | "semantic" | "naming" | "delivery" | "mcp" | "connectors";
 
 interface GovernanceLink {
   label: string;
-  path: string;
+  tabId: GovernanceTabId;
   icon: typeof Database;
   description: string;
 }
@@ -623,47 +625,41 @@ interface GovernanceLink {
 const GOVERNANCE_LINKS: GovernanceLink[] = [
   {
     label: "Data Contracts",
-    path: "/data-contracts",
+    tabId: "contracts",
     icon: FileCheck,
     description: "Manage data contracts and SLAs",
   },
   {
     label: "Data Products",
-    path: "/data-products",
+    tabId: "products",
     icon: Package,
     description: "Browse and manage data products",
   },
   {
     label: "Compliance",
-    path: "/compliance",
+    tabId: "policies",
     icon: Shield,
     description: "Compliance policies and audits",
   },
   {
-    label: "Asset Reviews",
-    path: "/asset-reviews",
-    icon: ClipboardList,
-    description: "Review and approve data assets",
-  },
-  {
-    label: "Training Curation",
-    path: "/training-data-curation",
+    label: "Workflows",
+    tabId: "workflows",
     icon: GraduationCap,
-    description: "Curate training data governance",
+    description: "Governance workflows",
   },
   {
-    label: "Business Glossary",
-    path: "/business-glossary",
+    label: "Semantic Layer",
+    tabId: "semantic",
     icon: BookOpen,
-    description: "Shared business terminology",
+    description: "Semantic models and business glossary",
   },
 ];
 
 interface GovernanceNavProps {
-  ontosUrl?: string;
+  onOpenTab: (tabId: GovernanceTabId) => void;
 }
 
-function GovernanceNav({ ontosUrl }: GovernanceNavProps) {
+function GovernanceNav({ onOpenTab }: GovernanceNavProps) {
   const { open } = useSidebar();
 
   return (
@@ -672,39 +668,16 @@ function GovernanceNav({ ontosUrl }: GovernanceNavProps) {
       <SidebarMenu>
         {GOVERNANCE_LINKS.map((link) => {
           const Icon = link.icon;
-          const isDisabled = !ontosUrl;
 
           return (
-            <SidebarMenuItem key={link.path}>
+            <SidebarMenuItem key={link.tabId}>
               <SidebarMenuButton
-                tooltip={
-                  isDisabled
-                    ? "Configure ONTOS_BASE_URL to enable"
-                    : link.description
-                }
-                onClick={() => {
-                  if (ontosUrl) {
-                    window.open(ontosUrl + link.path, "_blank");
-                  }
-                }}
-                className={isDisabled ? "opacity-40 cursor-not-allowed" : ""}
+                tooltip={link.description}
+                onClick={() => onOpenTab(link.tabId)}
               >
-                <Icon
-                  className={clsx(
-                    "w-5 h-5 flex-shrink-0",
-                    isDisabled ? "text-db-gray-400" : "text-db-gray-500",
-                  )}
-                />
+                <Icon className="w-5 h-5 flex-shrink-0 text-db-gray-500" />
                 {open && (
-                  <>
-                    <span className="flex-1 text-left">{link.label}</span>
-                    <ExternalLink
-                      className={clsx(
-                        "w-3 h-3",
-                        isDisabled ? "text-db-gray-300" : "text-db-gray-400",
-                      )}
-                    />
-                  </>
+                  <span className="flex-1 text-left">{link.label}</span>
                 )}
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -726,7 +699,7 @@ interface AppLayoutProps {
   completedStages?: PipelineStage[];
   currentUser: string;
   workspaceUrl?: string;
-  ontosUrl?: string;
+  onGovernanceTabOpen: (tabId: string) => void;
   showPromptTemplates: boolean;
   onTogglePromptTemplates: () => void;
   showExamples: boolean;
@@ -756,7 +729,7 @@ export function AppLayout({
   completedStages = [],
   currentUser,
   workspaceUrl,
-  ontosUrl,
+  onGovernanceTabOpen,
   showPromptTemplates,
   onTogglePromptTemplates,
   showExamples,
@@ -815,7 +788,7 @@ export function AppLayout({
             showGovernance={showGovernance}
             onToggleGovernance={onToggleGovernance}
           />
-          <GovernanceNav ontosUrl={ontosUrl} />
+          <GovernanceNav onOpenTab={onGovernanceTabOpen} />
         </SidebarContent>
 
         <SidebarFooter>

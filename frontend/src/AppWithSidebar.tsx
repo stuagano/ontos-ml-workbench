@@ -79,6 +79,7 @@ const GovernancePage = lazy(() =>
     default: m.GovernancePage,
   })),
 );
+import type { TabId as GovernanceTabId } from "./pages/GovernancePage";
 const MarketplacePage = lazy(() =>
   import("./pages/MarketplacePage").then((m) => ({
     default: m.MarketplacePage,
@@ -115,6 +116,7 @@ function AppContent() {
   const [showRegistries, setShowRegistries] = useState(false);
   const [showMarketplace, setShowMarketplace] = useState(false);
   const [showGovernance, setShowGovernance] = useState(false);
+  const [governanceTab, setGovernanceTab] = useState<GovernanceTabId | undefined>(undefined);
   const [selectedDSPyTemplate, setSelectedDSPyTemplate] = useState<Template | null>(null);
   const [datasetContext, setDatasetContext] = useState<{
     columns: Array<{ name: string; type: string }>;
@@ -338,7 +340,10 @@ function AppContent() {
       completedStages={completedStages}
       currentUser={config?.current_user || "Unknown"}
       workspaceUrl={config?.workspace_url}
-      ontosUrl={config?.ontos_url}
+      onGovernanceTabOpen={(tabId: string) => {
+        setGovernanceTab(tabId as GovernanceTabId);
+        setShowGovernance(true);
+      }}
       showPromptTemplates={showPromptTemplates}
       onTogglePromptTemplates={() =>
         setShowPromptTemplates(!showPromptTemplates)
@@ -670,6 +675,7 @@ function AppContent() {
           >
             <GovernancePage
               onClose={() => setShowGovernance(false)}
+              initialTab={governanceTab}
             />
           </Suspense>
         </div>

@@ -5,7 +5,7 @@
  * Follows the RegistriesPage tabbed pattern.
  */
 
-import { useState, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
@@ -179,10 +179,11 @@ import type {
 
 const UnifiedGraphView = lazy(() => import("../components/semantic/UnifiedGraphView"));
 
-type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows" | "products" | "semantic" | "naming" | "delivery" | "mcp" | "connectors";
+export type TabId = "roles" | "teams" | "domains" | "projects" | "contracts" | "policies" | "workflows" | "products" | "semantic" | "naming" | "delivery" | "mcp" | "connectors";
 
 interface GovernancePageProps {
   onClose: () => void;
+  initialTab?: TabId;
 }
 
 // ============================================================================
@@ -5489,8 +5490,13 @@ const TABS: { id: TabId; label: string; icon: typeof Shield }[] = [
   { id: "connectors", label: "Connectors", icon: Plug },
 ];
 
-export function GovernancePage({ onClose }: GovernancePageProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("roles");
+export function GovernancePage({ onClose, initialTab }: GovernancePageProps) {
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab ?? "roles");
+
+  // Sync with initialTab when it changes (e.g., clicking different sidebar links)
+  useEffect(() => {
+    if (initialTab) setActiveTab(initialTab);
+  }, [initialTab]);
 
   return (
     <div className="flex flex-col h-full">

@@ -20,6 +20,9 @@ CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.training_sheets (
   feature_columns ARRAY<STRING> COMMENT 'Independent variables (input features) used',
   target_column STRING COMMENT 'Dependent variable (output/target) being predicted',
 
+  -- Domain scoping
+  domain_id STRING COMMENT 'FK to data_domains.id',
+
   -- Generation configuration
   generation_mode STRING NOT NULL DEFAULT 'ai_generated' COMMENT 'Mode: ai_generated, manual, hybrid',
   model_used STRING COMMENT 'Foundation Model used for generation',
