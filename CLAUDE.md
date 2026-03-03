@@ -1,21 +1,28 @@
 # Ontos ML Workbench
 
-**Mission control for Acme Instruments' AI-powered radiation safety platform on Databricks**
+**ML lifecycle extensions for the Ontos data governance platform on Databricks**
 
 ```
 DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
 ```
 
-> **UI Note:** In the sidebar, DATA and GENERATE are intentionally merged into a single
-> "Datasets" page. The SheetBuilder page handles both dataset creation and Q&A generation.
-> The backend `/api/v1/generate/` endpoints remain available independently.
-
-**PRD Version:** v2.3 (Validated - Ready for Implementation)  
-**See:** `docs/PRD.md`
+**PRD Version:** v2.3 (Validated)
+**Design Doc:** `docs/ML_EXTENSION_DESIGN.md`
 
 ## Project Overview
 
-Ontos ML Workbench is a Databricks App for building and governing AI systems for radiation safety. It enables Acme Instruments' domain experts, physicists, and data stewards to participate in AI development through a no-code, multimodal data curation platform.
+Ontos ML Workbench extends the open-source [Ontos](https://github.com/larsgeorge/ontos) data governance platform with ML workflow capabilities. All application code lives in the `ontos/` submodule — this repo provides documentation, schemas, notebooks, and deployment configuration.
+
+### What Lives Where
+
+| Directory | Purpose |
+|-----------|---------|
+| `ontos/` | **The application** — FastAPI backend + React frontend with ML extensions |
+| `docs/` | Design documents, PRD, business case, integration guide |
+| `schemas/` | Delta table DDL (reference for Unity Catalog table creation) |
+| `notebooks/` | Databricks notebooks for train, monitor, improve, curate workflows |
+| `resources/` | DAB job definitions |
+| `databricks.yml` | Databricks Asset Bundle config |
 
 ### Core Concepts
 
@@ -23,143 +30,121 @@ Ontos ML Workbench is a Databricks App for building and governing AI systems for
 Lightweight pointers to Unity Catalog tables and volumes. Sheets enable multimodal data fusion (images + sensor data + metadata) without copying data.
 
 **2. Canonical Labels (Ground Truth Layer)**
-Expert-validated labels stored independently of Q&A pairs. Enables **"label once, reuse everywhere"** - experts label source data once, labels automatically reused across all Training Sheets. Supports multiple labelsets per item via composite key `(sheet_id, item_ref, label_type)`.
+Expert-validated labels stored independently of Q&A pairs. Enables **"label once, reuse everywhere"** — experts label source data once, labels automatically reused across all Training Sheets. Supports multiple labelsets per item via composite key `(sheet_id, item_ref, label_type)`.
 
 **3. Training Sheets (Q&A Datasets)**
 Materialized Q&A pairs generated from Sheets + Templates. Canonical label lookup provides automatic pre-approval when expert labels exist.
 
 **4. Prompt Templates (Reusable IP)**
-With LLMs, data modality no longer matters. Images, sensor telemetry, documents all converge through **prompt templates** - reusable assets encoding Acme Instruments' 60+ years of radiation expertise.
-
-### Key Use Cases
-- **Defect Detection**: Image + sensor context → defect classification
-- **Predictive Maintenance**: Telemetry → failure probability
-- **Anomaly Detection**: Sensor stream → alert + explanation
-- **Calibration Insights**: MC results → recommendations
-- **Document Extraction**: Compliance docs → structured data
-- **Remaining Useful Life**: Equipment history → RUL estimate
+With LLMs, data modality no longer matters. Images, sensor telemetry, documents all converge through **prompt templates** — reusable assets encoding domain expertise.
 
 ## Architecture
 
+The ML extensions follow Ontos's 4-layer pattern:
+
 ```
-├── backend/                 # FastAPI backend
-│   ├── app/
-│   │   ├── api/v1/         # REST endpoints
-│   │   ├── core/           # Config, auth, Databricks SDK
-│   │   ├── models/         # Pydantic models
-│   │   └── services/       # Business logic
-│   └── jobs/               # Databricks job notebooks
-├── frontend/               # React + TypeScript + Tailwind
-│   └── src/
-│       ├── components/     # Reusable UI
-│       ├── pages/          # 7 stage pages
-│       ├── services/       # API client
-│       └── types/          # TypeScript types
-├── schemas/                # Delta table DDL
-├── resources/              # DAB job definitions
-├── synthetic_data/         # Acme Instruments-specific sample data
-├── databricks.yml          # DAB bundle config
-└── app.yaml               # Databricks App config
+Route → Manager → Repository → ORM Model
 ```
+
+All ML code is in `ontos/src/backend/src/` and `ontos/src/frontend/src/`:
+
+```
+ontos/src/backend/src/
+├── db_models/ml_*.py          # SQLAlchemy ORM models (12 files)
+├── repositories/ml_*.py       # Repository layer (13 files)
+├── controller/ml_*.py         # Business logic managers (13 files)
+├── routes/ml_*.py             # FastAPI route modules (13 files)
+├── models/ml_*.py             # Pydantic API models (12 files)
+└── data/ml_demo_data.sql      # Demo seed data
+
+ontos/src/frontend/src/
+├── types/ml-extensions.ts     # Shared TypeScript types
+├── lib/api-utils.ts           # Shared API utilities
+└── views/ml-*.tsx             # ML workflow pages
+```
+
+### ML Feature Domains
+
+| Domain | What It Does |
+|--------|-------------|
+| **Sheets** | Dataset definitions, multimodal source management |
+| **Training Sheets** | Q&A dataset generation and management |
+| **Canonical Labels** | Expert ground truth labels |
+| **Templates** | Prompt template library |
+| **Example Store** | Few-shot example management for DSPy |
+| **Labeling** | Job/task workflow with state machines, assignment, review |
+| **Monitoring** | Endpoint metrics, drift detection, alerts, health scoring |
+| **Lineage** | Graph materialization, BFS traversal, edge tracking |
+| **Quality (DQX)** | Data quality checks, profiling, AI rule generation |
+| **Feedback** | User ratings, flagging, conversion to training data |
+| **Curated Datasets** | Dataset versioning, splits, approval workflow |
+| **Agent Retrieval** | Few-shot example retrieval, outcome tracking |
+| **Model Registry** | Tool/agent registry with health checks |
 
 ## Development
 
-### Recommended: APX with Hot Reload (Unified Dev Server)
-```bash
-# Install APX
-uvx --index https://databricks-solutions.github.io/apx/simple apx init
+### Working on Ontos ML Extensions
 
-# Start dev server (hot reload for both backend + frontend)
-apx dev start
+```bash
+# Navigate to the Ontos submodule
+cd ontos
+
+# Backend
+cd src/backend
+hatch -e dev run uvicorn src.app:app --reload
+
+# Frontend
+cd src/frontend
+yarn install && yarn dev
 ```
 
-**Benefits**: Single command, instant hot reload for Python and React changes, unified logging.
+See `ontos/CLAUDE.md` for Ontos-specific development instructions.
 
-See [MODULE_DEV_WITH_APX.md](frontend/MODULE_DEV_WITH_APX.md) for APX development workflow.
+### Alembic Migrations
 
-### Alternative: Manual Setup (Traditional)
+ML extensions use Alembic migrations prefixed with `ml`:
+
 ```bash
-# Terminal 1: Backend
-cd backend
-pip install -r requirements.txt
-cp .env.example .env
-uvicorn app.main:app --reload
-
-# Terminal 2: Frontend
-cd frontend
-npm install
-npm run dev
+cd ontos/src/backend
+alembic upgrade head
 ```
 
 ### Deploy to Databricks
-```bash
-# Build frontend
-cd frontend && npm run build && cd ..
 
-# Deploy app
-databricks apps deploy ontos-ml-workbench \
-  --source-code-path /Workspace/Users/<your-email>/Apps/ontos-ml-workbench \
-  --profile=your-profile
+See `ontos/` deployment docs and `databricks.yml` for bundle configuration.
 
-# IMPORTANT: Always poll for deployment completion
-./.claude/scripts/poll-databricks-app.sh ontos-ml-workbench your-profile
-```
+## Delta Tables (Reference)
 
-**See**: `.claude/DEPLOYMENT_WORKFLOW.md` for complete deployment procedures and troubleshooting.
+The `schemas/` directory contains Delta table DDL for Unity Catalog. These are reference SQL — the Ontos backend uses SQLAlchemy + Lakebase for its operational tables.
 
-## Synthetic Data
-
-Sample data for Acme Instruments use cases in `synthetic_data/`:
-- `defect_detection/` - Inspection images with defect labels
-- `predictive_maintenance/` - Equipment telemetry and failures
-- `anomaly_detection/` - Sensor streams with labeled anomalies
-- `calibration/` - Monte Carlo simulation outputs
-
-## Delta Tables (PRD v2.3)
-
-**Configuration**: Set in `backend/.env` (copy from `backend/.env.example`)
-- Workspace: Your Databricks workspace URL
-- Catalog: Your Unity Catalog catalog
-- Schema: `ontos_ml` (or your preferred schema name)
-- Warehouse: Your SQL Warehouse ID
-- Profile: Your Databricks CLI profile name
-
-**Note**: Configure your workspace as a target in `databricks.yml`
-
-**Core Data Model:**
+**Core ML Tables:**
 
 | Table | Purpose |
 |-------|---------|
 | `sheets` | Dataset definitions (pointers to Unity Catalog sources) |
-| `canonical_labels` | Ground truth labels (independent of Q&A pairs) with composite key `(sheet_id, item_ref, label_type)` |
-| `templates` | Prompt template definitions with `label_type` field |
-| `training_sheets` | Q&A datasets (formerly assemblies) |
-| `qa_pairs` | Individual Q&A pairs with `canonical_label_id`, `allowed_uses`, `prohibited_uses` |
-| `model_training_lineage` | Tracks which models used which Training Sheets |
-| `example_store` | Managed few-shot examples for DSPy |
+| `canonical_labels` | Ground truth labels with composite key `(sheet_id, item_ref, label_type)` |
+| `templates` | Prompt template definitions |
+| `training_sheets` | Q&A datasets |
+| `qa_pairs` | Individual Q&A pairs with governance constraints |
+| `model_training_lineage` | Model → Training Sheet lineage |
+| `example_store` | Managed few-shot examples |
 
 **Operations & Governance Tables:**
 
 | Table | Purpose |
 |-------|---------|
 | `feedback_items` | User feedback (ratings, comments, flags) |
-| `endpoints_registry` | Registered serving endpoints with model metadata |
-| `labeling_jobs` | Structured labeling job definitions |
-| `labeling_tasks` | Task batches within labeling jobs |
-| `labeled_items` | Individual item annotations |
-| `workspace_users` | Labeling workspace users |
-| `model_evaluations` | MLflow evaluation results (per-metric) |
-| `identified_gaps` | Gap analysis findings |
-| `annotation_tasks` | Gap remediation annotation tasks |
-| `bit_attribution` | Model attribution scores per training data |
-| `dqx_quality_results` | Data quality check results per sheet |
-| `endpoint_metrics` | Per-request endpoint performance metrics |
-
-**Key Schema Features:**
-- Multimodal support: Tables reference Unity Catalog volumes for images, PDFs, audio
-- Multiple labelsets per item: Same source data can have multiple independent labels
-- Usage constraints: Governance layer separate from quality approval
-- Lineage tracking: Complete traceability from source data → Q&A pairs → trained models
+| `labeling_jobs` / `labeling_tasks` / `labeled_items` | Labeling workflow |
+| `workspace_users` | Labeling workspace user management |
+| `model_evaluations` | MLflow evaluation results |
+| `identified_gaps` / `annotation_tasks` | Gap analysis and remediation |
+| `dqx_quality_results` | Data quality check results |
+| `endpoint_metrics` | Endpoint performance metrics |
+| `curated_datasets` | Versioned, approved datasets |
+| `agent_retrieval_events` | Agent example retrieval tracking |
+| `tools_registry` / `agents_registry` | Tool and agent registries |
+| `monitor_alerts` | Monitoring alert lifecycle |
+| `ml_lineage_edges` | Materialized lineage graph |
 
 ## Workflow Stages
 
@@ -171,54 +156,23 @@ Apply templates to Sheets to generate Q&A pairs. Canonical label lookup provides
 
 ### 3. LABEL
 Two labeling workflows:
-
-**Mode A: Training Sheet Review**
-- Expert reviews Q&A pairs in LABEL stage
-- Approve/Edit/Reject actions
-- Creates canonical labels for future reuse
-
-**Mode B: Canonical Labeling Tool (TOOLS section)**
-- Expert labels source data directly before generating Q&A pairs
-- Labels immediately available for all Training Sheets
-- Enables "label once, reuse everywhere"
+- **Mode A**: Training Sheet review — approve/edit/reject Q&A pairs
+- **Mode B**: Canonical Labeling — label source data directly for reuse
 
 ### 4. TRAIN
-Fine-tune models using approved Q&A pairs. Dual quality gates:
-- **Status** (quality): `labeled` = expert approved
-- **Usage Constraints** (governance): Check `allowed_uses`, `prohibited_uses`
+Fine-tune models using approved Q&A pairs. Dual quality gates (expert approval + usage governance).
 
 ### 5. DEPLOY
-Deploy models across ACE architecture (Airgap, Cloud, Edge)
+Deploy models via Databricks serving endpoints.
 
 ### 6. MONITOR
-Track production performance, drift detection
+Track production performance, drift detection, alerting, health scoring.
 
 ### 7. IMPROVE
-Feedback loops, gap analysis, retraining candidates
-
-## TOOLS Section (Asset Management)
-
-- **Prompt Templates** (Alt+T) - Reusable prompt library
-- **Example Store** (Alt+E) - Dynamic few-shot examples
-- **DSPy Optimizer** (Alt+D) - Automated prompt optimization
-- **Canonical Labeling Tool** - Label source data directly
-
-## Progress Tracking
-
-**Single source of truth**: `docs/PROJECT_STATUS.md`
-
-After completing any feature, bug fix, or schema change:
-1. Update `docs/PROJECT_STATUS.md` — mark items DONE (strikethrough), update Known Issues, add to "Recently Completed"
-2. If you added/changed a Delta table, update `schemas/README.md` file listings and Quick Start section
-3. If you added/changed an API endpoint, verify the Backend API Coverage table is still accurate
-4. If you added/changed a frontend page or tool, verify the TOOLS Section Status and Stage-by-Stage tables
-
-Do NOT create new tracking documents. All status belongs in `docs/PROJECT_STATUS.md`.
+Feedback loops, gap analysis, curated dataset management, retraining candidates.
 
 ## Code Style
 
-- **Modular**: Keep files focused and small
+- **Ontos patterns**: 4-layer architecture, CRUDBase repos, singleton managers
 - **Type Safety**: Full TypeScript on frontend, Pydantic on backend
-- **Domain-Specific**: Use radiation safety terminology consistently
-- **ACE-Ready**: Support Airgap, Cloud, Edge deployment patterns
-- **Terminology**: Use "Sheet", "Training Sheet", "Canonical Label" (not old terms like "DataBit", "Assembly")
+- **Terminology**: Use "Sheet", "Training Sheet", "Canonical Label"

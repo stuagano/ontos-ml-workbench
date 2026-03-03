@@ -1,6 +1,6 @@
 # Ontos ML Workbench
 
-Mission control for AI-powered ML lifecycle management on Databricks — from raw data to production models with full governance.
+ML lifecycle extensions for the [Ontos](https://github.com/larsgeorge/ontos) data governance platform on Databricks — from raw data to production models with full governance.
 
 ```
 DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
@@ -8,24 +8,33 @@ DATA → GENERATE → LABEL → TRAIN → DEPLOY → MONITOR → IMPROVE
 
 ## What This Is
 
-**Ontos ML Workbench** is a full-stack Databricks App (FastAPI + React) that gives domain experts, data scientists, and stewards a unified, no-code workflow for building and governing AI systems. It manages the complete ML lifecycle:
+**Ontos ML Workbench** adds ML workflow capabilities to the Ontos data governance platform. It gives domain experts, data scientists, and stewards a unified workflow for building and governing AI systems:
 
 - **Prompt templates as reusable IP** — encode domain expertise once, apply across datasets
 - **Canonical labeling** — experts label source data once, labels reuse everywhere
 - **Training data generation** — combine datasets + templates to produce Q&A pairs at scale
 - **Fine-tuning orchestration** — dual quality gates (expert approval + usage governance)
-- **Production monitoring** — drift detection, latency tracking, feedback loops
+- **Production monitoring** — drift detection, latency tracking, alerts, health scoring
+- **Lineage tracking** — full graph from source data → Q&A pairs → trained models
+- **Data quality (DQX)** — automated profiling, quality checks, AI-assisted rule generation
+- **Feedback loops** — capture ratings, flag issues, convert feedback to training data
 
-### Integrated Open-Source Components
+### Architecture
 
-The workbench builds on two Databricks Labs projects for data quality and governance:
+All application code lives in the `ontos/` submodule. This repo provides documentation, schemas, notebooks, and deployment configuration.
 
-| Component | What It Does | Integration |
-|-----------|-------------|-------------|
-| **[DQX](https://github.com/databrickslabs/dqx)** | Automated data quality validation — applies quality rules to datasets, profiles data distributions, and flags issues before they reach training | pip package (`databricks-labs-dqx[llm]`). Quality checks run in the DATA and LABEL stages to ensure training data meets standards. |
-| **[Ontos](ontos/)** | Data governance platform — data product catalogs, contracts (ODCS format), compliance workflows, and asset review | Git submodule (optional). Adds governance dashboards and contract management. The workbench runs fully without it. |
+```
+├── ontos/                  # The application (git submodule)
+│   ├── src/backend/        # FastAPI + SQLAlchemy + Lakebase
+│   └── src/frontend/       # React + TypeScript + Shadcn UI
+├── docs/                   # Design docs, PRD, business case
+├── schemas/                # Delta table DDL (Unity Catalog reference)
+├── notebooks/              # Databricks workflow notebooks
+├── resources/              # DAB job definitions
+└── databricks.yml          # Databricks Asset Bundle config
+```
 
-> **Naming note:** "Ontos ML Workbench" is this application. "Ontos" is the separate governance platform included as an optional submodule. They are independent projects that work well together.
+The ML extensions follow Ontos's 4-layer pattern (Route → Manager → Repository → ORM Model) and add 13 feature domains across 60+ files.
 
 ## Getting Started
 
@@ -41,195 +50,86 @@ The workbench builds on two Databricks Labs projects for data quality and govern
 git clone https://github.com/<your-org>/ontos-ml-workbench.git
 cd ontos-ml-workbench
 
-# Optional: initialize the ontos governance submodule
-# (requires access to the ontos repo — workbench runs fine without it)
+# Initialize the ontos submodule (required)
 git submodule update --init --recursive
+```
+
+### Run Locally
+
+```bash
+# Backend
+cd ontos/src/backend
+hatch -e dev run uvicorn src.app:app --reload
+
+# Frontend (separate terminal)
+cd ontos/src/frontend
+yarn install && yarn dev
 ```
 
 ### Deploy to Databricks Apps
 
-This is the primary deployment path. The app runs as a managed Databricks App with its own service principal.
+**1. Configure `databricks.yml`** with your profile, catalog, schema, and warehouse ID.
 
-**1. Authenticate and find your warehouse ID:**
-
-```bash
-databricks auth login --host https://your-workspace.cloud.databricks.com --profile your-profile
-databricks warehouses list --profile your-profile
-```
-
-**2. Configure `databricks.yml`** — set your profile, catalog, schema, and warehouse ID:
-
-```yaml
-# In the 'dev' target section:
-targets:
-  dev:
-    workspace:
-      profile: your-profile          # ← your CLI profile
-    variables:
-      catalog: your_catalog           # ← your Unity Catalog catalog
-      schema: ontos_ml                # ← schema name (created automatically)
-      warehouse_id: "abc123def456"    # ← your SQL Warehouse ID
-```
-
-> These values flow through `app.yaml` into the deployed app as environment variables. You do **not** need `backend/.env` for Databricks Apps — that file is only for local development.
-
-**3. Initialize database** — create tables and seed sample data:
+**2. Build and deploy:**
 
 ```bash
-# In Databricks SQL Editor, run these files in order:
-# schemas/00_create_catalog.sql through 33_platform_connectors.sql
-
-# Or use the bootstrap script:
-./scripts/bootstrap.sh <workspace-name>
-```
-
-**4. Build and deploy:**
-
-```bash
-cd frontend && npm install && npm run build && cd ..
+cd ontos/src/frontend && yarn build && cd ../../..
 databricks bundle deploy -t dev
 ```
 
-This creates the Databricks App, uploads the code, and starts it.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the full guide.
 
-**5. Grant the app's service principal access to your data:**
-
-```sql
--- Get the service principal ID from:
--- databricks apps get ontos-ml-workbench-dev --profile your-profile -o json | jq -r '.service_principal_id'
-
-GRANT USE CATALOG ON CATALOG your_catalog TO `<service-principal-id>`;
-GRANT USE SCHEMA ON SCHEMA your_catalog.ontos_ml TO `<service-principal-id>`;
-GRANT SELECT, MODIFY ON SCHEMA your_catalog.ontos_ml TO `<service-principal-id>`;
-```
-
-**6. Open the app:**
+### Database Migrations
 
 ```bash
-databricks apps get ontos-ml-workbench-dev --profile your-profile -o json | jq -r '.url'
+cd ontos/src/backend
+alembic upgrade head
 ```
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for the full guide and [RUNBOOK.md](RUNBOOK.md) for operations.
+## Integrated Components
 
-### Run Locally (for development)
+| Component | What It Does | Integration |
+|-----------|-------------|-------------|
+| **[Ontos](https://github.com/larsgeorge/ontos)** | Data governance platform — data product catalogs, contracts (ODCS format), compliance workflows, asset review | Git submodule. The ML extensions are built directly into Ontos. |
+| **[DQX](https://github.com/databrickslabs/dqx)** | Automated data quality validation — applies quality rules to datasets, profiles data distributions, flags issues | Optional pip package (`databricks-labs-dqx[llm]`). Quality checks gated behind availability. |
 
-For local development, configure `backend/.env` instead of `databricks.yml`:
+## ML Feature Domains
 
-```bash
-cd backend && cp .env.example .env
-# Edit backend/.env with your host, token, catalog, schema, warehouse ID
-```
-
-Then start both servers:
-
-```bash
-# Terminal 1: Backend
-cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload
-
-# Terminal 2: Frontend
-cd frontend && npm install && npm run dev
-```
-
-- Frontend: http://localhost:5173
-- API docs: http://localhost:8000/docs
-
-> **Tip:** For a single-command dev experience with hot reload, use [APX](https://databricks-solutions.github.io/apx/):
-> `pip install apx --index-url https://databricks-solutions.github.io/apx/simple && apx dev start`
-
-## Architecture
-
-```
-├── backend/                 # FastAPI backend
-│   ├── app/
-│   │   ├── api/v1/         # REST endpoints
-│   │   ├── core/           # Config, auth, Databricks SDK
-│   │   ├── models/         # Pydantic models
-│   │   └── services/       # Business logic
-│   └── jobs/               # Databricks job notebooks
-├── frontend/               # React + TypeScript + Tailwind
-│   └── src/
-│       ├── components/     # Reusable UI
-│       ├── pages/          # 7 stage pages
-│       ├── services/       # API client
-│       └── types/          # TypeScript types
-├── ontos/                  # Git submodule — data governance platform
-├── schemas/                # Delta table DDL
-├── resources/              # DAB job definitions
-├── synthetic_data/         # Sample data for demo use cases
-├── databricks.yml          # DAB bundle config
-└── app.yaml               # Databricks App config
-```
-
-## How the Pieces Fit Together
-
-```
-┌──────────────────────────────────────────────────────┐
-│              Ontos ML Workbench (this repo)           │
-│                                                       │
-│   React UI ←→ FastAPI Backend ←→ Databricks SDK      │
-│                                                       │
-│   ┌─────────────┐  ┌──────────────────────────────┐  │
-│   │    Ontos    │  │          DQX                 │  │
-│   │ (optional)  │  │  (data quality validation)   │  │
-│   │             │  │                              │  │
-│   │ Governance, │  │  Quality rules, profiling,   │  │
-│   │ contracts,  │  │  LLM-assisted data checks    │  │
-│   │ compliance  │  │                              │  │
-│   └─────────────┘  └──────────────────────────────┘  │
-│                                                       │
-│   ┌───────────────────────────────────────────────┐  │
-│   │            Databricks Platform                │  │
-│   │  Unity Catalog · SQL Warehouse · FMAPI        │  │
-│   │  MLflow · Serving Endpoints · Workflows       │  │
-│   └───────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────┘
-
-Development tooling (not part of deployed app):
-  APX — unified hot-reload dev server for backend + frontend
-  See: https://databricks-solutions.github.io/apx/
-```
-
-## Updating Dependencies
-
-**DQX** (pip package — data quality):
-```bash
-pip install --upgrade databricks-labs-dqx[llm]
-```
-
-**Ontos** (submodule — governance, optional):
-```bash
-git submodule update --remote ontos
-git add ontos
-git commit -m "chore: update ontos submodule"
-```
-
-## Core Concepts
-
-| Concept | Description |
-|---------|-------------|
-| **Sheets** | Lightweight pointers to Unity Catalog data sources (tables + volumes for multimodal) |
-| **Canonical Labels** | Expert-validated ground truth — "label once, reuse everywhere" |
-| **Training Sheets** | Materialized Q&A datasets generated from Sheets + Templates |
-| **Prompt Templates** | Reusable IP encoding domain expertise — the key abstraction |
+| Domain | Description |
+|--------|-------------|
+| Sheets | Dataset definitions with multimodal UC source management |
+| Training Sheets | Q&A dataset generation and lifecycle management |
+| Canonical Labels | Expert ground truth labels (label once, reuse everywhere) |
+| Templates | Prompt template library |
+| Example Store | Few-shot example management for DSPy |
+| Labeling | Full workflow: jobs, tasks, assignment, review, state machines |
+| Monitoring | Endpoint metrics, time-series aggregation, drift, alerts, health |
+| Lineage | Graph materialization, BFS traversal, 17 edge types |
+| Quality (DQX) | Data quality checks, profiling, AI rule generation |
+| Feedback | User ratings, flagging, stats, conversion to training data |
+| Curated Datasets | Dataset versioning, train/val/test splits, approval workflow |
+| Agent Retrieval | Few-shot retrieval for agents, outcome tracking, effectiveness |
+| Model Registry | Tool and agent registries with health checks |
 
 ## Lifecycle Stages
 
 1. **DATA** — Define Sheets pointing to Unity Catalog sources
 2. **GENERATE** — Apply Templates to Sheets to create Q&A pairs
 3. **LABEL** — Expert review (Training Sheet review or direct Canonical Labeling)
-4. **TRAIN** — Fine-tune with dual quality gates (approval status + usage constraints)
+4. **TRAIN** — Fine-tune with dual quality gates (approval + usage constraints)
 5. **DEPLOY** — Serve models via Databricks endpoints
-6. **MONITOR** — Track drift, latency, accuracy in production
-7. **IMPROVE** — Feedback loops and retraining from canonical labels
+6. **MONITOR** — Track drift, latency, accuracy with alerting
+7. **IMPROVE** — Feedback loops, gap analysis, curated datasets, retraining
 
 ## Documentation
 
 | Document | Purpose |
 |----------|---------|
-| [QUICKSTART.md](QUICKSTART.md) | Get running in 10 minutes |
-| [DEPLOYMENT.md](DEPLOYMENT.md) | Full deployment guide |
-| [RUNBOOK.md](RUNBOOK.md) | Operations and troubleshooting |
+| [docs/ML_EXTENSION_DESIGN.md](docs/ML_EXTENSION_DESIGN.md) | ML extension architecture and design |
 | [docs/PRD.md](docs/PRD.md) | Product requirements |
+| [docs/BUSINESS_CASE.md](docs/BUSINESS_CASE.md) | Business case |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Deployment guide |
+| [RUNBOOK.md](RUNBOOK.md) | Operations and troubleshooting |
 
 ## License
 
